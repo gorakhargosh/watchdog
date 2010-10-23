@@ -1,0 +1,5 @@
+include README
+include LICENSE
+include AUTHORS
+recursive-include *.txt *.py
+
