@@ -1,0 +1,8 @@
+Gora Khargosh <gora.khargosh@gmail.com>
+
+Watchdog also includes open source libraries or adapted code 
+from the following projects:
+
+- MacFSEvents - http://github.com/malthe/macfsevents
+- pyinotify - http://github.com/seb-m/pyinotify
+
