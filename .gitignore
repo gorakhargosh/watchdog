@@ -12,6 +12,10 @@ Thumbs.db
 \#*\#
 __MACOSX__
 
-# Ignore these directories.
+# Ignore these generated directories.
 build/
+parts/
+develop-eggs/
 
+# Ignore these generated files.
+bin/buildout
