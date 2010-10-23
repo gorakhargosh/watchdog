@@ -12,3 +12,6 @@ Thumbs.db
 \#*\#
 __MACOSX__
 
+# Ignore these directories.
+build/
+
