@@ -11,7 +11,7 @@ portably as possible using:
 * FSEvents on Mac OS X
 * polling as a fallback mechanism
 
-Licensing:
-----------
+Licensing
+---------
 Watchdog is licensed under the terms of the
 [MIT License](http://www.opensource.org/licenses/mit-license.html "MIT License")
