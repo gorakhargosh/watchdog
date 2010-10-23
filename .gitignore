@@ -1,0 +1,14 @@
+*.bak
+*.bkp
+*.log
+*.py[co]
+*.swp
+*~
+.DS_Store
+.\#*
+._*
+Desktop.ini
+Thumbs.db
+\#*\#
+__MACOSX__
+
