@@ -4,6 +4,8 @@
 import os
 import logging
 from setuptools import setup
+from setuptools.extension import Extension
+from setuptools.command.build_ext import build_ext
 from distutils.util import get_platform
 
 logging.basicConfig(level=logging.DEBUG)
@@ -23,6 +25,7 @@ else:
     platform = None
 
 trove_classifiers = (
+    'Development Status :: 4 - Beta',
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
@@ -35,6 +38,23 @@ trove_classifiers = (
     'Topic :: System :: Monitoring',
 )
 
+macosx_ext_modules = [
+    Extension(name='_fsevents',
+              sources=['watchdog/_fsevents.c'],
+              extra_link_args=['-framework', 'CoreFoundation',
+                               '-framework', 'CoreServices'],
+              ),
+    ]
+
+linux_ext_modules = [
+
+    ]
+
+ext_modules = {
+    'macosx': macosx_ext_modules,
+    'linux': linux_ext_modules,
+    }
+
 setup(
     name="Watchdog",
     version="0.0",
@@ -43,8 +63,12 @@ setup(
     author="Gora Khargosh",
     author_email="gora.khargosh@gmail.com",
     license="MIT License",
+    cmdclass=dict(build_ext=build_ext),
     url="http://github.com/gorakhargosh/watchdog",
     keywords = "python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
+    ext_modules=ext_modules.get(platform, None),
     packages=('watchdog',),
+    zip_safe=False,
+    py_modules=('watchdog'),
     )
