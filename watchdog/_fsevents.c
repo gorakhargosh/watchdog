@@ -30,7 +30,7 @@ PyObject *g__pydict_streams = NULL;
  */
 typedef struct {
     PyObject *callback;
-    FSEventsStreamRef stream;
+    FSEventStreamRef stream;
     CFRunLoopRef loop;
     PyThreadState *state;
 } FSEventStreamInfo;
@@ -50,7 +50,7 @@ typedef struct {
  */
 static void
 _handler (FSEventStreamRef stream,
-          FSEventSTreamInfo *info,
+          FSEventStreamInfo *info,
           int num_events,
           const char *const event_paths[],
           const FSEventStreamEventFlags *event_masks,
@@ -59,12 +59,12 @@ _handler (FSEventStreamRef stream,
     PyThreadState *saved_thread_state = NULL;
 
     PyEval_AcquireLock();
-    saved_thread_state = PyThreadState_Swap(info->state);
+    //saved_thread_state = PyThreadState_Swap(info->state);
 
 
 
 
-    PyThreadState_Swap(saved_thread_state);
+    //PyThreadState_Swap(saved_thread_state);
     PyEval_ReleaseLock();
 }
 
@@ -179,8 +179,8 @@ static char module_documentation[] = "Low-level FSEvents interface.";
  */
 PyMODINIT_FUNC init_fsevents(void){
     PyObject *module = Py_InitModule3("_fsevents", module_methods, module_documentation);
-    PyModule_AddIntConstant(module, "POLLIN", kCFFileDescriptorReadCallback);
-    PyModule_AddIntConstant(module, "POLLOUT", kCFFileDescriptorWriteCallback);
+    PyModule_AddIntConstant(module, "POLLIN", kCFFileDescriptorReadCallBack);
+    PyModule_AddIntConstant(module, "POLLOUT", kCFFileDescriptorWriteCallBack);
 
     g__pydict_loops = PyDict_New();
     g__pydict_streams = PyDict_New();
