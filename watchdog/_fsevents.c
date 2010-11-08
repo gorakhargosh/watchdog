@@ -19,6 +19,9 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif /* PY_VERSION_HEX && !PY_SSIZE_T_MIN */
 
+const char *MODULE_NAME = "_fsevents";
+const char *MODULE_CONSTANT_NAME_POLLIN = "POLLIN";
+const char *MODULE_CONSTANT_NAME_POLLOUT = "POLLOUT";
 
 /**
  * Error messages.
@@ -156,6 +159,7 @@ event_stream_handler (FSEventStreamRef stream,
  *
  * @return None
  */
+static char pyfsevents_loop_doc[] = "Runs an event loop in a thread.";
 static PyObject *
 pyfsevents_loop (PyObject *self,
                  PyObject *args)
@@ -216,6 +220,7 @@ pyfsevents_loop (PyObject *self,
  *
  * @return None
  */
+static char pyfsevents_schedule_doc[] = "Schedules a stream.";
 static PyObject *
 pyfsevents_schedule (PyObject *self,
                      PyObject *args)
@@ -236,6 +241,7 @@ pyfsevents_schedule (PyObject *self,
  *
  * @return None
  */
+static char pyfsevents_unschedule_doc[] = "Unschedules a stream.";
 static PyObject *
 pyfsevents_unschedule(PyObject *self,
                       PyObject *stream)
@@ -264,6 +270,7 @@ pyfsevents_unschedule(PyObject *self,
  *
  * @return None
  */
+static char pyfsevents_stop_doc[] = "Stops running the event loop in the specified thread.";
 static PyObject *
 pyfsevents_stop(PyObject *self,
                 PyObject *thread)
@@ -285,25 +292,46 @@ pyfsevents_stop(PyObject *self,
 /**
  * Module public API.
  */
-static PyMethodDef module_methods[] = {
-    {"loop", pyfsevents_loop, METH_VARARGS, NULL},
-    {"stop", pyfsevents_stop, METH_O, NULL},
-    {"schedule", pyfsevents_schedule, METH_VARARGS, NULL},
-    {"unschedule", pyfsevents_unschedule, METH_O, NULL},
-    {NULL},
+static PyMethodDef _fseventsmethods[] = {
+    {"loop", pyfsevents_loop, METH_VARARGS, pyfsevents_loop_doc},
+    {"stop", pyfsevents_stop, METH_O, pyfsevents_stop_doc},
+    {"schedule", pyfsevents_schedule, METH_VARARGS, pyfsevents_schedule_doc},
+    {"unschedule", pyfsevents_unschedule, METH_O, pyfsevents_unschedule_doc},
+    {NULL, NULL, 0, NULL},
 };
 
 
 /**
  * Initialize the _fsevents module.
- *
- *
  */
-PyMODINIT_FUNC init_fsevents(void){
-    PyObject *module = Py_InitModule3("_fsevents", module_methods, MODULE_DOCUMENTATION);
-    PyModule_AddIntConstant(module, "POLLIN", kCFFileDescriptorReadCallBack);
-    PyModule_AddIntConstant(module, "POLLOUT", kCFFileDescriptorWriteCallBack);
+#if PY_MAJOR_VERSION < 3
+void
+init_fsevents(void){
+    PyObject *module = Py_InitModule3(MODULE_NAME, _fseventsmethods, MODULE_DOCUMENTATION);
+    PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLIN, kCFFileDescriptorReadCallBack);
+    PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLOUT, kCFFileDescriptorWriteCallBack);
 
     g__pydict_loops = PyDict_New();
     g__pydict_streams = PyDict_New();
 }
+#else /* PY_MAJOR_VERSION >= 3 */
+static struct PyModuleDef _fseventsmodule = {
+    PyModuleDef_HEAD_INIT,
+    MODULE_NAME,
+    MODULE_DOCUMENTATION,
+    -1,
+    _fseventsmethods
+};
+PyMODINIT_FUNC
+PyInit__fsevents(void)
+{
+    PyObject *module = PyModule_Create(&_fseventsmodule);
+    PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLIN, kCFFileDescriptorReadCallBack);
+    PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLOUT, kCFFileDescriptorWriteCallBack);
+
+    g__pydict_loops = PyDict_New();
+    g__pydict_streams = PyDict_New();
+
+    return module;
+}
+#endif /* PY_MAJOR_VERSION >= 3 */
