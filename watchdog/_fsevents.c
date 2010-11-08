@@ -1,9 +1,14 @@
+/**
+ * _fsevents.c: Low-level FSEvents Python API.
+ *
+ */
 #include "Python.h"
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreServices/CoreServices.h>
+
 #include <stdlib.h>
 #include <signal.h>
 #include <limits.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreServices/CoreServices.h>
 
 /**
  * Py_ssize_t type for Python versions that don't define it.
@@ -104,7 +109,7 @@ event_stream_handler (FSEventStreamRef stream,
             return NULL;
         }
 
-    /* Convert event paths and masks into python lists. */
+    /* Enumerate event paths and masks into python lists. */
     for (i = 0; i < num_events; ++i)
         {
             event_path = PyString_FromString(event_paths[i]);
@@ -127,7 +132,8 @@ event_stream_handler (FSEventStreamRef stream,
             /* An exception may have occurred. */
             if (!PyErr_Occurred())
                 {
-                    /* Set exception information telling python that we could not execute the callback function. */
+                    /* If one didn't occur, raise an exception informing that we could not execute the
+                       callback function. */
                     PyErr_SetString(PyExc_ValueError, CALLBACK_ERROR_MESSAGE);
                 }
 
@@ -219,6 +225,7 @@ pyfsevents_schedule (PyObject *self,
     return Py_None;
 }
 
+
 /**
  * Unschedules a stream.
  *
@@ -245,6 +252,7 @@ pyfsevents_unschedule(PyObject *self,
     Py_INCREF(Py_None);
     return Py_None;
 }
+
 
 /**
  * Stops running the event loop in the specified thread.
