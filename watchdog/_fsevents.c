@@ -78,7 +78,7 @@ typedef struct {
 static void
 event_stream_handler (FSEventStreamRef stream,
                       FSEventStreamInfo *stream_info,
-                      int num_events,
+                      const unsigned int num_events,
                       const char *const event_paths[],
                       const FSEventStreamEventFlags *event_masks,
                       const uint64_t *event_ids)
@@ -88,7 +88,7 @@ event_stream_handler (FSEventStreamRef stream,
     PyObject *event_mask = NULL;
     PyObject *event_path_list = NULL;
     PyObject *event_mask_list = NULL;
-    int i = 0;
+    unsigned int i = 0;
 
 
     /* Acquire lock and save thread state. */
