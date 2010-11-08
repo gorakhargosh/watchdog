@@ -18,7 +18,13 @@ typedef int Py_ssize_t;
 /**
  * Error messages.
  */
-const char CALLBACK_ERROR_MESSAGE[] = "Unable to call callback function.";
+const char *CALLBACK_ERROR_MESSAGE = "Unable to call callback function.";
+
+/**
+ * Module documentation.
+ */
+static const char *MODULE_DOCUMENTATION = "Low-level FSEvents interface.";
+
 
 /**
  * Dictionary of all the event loops.
@@ -279,10 +285,6 @@ static PyMethodDef module_methods[] = {
     {NULL},
 };
 
-/**
- * Module documentation.
- */
-static const char MODULE_DOCUMENTATION[] = "Low-level FSEvents interface.";
 
 /**
  * Initialize the _fsevents module.
