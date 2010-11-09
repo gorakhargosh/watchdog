@@ -45,7 +45,7 @@ PyObject *g__pydict_loops = NULL;
 PyObject *g__pydict_streams = NULL;
 
 /**
- * Returns null if stream exists.
+ * Macro that forces returning NULL if stream exists.
  */
 #define RETURN_NULL_IF_DUPLICATE_STREAM(fs_stream)              \
     if ((PyDict_Contains(g__pydict_streams, (fs_stream)) == 1)) \
@@ -53,6 +53,9 @@ PyObject *g__pydict_streams = NULL;
             return NULL;                                        \
         }
 
+/**
+ * Macro that forces returning NULL if given argument is NULL.
+ */
 #define RETURN_NULL_IF_NULL(o)                  \
     if ((o) == NULL)                            \
         { return NULL; }
@@ -78,7 +81,7 @@ typedef struct {
     CFRunLoopRef loop;
 
     /**
-     *
+     * Python thread state.
      */
     PyThreadState *thread_state;
 } FSEventStreamInfo;
