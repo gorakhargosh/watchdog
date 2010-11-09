@@ -76,9 +76,9 @@ PyObject *g__pydict_streams = NULL;
     while(0)
 
 /**
- * Macro that forces returning NULL if given argument is true.
+ * Macro that forces returning NULL if given argument is false.
  */
-#define RETURN_NULL_IF_NOT(c)                       \
+#define RETURN_NULL_IF_NOT(c)                   \
     do                                          \
         {                                       \
             if (!(c)) { return NULL; }          \
