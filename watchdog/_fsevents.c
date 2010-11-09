@@ -19,14 +19,14 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif /* PY_VERSION_HEX && !PY_SSIZE_T_MIN */
 
-const char *MODULE_NAME = "_fsevents";
-const char *MODULE_CONSTANT_NAME_POLLIN = "POLLIN";
-const char *MODULE_CONSTANT_NAME_POLLOUT = "POLLOUT";
+static const char *MODULE_NAME = "_fsevents";
+static const char *MODULE_CONSTANT_NAME_POLLIN = "POLLIN";
+static const char *MODULE_CONSTANT_NAME_POLLOUT = "POLLOUT";
 
 /**
  * Error messages.
  */
-const char *CALLBACK_ERROR_MESSAGE = "Unable to call callback function.";
+static const char *CALLBACK_ERROR_MESSAGE = "Unable to call callback function.";
 
 /**
  * Module documentation.
