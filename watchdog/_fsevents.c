@@ -50,7 +50,7 @@ PyObject *g__pydict_streams = NULL;
 #define RETURN_NULL_IF_DUPLICATE_STREAM(fs_stream)                      \
     do                                                                  \
         {                                                               \
-            if (1 == (PyDict_Contains(g__pydict_streams, (fs_stream)))) { return NULL; } \
+            if (1 == PyDict_Contains(g__pydict_streams, (fs_stream))) { return NULL; } \
         }                                                               \
     while(0)
 
