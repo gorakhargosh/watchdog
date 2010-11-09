@@ -223,31 +223,33 @@ pyfsevents_loop (PyObject *self,
 }
 
 
+/* Converts a Python string list to a CFMutableArray of CFStrings and returns a reference to the array. */
 static CFMutableArrayRef
-__create_paths_cf_array(PyObject *paths)
+__convert_pystring_list_to_cf_string_array(PyObject *pystring_list)
 {
-    CFMutableArrayRef cf_array_paths = NULL;
-    int i = 0;
-    const char *path = NULL;
-    CFStringRef cf_string_path = NULL;
+    CFMutableArrayRef cf_array_strings = NULL;
+    const char *c_string = NULL;
+    CFStringRef cf_string = NULL;
+    Py_ssize_t i = 0;
+    Py_ssize_t string_list_size = 0;
 
-    Py_ssize_t paths_size = PyList_Size(paths);
+    string_list_size = PyList_Size(pystring_list);
 
-    cf_array_paths = CFArrayCreateMutable(kCFAllocatorDefault, 1, &kCFTypeArrayCallBacks);
+    cf_array_strings = CFArrayCreateMutable(kCFAllocatorDefault, 1, &kCFTypeArrayCallBacks);
 
-    RETURN_NULL_IF_NULL(cf_array_paths);
+    RETURN_NULL_IF_NULL(cf_array_strings);
 
-    for (i = 0; i < paths_size; ++i)
+    for (i = 0; i < string_list_size; ++i)
 	{
-            path = PyString_AS_STRING(PyList_GetItem(paths, i));
-            cf_string_path = CFStringCreateWithCString(kCFAllocatorDefault,
-                                                       path,
-                                                       kCFStringEncodingUTF8);
-            CFArraySetValueAtIndex(cf_array_paths, i, cf_string_path);
-            CFRelease(cf_string_path);
+            c_string = PyString_AS_STRING(PyList_GetItem(pystring_list, i));
+            cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
+                                                  c_string,
+                                                  kCFStringEncodingUTF8);
+            CFArraySetValueAtIndex(cf_array_strings, i, cf_string);
+            CFRelease(cf_string);
 	}
 
-    return cf_array_paths;
+    return cf_array_strings;
 }
 
 
@@ -255,12 +257,12 @@ __create_paths_cf_array(PyObject *paths)
 static FSEventStreamRef
 __create_fs_stream(FSEventStreamInfo *stream_info, PyObject *paths, FSEventStreamCallback callback)
 {
-    CFMutableArrayRef cf_array_paths = __create_paths_cf_array(paths);
+    CFMutableArrayRef cf_array_paths = __convert_pystring_list_to_cf_string_array(paths);
 
     RETURN_NULL_IF_NULL(cf_array_paths);
 
     /* Create event stream. */
-    FSEventStreamContext fs_stream_context = {0, (void*) stream_info, NULL, NULL, NULL};
+    FSEventStreamContext fs_stream_context = {0, /* (void *) */stream_info, NULL, NULL, NULL};
     FSEventStreamRef fs_stream = FSEventStreamCreate(kCFAllocatorDefault,
                                                      callback,
                                                      &fs_stream_context,
@@ -336,7 +338,7 @@ pyfsevents_schedule (PyObject *self,
     RETURN_NULL_IF_NULL(fs_stream);
 
     /* Convert the fs_stream to a Python C Object and store it in the streams dictionary. */
-    value = PyCObject_FromVoidPtr((void *) fs_stream, PyMem_Free);
+    value = PyCObject_FromVoidPtr(/* (void *) */fs_stream, PyMem_Free);
     PyDict_SetItem(g__pydict_streams, stream, value);
 
     /* Get the runloop associated with the thread. */
