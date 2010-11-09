@@ -45,6 +45,19 @@ PyObject *g__pydict_loops = NULL;
 PyObject *g__pydict_streams = NULL;
 
 /**
+ * Returns null if stream exists.
+ */
+#define RETURN_NULL_IF_DUPLICATE_STREAM(fs_stream)              \
+    if ((PyDict_Contains(g__pydict_streams, (fs_stream)) == 1)) \
+        {                                                       \
+            return NULL;                                        \
+        }
+
+#define RETURN_NULL_IF_NULL(o)                  \
+    if ((o) == NULL)                            \
+        { return NULL; }
+
+/**
  * Filesystem event stream meta information structure.
  */
 typedef struct {
@@ -210,6 +223,77 @@ pyfsevents_loop (PyObject *self,
 }
 
 
+static CFMutableArrayRef
+__create_paths_cf_array(PyObject *paths)
+{
+    CFMutableArrayRef cf_array_paths = NULL;
+    int i = 0;
+    const char *path = NULL;
+    CFStringRef cf_string_path = NULL;
+
+    Py_ssize_t paths_size = PyList_Size(paths);
+
+    cf_array_paths = CFArrayCreateMutable(kCFAllocatorDefault, 1, &kCFTypeArrayCallBacks);
+
+    RETURN_NULL_IF_NULL(cf_array_paths);
+
+    for (i = 0; i < paths_size; ++i)
+	{
+            path = PyString_AS_STRING(PyList_GetItem(paths, i));
+            cf_string_path = CFStringCreateWithCString(kCFAllocatorDefault,
+                                                       path,
+                                                       kCFStringEncodingUTF8);
+            CFArraySetValueAtIndex(cf_array_paths, i, cf_string_path);
+            CFRelease(cf_string_path);
+	}
+
+    return cf_array_paths;
+}
+
+
+/* Creates an FSEventStream object and returns a reference to it. */
+static FSEventStreamRef
+__create_fs_stream(FSEventStreamInfo *stream_info, PyObject *paths, FSEventStreamCallback callback)
+{
+    CFMutableArrayRef cf_array_paths = __create_paths_cf_array(paths);
+
+    RETURN_NULL_IF_NULL(cf_array_paths);
+
+    /* Create event stream. */
+    FSEventStreamContext fs_stream_context = {0, (void*) stream_info, NULL, NULL, NULL};
+    FSEventStreamRef fs_stream = FSEventStreamCreate(kCFAllocatorDefault,
+                                                     callback,
+                                                     &fs_stream_context,
+                                                     cf_array_paths,
+                                                     kFSEventStreamEventIdSinceNow,
+                                                     0.01, // latency
+                                                     kFSEventStreamCreateFlagNoDefer);
+    CFRelease(cf_array_paths);
+    return fs_stream;
+}
+
+
+/* Get runloop reference from observer info data or current. */
+static CFRunLoopRef
+__get_runloop_for_thread(PyObject *loops, PyObject *thread)
+{
+    PyObject *value = NULL;
+    CFRunLoopRef loop = NULL;
+
+    value = PyDict_GetItem(loops, thread);
+    if (value == NULL)
+        {
+            loop = CFRunLoopGetCurrent();
+        }
+    else
+        {
+            loop = (CFRunLoopRef) PyCObject_AsVoidPtr(value);
+        }
+
+    return loop;
+}
+
+
 /**
  * Schedules a stream.
  *
@@ -225,18 +309,17 @@ static PyObject *
 pyfsevents_schedule (PyObject *self,
                      PyObject *args)
 {
+    /* Arguments */
     PyObject *thread = NULL;
     PyObject *stream = NULL;
     PyObject *paths = NULL;
     PyObject *callback = NULL;
-    CFMutableArrayRef cf_array_paths = NULL;
-    int i = 0;
-    Py_ssize_t paths_size = 0;
-    const char *path = NULL;
-    CFStringRef cf_string_path = NULL;
+
+    /* Other locals */
     FSEventStreamInfo *stream_info = NULL;
     FSEventStreamRef fs_stream = NULL;
     CFRunLoopRef loop = NULL;
+    PyObject *value = NULL;
 
     if (!PyArg_ParseTuple(args, "OOOO:schedule", &thread, &stream, &callback, &paths))
         {
@@ -244,55 +327,22 @@ pyfsevents_schedule (PyObject *self,
         }
 
     /* Stream must not already be scheduled. */
-    if (PyDict_Contains(g__pydict_streams, stream) == 1)
-        {
-            return NULL;
-        }
+    RETURN_NULL_IF_DUPLICATE_STREAM(stream);
 
-    /* Create a paths array. */
-    cf_array_paths = CFArrayCreateMutable(kCFAllocatorDefault, 1,
-                                          &kCFTypeArrayCallBacks);
-    if (cf_array_paths == NULL)
-        {
-            return NULL;
-        }
-    paths_size = PyList_Size(paths);
-    for (i = 0; i < paths_size; ++i)
-        {
-            path = PyString_AS_STRING(PyList_GetItem(paths, i));
-            cf_string_path = CFStringCreateWithCString(kCFAllocatorDefault,
-                                                  path,
-                                                  kCFStringEncodingUTF8);
-            CFArraySetValueAtIndex(cf_array_paths, i, cf_string_path);
-            CFRelease(cf_string_path);
-        }
-
-    /* Allocate stream information structure. */
+    /* Create the file stream. */
     stream_info = PyMem_New(FSEventStreamInfo, 1);
+    fs_stream = __create_fs_stream(stream_info, paths, (FSEventStreamCallback) &event_stream_handler);
 
-    /* Create event stream. */
-    FSEventStreamContext fs_stream_context = {0, (void*) stream_info, NULL, NULL, NULL};
-    fs_stream = FSEventStreamCreate(kCFAllocatorDefault,
-                                    (FSEventStreamCallback) &event_stream_handler,
-                                    &fs_stream_context,
-                                    cf_array_paths,
-                                    kFSEventStreamEventIdSinceNow,
-                                    0.01, // latency
-                                    kFSEventStreamCreateFlagNoDefer);
-    CFRelease(cf_array_paths);
+    RETURN_NULL_IF_NULL(fs_stream);
 
-    PyObject *value = NULL;
+    /* Convert the fs_stream to a Python C Object and store it in the streams dictionary. */
     value = PyCObject_FromVoidPtr((void *) fs_stream, PyMem_Free);
     PyDict_SetItem(g__pydict_streams, stream, value);
 
-    /* Get runloop reference from observer info data or current. */
-    value = PyDict_GetItem(g__pydict_loops, thread);
-    if (value == NULL) {
-        loop = CFRunLoopGetCurrent();
-    } else {
-        loop = (CFRunLoopRef) PyCObject_AsVoidPtr(value);
-    }
+    /* Get the runloop associated with the thread. */
+    loop = __get_runloop_for_thread(g__pydict_loops, thread);
 
+    /* Schedule the fs_stream in the runloop */
     FSEventStreamScheduleWithRunLoop(fs_stream, loop, kCFRunLoopDefaultMode);
 
     /* Set stream info for callback. */
