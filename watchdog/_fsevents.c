@@ -50,7 +50,7 @@ PyObject *g__pydict_streams = NULL;
 #define RETURN_NULL_IF_DUPLICATE_STREAM(fs_stream)                      \
     do                                                                  \
         {                                                               \
-            if ((PyDict_Contains(g__pydict_streams, (fs_stream)) == 1)) { return NULL; } \
+            if (1 == (PyDict_Contains(g__pydict_streams, (fs_stream)))) { return NULL; } \
         }                                                               \
     while(0)
 
@@ -60,7 +60,7 @@ PyObject *g__pydict_streams = NULL;
 #define RETURN_NULL_IF_NULL(o)                  \
     do                                          \
         {                                       \
-            if ((o) == NULL) { return NULL; }   \
+            if (NULL == (o)) { return NULL; }   \
         }                                       \
     while(0)
 
@@ -71,7 +71,7 @@ PyObject *g__pydict_streams = NULL;
 #define RETURN_NULL_IF(c)                       \
     do                                          \
         {                                       \
-            if ((c)) { return NULL; }          \
+            if ((c)) { return NULL; }           \
         }                                       \
     while(0)
 
@@ -170,7 +170,7 @@ event_stream_handler (FSEventStreamRef stream,
     /* Call the callback event handler function with the enlisted event masks and paths as arguments.
      * On failure check whether an error occurred and stop this instance of the runloop.
      */
-    if (PyObject_CallFunction(stream_info->callback_event_handler, "OO", event_path_list, event_mask_list) == NULL)
+    if (NULL == PyObject_CallFunction(stream_info->callback_event_handler, "OO", event_path_list, event_mask_list))
         {
             /* An exception may have occurred. */
             if (!PyErr_Occurred())
@@ -213,7 +213,7 @@ pyfsevents_loop (PyObject *self,
 
     /* Allocate info object and store thread state. */
     value = PyDict_GetItem(g__pydict_loops, thread);
-    if (value == NULL)
+    if (NULL == value)
         {
             CFRunLoopRef loop = CFRunLoopGetCurrent();
             value = PyCObject_FromVoidPtr((void *)loop, PyMem_Free);
@@ -230,7 +230,7 @@ pyfsevents_loop (PyObject *self,
 
 
     /* Clean up state information data. */
-    if (PyDict_DelItem(g__pydict_loops, thread) == 0)
+    if (0 == PyDict_DelItem(g__pydict_loops, thread))
         {
             Py_DECREF(thread);
             Py_INCREF(value);
@@ -304,7 +304,7 @@ __get_runloop_for_thread(PyObject *loops, PyObject *thread)
     CFRunLoopRef loop = NULL;
 
     value = PyDict_GetItem(loops, thread);
-    if (value == NULL)
+    if (NULL == value)
         {
             loop = CFRunLoopGetCurrent();
         }
