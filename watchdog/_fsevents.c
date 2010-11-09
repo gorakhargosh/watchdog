@@ -47,18 +47,44 @@ PyObject *g__pydict_streams = NULL;
 /**
  * Macro that forces returning NULL if stream exists.
  */
-#define RETURN_NULL_IF_DUPLICATE_STREAM(fs_stream)              \
-    if ((PyDict_Contains(g__pydict_streams, (fs_stream)) == 1)) \
-        {                                                       \
-            return NULL;                                        \
-        }
+#define RETURN_NULL_IF_DUPLICATE_STREAM(fs_stream)                      \
+    do                                                                  \
+        {                                                               \
+            if ((PyDict_Contains(g__pydict_streams, (fs_stream)) == 1)) { return NULL; } \
+        }                                                               \
+    while(0)
 
 /**
  * Macro that forces returning NULL if given argument is NULL.
  */
 #define RETURN_NULL_IF_NULL(o)                  \
-    if ((o) == NULL)                            \
-        { return NULL; }
+    do                                          \
+        {                                       \
+            if ((o) == NULL) { return NULL; }   \
+        }                                       \
+    while(0)
+
+
+/**
+ * Macro that forces returning NULL if given argument is true.
+ */
+#define RETURN_NULL_IF(c)                       \
+    do                                          \
+        {                                       \
+            if ((c)) { return NULL; }          \
+        }                                       \
+    while(0)
+
+/**
+ * Macro that forces returning NULL if given argument is true.
+ */
+#define RETURN_NULL_IF_NOT(c)                       \
+    do                                          \
+        {                                       \
+            if (!(c)) { return NULL; }          \
+        }                                       \
+    while(0)
+
 
 /**
  * Filesystem event stream meta information structure.
@@ -123,10 +149,8 @@ event_stream_handler (FSEventStreamRef stream,
     /* Create Python lists that will contain event paths and masks. */
     event_path_list = PyList_New(num_events);
     event_mask_list = PyList_New(num_events);
-    if (!(event_path_list && event_mask_list))
-        {
-            return NULL;
-        }
+
+    RETURN_NULL_IF_NOT(event_path_list && event_mask_list);
 
     /* Enumerate event paths and masks into python lists. */
     for (i = 0; i < num_events; ++i)
@@ -183,10 +207,7 @@ pyfsevents_loop (PyObject *self,
     PyObject *thread = NULL;
     PyObject *value = NULL;
 
-    if (!PyArg_ParseTuple(args, "O:loop", &thread))
-        {
-            return NULL;
-        }
+    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &thread));
 
     PyEval_InitThreads();
 
@@ -215,10 +236,7 @@ pyfsevents_loop (PyObject *self,
             Py_INCREF(value);
         }
 
-    if (PyErr_Occurred())
-        {
-            return NULL;
-        }
+    RETURN_NULL_IF(PyErr_Occurred());
 
 
     Py_INCREF(Py_None);
@@ -326,10 +344,7 @@ pyfsevents_schedule (PyObject *self,
     CFRunLoopRef loop = NULL;
     PyObject *value = NULL;
 
-    if (!PyArg_ParseTuple(args, "OOOO:schedule", &thread, &stream, &callback, &paths))
-        {
-            return NULL;
-        }
+    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "OOOO:schedule", &thread, &stream, &callback, &paths));
 
     /* Stream must not already be scheduled. */
     RETURN_NULL_IF_DUPLICATE_STREAM(stream);
@@ -358,11 +373,12 @@ pyfsevents_schedule (PyObject *self,
     Py_INCREF(callback);
 
     /* Start event streams. */
-    if (!FSEventStreamStart(fs_stream)) {
-        FSEventStreamInvalidate(fs_stream);
-        FSEventStreamRelease(fs_stream);
-        return NULL;
-    }
+    if (!FSEventStreamStart(fs_stream))
+        {
+            FSEventStreamInvalidate(fs_stream);
+            FSEventStreamRelease(fs_stream);
+            return NULL;
+        }
 
     Py_INCREF(Py_None);
     return Py_None;
