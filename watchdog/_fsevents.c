@@ -86,7 +86,7 @@ typedef struct {
 static void
 event_stream_handler (FSEventStreamRef stream,
                       FSEventStreamInfo *stream_info,
-                      const unsigned int num_events,
+                      const int num_events,
                       const char *const event_paths[],
                       const FSEventStreamEventFlags *event_masks,
                       const uint64_t *event_ids)
@@ -96,7 +96,7 @@ event_stream_handler (FSEventStreamRef stream,
     PyObject *event_mask = NULL;
     PyObject *event_path_list = NULL;
     PyObject *event_mask_list = NULL;
-    unsigned int i = 0;
+    int i = 0;
 
 
     /* Acquire lock and save thread state. */
@@ -225,6 +225,89 @@ static PyObject *
 pyfsevents_schedule (PyObject *self,
                      PyObject *args)
 {
+    PyObject *thread = NULL;
+    PyObject *stream = NULL;
+    PyObject *paths = NULL;
+    PyObject *callback = NULL;
+    CFMutableArrayRef cf_array_paths = NULL;
+    int i = 0;
+    Py_ssize_t paths_size = 0;
+    const char *path = NULL;
+    CFStringRef cf_string_path = NULL;
+    FSEventStreamInfo *stream_info = NULL;
+    FSEventStreamRef fs_stream = NULL;
+    CFRunLoopRef loop = NULL;
+
+    if (!PyArg_ParseTuple(args, "OOOO:schedule", &thread, &stream, &callback, &paths))
+        {
+            return NULL;
+        }
+
+    /* Stream must not already be scheduled. */
+    if (PyDict_Contains(g__pydict_streams, stream) == 1)
+        {
+            return NULL;
+        }
+
+    /* Create a paths array. */
+    cf_array_paths = CFArrayCreateMutable(kCFAllocatorDefault, 1,
+                                          &kCFTypeArrayCallBacks);
+    if (cf_array_paths == NULL)
+        {
+            return NULL;
+        }
+    paths_size = PyList_Size(paths);
+    for (i = 0; i < paths_size; ++i)
+        {
+            path = PyString_AS_STRING(PyList_GetItem(paths, i));
+            cf_string_path = CFStringCreateWithCString(kCFAllocatorDefault,
+                                                  path,
+                                                  kCFStringEncodingUTF8);
+            CFArraySetValueAtIndex(cf_array_paths, i, cf_string_path);
+            CFRelease(cf_string_path);
+        }
+
+    /* Allocate stream information structure. */
+    stream_info = PyMem_New(FSEventStreamInfo, 1);
+
+    /* Create event stream. */
+    FSEventStreamContext fs_stream_context = {0, (void*) stream_info, NULL, NULL, NULL};
+    fs_stream = FSEventStreamCreate(kCFAllocatorDefault,
+                                    (FSEventStreamCallback) &event_stream_handler,
+                                    &fs_stream_context,
+                                    cf_array_paths,
+                                    kFSEventStreamEventIdSinceNow,
+                                    0.01, // latency
+                                    kFSEventStreamCreateFlagNoDefer);
+    CFRelease(cf_array_paths);
+
+    PyObject *value = NULL;
+    value = PyCObject_FromVoidPtr((void *) fs_stream, PyMem_Free);
+    PyDict_SetItem(g__pydict_streams, stream, value);
+
+    /* Get runloop reference from observer info data or current. */
+    value = PyDict_GetItem(g__pydict_loops, thread);
+    if (value == NULL) {
+        loop = CFRunLoopGetCurrent();
+    } else {
+        loop = (CFRunLoopRef) PyCObject_AsVoidPtr(value);
+    }
+
+    FSEventStreamScheduleWithRunLoop(fs_stream, loop, kCFRunLoopDefaultMode);
+
+    /* Set stream info for callback. */
+    stream_info->callback_event_handler = callback;
+    stream_info->stream = fs_stream;
+    stream_info->loop = loop;
+    stream_info->thread_state = PyThreadState_Get();
+    Py_INCREF(callback);
+
+    /* Start event streams. */
+    if (!FSEventStreamStart(fs_stream)) {
+        FSEventStreamInvalidate(fs_stream);
+        FSEventStreamRelease(fs_stream);
+        return NULL;
+    }
 
     Py_INCREF(Py_None);
     return Py_None;
