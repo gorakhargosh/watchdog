@@ -67,6 +67,8 @@ class DirectorySnapshot(object):
                 directory_path = path_join(root, directory_name)
                 self._dirs_set.add(directory_path)
 
+    def __sub__(self, previous_dirsnap):
+        return DirectorySnapshotDiff(previous_dirsnap, self)
 
     @property
     def stat_snapshot(self):
