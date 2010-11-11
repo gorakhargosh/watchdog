@@ -44,15 +44,6 @@ PyObject *g__pydict_loops = NULL;
  */
 PyObject *g__pydict_streams = NULL;
 
-/**
- * Macro that forces returning NULL if stream exists.
- */
-#define RETURN_NULL_IF_DUPLICATE_STREAM(_streams, _s)                   \
-    do                                                                  \
-        {                                                               \
-            if (1 == PyDict_Contains((_streams), (_s))) { return NULL; } \
-        }                                                               \
-    while(0)
 
 
 /**
@@ -349,7 +340,7 @@ pyfsevents_schedule (PyObject *self,
     RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "OOOO:schedule", &thread, &stream, &callback, &paths));
 
     /* Stream must not already be scheduled. */
-    RETURN_NULL_IF_DUPLICATE_STREAM(g__pydict_streams, stream);
+    RETURN_NULL_IF(1 == PyDict_Contains(g__pydict_streams, stream));
 
     /* Create the file stream. */
     stream_info = PyMem_New(FSEventStreamInfo, 1);
