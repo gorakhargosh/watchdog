@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
 
+"""
+Directory snapshotting classes and functionality.
+
+Notes:
+- Does not currently take into consideration stat information beyond
+  partition boundaries.
+
+"""
+
 from os import walk, stat
 from os.path import join as path_join, realpath, abspath
 
@@ -34,18 +43,26 @@ class DirectorySnapshotDiff(object):
 
     @property
     def files_created(self):
+        """Set of files that were created."""
         return self._files_created
 
     @property
     def files_deleted(self):
+        """Set of files that were deleted."""
         return self._files_deleted
 
     @property
     def files_modified(self):
+        """Set of files that were modified."""
         return self._files_modified
 
     @property
     def files_moved(self):
+        """Dictionary of files that were moved.
+
+        Each key of the dictionary returned is the original file path
+        while each value stores the new file path.
+        """
         return self._files_moved
 
 
@@ -68,21 +85,31 @@ class DirectorySnapshot(object):
                 self._dirs_set.add(directory_path)
 
     def __sub__(self, previous_dirsnap):
+        """Allow subtracting a DirectorySnapshot object instance from
+        another.
+
+        Returns a DirectorySnapshotDiff object instance.
+        """
         return DirectorySnapshotDiff(previous_dirsnap, self)
 
     @property
     def stat_snapshot(self):
+        """Returns a dictionary of stat information with file paths being keys."""
         return self._stat_snapshot
 
     def stat_info(self, file_path, default=None):
+        """Returns a stat information object for the specified path from
+        the snapshot."""
         return self._stat_snapshot.get(file_path, default)
 
     @property
     def files_set(self):
+        """Set of files in the snapshot."""
         return set(self._stat_snapshot)
 
     @property
     def directories_set(self):
+        """Set of directories in the snapshot."""
         return self._dirs_set
 
 
