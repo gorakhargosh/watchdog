@@ -23,7 +23,7 @@ def synchronized(lock=None):
         def operation(self, a, b):
             ...
     """
-    if lock=None:
+    if lock is None:
         lock = Lock()
     def wrapper(function):
         def new_function(*args, **kwargs):
