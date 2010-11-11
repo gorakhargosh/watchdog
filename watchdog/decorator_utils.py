@@ -3,7 +3,7 @@
 
 decorators:
 - synchronized
-- property
+- propertyx
 - accepts
 - returns
 - singleton
@@ -36,7 +36,7 @@ def synchronized(lock=None):
     return wrapper
 
 
-def property(function):
+def propertyx(function):
     """Decorator to easily create properties in classes.
 
     Example:
