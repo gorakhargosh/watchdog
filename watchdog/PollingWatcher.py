@@ -4,27 +4,51 @@ from dirsnapshot import DirectorySnapshot
 from threading import Thread, Event
 from decorator_utils import synchronized
 from os.path import realpath, abspath
+from Queue import Queue
+from events import *
+
 import logging
 
 logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-10s) %(message)s',
                     )
 
-class PollingWatcher(Thread):
+
+
+
+class FileSystemEventHandler(object):
+    def on_moved(self, event):
+        what = "directory" if event.is_directory else "file"
+        logging.debug('Moved %s: %s to %s', what, event.path, event.new_path)
+
+    def on_created(self, event):
+        what = "directory" if event.is_directory else "file"
+        logging.debug('Created %s: %s', what, event.path)
+
+    def on_deleted(self, event):
+        what = "directory" if event.is_directory else "file"
+        logging.debug('Deleted %s: %s', what, event.path)
+
+    def on_modified(self, event):
+        what = "directory" if event.is_directory else "file"
+        logging.debug('Modified %s: %s', what, event.path)
+
+
+class _PollingEventProducer(Thread):
     """
     """
 
-    def __init__(self, path, interval=1, callback=None, name=None, *args, **kwargs):
+    def __init__(self, path, interval=1, out_event_queue=None, name=None, *args, **kwargs):
         Thread.__init__(self)
         self.interval = interval
-        self.callback = callback
+        self.out_event_queue = out_event_queue
         self.args = args
         self.kwargs = kwargs
         self.stopped = Event()
         self.snapshot = None
         self.path = path
         if name is None:
-            name = 'PollingWatcher(%s)' % realpath(abspath(self.path))
+            name = 'PollingObserver(%s)' % realpath(abspath(self.path))
             self.name = name + self.name
         else:
             self.name = name
@@ -48,28 +72,93 @@ class PollingWatcher(Thread):
         while not self.stopped.is_set():
             self.stopped.wait(self.interval)
             diff = self.get_directory_snapshot_diff()
-            if diff:
-                if diff.files_modified: logging.debug('Modified: %s', str(diff.files_modified))
-                if diff.files_deleted: logging.debug('Deleted: %s', str(diff.files_deleted))
-                if diff.files_moved: logging.debug('Moved: %s', str(diff.files_moved))
-                if diff.files_created: logging.debug('Created: %s', str(diff.files_created))
-                if diff.dirs_modified: logging.debug('ModifiedDIR: %s', str(diff.dirs_modified))
-                if diff.dirs_deleted: logging.debug('DeletedDIR: %s', str(diff.dirs_deleted))
-                if diff.dirs_moved: logging.debug('MovedDIR: %s', str(diff.dirs_moved))
-                if diff.dirs_created: logging.debug('CreatedDIR: %s', str(diff.dirs_created))
+            if diff and self.out_event_queue:
+                q = self.out_event_queue
 
+                for path in diff.files_deleted:
+                    q.put((self.path, FileDeletedEvent(path)))
+
+                for path in diff.files_modified:
+                    q.put((self.path, FileModifiedEvent(path)))
+
+                for path in diff.files_created:
+                    q.put((self.path, FileCreatedEvent(path)))
+
+                for path, new_path in diff.files_moved.items():
+                    q.put((self.path, FileMovedEvent(path, new_path)))
+
+                for path in diff.dirs_modified:
+                    q.put((self.path, DirModifiedEvent(path)))
+
+                for path in diff.dirs_deleted:
+                    q.put((self.path, DirDeletedEvent(path)))
+
+                for path in diff.dirs_created:
+                    q.put((self.path, DirCreatedEvent(path)))
+
+                for path, new_path in diff.dirs_moved.items():
+                    q.put((self.path, DirMovedEvent(path, new_path)))
+
+
+class PollingObserver(Thread):
+    """
+    """
+
+    def __init__(self, interval=1, *args, **kwargs):
+        Thread.__init__(self)
+        self.interval = interval
+        self.args = args
+        self.kwargs = kwargs
+        self.event_queue = Queue()
+        self.event_producer_threads = set()
+        self.rules = {}
+        self.setDaemon(True)
+
+    def add_rule(self, path, event_handler):
+        if not path in self.rules:
+            event_producer_thread = _PollingEventProducer(path=path, interval=self.interval, out_event_queue=self.event_queue)
+            self.event_producer_threads.add(event_producer_thread)
+            self.rules[path] = {
+                'event_handler': event_handler,
+                'event_producer_thread': event_producer_thread,
+                }
+
+    def remove_rule(self, path):
+        if path in self.rules:
+            self.rules[path]['event_producer_thread'].stop()
+
+    def run(self):
+        for t in self.event_producer_threads:
+            t.start()
+            try:
+                while True:
+                    (rule_path, event) = self.event_queue.get()
+                    #self.rules[rule_path]
+                    logging.debug('Executing rule: %s for event: %s', rule_path, str(event))
+            except KeyboardInterrupt:
+                t.stop()
+
+    def stop(self):
+        for t in self.event_producer_threads:
+            t.stop()
+            #t.join()
+
+    #def join(self):
+    #    for t in self.event_producer_threads:
+    #        t.join()
+        #Thread.join(self)
 
 if __name__ == '__main__':
     import time
     import sys
     path = sys.argv[1]
-    t = PollingWatcher(path)
-    t.start()
+    o = PollingObserver()
+    o.add_rule(path, FileSystemEventHandler())
+    o.start()
     try:
         while True:
-            time.sleep(2)
+            time.sleep(1)
     except KeyboardInterrupt:
-        t.stop()
-    t.join()
-
-
+        o.stop()
+        raise
+    o.join()
