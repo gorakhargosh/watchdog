@@ -10,12 +10,18 @@ from events import *
 import logging
 
 logging.basicConfig(level=logging.DEBUG,
-                    format='(%(threadName)-10s) %(message)s',
+                    format='%(pathname)s/%(funcName)s/(%(threadName)-10s) %(message)s',
                     )
 
 class FileSystemEventHandler(object):
+    """File system base event handler."""
 
     def dispatch(self, event):
+        """Dispatches events to the appropriate methods.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
         _method_map = {
             EVENT_TYPE_MODIFIED: self.on_modified,
             EVENT_TYPE_MOVED: self.on_moved,
@@ -26,28 +32,36 @@ class FileSystemEventHandler(object):
         _method_map[event_type](event)
 
     def on_moved(self, event):
+        """Called when a file or a directory is moved or renamed.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
         logging.debug(event)
-        #what = "directory" if event.is_directory else "file"
-        #logging.debug('Moved %s: %s to %s', what, event.path, event.new_path)
-        pass
 
     def on_created(self, event):
+        """Called when a file or directory is created.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
         logging.debug(event)
-        #what = "directory" if event.is_directory else "file"
-        #logging.debug('Created %s: %s', what, event.path)
-        pass
 
     def on_deleted(self, event):
+        """Called when a file or directory is deleted.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
         logging.debug(event)
-        #what = "directory" if event.is_directory else "file"
-        #logging.debug('Deleted %s: %s', what, event.path)
-        pass
 
     def on_modified(self, event):
+        """Called when a file or directory is modified.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
         logging.debug(event)
-        #what = "directory" if event.is_directory else "file"
-        #logging.debug('Modified %s: %s', what, event.path)
-        pass
 
 
 class _PollingEventProducer(Thread):
