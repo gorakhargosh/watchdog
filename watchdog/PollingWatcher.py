@@ -65,10 +65,12 @@ class FileSystemEventHandler(object):
 
 
 class _PollingEventProducer(Thread):
-    """
+    """Daemonic threaded event emitter to monitor a given path recursively.
     """
 
     def __init__(self, path, interval=1, out_event_queue=None, name=None, *args, **kwargs):
+        """Monitors a given path and appends file system modification
+        events to the output queue."""
         Thread.__init__(self)
         self.interval = interval
         self.out_event_queue = out_event_queue
@@ -85,10 +87,12 @@ class _PollingEventProducer(Thread):
         self.setDaemon(True)
 
     def stop(self):
+        """Stops monitoring the given path by setting a flag to stop."""
         self.stopped.set()
 
     @synchronized()
     def get_directory_snapshot_diff(self):
+        """Obtains a diff of two directory snapshots."""
         if self.snapshot is None:
             self.snapshot = DirectorySnapshot(self.path)
             diff = None
@@ -99,6 +103,11 @@ class _PollingEventProducer(Thread):
         return diff
 
     def run(self):
+        """
+        Appends events to the output event queue
+        based on the diff between two states of the same directory.
+
+        """
         while not self.stopped.is_set():
             self.stopped.wait(self.interval)
             diff = self.get_directory_snapshot_diff()
@@ -132,7 +141,7 @@ class _PollingEventProducer(Thread):
 
 
 class PollingObserver(Thread):
-    """
+    """Observer daemon thread that spawns threads for each path to be monitored.
     """
     def __init__(self, interval=1, *args, **kwargs):
         Thread.__init__(self)
@@ -146,6 +155,8 @@ class PollingObserver(Thread):
 
 
     def add_rule(self, path, event_handler):
+        """Adds a rule to watch a path and sets a callback handler instance.
+        """
         if not path in self.rules:
             event_producer_thread = _PollingEventProducer(path=path, interval=self.interval, out_event_queue=self.event_queue)
             self.event_producer_threads.add(event_producer_thread)
@@ -156,13 +167,15 @@ class PollingObserver(Thread):
 
 
     def remove_rule(self, path):
+        """Stops watching a given path if already being monitored."""
         if path in self.rules:
             o = self.rules.pop(path)
             o['event_producer_thread'].stop()
 
 
-
     def run(self):
+        """Spawns threads that generate events into the output queue,
+        one monitor thread per path."""
         for t in self.event_producer_threads:
             t.start()
             try:
@@ -174,6 +187,7 @@ class PollingObserver(Thread):
                 t.stop()
 
     def stop(self):
+        """Stops all monitoring."""
         for t in self.event_producer_threads:
             t.stop()
             #t.join()
@@ -197,3 +211,5 @@ if __name__ == '__main__':
         o.stop()
         raise
     o.join()
+
+
