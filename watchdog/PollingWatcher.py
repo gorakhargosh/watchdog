@@ -13,25 +13,41 @@ logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-10s) %(message)s',
                     )
 
-
-
-
 class FileSystemEventHandler(object):
+
+    def dispatch(self, event):
+        _method_map = {
+            EVENT_TYPE_MODIFIED: self.on_modified,
+            EVENT_TYPE_MOVED: self.on_moved,
+            EVENT_TYPE_CREATED: self.on_created,
+            EVENT_TYPE_DELETED: self.on_deleted,
+            }
+        event_type = event.event_type
+        _method_map[event_type](event)
+
     def on_moved(self, event):
-        what = "directory" if event.is_directory else "file"
-        logging.debug('Moved %s: %s to %s', what, event.path, event.new_path)
+        logging.debug(event)
+        #what = "directory" if event.is_directory else "file"
+        #logging.debug('Moved %s: %s to %s', what, event.path, event.new_path)
+        pass
 
     def on_created(self, event):
-        what = "directory" if event.is_directory else "file"
-        logging.debug('Created %s: %s', what, event.path)
+        logging.debug(event)
+        #what = "directory" if event.is_directory else "file"
+        #logging.debug('Created %s: %s', what, event.path)
+        pass
 
     def on_deleted(self, event):
-        what = "directory" if event.is_directory else "file"
-        logging.debug('Deleted %s: %s', what, event.path)
+        logging.debug(event)
+        #what = "directory" if event.is_directory else "file"
+        #logging.debug('Deleted %s: %s', what, event.path)
+        pass
 
     def on_modified(self, event):
-        what = "directory" if event.is_directory else "file"
-        logging.debug('Modified %s: %s', what, event.path)
+        logging.debug(event)
+        #what = "directory" if event.is_directory else "file"
+        #logging.debug('Modified %s: %s', what, event.path)
+        pass
 
 
 class _PollingEventProducer(Thread):
@@ -100,10 +116,10 @@ class _PollingEventProducer(Thread):
                     q.put((self.path, DirMovedEvent(path, new_path)))
 
 
+
 class PollingObserver(Thread):
     """
     """
-
     def __init__(self, interval=1, *args, **kwargs):
         Thread.__init__(self)
         self.interval = interval
@@ -114,6 +130,7 @@ class PollingObserver(Thread):
         self.rules = {}
         self.setDaemon(True)
 
+
     def add_rule(self, path, event_handler):
         if not path in self.rules:
             event_producer_thread = _PollingEventProducer(path=path, interval=self.interval, out_event_queue=self.event_queue)
@@ -123,10 +140,12 @@ class PollingObserver(Thread):
                 'event_producer_thread': event_producer_thread,
                 }
 
+
     def remove_rule(self, path):
         if path in self.rules:
             o = self.rules.pop(path)
             o['event_producer_thread'].stop()
+
 
 
     def run(self):
@@ -135,8 +154,8 @@ class PollingObserver(Thread):
             try:
                 while True:
                     (rule_path, event) = self.event_queue.get()
-                    #self.rules[rule_path]
-                    logging.debug('Executing rule: %s for event: %s', rule_path, str(event))
+                    event_handler = self.rules[rule_path]['event_handler']
+                    event_handler.dispatch(event)
             except KeyboardInterrupt:
                 t.stop()
 
