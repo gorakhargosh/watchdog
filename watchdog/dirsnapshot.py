@@ -59,7 +59,7 @@ class DirectorySnapshotDiff(object):
             if S_ISDIR(stat_info.st_mode):
                 self._dirs_deleted.add(path)
             else:
-                self._files_modified.add(path)
+                self._files_deleted.add(path)
 
         for path in paths_created:
             stat_info = dirsnap.stat_info(path)
