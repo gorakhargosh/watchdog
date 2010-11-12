@@ -125,7 +125,9 @@ class PollingObserver(Thread):
 
     def remove_rule(self, path):
         if path in self.rules:
-            self.rules[path]['event_producer_thread'].stop()
+            o = self.rules.pop(path)
+            o['event_producer_thread'].stop()
+
 
     def run(self):
         for t in self.event_producer_threads:
