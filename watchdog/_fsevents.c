@@ -1,6 +1,5 @@
 /**
  * _fsevents.c: Low-level FSEvents Python API.
- *
  */
 #include "Python.h"
 
@@ -80,9 +79,9 @@ PyObject *g__pydict_streams = NULL;
 
 
 /**
- * Filesystem event stream meta information structure.
+ * File system event stream meta information structure.
  */
-typedef struct {
+typedef struct FSEventStreamInfo {
     /**
      * Callback called when an event is triggered with the event paths and masks
      * as arguments.
@@ -145,7 +144,7 @@ event_stream_handler (FSEventStreamRef stream,
 
     RETURN_NULL_IF_NOT(event_path_list && event_mask_list);
 
-    /* Enumerate event paths and masks into python lists. */
+    /* Enumerate event paths and masks into Python lists. */
     for (i = 0; i < num_events; ++i)
         {
             event_path = PyString_FromString(event_paths[i]);
@@ -237,9 +236,12 @@ pyfsevents_loop (PyObject *self,
 }
 
 
-/* Converts a Python string list to a CFMutableArray of CFStrings and returns a reference to the array. */
+/**
+ * Converts a Python string list to a CFMutableArray of CFStrings
+ * and returns a reference to the array.
+ */
 static CFMutableArrayRef
-__convert_pystring_list_to_cf_string_array(PyObject *pystring_list)
+_convert_pystring_list_to_cf_string_array(PyObject *pystring_list)
 {
     CFMutableArrayRef cf_array_strings = NULL;
     const char *c_string = NULL;
@@ -267,11 +269,13 @@ __convert_pystring_list_to_cf_string_array(PyObject *pystring_list)
 }
 
 
-/* Creates an FSEventStream object and returns a reference to it. */
+/**
+ * Creates an FSEventStream object and returns a reference to it.
+ */
 static FSEventStreamRef
-__create_fs_stream(FSEventStreamInfo *stream_info, PyObject *paths, FSEventStreamCallback callback)
+_create_fs_stream(FSEventStreamInfo *stream_info, PyObject *paths, FSEventStreamCallback callback)
 {
-    CFMutableArrayRef cf_array_paths = __convert_pystring_list_to_cf_string_array(paths);
+    CFMutableArrayRef cf_array_paths = _convert_pystring_list_to_cf_string_array(paths);
 
     RETURN_NULL_IF_NULL(cf_array_paths);
 
@@ -289,9 +293,11 @@ __create_fs_stream(FSEventStreamInfo *stream_info, PyObject *paths, FSEventStrea
 }
 
 
-/* Get runloop reference from observer info data or current. */
+/**
+ * Get runloop reference from observer info data or current.
+ */
 static CFRunLoopRef
-__get_runloop_for_thread(PyObject *loops, PyObject *thread)
+_get_runloop_for_thread_or_current(PyObject *loops, PyObject *thread)
 {
     PyObject *value = NULL;
     CFRunLoopRef loop = NULL;
@@ -344,7 +350,7 @@ pyfsevents_schedule (PyObject *self,
 
     /* Create the file stream. */
     stream_info = PyMem_New(FSEventStreamInfo, 1);
-    fs_stream = __create_fs_stream(stream_info, paths, (FSEventStreamCallback) &event_stream_handler);
+    fs_stream = _create_fs_stream(stream_info, paths, (FSEventStreamCallback) &event_stream_handler);
 
     RETURN_NULL_IF_NULL(fs_stream);
 
@@ -353,7 +359,7 @@ pyfsevents_schedule (PyObject *self,
     PyDict_SetItem(g__pydict_streams, stream, value);
 
     /* Get the runloop associated with the thread. */
-    loop = __get_runloop_for_thread(g__pydict_loops, thread);
+    loop = _get_runloop_for_thread_or_current(g__pydict_loops, thread);
 
     /* Schedule the fs_stream in the runloop */
     FSEventStreamScheduleWithRunLoop(fs_stream, loop, kCFRunLoopDefaultMode);
