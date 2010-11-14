@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(pathname)s/%(funcName)s/(%(threadName)-10s) %(message)s',
+                    )
 
 
 EVENT_TYPE_MOVED = 'moved'

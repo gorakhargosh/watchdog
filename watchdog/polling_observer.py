@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 
 from dirsnapshot import DirectorySnapshot
 from threading import Thread, Event
@@ -105,6 +105,7 @@ class PollingObserver(Thread):
         self.setDaemon(True)
 
 
+    @synchronized()
     def add_rule(self, path, event_handler):
         """Adds a rule to watch a path and sets a callback handler instance.
         """
@@ -116,7 +117,7 @@ class PollingObserver(Thread):
                 'event_producer_thread': event_producer_thread,
                 }
 
-
+    @synchronized()
     def remove_rule(self, path):
         """Stops watching a given path if already being monitored."""
         if path in self.rules:
