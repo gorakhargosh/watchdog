@@ -16,6 +16,15 @@ from stat import S_ISDIR
 class DirectorySnapshotDiff(object):
     """Difference between two directory snapshots."""
     def __init__(self, ref_dirsnap, dirsnap):
+        """
+        Compares two directory snapshots and creates an object that represents
+        the difference between the two snapshots.
+        
+        Arguments:
+        - ref_dirsnap: The reference directory snapshot object instance.
+        - dirsnap:  The directory snapshot object instance which will be compared 
+                    with the reference.
+        """
         self._files_deleted = set()
         self._files_modified = set()
         self._files_created = set()
