@@ -144,10 +144,6 @@ class PollingObserver(Thread):
             t.stop()
             #t.join()
 
-    #def join(self):
-    #    for t in self.event_producer_threads:
-    #        t.join()
-        #Thread.join(self)
 
 if __name__ == '__main__':
     import time
