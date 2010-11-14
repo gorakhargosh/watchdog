@@ -1,45 +1,40 @@
 # -*- coding: utf-8 -*-
 
-from dirsnapshot import DirectorySnapshot
-from threading import Thread, Event
-from decorator_utils import synchronized
-from os.path import realpath, abspath
+from os.path import realpath, abspath, isdir as path_isdir
 from Queue import Queue
-from events import *
+from threading import Thread, Event
 
-import logging
+import logger
+from dirsnapshot import DirectorySnapshot
+from decorator_utils import synchronized
+from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
+    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(pathname)s/%(funcName)s/(%(threadName)-10s) %(message)s',
-                    )
 
-
-class _PollingEventProducer(Thread):
-    """Daemonic threaded event emitter to monitor a given path recursively
-    for file system events.
+class _PollingEventEmitter(Thread):
+    """Daemonic thread that monitors a given path recursively and emits
+    file system events.
     """
-
-    def __init__(self, path, interval=1, out_event_queue=None, name=None, *args, **kwargs):
+    def __init__(self, path, interval=1, out_event_queue=None, name=None):
         """Monitors a given path and appends file system modification
         events to the output queue."""
         Thread.__init__(self)
         self.interval = interval
         self.out_event_queue = out_event_queue
-        self.args = args
-        self.kwargs = kwargs
         self.stopped = Event()
         self.snapshot = None
         self.path = path
         if name is None:
-            name = 'PollingObserver(%s)' % realpath(abspath(self.path))
-            self.name = name + self.name
+            self.name = '%s(%s)' % (self.__class__.__name__, realpath(abspath(self.path)))
         else:
             self.name = name
         self.setDaemon(True)
 
+
     def stop(self):
         """Stops monitoring the given path by setting a flag to stop."""
         self.stopped.set()
+
 
     @synchronized()
     def _get_directory_snapshot_diff(self):
@@ -52,6 +47,7 @@ class _PollingEventProducer(Thread):
             diff = new_snapshot - self.snapshot
             self.snapshot = new_snapshot
         return diff
+
 
     def run(self):
         """
@@ -91,80 +87,113 @@ class _PollingEventProducer(Thread):
 
 
 
-class PollingObserver(Thread):
+class _Rule(object):
+    '''
+    A rule object represents
+    '''
+    def __init__(self, path, event_handler, event_emitter):
+        self._path = path
+        self._event_handler = event_handler
+        self._event_emitter = event_emitter
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def event_handler(self):
+        return self._event_handler
+
+    @property
+    def event_emitter(self):
+        return self._event_emitter
+
+
+
+class Observer(Thread):
     """Observer daemon thread that spawns threads for each path to be monitored.
     """
-    def __init__(self, interval=1, *args, **kwargs):
+    def __init__(self, interval=1):
         Thread.__init__(self)
         self.interval = interval
-        self.args = args
-        self.kwargs = kwargs
         self.event_queue = Queue()
-        self.event_producer_threads = set()
+        self.event_emitters = set()
         self.rules = {}
         self.setDaemon(True)
 
 
-    @synchronized()
-    def add_rule(self, path, event_handler):
+    def schedule(self, event_handler, *paths):
         """Adds a rule to watch a path and sets a callback handler instance.
         """
-        if not path in self.rules:
-            event_producer_thread = _PollingEventProducer(path=path, interval=self.interval, out_event_queue=self.event_queue)
-            self.event_producer_threads.add(event_producer_thread)
-            self.rules[path] = {
-                'event_handler': event_handler,
-                'event_producer_thread': event_producer_thread,
-                }
+        for path in paths:
+            self._schedule_path(event_handler, path)
 
 
     @synchronized()
-    def remove_rule(self, path):
+    def _schedule_path(self, event_handler, path):
+        if path_isdir(path) and not path in self.rules:
+            event_emitter = _PollingEventEmitter(path=path,
+                                                 interval=self.interval,
+                                                 out_event_queue=self.event_queue)
+            self.event_emitters.add(event_emitter)
+            self.rules[path] = _Rule(path=path,
+                                    event_handler=event_handler,
+                                    event_emitter=event_emitter)
+            event_emitter.start()
+
+
+    def unschedule(self, *paths):
+        for path in paths:
+            self._unschedule_path(path)
+
+
+    @synchronized()
+    def _unschedule_path(self, path):
         """Stops watching a given path if already being monitored."""
         if path in self.rules:
             rule = self.rules.pop(path)
-            event_producer_thread = rule['event_producer_thread']
-            event_producer_thread.stop()
-            self.event_producer_threads.remove(event_producer_thread)
+            rule.event_emitter.stop()
+            self.event_emitters.remove(rule.event_emitter)
 
 
     def run(self):
         """Spawns threads that generate events into the output queue,
         one monitor thread per path."""
-        # Wait while we do not have rules.
-        #while not self.rules:
-        #    pass
+        # TODO: Wait for rules to be added.
 
-        for t in self.event_producer_threads:
-            t.start()
-            try:
-                while True:
-                    (rule_path, event) = self.event_queue.get()
-                    event_handler = self.rules[rule_path]['event_handler']
-                    event_handler.dispatch(event)
-            except KeyboardInterrupt:
-                t.stop()
+        try:
+            while True:
+                (rule_path, event) = self.event_queue.get()
+                rule = self.rules[rule_path]
+                rule.event_handler.dispatch(event)
+                self.event_queue.task_done()
+        except KeyboardInterrupt:
+            self.stop()
 
 
     def stop(self):
         """Stops all monitoring."""
-        for t in self.event_producer_threads:
-            t.stop()
-            #t.join()
+        for event_emitter in self.event_emitters:
+            event_emitter.stop()
 
 
 if __name__ == '__main__':
     import time
     import sys
-    path = sys.argv[1]
-    o = PollingObserver()
-    o.add_rule(path, FileSystemEventHandler())
+    from os.path import abspath, realpath, dirname
+    from events import FileSystemEventHandler
+
+    paths = sys.argv[1:]
+
+    o = Observer()
+    event_handler = FileSystemEventHandler()
+    o.schedule(event_handler, *paths)
     o.start()
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        o.remove_rule(path)
+        o.unschedule(*paths)
         o.stop()
         raise
     o.join()
