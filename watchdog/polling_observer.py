@@ -157,10 +157,7 @@ class Observer(Thread):
 
 
     def run(self):
-        """Spawns threads that generate events into the output queue,
-        one monitor thread per path."""
-        # TODO: Wait for rules to be added.
-
+        """Gets events from the event queue and dispatch events."""
         try:
             while True:
                 (rule_path, event) = self.event_queue.get()
