@@ -110,7 +110,7 @@ class _Rule(object):
 
 
 
-class Observer(Thread):
+class PollingObserver(Thread):
     """Observer daemon thread that spawns threads for each path to be monitored.
     """
     def __init__(self, interval=1):
