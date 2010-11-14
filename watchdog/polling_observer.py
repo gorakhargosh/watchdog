@@ -185,7 +185,7 @@ if __name__ == '__main__':
 
     paths = sys.argv[1:]
 
-    o = Observer()
+    o = PollingObserver()
     event_handler = FileSystemEventHandler()
     o.schedule(event_handler, *paths)
     o.start()
