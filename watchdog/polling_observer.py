@@ -12,7 +12,7 @@ from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedE
 
 
 class _PollingEventEmitter(Thread):
-    """Daemonic thread that monitors a given path recursively and emits
+    """Daemon thread that monitors a given path recursively and emits
     file system events.
     """
     def __init__(self, path, interval=1, out_event_queue=None, name=None):
@@ -123,7 +123,8 @@ class Observer(Thread):
 
 
     def schedule(self, event_handler, *paths):
-        """Adds a rule to watch a path and sets a callback handler instance.
+        """Schedules monitoring specified paths and calls methods in the
+        given callback handler based on events occurring in the file system.
         """
         for path in paths:
             self._schedule_path(event_handler, path)
@@ -131,6 +132,7 @@ class Observer(Thread):
 
     @synchronized()
     def _schedule_path(self, event_handler, path):
+        """Starts monitoring the given path for file system events."""
         if path_isdir(path) and not path in self.rules:
             event_emitter = _PollingEventEmitter(path=path,
                                                  interval=self.interval,
@@ -143,6 +145,7 @@ class Observer(Thread):
 
 
     def unschedule(self, *paths):
+        """Stops monitoring specified paths for file system events."""
         for path in paths:
             self._unschedule_path(path)
 
@@ -157,7 +160,7 @@ class Observer(Thread):
 
 
     def run(self):
-        """Gets events from the event queue and dispatch events."""
+        """Dispatches events from the event queue to the callback handler."""
         try:
             while True:
                 (rule_path, event) = self.event_queue.get()
