@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import logging
-
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(pathname)s/%(funcName)s/(%(threadName)-10s) %(message)s',
-                    )
-
+import logger
 
 EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
+
 
 class FileSystemEvent(object):
     """
@@ -115,7 +111,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
+        logger.debug(event)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -123,7 +119,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
+        logger.debug(event)
 
     def on_deleted(self, event):
         """Called when a file or directory is deleted.
@@ -131,7 +127,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
+        logger.debug(event)
 
     def on_modified(self, event):
         """Called when a file or directory is modified.
@@ -139,4 +135,4 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
+        logger.debug(event)
