@@ -42,7 +42,7 @@ class _PollingEventProducer(Thread):
         self.stopped.set()
 
     @synchronized()
-    def get_directory_snapshot_diff(self):
+    def _get_directory_snapshot_diff(self):
         """Obtains a diff of two directory snapshots."""
         if self.snapshot is None:
             self.snapshot = DirectorySnapshot(self.path)
@@ -61,7 +61,7 @@ class _PollingEventProducer(Thread):
         """
         while not self.stopped.is_set():
             self.stopped.wait(self.interval)
-            diff = self.get_directory_snapshot_diff()
+            diff = self._get_directory_snapshot_diff()
             if diff and self.out_event_queue:
                 q = self.out_event_queue
 
@@ -117,17 +117,24 @@ class PollingObserver(Thread):
                 'event_producer_thread': event_producer_thread,
                 }
 
+
     @synchronized()
     def remove_rule(self, path):
         """Stops watching a given path if already being monitored."""
         if path in self.rules:
-            o = self.rules.pop(path)
-            o['event_producer_thread'].stop()
+            rule = self.rules.pop(path)
+            event_producer_thread = rule['event_producer_thread']
+            event_producer_thread.stop()
+            self.event_producer_threads.remove(event_producer_thread)
 
 
     def run(self):
         """Spawns threads that generate events into the output queue,
         one monitor thread per path."""
+        # Wait while we do not have rules.
+        #while not self.rules:
+        #    pass
+
         for t in self.event_producer_threads:
             t.start()
             try:
@@ -137,6 +144,7 @@ class PollingObserver(Thread):
                     event_handler.dispatch(event)
             except KeyboardInterrupt:
                 t.stop()
+
 
     def stop(self):
         """Stops all monitoring."""
@@ -156,8 +164,7 @@ if __name__ == '__main__':
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
+        o.remove_rule(path)
         o.stop()
         raise
     o.join()
-
-
