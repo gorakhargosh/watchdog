@@ -75,3 +75,54 @@ class DirCreatedEvent(FileSystemEvent):
 class DirMovedEvent(FileSystemMovedEvent):
     def __init__(self, path, new_path):
         FileSystemMovedEvent.__init__(self, path=path, new_path=new_path, is_directory=True)
+
+
+class FileSystemEventHandler(object):
+    """File system base event handler."""
+
+    def dispatch(self, event):
+        """Dispatches events to the appropriate methods.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
+        _method_map = {
+            EVENT_TYPE_MODIFIED: self.on_modified,
+            EVENT_TYPE_MOVED: self.on_moved,
+            EVENT_TYPE_CREATED: self.on_created,
+            EVENT_TYPE_DELETED: self.on_deleted,
+            }
+        event_type = event.event_type
+        _method_map[event_type](event)
+
+    def on_moved(self, event):
+        """Called when a file or a directory is moved or renamed.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
+        logging.debug(event)
+
+    def on_created(self, event):
+        """Called when a file or directory is created.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
+        logging.debug(event)
+
+    def on_deleted(self, event):
+        """Called when a file or directory is deleted.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
+        logging.debug(event)
+
+    def on_modified(self, event):
+        """Called when a file or directory is modified.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
+        logging.debug(event)
