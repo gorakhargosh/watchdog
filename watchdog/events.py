@@ -13,6 +13,10 @@ EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
 
 class FileSystemEvent(object):
+    """
+    Represents a file system event that is triggered when a change occurs
+    in a directory that is being monitored.
+    """
     def __init__(self, event_type, path, is_directory=False):
         self._path = path
         self._is_directory = is_directory
@@ -38,6 +42,9 @@ class FileSystemEvent(object):
 
 
 class FileSystemMovedEvent(FileSystemEvent):
+    """
+    Base class for file system movement.
+    """
     def __init__(self, path, new_path, is_directory=False):
         self._new_path = new_path
         FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MOVED, path=path, is_directory=is_directory)
