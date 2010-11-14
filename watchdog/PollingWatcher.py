@@ -65,7 +65,8 @@ class FileSystemEventHandler(object):
 
 
 class _PollingEventProducer(Thread):
-    """Daemonic threaded event emitter to monitor a given path recursively.
+    """Daemonic threaded event emitter to monitor a given path recursively
+    for file system events.
     """
 
     def __init__(self, path, interval=1, out_event_queue=None, name=None, *args, **kwargs):
