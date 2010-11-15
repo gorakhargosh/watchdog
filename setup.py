@@ -25,7 +25,7 @@ else:
     platform = None
 
 trove_classifiers = (
-    'Development Status :: 4 - Beta',
+    'Development Status :: 3 - Alpha',
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
@@ -57,7 +57,7 @@ ext_modules = {
 
 setup(
     name="Watchdog",
-    version="0.0",
+    version="0.1",
     description="Filesystem events monitoring",
     long_description=read_file('README'),
     author="Gora Khargosh",
