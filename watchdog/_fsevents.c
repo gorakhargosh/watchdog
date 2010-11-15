@@ -27,7 +27,6 @@ PyObject *g__pydict_loops = NULL;
  */
 PyObject *g__pydict_streams = NULL;
 
-
 /**
  * Handles streamed events and calls the callback defined in Python code.
  *
@@ -211,7 +210,7 @@ _create_fs_stream(FSEventStreamInfo *stream_info,
 
     /* Create event stream. */
     FSEventStreamContext fs_stream_context =
-        { 0, /* (void *) */stream_info, NULL, NULL, NULL };
+        { 0, stream_info, NULL, NULL, NULL };
     FSEventStreamRef fs_stream = FSEventStreamCreate(kCFAllocatorDefault,
                                                      callback,
                                                      &fs_stream_context,
@@ -291,8 +290,7 @@ pyfsevents_schedule(PyObject *self,
     RETURN_NULL_IF_NULL(fs_stream);
 
     /* Convert the fs_stream to a Python C Object and store it in the streams dictionary. */
-    value = PyCObject_FromVoidPtr(
-    /* (void *) */fs_stream, PyMem_Free);
+    value = PyCObject_FromVoidPtr(fs_stream, PyMem_Free);
     PyDict_SetItem(g__pydict_streams, stream, value);
 
     /* Get the runloop associated with the thread. */
