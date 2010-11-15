@@ -56,7 +56,7 @@ ext_modules = {
     }
 
 setup(
-    name="Watchdog",
+    name="watchdog",
     version="0.1",
     description="Filesystem events monitoring",
     long_description=read_file('README'),
