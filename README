@@ -15,3 +15,41 @@ Licensing
 ---------
 Watchdog is licensed under the terms of the
 [MIT License](http://www.opensource.org/licenses/mit-license.html "MIT License")
+
+Usage:
+------
+
+import sys
+import time
+from watchdog import Observer, FileSystemEventHandler
+
+class MyEventHandler(FileSystemEventHandler):
+    def on_moved(self, event):
+        # Do something.
+        pass
+
+    def on_created(self, event):
+        # Do something.
+        pass
+
+    def on_deleted(self, event):
+        # Do something.
+        pass
+
+    def on_modified(self, event):
+        # Do something.
+        pass
+
+event_handler = MyEventHandler()
+observer = Observer()
+observer.schedule('a-unique-name', *sys.argv[1:], event_handler)
+observer.start()
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    observer.unschedule('a-unique-name')
+    observer.stop()
+    raise
+observer.join()
+
