@@ -1,22 +1,7 @@
 /**
  * _fsevents.c: Low-level FSEvents Python API.
  */
-#include "Python.h"
-
-#include <stdlib.h>
-#include <signal.h>
-#include <limits.h>
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreServices/CoreServices.h>
-
-/**
- * Py_ssize_t type for Python versions that don't define it.
- */
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-#endif /* PY_VERSION_HEX && !PY_SSIZE_T_MIN */
+#include "_fsevents.h"
 
 static const char *MODULE_NAME = "_fsevents";
 static const char *MODULE_CONSTANT_NAME_POLLIN = "POLLIN";
@@ -42,62 +27,6 @@ PyObject *g__pydict_loops = NULL;
  */
 PyObject *g__pydict_streams = NULL;
 
-/**
- * Macro that forces returning NULL if given argument is NULL.
- */
-#define RETURN_NULL_IF_NULL(o)                  \
-    do                                          \
-        {                                       \
-            if (NULL == (o)) { return NULL; }   \
-        }                                       \
-    while(0)
-
-/**
- * Macro that forces returning NULL if given argument is true.
- */
-#define RETURN_NULL_IF(c)                       \
-    do                                          \
-        {                                       \
-            if ((c)) { return NULL; }           \
-        }                                       \
-    while(0)
-
-/**
- * Macro that forces returning NULL if given argument is false.
- */
-#define RETURN_NULL_IF_NOT(c)                   \
-    do                                          \
-        {                                       \
-            if (!(c)) { return NULL; }          \
-        }                                       \
-    while(0)
-
-/**
- * File system event stream meta information structure.
- */
-typedef struct FSEventStreamInfo
-{
-    /**
-     * Callback called when an event is triggered with the event paths and masks
-     * as arguments.
-     */
-    PyObject *callback_event_handler;
-
-    /**
-     * Event stream.
-     */
-    FSEventStreamRef stream;
-
-    /**
-     * Loop associated with the event stream.
-     */
-    CFRunLoopRef loop;
-
-    /**
-     * Python thread state.
-     */
-    PyThreadState *thread_state;
-} FSEventStreamInfo;
 
 /**
  * Handles streamed events and calls the callback defined in Python code.
@@ -456,7 +385,7 @@ static PyMethodDef _fseventsmethods[] =
         { "stop", pyfsevents_stop, METH_O, pyfsevents_stop_doc },
         { "schedule", pyfsevents_schedule, METH_VARARGS, pyfsevents_schedule_doc },
         { "unschedule", pyfsevents_unschedule, METH_O, pyfsevents_unschedule_doc },
-        { NULL, NULL, 0, NULL }, };
+        { NULL, NULL, 0, NULL } };
 
 /**
  * Initialize the _fsevents module.
