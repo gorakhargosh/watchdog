@@ -4,7 +4,6 @@ from os.path import realpath, abspath, isdir as path_isdir
 from Queue import Queue
 from threading import Thread, Event
 
-import logger
 from dirsnapshot import DirectorySnapshot
 from decorator_utils import synchronized
 from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
@@ -119,19 +118,27 @@ class PollingObserver(Thread):
         self.event_queue = Queue()
         self.event_emitters = set()
         self.rules = {}
+        self.map_name_to_paths = {}
         self.setDaemon(True)
 
 
-    def schedule(self, event_handler, *paths):
+    @synchronized()
+    def schedule(self, name, event_handler, *paths):
         """Schedules monitoring specified paths and calls methods in the
         given callback handler based on events occurring in the file system.
         """
         for path in paths:
-            self._schedule_path(event_handler, path)
+            if not isinstance(path, str):
+                raise TypeError(
+                    "Path must be string, not '%s'." % type(path).__name__)
+
+        self.map_name_to_paths[name] = set()
+        for path in paths:
+            self._schedule_path(name, event_handler, path)
 
 
     @synchronized()
-    def _schedule_path(self, event_handler, path):
+    def _schedule_path(self, name, event_handler, path):
         """Starts monitoring the given path for file system events."""
         if path_isdir(path) and not path in self.rules:
             event_emitter = _PollingEventEmitter(path=path,
@@ -141,13 +148,17 @@ class PollingObserver(Thread):
             self.rules[path] = _Rule(path=path,
                                     event_handler=event_handler,
                                     event_emitter=event_emitter)
+            self.map_name_to_paths[name].add(path)
             event_emitter.start()
 
 
-    def unschedule(self, *paths):
+    @synchronized()
+    def unschedule(self, *names):
         """Stops monitoring specified paths for file system events."""
-        for path in paths:
-            self._unschedule_path(path)
+        for name in names:
+            for path in self.map_name_to_paths[name]:
+                self._unschedule_path(path)
+            del self.map_name_to_paths[name]
 
 
     @synchronized()
@@ -183,17 +194,15 @@ if __name__ == '__main__':
     from os.path import abspath, realpath, dirname
     from events import FileSystemEventHandler
 
-    paths = sys.argv[1:]
-
     o = PollingObserver()
     event_handler = FileSystemEventHandler()
-    o.schedule(event_handler, *paths)
+    o.schedule('arguments', event_handler, *sys.argv[1:])
     o.start()
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        o.unschedule(*paths)
+        o.unschedule('arguments')
         o.stop()
         raise
     o.join()
