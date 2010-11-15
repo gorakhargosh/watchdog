@@ -32,7 +32,7 @@ class _Stream(object):
 class FSEventsObserver(Thread):
     event = None
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.streams = set()
         self.map_name_to_stream = {}
         self.snapshot_for_path = {}
