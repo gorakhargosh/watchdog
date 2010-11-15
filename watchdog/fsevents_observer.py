@@ -171,7 +171,6 @@ if __name__ == '__main__':
 
     event_handler = FileSystemEventHandler()
     o = FSEventsObserver()
-    #s = Stream('arguments', event_handler, *sys.argv[1:])
     o.schedule('arguments', event_handler, *sys.argv[1:])
     o.start()
     try:
