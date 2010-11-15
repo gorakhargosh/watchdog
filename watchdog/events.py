@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import logger
+import logging
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='(%(threadName)-10s) %(message)s',
+                    )
 
 EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
@@ -96,6 +100,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
+        #self._on_any(event)
         _method_map = {
             EVENT_TYPE_MODIFIED: self.on_modified,
             EVENT_TYPE_MOVED: self.on_moved,
@@ -105,13 +110,24 @@ class FileSystemEventHandler(object):
         event_type = event.event_type
         _method_map[event_type](event)
 
+
+    def _on_any(self, event):
+        """Catch-all event handler.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
+        logging.debug(event)
+
+
     def on_moved(self, event):
         """Called when a file or a directory is moved or renamed.
 
         Arguments:
         - event: The event object representing the file system event.
         """
-        logger.debug(event)
+        logging.debug(event)
+
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -119,7 +135,8 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logger.debug(event)
+        logging.debug(event)
+
 
     def on_deleted(self, event):
         """Called when a file or directory is deleted.
@@ -127,7 +144,8 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logger.debug(event)
+        logging.debug(event)
+
 
     def on_modified(self, event):
         """Called when a file or directory is modified.
@@ -135,4 +153,4 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logger.debug(event)
+        logging.debug(event)
