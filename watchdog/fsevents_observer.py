@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import _fsevents
+import _watchdog_fsevents as _fsevents
 
 from threading import Thread, Event as ThreadedEvent
 from os.path import realpath, abspath, dirname, sep as path_separator

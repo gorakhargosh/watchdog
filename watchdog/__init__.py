@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.DEBUG)
 from events import FileSystemEventHandler
 
 try:
-    import _fsevents
+    import _watchdog_fsevents
     logging.debug('Using FSEventsObserver.')
     from fsevents_observer import FSEventsObserver as Observer
 except ImportError:

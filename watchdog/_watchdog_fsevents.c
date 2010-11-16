@@ -1,9 +1,9 @@
 /**
  * _fsevents.c: Low-level FSEvents Python API.
  */
-#include "_fsevents.h"
+#include "_watchdog_fsevents.h"
 
-static const char *MODULE_NAME = "_fsevents";
+static const char *MODULE_NAME = "_watchdog_fsevents";
 static const char *MODULE_CONSTANT_NAME_POLLIN = "POLLIN";
 static const char *MODULE_CONSTANT_NAME_POLLOUT = "POLLOUT";
 
@@ -377,7 +377,7 @@ pyfsevents_stop(PyObject *self,
 /**
  * Module public API.
  */
-static PyMethodDef _fseventsmethods[] =
+static PyMethodDef _watchdog_fseventsmethods[] =
     {
         { "loop", pyfsevents_loop, METH_VARARGS, pyfsevents_loop_doc },
         { "stop", pyfsevents_stop, METH_O, pyfsevents_stop_doc },
@@ -390,9 +390,9 @@ static PyMethodDef _fseventsmethods[] =
  */
 #if PY_MAJOR_VERSION < 3
 void
-init_fsevents(void)
+init_watchdog_fsevents(void)
 {
-    PyObject *module = Py_InitModule3(MODULE_NAME, _fseventsmethods, MODULE_DOCUMENTATION);
+    PyObject *module = Py_InitModule3(MODULE_NAME, _watchdog_fseventsmethods, MODULE_DOCUMENTATION);
     PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLIN, kCFFileDescriptorReadCallBack);
     PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLOUT, kCFFileDescriptorWriteCallBack);
 
@@ -400,18 +400,18 @@ init_fsevents(void)
     g__pydict_streams = PyDict_New();
 }
 #else /* PY_MAJOR_VERSION >= 3 */
-static struct PyModuleDef _fseventsmodule =
+static struct PyModuleDef _watchdog_fseventsmodule =
     {
         PyModuleDef_HEAD_INIT,
         MODULE_NAME,
         MODULE_DOCUMENTATION,
         -1,
-        _fseventsmethods
+        _watchdog_fseventsmethods
     };
 PyMODINIT_FUNC
-PyInit__fsevents(void)
+PyInit__watchdog_fsevents(void)
     {
-        PyObject *module = PyModule_Create(&_fseventsmodule);
+        PyObject *module = PyModule_Create(&_watchdog_fseventsmodule);
         PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLIN, kCFFileDescriptorReadCallBack);
         PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLOUT, kCFFileDescriptorWriteCallBack);
 

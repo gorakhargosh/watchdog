@@ -39,8 +39,8 @@ trove_classifiers = (
 )
 
 macosx_ext_modules = [
-    Extension(name='_fsevents',
-              sources=['watchdog/_fsevents.c'],
+    Extension(name='_watchdog_fsevents',
+              sources=['watchdog/_watchdog_fsevents.c'],
               extra_link_args=['-framework', 'CoreFoundation',
                                '-framework', 'CoreServices'],
               ),
