@@ -6,11 +6,9 @@ import win32con
 from os.path import realpath, abspath, sep as path_separator, join as path_join, isdir as path_isdir
 from threading import Thread, Event as ThreadedEvent
 from Queue import Queue
-from decorator_utils import synchronized
 from polling_observer import PollingObserver, _Rule
 from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
-    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent, \
-    EVENT_TYPE_MODIFIED, EVENT_TYPE_CREATED, EVENT_TYPE_DELETED
+    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
 from win32con import FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, \
     FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_NOTIFY_CHANGE_ATTRIBUTES, \
