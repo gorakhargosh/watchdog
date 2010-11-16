@@ -176,6 +176,7 @@ class FSEventsObserver(Thread):
             if name in self.map_name_to_stream:
                 s = self.map_name_to_stream[name]
                 self._unschedule_stream(s)
+                # TODO: Clean up this code.
                 #for path in s.paths:
                 #    del self.snapshot_for_path[path]
                 del self.map_name_to_stream[name]

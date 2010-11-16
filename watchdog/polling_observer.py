@@ -186,7 +186,7 @@ class PollingObserver(Thread):
                 #logging.debug('queue empty')
                 continue
 
-        
+
     def stop(self):
         """Stops all monitoring."""
         self.stopped.set()
