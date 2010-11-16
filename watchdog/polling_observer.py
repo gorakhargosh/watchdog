@@ -8,9 +8,9 @@ from dirsnapshot import DirectorySnapshot
 from decorator_utils import synchronized
 from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
-import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
 
 class _PollingEventEmitter(Thread):
     """Daemon thread that monitors a given path recursively and emits
@@ -125,18 +125,20 @@ class PollingObserver(Thread):
         self.stopped = ThreadedEvent()
 
 
+    def _create_event_emitter(self, path):
+        return _PollingEventEmitter(path=path, interval=self.interval, out_event_queue=self.event_queue)
+
+
     @synchronized()
     def schedule(self, name, event_handler, *paths):
         """Schedules monitoring specified paths and calls methods in the
         given callback handler based on events occurring in the file system.
         """
+        self.map_name_to_paths[name] = set()
         for path in paths:
             if not isinstance(path, str):
                 raise TypeError(
                     "Path must be string, not '%s'." % type(path).__name__)
-
-        self.map_name_to_paths[name] = set()
-        for path in paths:
             self._schedule_path(name, event_handler, path)
 
 
@@ -144,9 +146,7 @@ class PollingObserver(Thread):
     def _schedule_path(self, name, event_handler, path):
         """Starts monitoring the given path for file system events."""
         if path_isdir(path) and not path in self.rules:
-            event_emitter = _PollingEventEmitter(path=path,
-                                                 interval=self.interval,
-                                                 out_event_queue=self.event_queue)
+            event_emitter = self._create_event_emitter(path=path)
             self.event_emitters.add(event_emitter)
             self.rules[path] = _Rule(path=path,
                                     event_handler=event_handler,
