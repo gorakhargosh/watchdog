@@ -179,6 +179,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
     	o.unschedule('arguments')
     	o.stop()
-    	raise
     o.join()
 

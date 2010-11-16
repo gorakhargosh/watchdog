@@ -18,27 +18,29 @@ MIT License (http://www.opensource.org/licenses/mit-license.html)
 
 Usage:
 ------
-
 import sys
 import time
 from watchdog import Observer, FileSystemEventHandler
+import logging 
+
+logging.basicConfig(level=logging.DEBUG)
 
 class MyEventHandler(FileSystemEventHandler):
+    def catch_all_handler(self, event):
+        logging.debug(event)
+
     def on_moved(self, event):
-        # Do something.
-        pass
+        self.catch_all_handler(event)
 
     def on_created(self, event):
-        # Do something.
-        pass
+        self.catch_all_handler(event)
 
     def on_deleted(self, event):
-        # Do something.
-        pass
+        self.catch_all_handler(event)
 
     def on_modified(self, event):
-        # Do something.
-        pass
+        self.catch_all_handler(event)
+
 
 event_handler = MyEventHandler()
 observer = Observer()
@@ -50,6 +52,5 @@ try:
 except KeyboardInterrupt:
     observer.unschedule('a-unique-name')
     observer.stop()
-    raise
 observer.join()
 

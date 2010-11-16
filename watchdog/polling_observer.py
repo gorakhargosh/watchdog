@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
 from os.path import realpath, abspath, isdir as path_isdir
-from Queue import Queue
-from threading import Thread, Event
+from Queue import Queue, Empty as QueueEmpty
+from threading import Thread, Event as ThreadedEvent
 
 from dirsnapshot import DirectorySnapshot
 from decorator_utils import synchronized
 from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 
 class _PollingEventEmitter(Thread):
     """Daemon thread that monitors a given path recursively and emits
@@ -20,7 +22,7 @@ class _PollingEventEmitter(Thread):
         Thread.__init__(self)
         self.interval = interval
         self.out_event_queue = out_event_queue
-        self.stopped = Event()
+        self.stopped = ThreadedEvent()
         self.snapshot = None
         self.path = path
         if name is None:
@@ -120,6 +122,7 @@ class PollingObserver(Thread):
         self.rules = {}
         self.map_name_to_paths = {}
         self.setDaemon(True)
+        self.stopped = ThreadedEvent()
 
 
     @synchronized()
@@ -172,18 +175,21 @@ class PollingObserver(Thread):
 
     def run(self):
         """Dispatches events from the event queue to the callback handler."""
-        try:
-            while True:
-                (rule_path, event) = self.event_queue.get()
+        while not self.stopped.is_set():
+            #logging.debug('runloop')
+            try:
+                (rule_path, event) = self.event_queue.get(block=True, timeout=self.interval)
                 rule = self.rules[rule_path]
                 rule.event_handler.dispatch(event)
                 self.event_queue.task_done()
-        except KeyboardInterrupt:
-            self.stop()
+            except QueueEmpty:
+                #logging.debug('queue empty')
+                continue
 
-
+        
     def stop(self):
         """Stops all monitoring."""
+        self.stopped.set()
         for event_emitter in self.event_emitters:
             event_emitter.stop()
 
@@ -204,5 +210,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         o.unschedule('arguments')
         o.stop()
-        raise
     o.join()
