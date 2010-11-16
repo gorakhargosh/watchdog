@@ -9,8 +9,8 @@ from dirsnapshot import DirectorySnapshot
 from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
 
 
 def get_parent_dir_path(path):
