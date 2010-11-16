@@ -18,8 +18,10 @@ class _Stream(object):
                 raise TypeError(
                     "Path must be string, not '%s'." % type(path).__name__)
 
+        # Strip the path of the ending separator to ensure consistent keys
+        # in the self.snapshot_for_path dictionary.
+        self.paths = [realpath(abspath(path)).rstrip(path_separator) for path in set(paths)]
         self.event_handler = event_handler
-        self.paths = [realpath(abspath(path)) for path in set(paths)]
         self.name = name
 
     def __repr__(self):
