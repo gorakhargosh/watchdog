@@ -51,6 +51,9 @@ portably as possible using:
 * Windows API on Windows.
 * polling as a fallback mechanism
 
+Installation Notes
+------------------
+1. On Windows you will need Python and pywin32 installed.
 
 Licensing
 ---------
