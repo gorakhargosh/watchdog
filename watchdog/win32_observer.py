@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import win32file
 import win32con
@@ -73,8 +73,8 @@ class _Win32EventEmitter(Thread):
                 )
             last_renamed_from_filename = ""
             q = self.out_event_queue
-            for action, file in results:
-                filename = path_join(self.path, file)
+            for action, filename in results:
+                filename = path_join(self.path, filename)
                 if action == FILE_ACTION_RENAMED_OLD_NAME:
                     last_renamed_from_filename = filename
                 elif action == FILE_ACTION_RENAMED_NEW_NAME:
