@@ -8,7 +8,7 @@ from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
 from distutils.util import get_platform
 
-VERSION_INFO = (0,2)
+VERSION_INFO = (0,3)
 VERSION_STRING = "%d.%d" % VERSION_INFO
 
 logging.basicConfig(level=logging.DEBUG)
