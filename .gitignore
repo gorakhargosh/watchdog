@@ -17,6 +17,8 @@ __MACOSX__
 build/
 parts/
 develop-eggs/
+dist/
+watchdog.egg-info/
 
 # Ignore these generated files.
 bin/buildout

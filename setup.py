@@ -8,6 +8,9 @@ from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
 from distutils.util import get_platform
 
+VERSION_INFO = (0,2)
+VERSION_STRING = "%d.%d" % VERSION_INFO
+
 logging.basicConfig(level=logging.DEBUG)
 
 def read_file(filename):
@@ -57,7 +60,7 @@ ext_modules = {
 
 setup(
     name="watchdog",
-    version="0.1",
+    version=VERSION_STRING,
     description="Filesystem events monitoring",
     long_description=read_file('README'),
     author="Gora Khargosh",
