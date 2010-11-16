@@ -3,12 +3,18 @@
 import _fsevents
 
 from threading import Thread, Event as ThreadedEvent
-from os.path import realpath, abspath, sep as path_separator
+from os.path import realpath, abspath, dirname, sep as path_separator
 from decorator_utils import synchronized
 from dirsnapshot import DirectorySnapshot
 from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+
+def get_parent_dir_path(path):
+    return realpath(abspath(dirname(path))).rstrip(path_separator)
 
 class _Stream(object):
     """Stream object that acts as a conduit for the _fsevents module API."""
@@ -57,13 +63,30 @@ class FSEventsObserver(Thread):
             self.event = None
 
 
+    def _get_snapshot_for_path(self, path):
+        """The FSEvents API calls back with paths within the 'watched'
+        directory. So get back to the root path for which we have
+        snapshots and return the snapshot path and snapshot."""
+        try:
+            # Strip the path of the ending separator to ensure consistent keys
+            # in the self.snapshot_for_path dictionary.
+            path.rstrip(path_separator)
+            snapshot = self.snapshot_for_path[path]
+            #logging.debug(path)
+            return (path, snapshot)
+        except KeyError:
+            path = get_parent_dir_path(path)
+            if not path:
+                raise
+            return self._get_snapshot_for_path(path)
+
+
     @synchronized()
     def _get_directory_snapshot_diff(self, path):
         """Obtains a diff of two directory snapshots."""
-        # Strip the path of the ending separator to ensure consistent keys
-        # in the self.snapshot_for_path dictionary.
-        path = path.rstrip(path_separator)
-        snapshot = self.snapshot_for_path[path]
+        # The path will be reset to the watched directory path
+        # and a snapshot will be stored for the correct key.
+        (path, snapshot) = self._get_snapshot_for_path(path)
         new_snapshot = DirectorySnapshot(path)
         self.snapshot_for_path[path] = new_snapshot
         return new_snapshot - snapshot
@@ -108,6 +131,7 @@ class FSEventsObserver(Thread):
             self.snapshot_for_path[path] = DirectorySnapshot(path)
         def callback(paths, masks):
             for path in paths:
+                #logging.debug(path)
                 self._dispatch_events_for_path(stream.event_handler, path)
         _fsevents.schedule(self, stream, callback, stream.paths)
 
