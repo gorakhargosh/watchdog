@@ -2,8 +2,8 @@ Watchdog
 ========
 Python API to monitor file system events.
 
-Example Usage
--------------
+Example Usage:
+--------------
 
 <pre>import sys
 import time
@@ -42,8 +42,8 @@ except KeyboardInterrupt:
 observer.join()</pre>
 
 
-Introduction
-------------
+Introduction:
+-------------
 Watchdog lets your Python programs monitor filesystem events as
 portably as possible using:
 
@@ -52,12 +52,14 @@ portably as possible using:
 * Windows API on Windows.
 * polling as a fallback mechanism
 
-Installation Notes
-------------------
-1. On Windows you will need Python and pywin32 installed.
+Dependencies:
+-------------
+1. pywin32 (only on Windows)
+2. pyinotify (only on Linux)
+3. XCode or gcc (only on Mac OS X)
 
-Licensing
----------
+Licensing:
+----------
 Watchdog is licensed under the terms of the
 [MIT License](http://www.opensource.org/licenses/mit-license.html)
 
