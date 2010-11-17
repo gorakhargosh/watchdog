@@ -49,8 +49,8 @@ class _ProcessEventDispatcher(ProcessEvent):
     def process_IN_MOVED_TO(self, event):
         # TODO: Moved event on a directory does not fire moved event for
         # files inside the directory. Fix?
-        path = event.pathname
-        new_path = event.src_pathname
+        path = event.src_pathname
+        new_path = event.pathname
         if event.dir:
             self.event_handler.on_moved(DirMovedEvent(path, new_path=new_path))
         else:
