@@ -16,8 +16,15 @@ from win32con import FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING, FILE_FLAG
 from win32file import ReadDirectoryChangesW
 
 
+
 FILE_LIST_DIRECTORY = 0x0001
 BUFFER_SIZE = 1024
+FILE_NOTIFY_FLAGS = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | \
+    FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | \
+    FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SECURITY
+
+FILE_SHARE_FLAGS = FILE_SHARE_READ | FILE_SHARE_WRITE
+    
 FILE_ACTION_CREATED = 1
 FILE_ACTION_DELETED = 2
 FILE_ACTION_MODIFIED = 3
@@ -51,7 +58,7 @@ class _Win32EventEmitter(Thread):
         handle_directory = win32file.CreateFile (
             self.path,
             FILE_LIST_DIRECTORY,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            FILE_SHARE_FLAGS,
             None,
             OPEN_EXISTING,
             FILE_FLAG_BACKUP_SEMANTICS,
@@ -62,12 +69,7 @@ class _Win32EventEmitter(Thread):
                 handle_directory,
                 BUFFER_SIZE,
                 True,
-                FILE_NOTIFY_CHANGE_FILE_NAME |
-                FILE_NOTIFY_CHANGE_DIR_NAME |
-                FILE_NOTIFY_CHANGE_ATTRIBUTES |
-                FILE_NOTIFY_CHANGE_SIZE |
-                FILE_NOTIFY_CHANGE_LAST_WRITE |
-                FILE_NOTIFY_CHANGE_SECURITY,
+                FILE_NOTIFY_FLAGS,
                 None,
                 None
                 )
