@@ -17,13 +17,19 @@ def read_file(filename):
     """Reads the contents of a given file and returns it."""
     return open(os.path.join(os.path.dirname(__file__), filename)).read()
 
+PLATFORM_LINUX = 'linux'
+PLATFORM_WINDOWS = 'windows'
+PLATFORM_MACOSX = 'macosx'
+
 # Determine platform to pick the implementation.
 platform = get_platform()
 logging.debug("Platform: " + platform)
 if platform.startswith('macosx'):
-    platform = 'macosx'
+    platform = PLATFORM_MACOSX
 elif platform.startswith('linux'):
-    platform = 'linux'
+    platform = PLATFORM_LINUX
+elif platform.startswith('win'):
+    platform = PLATFORM_WINDOWS
 else:
     platform = None
 
@@ -35,28 +41,31 @@ trove_classifiers = (
     'Natural Language :: English',
     'Operating System :: POSIX :: Linux',
     'Operating System :: MacOS :: MacOS X',
+    'Operating System :: Microsoft :: Windows :: Windows NT/2000',
+    'Operating System :: OS Independent',
     'Programming Language :: Python',
     'Programming Language :: C',
     'Topic :: Software Development :: Libraries',
     'Topic :: System :: Monitoring',
 )
 
-macosx_ext_modules = [
-    Extension(name='_watchdog_fsevents',
-              sources=['watchdog/_watchdog_fsevents.c'],
-              extra_link_args=['-framework', 'CoreFoundation',
-                               '-framework', 'CoreServices'],
-              ),
-    ]
-
-linux_ext_modules = [
-
-    ]
-
 ext_modules = {
-    'macosx': macosx_ext_modules,
-    'linux': linux_ext_modules,
+    PLATFORM_MACOSX: [
+        Extension(name='_watchdog_fsevents',
+                  sources=['watchdog/_watchdog_fsevents.c'],
+                  extra_link_args=['-framework', 'CoreFoundation',
+                                   '-framework', 'CoreServices'],
+                  ),
+    ],
+    PLATFORM_LINUX: [],
+    PLATFORM_WINDOWS: [],
     }
+
+install_requires = {
+    PLATFORM_MACOSX: [],
+    PLATFORM_LINUX: [],
+    PLATFORM_WINDOWS: ['pywin32 >= 214'],
+}
 
 setup(
     name="watchdog",
@@ -70,8 +79,9 @@ setup(
     url="http://github.com/gorakhargosh/watchdog",
     keywords = "python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
-    ext_modules=ext_modules.get(platform, None),
+    ext_modules=ext_modules.get(platform, []),
     packages=('watchdog',),
     zip_safe=False,
+    install_requires=install_requires.get(platform, []),
     py_modules=('watchdog'),
     )
