@@ -63,7 +63,7 @@ ext_modules = {
 
 install_requires = {
     PLATFORM_MACOSX: [],
-    PLATFORM_LINUX: [],
+    PLATFORM_LINUX: ['pyinotify >= 0.9.1'],
     PLATFORM_WINDOWS: ['pywin32 >= 214'],
 }
 
