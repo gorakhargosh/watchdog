@@ -4,7 +4,8 @@ Python API to monitor file system events.
 
 Example Usage
 -------------
-import sys
+
+<pre>import sys
 import time
 from watchdog import Observer, FileSystemEventHandler
 import logging
@@ -38,7 +39,7 @@ try:
 except KeyboardInterrupt:
     observer.unschedule('a-unique-name')
     observer.stop()
-observer.join()
+observer.join()</pre>
 
 
 Introduction
@@ -58,5 +59,5 @@ Installation Notes
 Licensing
 ---------
 Watchdog is licensed under the terms of the
-MIT License (http://www.opensource.org/licenses/mit-license.html)
+[MIT License](http://www.opensource.org/licenses/mit-license.html)
 
