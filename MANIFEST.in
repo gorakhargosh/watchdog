@@ -1,5 +1,6 @@
 include README.md
 include LICENSE
 include AUTHORS
-recursive-include *.txt *.py
+include watchdog/_watchdog_fsevents.h
+
 
