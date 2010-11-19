@@ -8,7 +8,7 @@ from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
 from distutils.util import get_platform
 
-VERSION_INFO = (0,3,2)
+VERSION_INFO = (0,3,3)
 VERSION_STRING = "%d.%d.%d" % VERSION_INFO
 
 logging.basicConfig(level=logging.DEBUG)
@@ -77,6 +77,7 @@ setup(
     license="MIT License",
     cmdclass=dict(build_ext=build_ext),
     url="http://github.com/gorakhargosh/watchdog",
+    download_url="https://github.com/gorakhargosh/watchdog/tarball/v%s" % VERSION_STRING,
     keywords = "python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
     ext_modules=ext_modules.get(platform, []),
@@ -85,3 +86,4 @@ setup(
     install_requires=install_requires.get(platform, []),
     py_modules=('watchdog'),
     )
+
