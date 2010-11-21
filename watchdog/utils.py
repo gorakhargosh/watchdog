@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from os.path import basename
+#from os.path import basename
 from fnmatch import fnmatch
 
 def match_patterns(pathname, patterns):
