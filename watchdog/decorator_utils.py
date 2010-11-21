@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Most of this code was obtained from the Python documentation online.
+
 """Decorator utility functions.
 
 decorators:

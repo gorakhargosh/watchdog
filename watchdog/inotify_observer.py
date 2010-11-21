@@ -1,4 +1,25 @@
 # -*- coding: utf-8 -*-
+# inotify_observer: Inotify-based observer implementation for Linux.
+#
+# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 from threading import Thread, Event as ThreadedEvent
 from os.path import realpath, abspath, join as path_join, sep as path_separator, dirname
@@ -12,7 +33,8 @@ from pyinotify import ALL_EVENTS, \
 
 
 class _ProcessEventDispatcher(ProcessEvent):
-
+    """ProcessEvent subclasses that dispatches events to our
+    FileSystemEventHandler implementation."""
     def my_init(self, **kwargs):
         if not 'event_handler' in kwargs:
             raise ValueError('event_handler argument to  _ProcessEventDispatcher is not specified.')
@@ -65,6 +87,7 @@ class _Rule(object):
 
 
 class InotifyObserver(Thread):
+    """Inotify-based daemon observer thread for Linux."""
     def __init__(self, interval=1,):
         Thread.__init__(self)
         self.wm = WatchManager()
@@ -114,10 +137,10 @@ class InotifyObserver(Thread):
 if __name__ == '__main__':
     import sys
     import time
-    from events import FileSystemEventHandler
+    from events import LoggingFileSystemEventHandler
 
     o = InotifyObserver()
-    event_handler = FileSystemEventHandler()
+    event_handler = LoggingFileSystemEventHandler()
     o.schedule('arguments', event_handler, *sys.argv[1:])
     o.start()
     try:

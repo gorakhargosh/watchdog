@@ -1,4 +1,25 @@
 # -*- coding: utf-8 -*-
+# events.py: event handling.
+#
+# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
 import logging
 
@@ -91,6 +112,7 @@ class DirMovedEvent(FileSystemMovedEvent):
         FileSystemMovedEvent.__init__(self, path=path, new_path=new_path, is_directory=True)
 
 
+
 class FileSystemEventHandler(object):
     """File system base event handler."""
 
@@ -117,8 +139,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
-
+        pass
 
     def on_moved(self, event):
         """Called when a file or a directory is moved or renamed.
@@ -126,8 +147,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
-
+        pass
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -135,8 +155,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
-
+        pass
 
     def on_deleted(self, event):
         """Called when a file or directory is deleted.
@@ -144,8 +163,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
-
+        pass
 
     def on_modified(self, event):
         """Called when a file or directory is modified.
@@ -153,4 +171,23 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        logging.debug(event)
+        pass
+
+
+class LoggingFileSystemEventHandler(FileSystemEventHandler):
+    """Logs all the events captured."""
+    def on_moved(self, event):
+        what = 'directory' if event.is_directory else 'file'
+        logging.debug("Moved %s: from %s to %s", what, event.path, event.new_path)
+
+    def on_created(self, event):
+        what = 'directory' if event.is_directory else 'file'
+        logging.debug("Created %s: %s", what, event.path)
+
+    def on_deleted(self, event):
+        what = 'directory' if event.is_directory else 'file'
+        logging.debug("Deleted %s: %s", what, event.path)
+
+    def on_modified(self, event):
+        what = 'directory' if event.is_directory else 'file'
+        logging.debug("Modified %s: %s", what, event.path)

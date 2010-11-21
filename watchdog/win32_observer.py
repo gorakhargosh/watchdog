@@ -1,7 +1,32 @@
 # -*- coding: utf-8 -*-
+# win32_observer.py: ReadDirectoryChangesW-based Win32 API observer for Windows.
+#
+# Copyright (C) 2009 Tim Golden <mail@timgolden.me.uk>
+# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
-import win32file
-import win32con
+
+from win32con import FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, \
+    FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_NOTIFY_CHANGE_ATTRIBUTES, \
+    FILE_NOTIFY_CHANGE_SIZE, FILE_NOTIFY_CHANGE_LAST_WRITE, FILE_NOTIFY_CHANGE_SECURITY
+from win32file import ReadDirectoryChangesW, CreateFile
 
 from os.path import realpath, abspath, sep as path_separator, join as path_join, isdir as path_isdir
 from threading import Thread, Event as ThreadedEvent
@@ -10,21 +35,14 @@ from polling_observer import PollingObserver, _Rule
 from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
-from win32con import FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, \
-    FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_NOTIFY_CHANGE_ATTRIBUTES, \
-    FILE_NOTIFY_CHANGE_SIZE, FILE_NOTIFY_CHANGE_LAST_WRITE, FILE_NOTIFY_CHANGE_SECURITY
-from win32file import ReadDirectoryChangesW
-
-
 
 FILE_LIST_DIRECTORY = 0x0001
 BUFFER_SIZE = 1024
+FILE_SHARE_FLAGS = FILE_SHARE_READ | FILE_SHARE_WRITE
 FILE_NOTIFY_FLAGS = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | \
     FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | \
     FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SECURITY
 
-FILE_SHARE_FLAGS = FILE_SHARE_READ | FILE_SHARE_WRITE
-    
 FILE_ACTION_CREATED = 1
 FILE_ACTION_DELETED = 2
 FILE_ACTION_MODIFIED = 3
@@ -55,7 +73,7 @@ class _Win32EventEmitter(Thread):
         self.stopped.set()
 
     def run(self):
-        handle_directory = win32file.CreateFile (
+        handle_directory = CreateFile(
             self.path,
             FILE_LIST_DIRECTORY,
             FILE_SHARE_FLAGS,
@@ -65,7 +83,7 @@ class _Win32EventEmitter(Thread):
             None
         )
         while not self.stopped.is_set():
-            results = ReadDirectoryChangesW (
+            results = ReadDirectoryChangesW(
                 handle_directory,
                 BUFFER_SIZE,
                 True,
@@ -102,10 +120,10 @@ if __name__ == '__main__':
     import sys
 
     from os.path import abspath, realpath, dirname
-    from events import FileSystemEventHandler
+    from events import LoggingFileSystemEventHandler
 
     o = Win32Observer()
-    event_handler = FileSystemEventHandler()
+    event_handler = LoggingFileSystemEventHandler()
     o.schedule('arguments', event_handler, *sys.argv[1:])
     o.start()
     try:
