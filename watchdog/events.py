@@ -22,6 +22,7 @@
 # THE SOFTWARE.
 
 import logging
+from utils import filter_paths
 
 logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-10s) %(message)s',
@@ -122,7 +123,7 @@ class FileSystemEventHandler(object):
         Arguments:
         - event: The event object representing the file system event.
         """
-        #self._on_any(event)
+        self.on_any_event(event)
         _method_map = {
             EVENT_TYPE_MODIFIED: self.on_modified,
             EVENT_TYPE_MOVED: self.on_moved,
@@ -132,8 +133,7 @@ class FileSystemEventHandler(object):
         event_type = event.event_type
         _method_map[event_type](event)
 
-
-    def _on_any(self, event):
+    def on_any_event(self, event):
         """Catch-all event handler.
 
         Arguments:
@@ -172,6 +172,41 @@ class FileSystemEventHandler(object):
         - event: The event object representing the file system event.
         """
         pass
+
+
+class PatternMatchingEventHandler(FileSystemEventHandler):
+    """Matches given patterns with file paths associated with occurring events."""
+    def __init__(self, patterns=['*'], ignore_patterns=[], ignore_directories=False):
+        FileSystemEventHandler.__init__(self)
+        self.patterns = patterns
+        self.ignore_patterns = ignore_patterns
+        self.ignore_directories = ignore_directories
+
+    def dispatch(self, event):
+        """Dispatches events to the appropriate methods.
+
+        Arguments:
+        - event: The event object representing the file system event.
+        """
+        if self.ignore_directories and event.is_directory:
+            return
+
+        if hasattr(event, 'new_path'):
+            paths = [event.path, event.new_path]
+        else:
+            paths = [event.path]
+
+        if filter_paths(paths, self.patterns, self.ignore_patterns):
+            logging.debug(event)
+            self.on_any_event(event)
+            _method_map = {
+                EVENT_TYPE_MODIFIED: self.on_modified,
+                EVENT_TYPE_MOVED: self.on_moved,
+                EVENT_TYPE_CREATED: self.on_created,
+                EVENT_TYPE_DELETED: self.on_deleted,
+                }
+            event_type = event.event_type
+            _method_map[event_type](event)
 
 
 class LoggingFileSystemEventHandler(FileSystemEventHandler):
