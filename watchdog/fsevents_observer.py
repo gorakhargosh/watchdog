@@ -25,9 +25,10 @@ import _watchdog_fsevents as _fsevents
 
 from threading import Thread, Event as ThreadedEvent
 from os.path import realpath, abspath, dirname, sep as path_separator
-from decorator_utils import synchronized
-from dirsnapshot import DirectorySnapshot
-from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
+
+from watchdog.decorator_utils import synchronized
+from watchdog.dirsnapshot import DirectorySnapshot
+from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
 #import logging
@@ -210,22 +211,4 @@ class FSEventsObserver(Thread):
             event = self.event
             self.event = None
             event.set()
-
-
-if __name__ == '__main__':
-    import sys
-    import time
-    from events import LoggingFileSystemEventHandler
-
-    event_handler = LoggingFileSystemEventHandler()
-    o = FSEventsObserver()
-    o.schedule('arguments', event_handler, *sys.argv[1:])
-    o.start()
-    try:
-    	while True:
-    		time.sleep(1)
-    except KeyboardInterrupt:
-    	o.unschedule('arguments')
-    	o.stop()
-    o.join()
 

@@ -31,8 +31,9 @@ from win32file import ReadDirectoryChangesW, CreateFile
 from os.path import realpath, abspath, sep as path_separator, join as path_join, isdir as path_isdir
 from threading import Thread, Event as ThreadedEvent
 from Queue import Queue
-from polling_observer import PollingObserver, _Rule
-from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
+
+from watchdog.polling_observer import PollingObserver, _Rule
+from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
 
@@ -114,22 +115,3 @@ class Win32Observer(PollingObserver):
     def _create_event_emitter(self, path):
         return _Win32EventEmitter(path=path, out_event_queue=self.event_queue)
 
-
-if __name__ == '__main__':
-    import time
-    import sys
-
-    from os.path import abspath, realpath, dirname
-    from events import LoggingFileSystemEventHandler
-
-    o = Win32Observer()
-    event_handler = LoggingFileSystemEventHandler()
-    o.schedule('arguments', event_handler, *sys.argv[1:])
-    o.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        o.unschedule('arguments')
-        o.stop()
-    o.join()

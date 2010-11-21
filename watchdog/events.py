@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 
 import logging
-from utils import filter_paths
+from watchdog.utils import filter_paths
 
 logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-10s) %(message)s',

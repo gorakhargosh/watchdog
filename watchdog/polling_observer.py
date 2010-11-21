@@ -25,9 +25,9 @@ from os.path import realpath, abspath, isdir as path_isdir
 from Queue import Queue, Empty as QueueEmpty
 from threading import Thread, Event as ThreadedEvent
 
-from dirsnapshot import DirectorySnapshot
-from decorator_utils import synchronized
-from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
+from watchdog.dirsnapshot import DirectorySnapshot
+from watchdog.decorator_utils import synchronized
+from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
 #import logging
@@ -214,20 +214,3 @@ class PollingObserver(Thread):
         for event_emitter in self.event_emitters:
             event_emitter.stop()
 
-
-if __name__ == '__main__':
-    import time
-    import sys
-    from events import LoggingFileSystemEventHandler
-
-    o = PollingObserver()
-    event_handler = LoggingFileSystemEventHandler()
-    o.schedule('arguments', event_handler, *sys.argv[1:])
-    o.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        o.unschedule('arguments')
-        o.stop()
-    o.join()

@@ -23,13 +23,15 @@
 
 from threading import Thread, Event as ThreadedEvent
 from os.path import realpath, abspath, join as path_join, sep as path_separator, dirname
-from decorator_utils import synchronized
-from events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
-    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent, \
-    EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
 
 from pyinotify import ALL_EVENTS, \
     ProcessEvent, WatchManager, ThreadedNotifier
+
+from watchdog.decorator_utils import synchronized
+from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
+    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent, \
+    EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
+
 
 
 class _ProcessEventDispatcher(ProcessEvent):
@@ -132,22 +134,4 @@ class InotifyObserver(Thread):
         import time
         while not self.stopped.is_set():
             time.sleep(1)
-
-
-if __name__ == '__main__':
-    import sys
-    import time
-    from events import LoggingFileSystemEventHandler
-
-    o = InotifyObserver()
-    event_handler = LoggingFileSystemEventHandler()
-    o.schedule('arguments', event_handler, *sys.argv[1:])
-    o.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        o.unschedule('arguments')
-        o.stop()
-    o.join()
 
