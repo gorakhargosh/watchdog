@@ -14,12 +14,16 @@ Thumbs.db
 __MACOSX__
 
 # Ignore these generated directories.
+.installed.cfg
+bin/python
+bin/ipython
 build/
 parts/
 develop-eggs/
 dist/
 eggs/
 watchdog.egg-info/
+
 
 # Ignore these generated files.
 bin/buildout
