@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# Watchog - Python API to monitor file system events.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
@@ -20,29 +19,3 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-
-
-import logging
-from watchdog.version import __version__, VERSION_INFO, VERSION_STRING
-
-logging.basicConfig(level=logging.DEBUG)
-
-try:
-    import pyinotify
-    logging.debug('Using InotifyObserver')
-    from watchdog.observers.inotify_observer import InotifyObserver as Observer
-except ImportError:
-    try:
-        import _watchdog_fsevents
-        logging.debug('Using FSEventsObserver.')
-        from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
-    except ImportError:
-        try:
-            import win32file
-            import win32con
-            logging.debug('Using Win32Observer.')
-            from watchdog.observers.win32_observer import Win32Observer as Observer
-        except ImportError:
-            logging.debug('Using PollingObserver as fallback.')
-            from watchdog.observers.polling_observer import PollingObserver as Observer
-
