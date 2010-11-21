@@ -7,5 +7,5 @@ Watchdog also includes open source libraries or adapted code
 from the following projects:
 
 - MacFSEvents - http://github.com/malthe/macfsevents
+- watch_directory.py - http://timgolden.me.uk/python/downloads/watch_directory.py
 - pyinotify - http://github.com/seb-m/pyinotify
-
