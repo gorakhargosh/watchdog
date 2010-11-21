@@ -25,7 +25,7 @@ import sys
 import imp
 
 from os.path import join as path_join, dirname
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
 from distutils.util import get_platform
@@ -101,9 +101,8 @@ setup(
     keywords = "python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
     ext_modules=ext_modules.get(platform, []),
-    packages=['watchdog'],
+    packages=find_packages(),
     zip_safe=False,
     install_requires=common_install_requires + install_requires.get(platform, []),
-    py_modules=[],
     )
 
