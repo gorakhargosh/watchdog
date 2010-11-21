@@ -218,7 +218,6 @@ class PollingObserver(Thread):
 if __name__ == '__main__':
     import time
     import sys
-    from os.path import abspath, realpath, dirname
     from events import LoggingFileSystemEventHandler
 
     o = PollingObserver()
