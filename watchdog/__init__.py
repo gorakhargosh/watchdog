@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+# Watchog - Python API to monitor file system events.
+# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com> and the Watchdog authors.
+# MIT License.
 
 import logging
+from version import __version__, VERSION_INFO, VERSION_STRING
+from events import FileSystemEventHandler
 
 logging.basicConfig(level=logging.DEBUG)
-
-from events import FileSystemEventHandler
 
 try:
     import pyinotify
@@ -24,3 +27,4 @@ except ImportError:
         except ImportError:
             logging.debug('Using PollingObserver as fallback.')
             from polling_observer import PollingObserver as Observer
+

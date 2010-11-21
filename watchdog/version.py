@@ -1,0 +1,11 @@
+# -*- coding: utf-8 -*-
+# Version information.
+
+VERSION_MAJOR = 0
+VERSION_MINOR = 3
+VERSION_BUILD = 4
+VERSION_INFO = (VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD)
+VERSION_STRING = "%d.%d.%d" % VERSION_INFO
+
+__version__ = VERSION_STRING
+
