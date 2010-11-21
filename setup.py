@@ -61,7 +61,7 @@ ext_modules = {
     PLATFORM_WINDOWS: [],
 }
 
-common_install_requires = ['PyYAML >= 3.09']
+common_install_requires = ['PyYAML >= 3.09', 'argh >= 0.6.0']
 
 install_requires = {
     PLATFORM_MACOSX: [],
@@ -88,4 +88,3 @@ setup(
     install_requires=common_install_requires + install_requires.get(platform, []),
     py_modules=[],
     )
-

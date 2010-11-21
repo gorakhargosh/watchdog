@@ -18,6 +18,7 @@ build/
 parts/
 develop-eggs/
 dist/
+eggs/
 watchdog.egg-info/
 
 # Ignore these generated files.
