@@ -59,7 +59,9 @@ ext_modules = {
     ],
     PLATFORM_LINUX: [],
     PLATFORM_WINDOWS: [],
-    }
+}
+
+common_install_requires = ['PyYAML >= 3.09']
 
 install_requires = {
     PLATFORM_MACOSX: [],
@@ -83,7 +85,7 @@ setup(
     ext_modules=ext_modules.get(platform, []),
     packages=['watchdog'],
     zip_safe=False,
-    install_requires=install_requires.get(platform, []),
+    install_requires=common_install_requires + install_requires.get(platform, []),
     py_modules=[],
     )
 
