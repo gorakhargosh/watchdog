@@ -2,5 +2,6 @@ include README.md
 include LICENSE
 include AUTHORS
 include watchdog/_watchdog_fsevents.h
+include watchdog/observers/*.py
 
 
