@@ -33,7 +33,7 @@ def match_patterns(pathname, patterns):
 def filter_paths(pathnames, patterns, ignore_patterns):
     result = []
     for path in pathnames:
-        path = basename(path)
+        #path = basename(path)
         if match_patterns(path, patterns) and not match_patterns(path, ignore_patterns):
             result.append(path)
     return result

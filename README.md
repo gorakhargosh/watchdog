@@ -7,7 +7,8 @@ Example Usage:
 
 <pre>import sys
 import time
-from watchdog import Observer, FileSystemEventHandler
+from watchdog import Observer
+from watchdog.events import FileSystemEventHandler
 import logging
 
 logging.basicConfig(level=logging.DEBUG)

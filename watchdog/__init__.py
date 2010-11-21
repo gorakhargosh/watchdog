@@ -23,8 +23,7 @@
 
 
 import logging
-from version import __version__, VERSION_INFO, VERSION_STRING
-from events import FileSystemEventHandler
+from watchdog.version import __version__, VERSION_INFO, VERSION_STRING
 
 logging.basicConfig(level=logging.DEBUG)
 

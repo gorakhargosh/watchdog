@@ -197,7 +197,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
             paths = [event.path]
 
         if filter_paths(paths, self.patterns, self.ignore_patterns):
-            logging.debug(event)
+            #logging.debug(event)
             self.on_any_event(event)
             _method_map = {
                 EVENT_TYPE_MODIFIED: self.on_modified,
