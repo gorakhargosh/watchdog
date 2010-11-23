@@ -120,14 +120,16 @@ class InotifyObserver(Thread):
         self.name_to_rule[name] = _Rule(name, notifier, descriptors)
         notifier.start()
 
+
     @synchronized()
     def unschedule(self, *names):
-        for name in names:
-            try:
+        if not names:
+            for name, rule in self.name_to_rule.items():
+                self.wm.rm_watch(rule.descriptors.values())
+        else:
+            for name in names:
                 rule = self.name_to_rule[name]
                 self.wm.rm_watch(rule.descriptors.values())
-            except KeyError:
-                raise
 
 
     def run(self):

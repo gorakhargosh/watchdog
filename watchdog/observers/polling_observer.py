@@ -179,10 +179,14 @@ class PollingObserver(Thread):
     @synchronized()
     def unschedule(self, *names):
         """Stops monitoring specified paths for file system events."""
-        for name in names:
-            for path in self.map_name_to_paths[name]:
+        if not names:
+            for name, path in self.map_name_to_paths.items():
                 self._unschedule_path(path)
-            del self.map_name_to_paths[name]
+        else:
+            for name in names:
+                for path in self.map_name_to_paths[name]:
+                    self._unschedule_path(path)
+                del self.map_name_to_paths[name]
 
 
     @synchronized()

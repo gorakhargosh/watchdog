@@ -194,14 +194,18 @@ class FSEventsObserver(Thread):
 
     @synchronized()
     def unschedule(self, *names):
-        for name in names:
-            if name in self.map_name_to_stream:
-                s = self.map_name_to_stream[name]
-                self._unschedule_stream(s)
-                # TODO: Clean up this code.
-                #for path in s.paths:
-                #    del self.snapshot_for_path[path]
-                del self.map_name_to_stream[name]
+        if not names:
+            for name, stream in self.map_name_to_stream.items():
+                self._unschedule_stream(stream)
+        else:
+            for name in names:
+                if name in self.map_name_to_stream:
+                    s = self.map_name_to_stream[name]
+                    self._unschedule_stream(s)
+                    # TODO: Clean up this code.
+                    #for path in s.paths:
+                    #    del self.snapshot_for_path[path]
+                    del self.map_name_to_stream[name]
 
 
     def stop(self):
