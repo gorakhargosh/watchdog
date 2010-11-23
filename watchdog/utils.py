@@ -52,10 +52,10 @@ def load_module(module_name):
     return sys.modules[module_name]
 
 
-def class_instance(dotted_path, *args, **kwargs):
-    """Creates an instance of the given class provided the last part of the
-    dotted path is the class name and there is at least one module name
-    preceding the class name.
+def load_class(dotted_path, *args, **kwargs):
+    """Loads and returns a class definition provided a dotted path
+    specification the last part of the dotted path is the class name
+    and there is at least one module name preceding the class name.
 
     Notes:
     You will need to ensure that the module you are trying to load
@@ -78,8 +78,9 @@ def class_instance(dotted_path, *args, **kwargs):
         module = load_module(module_name)
         if hasattr(module, klass_name):
             klass = getattr(module, klass_name)
+            return klass
             # Finally create and return an instance of the class
-            return klass(*args, **kwargs)
+            #return klass(*args, **kwargs)
         else:
             raise AttributeError('Module %s does not have class attribute %s' % (module_name, klass_name))
     else:
