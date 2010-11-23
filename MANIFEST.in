@@ -1,8 +1,9 @@
 include README.md
 include LICENSE
 include AUTHORS
+include watchmedo
+include watchmedo.bat
 include watchdog/_watchdog_fsevents.h
 include watchdog/observers/*.py
 include watchdog/tricks/*.py
-
 

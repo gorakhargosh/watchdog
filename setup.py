@@ -87,6 +87,13 @@ install_requires = {
     PLATFORM_WINDOWS: ['pywin32 >= 214'],
 }
 
+scripts = [
+    'watchmedo',
+    ]
+
+if platform == PLATFORM_WINDOWS:
+    scripts.append('watchmedo.bat')
+
 setup(
     name="watchdog",
     version=version.VERSION_STRING,
@@ -102,7 +109,7 @@ setup(
     classifiers=trove_classifiers,
     ext_modules=ext_modules.get(platform, []),
     packages=find_packages(),
+    scripts=scripts,
     zip_safe=False,
     install_requires=common_install_requires + install_requires.get(platform, []),
     )
-
