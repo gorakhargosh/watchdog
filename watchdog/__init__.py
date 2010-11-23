@@ -22,27 +22,27 @@
 # THE SOFTWARE.
 
 
-import logging
+#import logging
 from watchdog.version import __version__, VERSION_INFO, VERSION_STRING
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 try:
     import pyinotify
-    logging.debug('Using InotifyObserver')
+    #logging.debug('Using InotifyObserver')
     from watchdog.observers.inotify_observer import InotifyObserver as Observer
 except ImportError:
     try:
         import _watchdog_fsevents
-        logging.debug('Using FSEventsObserver.')
+        #logging.debug('Using FSEventsObserver.')
         from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
     except ImportError:
         try:
             import win32file
             import win32con
-            logging.debug('Using Win32Observer.')
+            #logging.debug('Using Win32Observer.')
             from watchdog.observers.win32_observer import Win32Observer as Observer
         except ImportError:
-            logging.debug('Using PollingObserver as fallback.')
+            #logging.debug('Using PollingObserver as fallback.')
             from watchdog.observers.polling_observer import PollingObserver as Observer
 

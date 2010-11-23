@@ -24,10 +24,6 @@
 import logging
 from watchdog.utils import filter_paths
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='(%(threadName)-10s) %(message)s',
-                    )
-
 EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
@@ -197,7 +193,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
             paths = [event.path]
 
         if filter_paths(paths, self.patterns, self.ignore_patterns):
-            #logging.debug(event)
             self.on_any_event(event)
             _method_map = {
                 EVENT_TYPE_MODIFIED: self.on_modified,
@@ -213,16 +208,16 @@ class LoggingFileSystemEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
     def on_moved(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.debug("Moved %s: from %s to %s", what, event.path, event.new_path)
+        logging.info("Moved %s: from %s to %s", what, event.path, event.new_path)
 
     def on_created(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.debug("Created %s: %s", what, event.path)
+        logging.info("Created %s: %s", what, event.path)
 
     def on_deleted(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.debug("Deleted %s: %s", what, event.path)
+        logging.info("Deleted %s: %s", what, event.path)
 
     def on_modified(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.debug("Modified %s: %s", what, event.path)
+        logging.info("Modified %s: %s", what, event.path)
