@@ -153,15 +153,19 @@ def tricks_generate_yaml(args):
 
 
 @arg('directories', nargs='*', default='.', help='directories to watch.')
-@arg('--patterns', default=['*'], help='matches event paths with given patterns.')
-@arg('--ignore-patterns', default=[], help='ignores event paths with these patterns.')
+@arg('--patterns', default='*', help='matches event paths with these patterns (separated by ;).')
+@arg('--ignore-patterns', default='', help='ignores event paths with these patterns (separated by ;).')
 @arg('--ignore-directories', default=False, help='ignores events for directories')
 def log(args):
     from watchdog.tricks import LoggerTrick
-    logging.info('Watchding these directories: %s', args.directories)
+    #logging.info('Watchding these directories: %s', args.directories)
 
-    event_handler = LoggerTrick(patterns=args.patterns,
-                                ignore_patterns=args.ignore_patterns,
+    patterns = args.patterns.split(';')
+    ignore_patterns = args.ignore_patterns.split(';')
+    if ignore_patterns == ['']:
+        ignore_patterns = []
+    event_handler = LoggerTrick(patterns=patterns,
+                                ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories)
     o = Observer()
     identifier = uuid.uuid1().hex
