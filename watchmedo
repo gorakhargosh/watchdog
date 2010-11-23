@@ -31,19 +31,30 @@ import time
 import uuid
 import logging
 
-from os.path import exists as path_exists, dirname, join as path_join, abspath, realpath
-from argh import arg, ArghParser
+from os.path import exists as path_exists, dirname, join as path_join, abspath, realpath, pathsep
+from argh import arg, alias, ArghParser
 from watchdog import Observer, VERSION_STRING
-from watchdog.utils import read_text_file, class_instance
+from watchdog.utils import read_text_file, load_class
 
 logging.basicConfig(level=logging.DEBUG)
 
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
-CURRENT_DIR = os.getcwd()
+
+CURRENT_DIR_PATH = abspath(realpath(os.getcwd()))
 DEFAULT_TRICKS_FILE_NAME = 'tricks.yaml'
-DEFAULT_TRICKS_FILE_PATH = path_join(CURRENT_DIR, DEFAULT_TRICKS_FILE_NAME)
+DEFAULT_TRICKS_FILE_PATH = path_join(CURRENT_DIR_PATH, DEFAULT_TRICKS_FILE_NAME)
 
 CONFIG_KEY_TRICKS = 'tricks'
+
+
+def add_to_sys_path(path_spec, index=0, separator=pathsep):
+    paths = path_spec.split(pathsep)[::-1]
+    for path in paths:
+        sys.path.insert(index, path)
 
 
 def load_config(tricks_file):
@@ -52,65 +63,95 @@ def load_config(tricks_file):
     config = yaml.load(content)
     return config
 
+
 def check_trick_has_key(trick_name, trick, key):
     if key not in trick:
         logging.warn("Key `%s' not found for trick `%s'. Typo or missing?", key, trick_name)
 
 
+@alias('tricks')
 @arg('files', nargs='*', help='perform tricks from given file')
-def run(args):
+@arg('--python-path', default=CURRENT_DIR_PATH, help='string of paths separated by %s to add to the python path' % pathsep)
+def tricks_from(args):
+    add_to_sys_path(args.python_path)
     observers = []
     for tricks_file in args.files:
         observer = Observer()
         schedule_tricks(observer, tricks_file)
-        observers.append(observer)
-    for observer in observers:
         observer.start()
+        observers.append(observer)
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        for observer in observers:
-            observer.unschedule()
-            observer.stop()
-    for observer in observers:
-        observer.join()
+        for o in observers:
+            o.unschedule()
+            o.stop()
+    for o in observers:
+        o.join()
 
 
 def schedule_tricks(observer, tricks_file):
-    if path_exists(tricks_file):
-        dir_path = abspath(realpath(dirname(tricks_file)))
-        config = load_config(tricks_file)
+    if not path_exists(tricks_file):
+        raise IOError("cannot find tricks file: %s" % tricks_file)
 
-        if CONFIG_KEY_TRICKS not in config:
-            raise KeyError("No `tricks' key specified in %s." % input_file)
+    dir_path = abspath(realpath(dirname(tricks_file)))
+    config = load_config(tricks_file)
 
-        for trick in config[CONFIG_KEY_TRICKS]:
-            for trick_name, trick_value in trick.items():
-                check_trick_has_key(trick_name, trick_value, 'kwargs')
-                check_trick_has_key(trick_name, trick_value, 'args')
+    if CONFIG_KEY_TRICKS not in config:
+        raise KeyError("No `%s' key specified in %s." % (CONFIG_KEY_TRICKS, input_file))
 
-                trick_kwargs = trick_value.get('kwargs', {})
-                trick_args = trick_value.get('args', ())
-                trick_event_handler = class_instance(trick_name, *trick_args, **trick_kwargs)
+    for trick in config[CONFIG_KEY_TRICKS]:
+        for trick_name, trick_value in trick.items():
+            check_trick_has_key(trick_name, trick_value, 'kwargs')
+            check_trick_has_key(trick_name, trick_value, 'args')
 
-                unique_identifier = uuid.uuid1().hex
-                observer.schedule(unique_identifier, trick_event_handler, dir_path)
+            trick_kwargs = trick_value.get('kwargs', {})
+            trick_args = trick_value.get('args', ())
+
+            print(trick_kwargs)
+
+            TrickClass = load_class(trick_name)
+            trick_event_handler = TrickClass(*trick_args, **trick_kwargs)
+
+            from watchdog.events import LoggingFileSystemEventHandler
+            trick_event_handler = LoggingFileSystemEventHandler()
+
+            unique_identifier = uuid.uuid1().hex
+            observer.schedule(unique_identifier, trick_event_handler, dir_path)
 
 
-@arg('modules', nargs='*', help='modules')
-def generate(args):
-    print(args)
+@alias('generate-yaml')
+@arg('trick_paths', nargs='*', help='Dotted paths for all the tricks you want to generate')
+@arg('--python-path', default=CURRENT_DIR_PATH, help='string of paths separated by %s to add to the python path' % pathsep)
+@arg('--append-to-file', default=None, help='appends the generated tricks YAML to a file; if not specified, prints to standard output')
+def tricks_generate_yaml(args):
+    add_to_sys_path(args.python_path)
+    output = StringIO()
+
+    for trick_path in args.trick_paths:
+        TrickClass = load_class(trick_path)
+        output.write(TrickClass.generate_yaml())
+
+    content = output.getvalue()
+    output.close()
+
+    if args.append_to_file is None:
+        print(content)
+    else:
+        output = open(args.append_to_file, 'ab')
+        output.write(content)
+        output.close()
 
 
-@arg('directory', default=CURRENT_DIR, help='directory to watch.')
+@arg('directory', default=CURRENT_DIR_PATH, help='directory to watch.')
 @arg('--patterns', help='matches event paths with given patterns.')
 @arg('--ignore-patterns', help='ignores event paths with these patterns.')
 def log(args):
     pass
 
 parser = ArghParser()
-parser.add_commands([run, generate], namespace='tricks')
+parser.add_commands([tricks_from, tricks_generate_yaml])
 parser.add_argument('--version', action='version', version='%(prog)s ' + VERSION_STRING)
 
 if __name__ == '__main__':
