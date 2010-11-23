@@ -25,8 +25,7 @@ from watchdog.events import PatternMatchingEventHandler
 from watchdog.utils import filter_paths
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-
+#logging.basicConfig(level=logging.DEBUG)
 
 
 class Trick(PatternMatchingEventHandler):
@@ -59,6 +58,6 @@ class Trick(PatternMatchingEventHandler):
 
 class LoggerTrick(Trick):
     def do(self, event):
-        logging.debug(event)
+        logging.info(event)
 
 

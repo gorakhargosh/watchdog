@@ -114,9 +114,6 @@ def schedule_tricks(observer, tricks_file):
             TrickClass = load_class(trick_name)
             trick_event_handler = TrickClass(*trick_args, **trick_kwargs)
 
-            from watchdog.events import LoggingFileSystemEventHandler
-            trick_event_handler = LoggingFileSystemEventHandler()
-
             unique_identifier = uuid.uuid1().hex
             observer.schedule(unique_identifier, trick_event_handler, dir_path)
 
