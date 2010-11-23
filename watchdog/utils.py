@@ -21,20 +21,71 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-#from os.path import basename
+import sys
 from fnmatch import fnmatch
 
+
 def match_patterns(pathname, patterns):
+    """Returns True if the pathname matches any of the given patterns."""
     for pattern in patterns:
         if fnmatch(pathname, pattern):
             return True
     return False
 
+
 def filter_paths(pathnames, patterns, ignore_patterns):
+    """Filters from a set of paths based on acceptable patterns and
+    ignorable patterns."""
     result = []
     for path in pathnames:
-        #path = basename(path)
         if match_patterns(path, patterns) and not match_patterns(path, ignore_patterns):
             result.append(path)
     return result
 
+
+def load_module(module_name):
+    """Imports a module given its name and returns a handle to it."""
+    try:
+        __import__(module_name)
+    except ImportError:
+        raise ImportError('No module named %s' % module_name)
+    return sys.modules[module_name]
+
+
+def class_instance(dotted_path, *args, **kwargs):
+    """Creates an instance of the given class provided the last part of the
+    dotted path is the class name and there is at least one module name
+    preceding the class name.
+
+    Notes:
+    You will need to ensure that the module you are trying to load
+    exists in the Python path.
+
+    Examples:
+    - module.name.ClassName    # Provided module.name is in the Python path.
+    - module.ClassName         # Provided module is in the Python path.
+
+    What won't work:
+    - ClassName
+    - modle.name.ClassName     # Typo in module name.
+    - module.name.ClasNam      # Typo in classname.
+    """
+    dotted_path_split = dotted_path.split('.')
+    if len(dotted_path_split) > 1:
+        klass_name = dotted_path_split[-1]
+        module_name = '.'.join(dotted_path_split[:-1])
+
+        module = load_module(module_name)
+        if hasattr(module, klass_name):
+            klass = getattr(module, klass_name)
+            # Finally create and return an instance of the class
+            return klass(*args, **kwargs)
+        else:
+            raise AttributeError('Module %s does not have class attribute %s' % (module_name, klass_name))
+    else:
+        raise ValueError('Dotted module path %s must contain a module name and a classname' % dotted_path)
+
+
+def read_text_file(file_path, mode='rb'):
+    """Returns the contents of a file after opening it in read-only mode."""
+    return open(file_path, mode).read()
