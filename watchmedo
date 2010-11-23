@@ -141,9 +141,8 @@ def tricks_generate_yaml(args):
 
     header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths}) + "%s:\n" % CONFIG_KEY_TRICKS
     if args.append_to_file is None:
-        content = header + content
         # Output to standard output.
-        print(content)
+        sys.stdout.write(header + content)
     else:
         if not path_exists(args.append_to_file):
             content = header + content
