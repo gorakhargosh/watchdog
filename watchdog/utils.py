@@ -33,10 +33,14 @@ def match_patterns(pathname, patterns):
     return False
 
 
-def filter_paths(pathnames, patterns, ignore_patterns):
+def filter_paths(pathnames, patterns=["*"], ignore_patterns=[]):
     """Filters from a set of paths based on acceptable patterns and
     ignorable patterns."""
     result = []
+    if patterns is None:
+        patterns = []
+    if ignore_patterns is None:
+        ignore_patterns = []
     for path in pathnames:
         if match_patterns(path, patterns) and not match_patterns(path, ignore_patterns):
             result.append(path)
