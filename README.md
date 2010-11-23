@@ -64,7 +64,7 @@ Licensing:
 Watchdog is licensed under the terms of the
 [MIT License](http://www.opensource.org/licenses/mit-license.html)
 
-Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com> and the Watchdog authors.
+Copyright (C) 2010 Gora Khargosh &lt;gora.khargosh@gmail.com&gt; and the Watchdog authors.
 
 Project source code on Github: http://github.com/gorakhargosh/watchdog
 
