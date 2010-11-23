@@ -1,7 +1,5 @@
+python-path: [app, foobar/bin, whatever/another/directory]
 tricks:
 - watchdog.tricks.LoggerTrick:
     kwargs:
-      patterns:
-      - "*.py"
-      - "*.js"
-
+      patterns: ["*.py", "*.js"]

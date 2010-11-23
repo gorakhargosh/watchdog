@@ -49,13 +49,14 @@ DEFAULT_TRICKS_FILE_NAME = 'tricks.yaml'
 DEFAULT_TRICKS_FILE_PATH = path_join(CURRENT_DIR_PATH, DEFAULT_TRICKS_FILE_NAME)
 
 CONFIG_KEY_TRICKS = 'tricks'
+CONFIG_KEY_PYTHON_PATH = 'python-path'
 
+def path_split(path_spec, separator=pathsep):
+    return list(path_spec.split(separator))
 
-def add_to_sys_path(path_spec, index=0, separator=pathsep):
-    paths = path_spec.split(pathsep)[::-1]
-    for path in paths:
+def add_to_sys_path(paths, index=0):
+    for path in paths[::-1]:
         sys.path.insert(index, path)
-
 
 def load_config(tricks_file):
     """Loads the YAML configuration from the specified file."""
@@ -73,13 +74,28 @@ def check_trick_has_key(trick_name, trick, key):
 @arg('files', nargs='*', help='perform tricks from given file')
 @arg('--python-path', default=CURRENT_DIR_PATH, help='string of paths separated by %s to add to the python path' % pathsep)
 def tricks_from(args):
-    add_to_sys_path(args.python_path)
+    add_to_sys_path(path_split(args.python_path))
     observers = []
     for tricks_file in args.files:
         observer = Observer()
-        schedule_tricks(observer, tricks_file)
+
+        if not path_exists(tricks_file):
+            raise IOError("cannot find tricks file: %s" % tricks_file)
+
+        config = load_config(tricks_file)
+
+        if CONFIG_KEY_TRICKS not in config:
+            raise KeyError("No `%s' key specified in %s." % (CONFIG_KEY_TRICKS, input_file))
+        tricks = config[CONFIG_KEY_TRICKS]
+
+        if CONFIG_KEY_PYTHON_PATH in config:
+            add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
+
+        dir_path = abspath(realpath(dirname(tricks_file)))
+        schedule_tricks(observer, tricks, dir_path)
         observer.start()
         observers.append(observer)
+
     try:
         while True:
             time.sleep(1)
@@ -91,17 +107,8 @@ def tricks_from(args):
         o.join()
 
 
-def schedule_tricks(observer, tricks_file):
-    if not path_exists(tricks_file):
-        raise IOError("cannot find tricks file: %s" % tricks_file)
-
-    dir_path = abspath(realpath(dirname(tricks_file)))
-    config = load_config(tricks_file)
-
-    if CONFIG_KEY_TRICKS not in config:
-        raise KeyError("No `%s' key specified in %s." % (CONFIG_KEY_TRICKS, input_file))
-
-    for trick in config[CONFIG_KEY_TRICKS]:
+def schedule_tricks(observer, tricks, watch_path):
+    for trick in tricks:
         for trick_name, trick_value in trick.items():
             check_trick_has_key(trick_name, trick_value, 'kwargs')
             check_trick_has_key(trick_name, trick_value, 'args')
@@ -115,7 +122,7 @@ def schedule_tricks(observer, tricks_file):
             trick_event_handler = TrickClass(*trick_args, **trick_kwargs)
 
             unique_identifier = uuid.uuid1().hex
-            observer.schedule(unique_identifier, trick_event_handler, dir_path)
+            observer.schedule(unique_identifier, trick_event_handler, watch_path)
 
 
 @alias('generate-yaml')
@@ -123,7 +130,8 @@ def schedule_tricks(observer, tricks_file):
 @arg('--python-path', default=CURRENT_DIR_PATH, help='string of paths separated by %s to add to the python path' % pathsep)
 @arg('--append-to-file', default=None, help='appends the generated tricks YAML to a file; if not specified, prints to standard output')
 def tricks_generate_yaml(args):
-    add_to_sys_path(args.python_path)
+    python_paths = path_split(args.python_path)
+    add_to_sys_path(python_paths)
     output = StringIO()
 
     for trick_path in args.trick_paths:
@@ -133,9 +141,14 @@ def tricks_generate_yaml(args):
     content = output.getvalue()
     output.close()
 
+    header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths}) + "%s:\n" % CONFIG_KEY_TRICKS
     if args.append_to_file is None:
+        content = header + content
         print(content)
     else:
+        if not path_exists(args.append_to_file):
+            content = header + content
+
         output = open(args.append_to_file, 'ab')
         output.write(content)
         output.close()
