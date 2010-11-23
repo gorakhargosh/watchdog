@@ -26,7 +26,6 @@
 import os
 import sys
 import yaml
-import imp
 import time
 import uuid
 import logging
@@ -35,13 +34,12 @@ from os.path import exists as path_exists, dirname, join as path_join, abspath, 
 from argh import arg, alias, ArghParser
 from watchdog import Observer, VERSION_STRING
 from watchdog.utils import read_text_file, load_class
-
-logging.basicConfig(level=logging.DEBUG)
-
 try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 CURRENT_DIR_PATH = abspath(realpath(os.getcwd()))
@@ -72,7 +70,7 @@ def check_trick_has_key(trick_name, trick, key):
 
 @alias('tricks')
 @arg('files', nargs='*', help='perform tricks from given file')
-@arg('--python-path', default=CURRENT_DIR_PATH, help='string of paths separated by %s to add to the python path' % pathsep)
+@arg('--python-path', default='.', help='string of paths separated by %s to add to the python path' % pathsep)
 def tricks_from(args):
     add_to_sys_path(path_split(args.python_path))
     observers = []
@@ -125,8 +123,9 @@ def schedule_tricks(observer, tricks, watch_path):
 
 @alias('generate-yaml')
 @arg('trick_paths', nargs='*', help='Dotted paths for all the tricks you want to generate')
-@arg('--python-path', default=CURRENT_DIR_PATH, help='string of paths separated by %s to add to the python path' % pathsep)
+@arg('--python-path', default='.', help='string of paths separated by %s to add to the python path' % pathsep)
 @arg('--append-to-file', default=None, help='appends the generated tricks YAML to a file; if not specified, prints to standard output')
+@arg('--append', default=False, help='if --append-to-file is not specified, produces output for appending instead of a complete tricks yaml file.')
 def tricks_generate_yaml(args):
     python_paths = path_split(args.python_path)
     add_to_sys_path(python_paths)
@@ -142,11 +141,12 @@ def tricks_generate_yaml(args):
     header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths}) + "%s:\n" % CONFIG_KEY_TRICKS
     if args.append_to_file is None:
         # Output to standard output.
-        sys.stdout.write(header + content)
+        if not args.append:
+            content = header + content
+        sys.stdout.write(content)
     else:
         if not path_exists(args.append_to_file):
             content = header + content
-
         output = open(args.append_to_file, 'ab')
         output.write(content)
         output.close()
@@ -160,7 +160,9 @@ def log(args):
     from watchdog.tricks import LoggerTrick
     logging.info('Watchding these directories: %s', args.directories)
 
-    event_handler = LoggerTrick(patterns=args.patterns, ignore_patterns=args.ignore_patterns, ignore_directories=args.ignore_directories)
+    event_handler = LoggerTrick(patterns=args.patterns,
+                                ignore_patterns=args.ignore_patterns,
+                                ignore_directories=args.ignore_directories)
     o = Observer()
     identifier = uuid.uuid1().hex
     o.schedule(identifier, event_handler, *args.directories)
