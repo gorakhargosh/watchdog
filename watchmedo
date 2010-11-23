@@ -1,6 +1,117 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # watchmedo.py - Reads a tricks.yaml file and executes all the tricks.
+#
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
-# 
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
+
+import os
+import sys
+import yaml
+import imp
+import time
+import uuid
+import logging
+
+from os.path import exists as path_exists, dirname, join as path_join, abspath, realpath
+from argh import arg, ArghParser
+from watchdog import Observer, VERSION_STRING
+from watchdog.utils import read_text_file, class_instance
+
+logging.basicConfig(level=logging.DEBUG)
+
+
+CURRENT_DIR = os.getcwd()
+DEFAULT_TRICKS_FILE_NAME = 'tricks.yaml'
+DEFAULT_TRICKS_FILE_PATH = path_join(CURRENT_DIR, DEFAULT_TRICKS_FILE_NAME)
+
+CONFIG_KEY_TRICKS = 'tricks'
+
+
+def load_config(tricks_file):
+    """Loads the YAML configuration from the specified file."""
+    content = read_text_file(tricks_file)
+    config = yaml.load(content)
+    return config
+
+def check_trick_has_key(trick_name, trick, key):
+    if key not in trick:
+        logging.warn("Key `%s' not found for trick `%s'. Typo or missing?", key, trick_name)
+
+
+@arg('files', nargs='*', help='perform tricks from given file')
+def run(args):
+    observers = []
+    for tricks_file in args.files:
+        observer = Observer()
+        schedule_tricks(observer, tricks_file)
+        observers.append(observer)
+    for observer in observers:
+        observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        for observer in observers:
+            observer.unschedule()
+            observer.stop()
+    for observer in observers:
+        observer.join()
+
+
+def schedule_tricks(observer, tricks_file):
+    if path_exists(tricks_file):
+        dir_path = abspath(realpath(dirname(tricks_file)))
+        config = load_config(tricks_file)
+
+        if CONFIG_KEY_TRICKS not in config:
+            raise KeyError("No `tricks' key specified in %s." % input_file)
+
+        for trick in config[CONFIG_KEY_TRICKS]:
+            for trick_name, trick_value in trick.items():
+                check_trick_has_key(trick_name, trick_value, 'kwargs')
+                check_trick_has_key(trick_name, trick_value, 'args')
+
+                trick_kwargs = trick_value.get('kwargs', {})
+                trick_args = trick_value.get('args', ())
+                trick_event_handler = class_instance(trick_name, *trick_args, **trick_kwargs)
+
+                unique_identifier = uuid.uuid1().hex
+                observer.schedule(unique_identifier, trick_event_handler, dir_path)
+
+
+@arg('modules', nargs='*', help='modules')
+def generate(args):
+    print(args)
+
+
+@arg('directory', default=CURRENT_DIR, help='directory to watch.')
+@arg('--patterns', help='matches event paths with given patterns.')
+@arg('--ignore-patterns', help='ignores event paths with these patterns.')
+def log(args):
+    pass
+
+parser = ArghParser()
+parser.add_commands([run, generate], namespace='tricks')
+parser.add_argument('--version', action='version', version='%(prog)s ' + VERSION_STRING)
+
+if __name__ == '__main__':
+    parser.dispatch()

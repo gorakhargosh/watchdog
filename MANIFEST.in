@@ -3,5 +3,6 @@ include LICENSE
 include AUTHORS
 include watchdog/_watchdog_fsevents.h
 include watchdog/observers/*.py
+include watchdog/tricks/*.py
 
 

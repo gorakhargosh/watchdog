@@ -1,0 +1,7 @@
+tricks:
+- watchdog.tricks.LoggerTrick:
+    kwargs:
+      patterns:
+      - "*.py"
+      - "*.js"
+
