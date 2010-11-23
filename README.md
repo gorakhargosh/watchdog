@@ -66,5 +66,6 @@ Watchdog is licensed under the terms of the
 
 Copyright (C) 2010 Gora Khargosh &lt;gora.khargosh@gmail.com&gt; and the Watchdog authors.
 
-Project source code on Github: http://github.com/gorakhargosh/watchdog
+Project source code on the [Github Issue Tracker](http://github.com/gorakhargosh/watchdog)
+
 
