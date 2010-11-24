@@ -48,7 +48,7 @@ from os.path import realpath, abspath, sep as path_separator, join as path_join,
 from threading import Thread, Event as ThreadedEvent
 from Queue import Queue
 
-from watchdog.polling_observer import PollingObserver, _Rule
+from polling_observer import PollingObserver, _Rule
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
 
