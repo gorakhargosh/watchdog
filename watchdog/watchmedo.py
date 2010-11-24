@@ -186,5 +186,10 @@ parser.add_commands([tricks_from, tricks_generate_yaml])
 parser.add_commands([log])
 parser.add_argument('--version', action='version', version='%(prog)s ' + VERSION_STRING)
 
-if __name__ == '__main__':
+def main():
+    """Entry-point function."""
     parser.dispatch()
+
+if __name__ == '__main__':
+    main()
+
