@@ -51,9 +51,12 @@ CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
 
 def path_split(path_spec, separator=pathsep):
+    """Splits a path specification separated by an OS-dependent separator
+    (: on Unix and ; on Windows, for examples)."""
     return list(path_spec.split(separator))
 
 def add_to_sys_path(paths, index=0):
+    """Adds specified paths at specified index into the sys.path list."""
     for path in paths[::-1]:
         sys.path.insert(index, path)
 
@@ -67,6 +70,49 @@ def load_config(tricks_file):
 def check_trick_has_key(trick_name, trick, key):
     if key not in trick:
         logging.warn("Key `%s' not found for trick `%s'. Typo or missing?", key, trick_name)
+
+
+def parse_patterns(patterns_spec, ignore_patterns_spec):
+    """Parses pattern argument specs and returns a two-tuple of (patterns, ignore_patterns)."""
+    separator = ';'
+    patterns = patterns_spec.split(separator)
+    ignore_patterns = ignore_patterns_spec.split(separator)
+    if ignore_patterns == ['']:
+        ignore_patterns = []
+    return (patterns, ignore_patterns)
+
+
+def observe_with(identifier, event_handler, *paths):
+    """Single observer given an identifier, event handler, and directories
+    to watch."""
+    o = Observer()
+    o.schedule(identifier, event_handler, *paths)
+    o.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        o.unschedule(identifier)
+        o.stop()
+    o.join()
+
+
+def schedule_tricks(observer, tricks, watch_path):
+    """Schedules tricks with the specified observer and for the given watch
+    path."""
+    for trick in tricks:
+        for trick_name, trick_value in trick.items():
+            check_trick_has_key(trick_name, trick_value, 'kwargs')
+            check_trick_has_key(trick_name, trick_value, 'args')
+
+            trick_kwargs = trick_value.get('kwargs', {})
+            trick_args = trick_value.get('args', ())
+
+            TrickClass = load_class(trick_name)
+            trick_event_handler = TrickClass(*trick_args, **trick_kwargs)
+
+            unique_identifier = uuid.uuid1().hex
+            observer.schedule(unique_identifier, trick_event_handler, watch_path)
 
 
 @alias('tricks')
@@ -106,20 +152,6 @@ def tricks_from(args):
         o.join()
 
 
-def schedule_tricks(observer, tricks, watch_path):
-    for trick in tricks:
-        for trick_name, trick_value in trick.items():
-            check_trick_has_key(trick_name, trick_value, 'kwargs')
-            check_trick_has_key(trick_name, trick_value, 'args')
-
-            trick_kwargs = trick_value.get('kwargs', {})
-            trick_args = trick_value.get('args', ())
-
-            TrickClass = load_class(trick_name)
-            trick_event_handler = TrickClass(*trick_args, **trick_kwargs)
-
-            unique_identifier = uuid.uuid1().hex
-            observer.schedule(unique_identifier, trick_event_handler, watch_path)
 
 
 @alias('generate-yaml')
@@ -159,36 +191,48 @@ def tricks_generate_yaml(args):
 @arg('--ignore-directories', default=False, help='ignores events for directories')
 def log(args):
     from watchdog.tricks import LoggerTrick
-    #logging.info('Watchding these directories: %s', args.directories)
-
-    patterns = args.patterns.split(';')
-    ignore_patterns = args.ignore_patterns.split(';')
-    if ignore_patterns == ['']:
-        ignore_patterns = []
+    patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     event_handler = LoggerTrick(patterns=patterns,
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories)
-    o = Observer()
-    identifier = 'logger'
-    o.schedule(identifier, event_handler, *args.directories)
-    o.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        o.unschedule(identifier)
-        o.stop()
-    o.join()
+    observe_with('logger', event_handler, *args.directories)
+
+
+@alias('shell-command')
+@arg('command', nargs='*', default=None, help='command that will be executed by the shell in reaction to matched events')
+@arg('--watch-directories', default='.', help='directories to watch (separated by %s)' % pathsep)
+@arg('--patterns', default='*', help='matches event paths with these patterns (separated by ;).')
+@arg('--ignore-patterns', default='', help='ignores event paths with these patterns (separated by ;).')
+@arg('--ignore-directories', default=False, help='ignores events for directories')
+def shell_command(args):
+    from watchdog.tricks import ShellCommandTrick
+
+    if not args.command:
+        args.command = None
+    else:
+        args.command = args.command[0]
+
+    patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
+    watch_directories = path_split(args.watch_directories)
+    event_handler = ShellCommandTrick(shell_command=args.command,
+                                      patterns=patterns,
+                                      ignore_patterns=ignore_patterns,
+                                      ignore_directories=args.ignore_directories)
+    observe_with('shell-command', event_handler, *watch_directories)
 
 
 parser = ArghParser()
-parser.add_commands([tricks_from, tricks_generate_yaml])
-parser.add_commands([log])
+parser.add_commands([tricks_from,
+                     tricks_generate_yaml,
+                     log,
+                     shell_command])
 parser.add_argument('--version', action='version', version='%(prog)s ' + VERSION_STRING)
+
 
 def main():
     """Entry-point function."""
     parser.dispatch()
+
 
 if __name__ == '__main__':
     main()

@@ -21,6 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import subprocess
+
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.utils import filter_paths
 
@@ -52,12 +54,43 @@ class Trick(PatternMatchingEventHandler):
         return template_yaml % context
 
     def do(self, event):
-        raise NotImplementedError('Please implement this method.')
-
+        raise NotImplementedError("Method `do' not implemented in class %s." % self.__class__.__name__)
 
 
 class LoggerTrick(Trick):
     def do(self, event):
         logging.info(event)
+
+
+class ShellCommandTrick(Trick):
+    def __init__(self, shell_command=None, patterns=['*'], ignore_patterns=[], ignore_directories=False):
+        Trick.__init__(self, patterns, ignore_patterns, ignore_directories)
+        self.shell_command = shell_command
+
+    def do(self, event):
+        if event.is_directory:
+            object_type = 'directory'
+        else:
+            object_type = 'file'
+
+        context = {
+            'src_path': event.path,
+            'dest_path': '',
+            'event': event.event_type,
+            'object': object_type,
+            }
+
+        if self.shell_command is None:
+            if hasattr(event, 'new_path'):
+                context.update({'dest_path': event.new_path})
+                command = 'echo "%(event)s %(object)s from %(src_path)s to %(dest_path)s"' % context
+            else:
+                command = 'echo "%(event)s %(object)s %(src_path)s"' % context
+        else:
+            if hasattr(event, 'new_path'):
+                context.update({'dest_path': event.new_path})
+            command = self.shell_command % context
+        #logging.debug(command)
+        p = subprocess.Popen(command, shell=True)
 
 
