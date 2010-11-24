@@ -55,9 +55,11 @@ portably as possible using:
 
 Dependencies:
 -------------
-1. pywin32 (only on Windows)
-2. pyinotify (only on Linux)
+1. [pywin32](http://sourceforge.net/projects/pywin32/) (only on Windows)
+2. [pyinotify](http://github.com/seb-m/pyinotify) (only on Linux)
 3. XCode or gcc (only on Mac OS X)
+4. [PyYAML](http://www.pyyaml.org/)
+5. [argh](http://pypi.python.org/pypi/argh)
 
 Licensing:
 ----------
