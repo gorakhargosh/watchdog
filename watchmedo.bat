@@ -5,7 +5,7 @@ set SCRIPT_ERRORLEVEL=
 if "%OS%" == "Windows_NT" goto WinNT
 
 @REM Windows 9x/Me you better not have more than 9 arguments.
-python watchmedo %1 %2 %3 %4 %5 %6 %7 %8 %9
+python -c "from watchdog import watchmedo; watchmedo.main()" %1 %2 %3 %4 %5 %6 %7 %8 %9
 @REM No way to set exit status of this script for 9x/Me
 goto endscript
 
@@ -13,7 +13,7 @@ goto endscript
 :WinNT
 setlocal
 set path=%~dp0;%~dp0..;%path%
-python watchmedo %*
+python -c "from watchdog import watchmedo; watchmedo.main()" %*
 endlocal & set SCRIPT_ERRORLEVEL=%ERRORLEVEL%
 
 if not "%COMSPEC%" == "%SystemRoot%\system32\cmd.exe" goto returncode
