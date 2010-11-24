@@ -39,6 +39,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -168,7 +169,7 @@ def log(args):
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories)
     o = Observer()
-    identifier = uuid.uuid1().hex
+    identifier = 'logger'
     o.schedule(identifier, event_handler, *args.directories)
     o.start()
     try:
