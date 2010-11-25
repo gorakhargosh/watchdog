@@ -93,8 +93,8 @@ class _PollingEventEmitter(Thread):
                 for path in diff.files_created:
                     q.put((self.path, FileCreatedEvent(path)))
 
-                for path, new_path in diff.files_moved.items():
-                    q.put((self.path, FileMovedEvent(path, new_path)))
+                for path, dest_path in diff.files_moved.items():
+                    q.put((self.path, FileMovedEvent(path, dest_path)))
 
                 for path in diff.dirs_modified:
                     q.put((self.path, DirModifiedEvent(path)))
@@ -105,8 +105,8 @@ class _PollingEventEmitter(Thread):
                 for path in diff.dirs_created:
                     q.put((self.path, DirCreatedEvent(path)))
 
-                for path, new_path in diff.dirs_moved.items():
-                    q.put((self.path, DirMovedEvent(path, new_path)))
+                for path, dest_path in diff.dirs_moved.items():
+                    q.put((self.path, DirMovedEvent(path, dest_path)))
 
 
 

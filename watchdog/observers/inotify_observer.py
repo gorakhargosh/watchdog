@@ -74,11 +74,11 @@ class _ProcessEventDispatcher(ProcessEvent):
         # TODO: Moved event on a directory does not fire moved event for
         # files inside the directory. Fix?
         path = event.src_pathname
-        new_path = event.pathname
+        dest_path = event.pathname
         if event.dir:
-            self.event_handler.on_moved(DirMovedEvent(path, new_path=new_path))
+            self.event_handler.on_moved(DirMovedEvent(path, dest_path))
         else:
-            self.event_handler.on_moved(FileMovedEvent(path, new_path=new_path))
+            self.event_handler.on_moved(FileMovedEvent(path, dest_path))
 
 
 class _Rule(object):

@@ -128,8 +128,8 @@ class FSEventsObserver(Thread):
             for path in diff.files_created:
                 event_handler.dispatch(FileCreatedEvent(path))
 
-            for path, new_path in diff.files_moved.items():
-                event_handler.dispatch(FileMovedEvent(path, new_path))
+            for path, dest_path in diff.files_moved.items():
+                event_handler.dispatch(FileMovedEvent(path, dest_path))
 
             for path in diff.dirs_modified:
                 event_handler.dispatch(DirModifiedEvent(path))
@@ -140,8 +140,8 @@ class FSEventsObserver(Thread):
             for path in diff.dirs_created:
                 event_handler.dispatch(DirCreatedEvent(path))
 
-            for path, new_path in diff.dirs_moved.items():
-                event_handler.dispatch(DirMovedEvent(path, new_path))
+            for path, dest_path in diff.dirs_moved.items():
+                event_handler.dispatch(DirMovedEvent(path, dest_path))
 
 
     def _schedule_and_set_callback(self, stream):

@@ -23,6 +23,7 @@
 
 import logging
 from watchdog.utils import filter_paths
+from watchdog.decorator_utils import deprecated
 
 EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
@@ -35,8 +36,8 @@ class FileSystemEvent(object):
     Represents a file system event that is triggered when a change occurs
     in a directory that is being monitored.
     """
-    def __init__(self, event_type, path, is_directory=False):
-        self._path = path
+    def __init__(self, event_type, src_path, is_directory=False):
+        self._src_path = src_path
         self._is_directory = is_directory
         self._event_type = event_type
 
@@ -44,15 +45,20 @@ class FileSystemEvent(object):
         return self.__repr__()
 
     def __repr__(self):
-        return str((self._event_type, self._path, self._is_directory))
+        return str((self.event_type, self.src_path, self.is_directory))
 
     @property
     def is_directory(self):
         return self._is_directory
 
     @property
+    def src_path(self):
+        return self._src_path
+
+    @property
+    @deprecated
     def path(self):
-        return self._path
+        return self._src_path
 
     @property
     def event_type(self):
@@ -63,50 +69,55 @@ class FileSystemMovedEvent(FileSystemEvent):
     """
     Base class for file system movement.
     """
-    def __init__(self, path, new_path, is_directory=False):
-        self._new_path = new_path
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MOVED, path=path, is_directory=is_directory)
+    def __init__(self, src_path, dest_path, is_directory=False):
+        self._dest_path = dest_path
+        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MOVED, src_path=src_path, is_directory=is_directory)
 
     @property
+    @deprecated
     def new_path(self):
-        return self._new_path
+        return self._dest_path
+
+    @property
+    def dest_path(self):
+        return self._dest_path
 
     def __repr__(self):
-        return str((self.event_type, self.path, self.new_path, self.is_directory))
+        return str((self.event_type, self.src_path, self.dest_path, self.is_directory))
 
 
 # File events.
 class FileDeletedEvent(FileSystemEvent):
-    def __init__(self, path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_DELETED, path=path)
+    def __init__(self, src_path):
+        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_DELETED, src_path=src_path)
 
 class FileModifiedEvent(FileSystemEvent):
-    def __init__(self, path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MODIFIED, path=path)
+    def __init__(self, src_path):
+        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MODIFIED, src_path=src_path)
 
 class FileCreatedEvent(FileSystemEvent):
-    def __init__(self, path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_CREATED, path=path)
+    def __init__(self, src_path):
+        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_CREATED, src_path=src_path)
 
 class FileMovedEvent(FileSystemMovedEvent):
     pass
 
 # Directory events.
 class DirDeletedEvent(FileSystemEvent):
-    def __init__(self, path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_DELETED, path=path, is_directory=True)
+    def __init__(self, src_path):
+        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_DELETED, src_path=src_path, is_directory=True)
 
 class DirModifiedEvent(FileSystemEvent):
-    def __init__(self, path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MODIFIED, path=path, is_directory=True)
+    def __init__(self, src_path):
+        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MODIFIED, src_path=src_path, is_directory=True)
 
 class DirCreatedEvent(FileSystemEvent):
-    def __init__(self, path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_CREATED, path=path, is_directory=True)
+    def __init__(self, src_path):
+        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_CREATED, src_path=src_path, is_directory=True)
 
 class DirMovedEvent(FileSystemMovedEvent):
-    def __init__(self, path, new_path):
-        FileSystemMovedEvent.__init__(self, path=path, new_path=new_path, is_directory=True)
+    def __init__(self, src_path, dest_path):
+        FileSystemMovedEvent.__init__(self, src_path=src_path, dest_path=dest_path, is_directory=True)
 
 
 
@@ -187,10 +198,10 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         if self.ignore_directories and event.is_directory:
             return
 
-        if hasattr(event, 'new_path'):
-            paths = [event.path, event.new_path]
+        if hasattr(event, 'dest_path'):
+            paths = [event.src_path, event.dest_path]
         else:
-            paths = [event.path]
+            paths = [event.src_path]
 
         if filter_paths(paths, self.patterns, self.ignore_patterns):
             self.on_any_event(event)
@@ -208,16 +219,16 @@ class LoggingFileSystemEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
     def on_moved(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Moved %s: from %s to %s", what, event.path, event.new_path)
+        logging.info("Moved %s: from %s to %s", what, event.src_path, event.dest_path)
 
     def on_created(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Created %s: %s", what, event.path)
+        logging.info("Created %s: %s", what, event.src_path)
 
     def on_deleted(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Deleted %s: %s", what, event.path)
+        logging.info("Deleted %s: %s", what, event.src_path)
 
     def on_modified(self, event):
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Modified %s: %s", what, event.path)
+        logging.info("Modified %s: %s", what, event.src_path)

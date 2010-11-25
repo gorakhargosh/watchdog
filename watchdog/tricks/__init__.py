@@ -74,21 +74,21 @@ class ShellCommandTrick(Trick):
             object_type = 'file'
 
         context = {
-            'src_path': event.path,
+            'src_path': event.src_path,
             'dest_path': '',
             'event': event.event_type,
             'object': object_type,
             }
 
         if self.shell_command is None:
-            if hasattr(event, 'new_path'):
-                context.update({'dest_path': event.new_path})
+            if hasattr(event, 'dest_path'):
+                context.update({'dest_path': event.dest_path})
                 command = 'echo "%(event)s %(object)s from %(src_path)s to %(dest_path)s"' % context
             else:
                 command = 'echo "%(event)s %(object)s %(src_path)s"' % context
         else:
-            if hasattr(event, 'new_path'):
-                context.update({'dest_path': event.new_path})
+            if hasattr(event, 'dest_path'):
+                context.update({'dest_path': event.dest_path})
             command = self.shell_command % context
         #logging.debug(command)
         p = subprocess.Popen(command, shell=True)
