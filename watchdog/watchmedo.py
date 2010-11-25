@@ -190,6 +190,7 @@ def tricks_generate_yaml(args):
 @arg('--ignore-directories', default=False, help='ignores events for directories')
 @arg('--recursive', default=False, help='monitors the directories recursively')
 @arg('--debug-force-polling', default=False, help='[debug flag] forces using the polling observer implementation.')
+@arg('--debug-force-kqueue', default=False, help='[debug flag] forces using the kqueue observer implementation.')
 def log(args):
     from watchdog.tricks import LoggerTrick
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
@@ -199,6 +200,9 @@ def log(args):
     if args.debug_force_polling:
         from watchdog.observers.polling_observer import PollingObserver
         observer = PollingObserver()
+    elif args.debug_force_kqueue:
+        from watchdog.observers.kqueue_observer import KqueueObserver
+        observer = KqueueObserver()
     else:
         observer = Observer()
     observe_with(observer, 'logger', event_handler, args.directories, args.recursive)
