@@ -37,7 +37,7 @@ class _PollingEventEmitter(Thread):
     """Daemon thread that monitors a given path recursively and emits
     file system events.
     """
-    def __init__(self, path, interval=1, out_event_queue=None, recursive=True, name=None):
+    def __init__(self, path, interval=1, out_event_queue=None, recursive=False, name=None):
         """Monitors a given path and appends file system modification
         events to the output queue."""
         Thread.__init__(self)
@@ -157,7 +157,7 @@ class PollingObserver(Thread):
 
 
     @synchronized()
-    def schedule(self, name, event_handler, recursive=False, paths=None):
+    def schedule(self, name, event_handler, paths=None, recursive=False):
         """Schedules monitoring specified paths and calls methods in the
         given callback handler based on events occurring in the file system.
         """

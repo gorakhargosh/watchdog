@@ -14,7 +14,7 @@ event_handler = MyEventHandler(patterns=['*.py', '*.pyc'],
                                 ignore_patterns=['version.py'],
                                 ignore_directories=True)
 observer = watchdog.Observer()
-observer.schedule('a-unique-name', event_handler, recursive=True, sys.argv[1:])
+observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
 observer.start()
 try:
     while True:

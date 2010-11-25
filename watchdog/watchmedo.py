@@ -82,11 +82,11 @@ def parse_patterns(patterns_spec, ignore_patterns_spec):
     return (patterns, ignore_patterns)
 
 
-def observe_with(identifier, event_handler, recursive, paths):
+def observe_with(identifier, event_handler, paths, recursive):
     """Single observer given an identifier, event handler, and directories
     to watch."""
     o = Observer()
-    o.schedule(identifier, event_handler, recursive, paths)
+    o.schedule(identifier, event_handler, paths, recursive)
     o.start()
     try:
         while True:
@@ -112,7 +112,7 @@ def schedule_tricks(observer, tricks, watch_path):
             trick_event_handler = TrickClass(*trick_args, **trick_kwargs)
 
             unique_identifier = uuid.uuid1().hex
-            observer.schedule(unique_identifier, trick_event_handler, [watch_path])
+            observer.schedule(unique_identifier, trick_event_handler, [watch_path], recursive=True)
 
 
 @alias('tricks')
@@ -196,7 +196,7 @@ def log(args):
     event_handler = LoggerTrick(patterns=patterns,
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories)
-    observe_with('logger', event_handler, args.recursive, args.directories)
+    observe_with('logger', event_handler, args.directories, args.recursive)
 
 
 @alias('shell-command')
@@ -220,7 +220,7 @@ def shell_command(args):
                                       patterns=patterns,
                                       ignore_patterns=ignore_patterns,
                                       ignore_directories=args.ignore_directories)
-    observe_with('shell-command', event_handler, args.recursive, watch_directories)
+    observe_with('shell-command', event_handler, watch_directories, args.recursive)
 
 
 parser = ArghParser()

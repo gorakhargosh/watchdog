@@ -111,7 +111,7 @@ def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
 
 class _Win32EventEmitter(Thread):
     """"""
-    def __init__(self, path, out_event_queue, recursive=True, *args, **kwargs):
+    def __init__(self, path, out_event_queue, recursive, *args, **kwargs):
         Thread.__init__(self)
         self.stopped = ThreadedEvent()
         self.setDaemon(True)

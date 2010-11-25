@@ -105,7 +105,7 @@ class InotifyObserver(Thread):
 
 
     @synchronized()
-    def schedule(self, name, event_handler, recursive=False, paths=None):
+    def schedule(self, name, event_handler, paths=None, recursive=False):
         """Schedules monitoring."""
         if not paths:
             raise ValueError('Please specify a few paths.')

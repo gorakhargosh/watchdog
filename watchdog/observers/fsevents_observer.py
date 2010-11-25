@@ -40,7 +40,7 @@ def get_parent_dir_path(path):
 
 class _Stream(object):
     """Stream object that acts as a conduit for the _fsevents module API."""
-    def __init__(self, name, event_handler, recursive, paths):
+    def __init__(self, name, event_handler, paths, recursive):
         for path in paths:
             if not isinstance(path, str):
                 raise TypeError(
@@ -187,13 +187,13 @@ class FSEventsObserver(Thread):
 
 
     @synchronized()
-    def schedule(self, name, event_handler, recursive=False, paths=None):
+    def schedule(self, name, event_handler, paths=None, recursive=False):
         if not paths:
             raise ValueError('Please specify a few paths.')
         if isinstance(paths, basestring):
             paths = [paths]
 
-        s = _Stream(name, event_handler, recursive, paths)
+        s = _Stream(name, event_handler, paths, recursive)
         self.map_name_to_stream[name] = s
         self._schedule_stream(s)
 

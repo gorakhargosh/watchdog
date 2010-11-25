@@ -25,7 +25,7 @@ class MyEventHandler(FileSystemEventHandler):
 
 event_handler = MyEventHandler()
 observer = Observer()
-observer.schedule('a-unique-name', event_handler, recursive=True, sys.argv[1:])
+observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
 observer.start()
 try:
     while True:
