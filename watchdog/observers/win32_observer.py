@@ -46,7 +46,6 @@ from win32file import ReadDirectoryChangesW, CreateFile, CloseHandle
 
 from os.path import realpath, abspath, sep as path_separator, join as path_join, isdir as path_isdir
 from threading import Thread, Event as ThreadedEvent
-from Queue import Queue
 
 from watchdog.observers.polling_observer import PollingObserver, _Rule
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \

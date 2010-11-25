@@ -41,11 +41,6 @@ def get_parent_dir_path(path):
 class _Stream(object):
     """Stream object that acts as a conduit for the _fsevents module API."""
     def __init__(self, name, event_handler, paths, recursive):
-        for path in paths:
-            if not isinstance(path, str):
-                raise TypeError(
-                    "Path must be string, not '%s'." % type(path).__name__)
-
         # Strip the path of the ending separator to ensure consistent keys
         # in the self.snapshot_for_path dictionary.
         self.is_recursive = recursive
@@ -192,6 +187,10 @@ class FSEventsObserver(Thread):
             raise ValueError('Please specify a few paths.')
         if isinstance(paths, basestring):
             paths = [paths]
+
+        for path in paths:
+            if not isinstance(path, basestring):
+                raise TypeError("Path must be string, not '%s'." % type(path).__name__)
 
         s = _Stream(name, event_handler, paths, recursive)
         self.map_name_to_stream[name] = s

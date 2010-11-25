@@ -22,8 +22,13 @@
 # THE SOFTWARE.
 
 from os.path import realpath, abspath, isdir as path_isdir
-from Queue import Queue, Empty as QueueEmpty
 from threading import Thread, Event as ThreadedEvent
+
+try:
+    # Python 3k
+    from queue import Queue, Empty as QueueEmpty
+except ImportError:
+    from Queue import Queue, Empty as QueueEmpty
 
 from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized

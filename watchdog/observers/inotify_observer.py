@@ -119,9 +119,8 @@ class InotifyObserver(Thread):
         notifier = ThreadedNotifier(self.wm, dispatcher)
         self.notifiers.add(notifier)
         for path in paths:
-            if not isinstance(path, str):
-                raise TypeError(
-                    "Path must be string, not '%s'." % type(path).__name__)
+            if not isinstance(path, basestring):
+                raise TypeError("Path must be string, not '%s'." % type(path).__name__)
             descriptors = self.wm.add_watch(path, ALL_EVENTS, rec=recursive, auto_add=True)
         self.name_to_rule[name] = _Rule(name, notifier, descriptors)
         notifier.start()
