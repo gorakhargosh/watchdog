@@ -30,7 +30,8 @@ Notes:
 
 """
 
-from os import walk, stat as os_stat
+import os
+from os import stat as os_stat
 from os.path import join as path_join, realpath, abspath
 from stat import S_ISDIR
 
@@ -142,10 +143,18 @@ class DirectorySnapshotDiff(object):
 
 class DirectorySnapshot(object):
     """A snapshot of stat information of files in a directory."""
-    def __init__(self, path):
+    def __init__(self, path, recursive=True):
         self._path = abspath(realpath(path))
         self._dirs_stat_snapshot = {}
         self._stat_snapshot = {}
+        self.is_recursive = recursive
+
+        if recursive:
+            walk = os.walk
+        else:
+            def walk(path):
+                yield next(os.walk(path))
+
         for root, directories, files in walk(self._path):
             for file_name in files:
                 try:
