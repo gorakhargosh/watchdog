@@ -82,19 +82,18 @@ def parse_patterns(patterns_spec, ignore_patterns_spec):
     return (patterns, ignore_patterns)
 
 
-def observe_with(identifier, event_handler, paths, recursive):
+def observe_with(observer, identifier, event_handler, paths, recursive):
     """Single observer given an identifier, event handler, and directories
     to watch."""
-    o = Observer()
-    o.schedule(identifier, event_handler, paths, recursive)
-    o.start()
+    observer.schedule(identifier, event_handler, paths, recursive)
+    observer.start()
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        o.unschedule(identifier)
-        o.stop()
-    o.join()
+        observer.unschedule(identifier)
+        observer.stop()
+    observer.join()
 
 
 def schedule_tricks(observer, tricks, watch_path):
@@ -190,13 +189,19 @@ def tricks_generate_yaml(args):
 @arg('--ignore-patterns', default='', help='ignores event paths with these patterns (separated by ;).')
 @arg('--ignore-directories', default=False, help='ignores events for directories')
 @arg('--recursive', default=False, help='monitors the directories recursively')
+@arg('--debug-force-polling', default=False, help='[debug flag] forces using the polling observer implementation.')
 def log(args):
     from watchdog.tricks import LoggerTrick
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     event_handler = LoggerTrick(patterns=patterns,
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories)
-    observe_with('logger', event_handler, args.directories, args.recursive)
+    if args.debug_force_polling:
+        from watchdog.observers.polling_observer import PollingObserver
+        observer = PollingObserver()
+    else:
+        observer = Observer()
+    observe_with(observer, 'logger', event_handler, args.directories, args.recursive)
 
 
 @alias('shell-command')
@@ -220,7 +225,7 @@ def shell_command(args):
                                       patterns=patterns,
                                       ignore_patterns=ignore_patterns,
                                       ignore_directories=args.ignore_directories)
-    observe_with('shell-command', event_handler, watch_directories, args.recursive)
+    observe_with(Observer(), 'shell-command', event_handler, watch_directories, args.recursive)
 
 
 parser = ArghParser()
