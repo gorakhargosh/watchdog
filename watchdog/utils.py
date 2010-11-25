@@ -21,9 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import os
 import sys
 from fnmatch import fnmatch
-
 
 def match_patterns(pathname, patterns):
     """Returns True if the pathname matches any of the given patterns."""
@@ -94,3 +94,13 @@ def load_class(dotted_path, *args, **kwargs):
 def read_text_file(file_path, mode='rb'):
     """Returns the contents of a file after opening it in read-only mode."""
     return open(file_path, mode).read()
+
+
+def get_walker(recursive=False):
+    """Returns a recursive or a non-recursive directory walker."""
+    if recursive:
+        walk = os.walk
+    else:
+        def walk(path):
+            yield next(os.walk(path))
+    return walk
