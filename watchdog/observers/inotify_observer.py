@@ -105,10 +105,16 @@ class InotifyObserver(Thread):
 
 
     @synchronized()
-    def schedule(self, name, event_handler, *paths):
+    def schedule(self, name, event_handler, recursive=False, paths=None):
         """Schedules monitoring."""
+        if not paths:
+            raise ValueError('Please specify a few paths.')
+        if isinstance(paths, basestring):
+            paths = [paths]
+
         #from pyinotify import PrintAllEvents
         #dispatcher = PrintAllEvents()
+
         dispatcher = _ProcessEventDispatcher(event_handler=event_handler)
         notifier = ThreadedNotifier(self.wm, dispatcher)
         self.notifiers.add(notifier)
@@ -116,7 +122,7 @@ class InotifyObserver(Thread):
             if not isinstance(path, str):
                 raise TypeError(
                     "Path must be string, not '%s'." % type(path).__name__)
-            descriptors = self.wm.add_watch(path, ALL_EVENTS, rec=True, auto_add=True)
+            descriptors = self.wm.add_watch(path, ALL_EVENTS, rec=recursive, auto_add=True)
         self.name_to_rule[name] = _Rule(name, notifier, descriptors)
         notifier.start()
 

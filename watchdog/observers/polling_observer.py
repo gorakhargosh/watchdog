@@ -37,7 +37,7 @@ class _PollingEventEmitter(Thread):
     """Daemon thread that monitors a given path recursively and emits
     file system events.
     """
-    def __init__(self, path, interval=1, out_event_queue=None, name=None):
+    def __init__(self, path, interval=1, out_event_queue=None, recursive=True, name=None):
         """Monitors a given path and appends file system modification
         events to the output queue."""
         Thread.__init__(self)
@@ -46,6 +46,7 @@ class _PollingEventEmitter(Thread):
         self.stopped = ThreadedEvent()
         self.snapshot = None
         self.path = path
+        self.is_recursive = recursive
         if name is None:
             self.name = '%s(%s)' % (self.__class__.__name__, realpath(abspath(self.path)))
         else:
@@ -62,10 +63,10 @@ class _PollingEventEmitter(Thread):
     def _get_directory_snapshot_diff(self):
         """Obtains a diff of two directory snapshots."""
         if self.snapshot is None:
-            self.snapshot = DirectorySnapshot(self.path)
+            self.snapshot = DirectorySnapshot(self.path, recursive=self.is_recursive)
             diff = None
         else:
-            new_snapshot = DirectorySnapshot(self.path)
+            new_snapshot = DirectorySnapshot(self.path, recursive=self.is_recursive)
             diff = new_snapshot - self.snapshot
             self.snapshot = new_snapshot
         return diff
@@ -146,28 +147,38 @@ class PollingObserver(Thread):
         self.stopped = ThreadedEvent()
 
 
-    def _create_event_emitter(self, path):
-        return _PollingEventEmitter(path=path, interval=self.interval, out_event_queue=self.event_queue)
+    # The win32 observer overrides this method because all of the other
+    # functionality of this class is the same as its own.
+    def _create_event_emitter(self, path, recursive):
+        return _PollingEventEmitter(path=path,
+                                    interval=self.interval,
+                                    out_event_queue=self.event_queue,
+                                    recursive=recursive)
 
 
     @synchronized()
-    def schedule(self, name, event_handler, *paths):
+    def schedule(self, name, event_handler, recursive=False, paths=None):
         """Schedules monitoring specified paths and calls methods in the
         given callback handler based on events occurring in the file system.
         """
+        if not paths:
+            raise ValueError('Please specify a few paths.')
+        if isinstance(paths, basestring):
+            paths = [paths]
+
         self.map_name_to_paths[name] = set()
         for path in paths:
             if not isinstance(path, str):
                 raise TypeError(
                     "Path must be string, not '%s'." % type(path).__name__)
-            self._schedule_path(name, event_handler, path)
+            self._schedule_path(name, event_handler, recursive, path)
 
 
     @synchronized()
-    def _schedule_path(self, name, event_handler, path):
+    def _schedule_path(self, name, event_handler, recursive, path):
         """Starts monitoring the given path for file system events."""
         if path_isdir(path) and not path in self.rules:
-            event_emitter = self._create_event_emitter(path=path)
+            event_emitter = self._create_event_emitter(path=path, recursive=recursive)
             self.event_emitters.add(event_emitter)
             self.rules[path] = _Rule(path=path,
                                     event_handler=event_handler,

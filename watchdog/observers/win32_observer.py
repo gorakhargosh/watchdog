@@ -98,11 +98,11 @@ def get_directory_handle(path):
                         None)
     return handle
 
-def read_directory_changes(handle, buffer_size=BUFFER_SIZE):
+def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
     """Read changes to the directory using the specified directory handle."""
     results = ReadDirectoryChangesW(handle,
                                     buffer_size,
-                                    True,
+                                    recursive,
                                     WATCHDOG_FILE_NOTIFY_FLAGS,
                                     None,
                                     None)
@@ -111,20 +111,21 @@ def read_directory_changes(handle, buffer_size=BUFFER_SIZE):
 
 class _Win32EventEmitter(Thread):
     """"""
-    def __init__(self, path, out_event_queue, *args, **kwargs):
+    def __init__(self, path, out_event_queue, recursive=True, *args, **kwargs):
         Thread.__init__(self)
         self.stopped = ThreadedEvent()
         self.setDaemon(True)
         self.path = path
         self.out_event_queue = out_event_queue
         self.handle_directory = get_directory_handle(self.path)
+        self.is_recursive = recursive
 
     def stop(self):
         self.stopped.set()
 
     def run(self):
         while not self.stopped.is_set():
-            results = read_directory_changes(self.handle_directory)
+            results = read_directory_changes(self.handle_directory, self.is_recursive)
 
             # TODO: Verify the assumption that the last renamed from event
             # points to a file which the next renamed to event matches.
@@ -152,6 +153,8 @@ class _Win32EventEmitter(Thread):
 
 class Win32Observer(PollingObserver):
     """Windows API-based polling observer implementation."""
-    def _create_event_emitter(self, path):
-        return _Win32EventEmitter(path=path, out_event_queue=self.event_queue)
+    def _create_event_emitter(self, path, recursive):
+        return _Win32EventEmitter(path=path,
+                                  out_event_queue=self.event_queue,
+                                  recursive=recursive)
 

@@ -40,7 +40,7 @@ def get_parent_dir_path(path):
 
 class _Stream(object):
     """Stream object that acts as a conduit for the _fsevents module API."""
-    def __init__(self, name, event_handler, *paths):
+    def __init__(self, name, event_handler, recursive, paths):
         for path in paths:
             if not isinstance(path, str):
                 raise TypeError(
@@ -48,6 +48,7 @@ class _Stream(object):
 
         # Strip the path of the ending separator to ensure consistent keys
         # in the self.snapshot_for_path dictionary.
+        self.is_recursive = recursive
         self.paths = [realpath(abspath(path)).rstrip(path_separator) for path in set(paths)]
         self.event_handler = event_handler
         self.name = name
@@ -104,19 +105,19 @@ class FSEventsObserver(Thread):
 
 
     @synchronized()
-    def _get_directory_snapshot_diff(self, path):
+    def _get_directory_snapshot_diff(self, path, recursive):
         """Obtains a diff of two directory snapshots."""
         # The path will be reset to the watched directory path
         # and a snapshot will be stored for the correct key.
         (path, snapshot) = self._get_snapshot_for_path(path)
-        new_snapshot = DirectorySnapshot(path)
+        new_snapshot = DirectorySnapshot(path, recursive=recursive)
         self.snapshot_for_path[path] = new_snapshot
         return new_snapshot - snapshot
 
 
     @synchronized()
-    def _dispatch_events_for_path(self, event_handler, path):
-        diff = self._get_directory_snapshot_diff(path)
+    def _dispatch_events_for_path(self, event_handler, recursive, path):
+        diff = self._get_directory_snapshot_diff(path, recursive)
         if diff:
             for path in diff.files_deleted:
                 event_handler.dispatch(FileDeletedEvent(path))
@@ -150,11 +151,11 @@ class FSEventsObserver(Thread):
             # Strip the path of the ending separator to ensure consistent keys
             # in the self.snapshot_for_path dictionary.
             path = path.rstrip(path_separator)
-            self.snapshot_for_path[path] = DirectorySnapshot(path)
+            self.snapshot_for_path[path] = DirectorySnapshot(path, recursive=stream.is_recursive)
         def callback(paths, masks):
             for path in paths:
                 #logging.debug(path)
-                self._dispatch_events_for_path(stream.event_handler, path)
+                self._dispatch_events_for_path(stream.event_handler, stream.is_recursive, path)
         _fsevents.schedule(self, stream, callback, stream.paths)
 
 
@@ -186,8 +187,13 @@ class FSEventsObserver(Thread):
 
 
     @synchronized()
-    def schedule(self, name, event_handler, *paths):
-        s = _Stream(name, event_handler, *paths)
+    def schedule(self, name, event_handler, recursive=False, paths=None):
+        if not paths:
+            raise ValueError('Please specify a few paths.')
+        if isinstance(paths, basestring):
+            paths = [paths]
+
+        s = _Stream(name, event_handler, recursive, paths)
         self.map_name_to_stream[name] = s
         self._schedule_stream(s)
 

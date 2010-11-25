@@ -31,7 +31,6 @@ Notes:
 """
 
 import os
-from os import stat as os_stat
 from os.path import join as path_join, realpath, abspath
 from stat import S_ISDIR
 
@@ -159,14 +158,14 @@ class DirectorySnapshot(object):
             for file_name in files:
                 try:
                     file_path = path_join(root, file_name)
-                    self._stat_snapshot[file_path] = os_stat(file_path)
+                    self._stat_snapshot[file_path] = os.stat(file_path)
                 except OSError:
                     continue
 
             for directory_name in directories:
                 try:
                     directory_path = path_join(root, directory_name)
-                    self._stat_snapshot[directory_path] = os_stat(directory_path)
+                    self._stat_snapshot[directory_path] = os.stat(directory_path)
                 except OSError:
                     continue
 

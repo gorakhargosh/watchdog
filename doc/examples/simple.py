@@ -2,7 +2,7 @@ import sys
 import time
 from watchdog import Observer
 from watchdog.events import FileSystemEventHandler
-import logging 
+import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -25,7 +25,7 @@ class MyEventHandler(FileSystemEventHandler):
 
 event_handler = MyEventHandler()
 observer = Observer()
-observer.schedule('a-unique-name', event_handler, *sys.argv[1:])
+observer.schedule('a-unique-name', event_handler, recursive=True, sys.argv[1:])
 observer.start()
 try:
     while True:
