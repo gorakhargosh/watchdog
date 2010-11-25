@@ -46,3 +46,24 @@ except ImportError:
             #logging.debug('Using PollingObserver as fallback.')
             from watchdog.observers.polling_observer import PollingObserver as Observer
 
+
+def _watch(event_handler, paths, recursive=False, main_callback=None):
+    """A simple way to watch paths. Private API at the moment."""
+    import uuid
+
+    observer = Observer()
+    if main_callback is None:
+        def main_callback():
+            import time
+            while True:
+                time.sleep(1)
+
+    identifier = uuid.uuid1().hex
+    observer.schedule(identifier, event_handler, paths, recursive)
+    observer.start()
+    try:
+        main_callback()
+    except KeyboardInterrupt:
+        observer.unschedule(identifier)
+        observer.stop()
+    observer.join()
