@@ -50,7 +50,8 @@ portably as possible using:
 
 * inotify on Linux
 * FSEvents on Mac OS X
-* Windows API on Windows.
+* kqueue on BSD
+* Windows API on Windows
 * polling as a fallback mechanism
 
 Dependencies:
