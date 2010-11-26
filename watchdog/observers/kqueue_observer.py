@@ -22,6 +22,7 @@
 # THE SOFTWARE.
 
 import os
+import stat
 import sys
 import errno
 try:
@@ -37,6 +38,7 @@ except ImportError:
 from os.path import join as path_join, realpath, abspath
 from threading import Thread, Lock as ThreadedLock, Event as ThreadedEvent
 from watchdog.utils import get_walker
+from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized
 from watchdog.observers.polling_observer import PollingObserver
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
@@ -48,9 +50,29 @@ logging.basicConfig(level=logging.DEBUG)
 # Maximum number of events to process.
 MAX_EVENTS = 104896
 
+# Mac OS X file system performance guidelines:
+# --------------------------------------------
+# http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
+# http://www.mlsite.net/blog/?p=2312
+#
+# Specifically:
+# -------------
+# When you only want to track changes on a file or directory, be sure to
+# open it# using the O_EVTONLY flag. This flag prevents the file or
+# directory from being marked as open or in use. This is important
+# if you are tracking files on a removable volume and the user tries to
+# unmount the volume. With this flag in place, the system knows it can
+# dismiss the volume. If you had opened the files or directories without
+# this flag, the volume would be marked as busy and would not be unmounted.
+O_EVTONLY = 0x8000
+
 # Flags pre-calculated that we will use for the kevent filter, flags, and
 # fflags attributes.
-WATCHDOG_OS_OPEN_FLAGS = os.O_RDONLY | os.O_NONBLOCK
+if sys.platform == 'darwin':
+    WATCHDOG_OS_OPEN_FLAGS = O_EVTONLY
+else:
+    WATCHDOG_OS_OPEN_FLAGS = os.O_RDONLY | os.O_NONBLOCK
+
 WATCHDOG_KQ_FILTER = select.KQ_FILTER_VNODE
 WATCHDOG_KQ_EV_FLAGS = select.KQ_EV_ADD | select.KQ_EV_ENABLE | select.KQ_EV_CLEAR
 WATCHDOG_KQ_FFLAGS = \
@@ -73,6 +95,7 @@ def create_kevent_for_path(path):
                         fflags=WATCHDOG_KQ_FFLAGS)
     return kev, fd
 
+
 # Flag tests.
 def is_deleted(kev):
     return kev.fflags & select.KQ_NOTE_DELETE
@@ -89,12 +112,13 @@ def is_renamed(kev):
 
 
 
-class _DescriptorObject(object):
+class _FileSystemObject(object):
     def __init__(self, fd, kev, path, is_directory):
         self.fd = fd
         self.path = path
         self.kev = kev
         self.is_directory = is_directory
+        #self.stat_info = stat_info
 
 
 class _KqueueEventEmitter(Thread):
@@ -107,123 +131,165 @@ class _KqueueEventEmitter(Thread):
         self.is_recursive = recursive
         self.kq = select.kqueue()
         self.kevent_list = list()
-        self.descriptor_table = dict()
+        self.fso_table = dict()
         self.descriptor_list = set()
+        self.dir_snapshot = None
 
 
     def stop(self):
         self.stopped.set()
         # Close all open file descriptors
         for fd in self.descriptor_list:
-            os.close(fd)
-
-
-    @synchronized()
-    def register_dir_path(self, path, recursive, callback=None):
-        if callback is None:
-            callback = (lambda w: w)
-        path = abspath(realpath(path))
-        walk = get_walker(recursive)
-        self.register_path(path, is_directory=True, callback=callback)
-        for root, directories, filenames in walk(path):
-            for directory in directories:
-                full_path = path_join(root, directory)
-                self.register_path(full_path, is_directory=True, callback=callback)
-            for filename in filenames:
-                full_path = path_join(root, filename)
-                self.register_path(full_path, is_directory=False, callback=callback)
-
-
-    @synchronized()
-    def unregister_path(self, path):
-        if path in self.descriptor_table:
-            descriptor_object = self.descriptor_table[path]
-            self.kevent_list.remove(descriptor_object.kev)
-            del self.descriptor_table[path]
-            del self.descriptor_table[descriptor_object.fd]
             try:
                 os.close(fd)
             except OSError, e:
                 logging.debug(e)
-            self.descriptor_list.remove(descriptor_object.fd)
 
 
     @synchronized()
-    def register_path(self, path, is_directory=False, callback=None):
+    def register_dir_tree(self, path, recursive):
+        path = abspath(realpath(path)).rstrip(os.path.sep)
+
+        def walker_callback(path, stat_info, self=self):
+            self.register_path(path, stat.S_ISDIR(stat_info.st_mode))
+        self.dir_snapshot = DirectorySnapshot(path, recursive, walker_callback)
+
+
+    @synchronized()
+    def unregister_path(self, path):
+        path = path.rstrip(os.path.sep)
+        if path in self.fso_table:
+            fso = self.fso_table[path]
+            self.kevent_list.remove(fso.kev)
+            del self.fso_table[path]
+            del self.fso_table[fso.fd]
+            try:
+                os.close(fso.fd)
+            except OSError, e:
+                logging.debug(e)
+            self.descriptor_list.remove(fso.fd)
+
+
+    @synchronized()
+    def register_path(self, path, is_directory=False):
         """Call from within a synchronized method."""
-        if callback is None:
-            callback = (lambda w: w)
-        if not path in self.descriptor_table:
+        path = path.rstrip(os.path.sep)
+        if not path in self.fso_table:
             # If we haven't registered a kevent for this path already,
             # add a new kevent for the path.
             kev, fd = create_kevent_for_path(path)
             self.kevent_list.append(kev)
-            descriptor_object = _DescriptorObject(fd, kev, path, is_directory)
+            fso = _FileSystemObject(fd, kev, path, is_directory)
             self.descriptor_list.add(fd)
-            self.descriptor_table[fd] = descriptor_object
-            self.descriptor_table[path] = descriptor_object
-            callback(path)
+            self.fso_table[fd] = fso
+            self.fso_table[path] = fso
 
 
     @synchronized()
-    def process_kqueue(self):
+    def process_events(self):
         event_list = self.kq.control(list(self.kevent_list), MAX_EVENTS)
+
+        files_renamed = set()
+        dirs_renamed = set()
+        dirs_modified = set()
+
         for kev in event_list:
-            descriptor_object = self.descriptor_table[kev.ident]
-            src_path = descriptor_object.path
+            fso = self.fso_table[kev.ident]
+            src_path = fso.path
+            what = 'directory' if fso.is_directory else 'file'
 
-            walk = get_walker(self.is_recursive)
+            #q = self.out_event_queue
 
-            if is_modified(kev):
-                if descriptor_object.is_directory:
-                    if src_path == self.path:
-                        # Top-level directory
-                        for root, directories, filenames in walk(src_path):
-                            for directory in directories:
-                                full_path = path_join(root, directory)
-                                if not full_path in self.descriptor_table:
-                                    # new directory created
-                                    print('created directory %s' % full_path)
-                                    # register directory path
-                                    if self.is_recursive:
-                                        self.register_dir_path(full_path, recursive=True)
-                                    else:
-                                        self.register_path(full_path, is_directory=False)
-                            for filename in filenames:
-                                full_path = path_join(root, filename)
-                                if not full_path in self.descriptor_table:
-                                    # new file created
-                                    print('created file %s' % full_path)
-                                    # register path
-                                    self.register_path(full_path, is_directory=False)
-                    else:
-                        pass
-                # if a directory is modified
-                #    and the directory is the top level directory
-                #    scan it and determine what was added.
-                # if a directory is modified
-                #    and the directory is not the top level directory
-                #    scan it only if we're recursive.
-
-                print('modified %s' % src_path)
+            if is_deleted(kev):
+                if fso.is_directory:
+                    event = DirDeletedEvent(src_path=src_path)
+                else:
+                    event = FileDeletedEvent(src_path=src_path)
+                #q.put((src_path, event))
+                self.unregister_path(src_path)
+                print(event)
             elif is_attrib_modified(kev):
-                print('attrib modified %s' % src_path)
-            elif is_deleted(kev):
-                print('deleted %s' % src_path)
+                if fso.is_directory:
+                    event = DirModifiedEvent(src_path=src_path)
+                else:
+                    event = FileModifiedEvent(src_path=src_path)
+                #q.put((src_path, event))
+                print(event)
+            elif is_modified(kev):
+                if fso.is_directory:
+                    dirs_modified.add(src_path)
+                else:
+                    event = FileModifiedEvent(src_path=src_path)
+                    #q.put((src_path, event))
+                    print(event)
             elif is_renamed(kev):
-                print('renamed %s' % src_path)
+                if fso.is_directory:
+                    dirs_renamed.add(src_path)
+                else:
+                    files_renamed.add(src_path)
 
-            #if self.is_recursive and descriptor_object.is_directory:
-            #    self.register_dir_path(src_path, recursive=True)
-            #else:
-            #    self.register_path(src_path, is_directory=descriptor_object.is_directory)
+
+        if files_renamed or dirs_renamed or dirs_modified:
+            new_dir_snapshot = DirectorySnapshot(self.path, self.is_recursive)
+            ref_dir_snapshot = self.dir_snapshot
+            self.dir_snapshot = new_dir_snapshot
+
+            for path_renamed in files_renamed:
+                # These are kqueue-hinted renames. We classify them into
+                # either deleted or moved if the new path is found.
+                ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
+                try:
+                    path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
+                    event = FileMovedEvent(src_path=path_renamed, dest_path=path)
+                    #q.put((path_renamed, event))
+                    self.unregister_path(path_renamed)
+                    self.register_path(path)
+
+                except KeyError:
+                    # We could not find the new name.
+                    event = FileDeletedEvent(src_path=path_renamed)
+                    #q.put((path_renamed, event))
+                    self.unregister_path(path_renamed)
+                print(event)
+
+            for path_renamed in dirs_renamed:
+                # These are kqueue-hinted renames. We classify them into
+                # either deleted or moved if the new path is found.
+                ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
+                try:
+                    path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
+                    event = DirMovedEvent(src_path=path_renamed, dest_path=path)
+                    #q.put((path_renamed, event))
+                    self.unregister_path(path_renamed)
+                    self.register_path(path)
+                except KeyError:
+                    # We could not find the new name.
+                    event = DirDeletedEvent(src_path=path_renamed)
+                    #q.put((path_renamed, event))
+                    self.unregister_path(path)
+                print(event)
+
+            if dirs_modified:
+                for dir_modified in dirs_modified:
+                    event = DirModifiedEvent(src_path=dir_modified)
+                    self.register_path(dir_modified)
+                    print(event)
+                diff = new_dir_snapshot - ref_dir_snapshot
+                for file_created in diff.files_created:
+                    event = FileCreatedEvent(src_path=file_created)
+                    self.register_path(file_created)
+                    print(event)
+                for dir_created in diff.dirs_created:
+                    event = DirCreatedEvent(src_path=dir_created)
+                    self.register_path(dir_created)
+                    print(event)
 
 
     def run(self):
-        self.register_dir_path(self.path, self.is_recursive)
+        self.register_dir_tree(self.path, self.is_recursive)
         while not self.stopped.is_set():
             try:
-                self.process_kqueue()
+                self.process_events()
             except OSError, e:
                 if e.errno == errno.EBADF:
                     # select.kqueue seems to be blowing up on the first
