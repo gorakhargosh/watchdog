@@ -25,19 +25,21 @@
 
 #include "_watchdog_fsevents.h"
 
-static const char *MODULE_NAME = "_watchdog_fsevents";
-static const char *MODULE_CONSTANT_NAME_POLLIN = "POLLIN";
-static const char *MODULE_CONSTANT_NAME_POLLOUT = "POLLOUT";
+static const char module__name__[] = "_watchdog_fsevents";
+
+static const char MODULE_CONSTANT_NAME_POLLIN[] = "POLLIN";
+static const char MODULE_CONSTANT_NAME_POLLOUT[] = "POLLOUT";
 
 /**
  * Error messages.
  */
-static const char *CALLBACK_ERROR_MESSAGE = "Unable to call callback function.";
+static const char CALLBACK_ERROR_MESSAGE[] = "Unable to call callback function.";
 
 /**
  * Module documentation.
  */
-static const char *MODULE_DOCUMENTATION = "Low-level FSEvents interface.";
+PyDoc_STRVAR(watchdog_fsevents_module__doc__,
+             "Low-level FSEvents interface.");
 
 /**
  * Dictionary of all the event loops.
@@ -134,10 +136,11 @@ event_stream_handler(FSEventStreamRef stream,
  *
  * @return None
  */
-static char pyfsevents_loop_doc[] = "Runs an event loop in a thread.";
+PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
+             "Runs an event loop in a thread.");
 static PyObject *
-pyfsevents_loop(PyObject *self,
-                PyObject *args)
+watchdog_fsevents_loop(PyObject *self,
+                       PyObject *args)
 {
     PyObject *thread = NULL;
     PyObject *value = NULL;
@@ -282,10 +285,11 @@ _get_runloop_for_thread_or_current(PyObject *loops,
  *
  * @return None
  */
-static char pyfsevents_schedule_doc[] = "Schedules a stream.";
+PyDoc_STRVAR(watchdog_fsevents_schedule__doc__,
+             "Schedules a stream.");
 static PyObject *
-pyfsevents_schedule(PyObject *self,
-                    PyObject *args)
+watchdog_fsevents_schedule(PyObject *self,
+                           PyObject *args)
 {
     /* Arguments */
     PyObject *thread = NULL;
@@ -350,10 +354,11 @@ pyfsevents_schedule(PyObject *self,
  *
  * @return None
  */
-static char pyfsevents_unschedule_doc[] = "Unschedules a stream.";
+PyDoc_STRVAR(watchdog_fsevents_unschedule__doc__,
+             "Unschedules a stream.");
 static PyObject *
-pyfsevents_unschedule(PyObject *self,
-                      PyObject *stream)
+watchdog_fsevents_unschedule(PyObject *self,
+                             PyObject *stream)
 {
     PyObject *value = PyDict_GetItem(g__pydict_streams, stream);
     FSEventStreamRef fs_stream = PyCObject_AsVoidPtr(value);
@@ -378,10 +383,11 @@ pyfsevents_unschedule(PyObject *self,
  *
  * @return None
  */
-static char pyfsevents_stop_doc[] = "Stops running the event loop in the specified thread.";
+PyDoc_STRVAR(watchdog_fsevents_stop__doc__,
+             "Stops running the event loop in the specified thread.");
 static PyObject *
-pyfsevents_stop(PyObject *self,
-                PyObject *thread)
+watchdog_fsevents_stop(PyObject *self,
+                       PyObject *thread)
 {
     PyObject *value = PyDict_GetItem(g__pydict_loops, thread);
     CFRunLoopRef loop = PyCObject_AsVoidPtr(value);
@@ -401,10 +407,10 @@ pyfsevents_stop(PyObject *self,
  */
 static PyMethodDef _watchdog_fseventsmethods[] =
     {
-        { "loop", pyfsevents_loop, METH_VARARGS, pyfsevents_loop_doc },
-        { "stop", pyfsevents_stop, METH_O, pyfsevents_stop_doc },
-        { "schedule", pyfsevents_schedule, METH_VARARGS, pyfsevents_schedule_doc },
-        { "unschedule", pyfsevents_unschedule, METH_O, pyfsevents_unschedule_doc },
+        { "loop",       watchdog_fsevents_loop,       METH_VARARGS, watchdog_fsevents_loop__doc__ },
+        { "stop",       watchdog_fsevents_stop,       METH_O,       watchdog_fsevents_stop__doc__ },
+        { "schedule",   watchdog_fsevents_schedule,   METH_VARARGS, watchdog_fsevents_schedule__doc__ },
+        { "unschedule", watchdog_fsevents_unschedule, METH_O,       watchdog_fsevents_unschedule__doc__ },
         { NULL, NULL, 0, NULL } };
 
 /**
@@ -414,7 +420,7 @@ static PyMethodDef _watchdog_fseventsmethods[] =
 void
 init_watchdog_fsevents(void)
 {
-    PyObject *module = Py_InitModule3(MODULE_NAME, _watchdog_fseventsmethods, MODULE_DOCUMENTATION);
+    PyObject *module = Py_InitModule3(module__name__, _watchdog_fseventsmethods, watchdog_fsevents_module__doc__);
     PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLIN, kCFFileDescriptorReadCallBack);
     PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLOUT, kCFFileDescriptorWriteCallBack);
 
@@ -425,8 +431,8 @@ init_watchdog_fsevents(void)
 static struct PyModuleDef _watchdog_fseventsmodule =
     {
         PyModuleDef_HEAD_INIT,
-        MODULE_NAME,
-        MODULE_DOCUMENTATION,
+        module__name__,
+        watchdog_fsevents_module__doc__,
         -1,
         _watchdog_fseventsmethods
     };
