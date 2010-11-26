@@ -31,7 +31,7 @@ Notes:
 """
 
 import os
-from os.path import join as path_join, realpath, abspath
+from os.path import join as path_join, realpath, abspath, sep as path_sep
 from stat import S_ISDIR
 
 class DirectorySnapshotDiff(object):
@@ -142,10 +142,10 @@ class DirectorySnapshotDiff(object):
 
 class DirectorySnapshot(object):
     """A snapshot of stat information of files in a directory."""
-    def __init__(self, path, recursive=True):
-        self._path = abspath(realpath(path))
-        self._dirs_stat_snapshot = {}
+    def __init__(self, path, recursive=True, walker_callback=(lambda p, s: None)):
+        self._path = abspath(realpath(path)).rstrip(path_sep)
         self._stat_snapshot = {}
+        self._inode_to_path = {}
         self.is_recursive = recursive
 
         if recursive:
@@ -154,20 +154,32 @@ class DirectorySnapshot(object):
             def walk(path):
                 yield next(os.walk(path))
 
+        stat_info = os.stat(self._path)
+        self._stat_snapshot[self._path] = stat_info
+        self._inode_to_path[stat_info.st_ino] = self._path
+        walker_callback(self._path, stat_info)
+
         for root, directories, files in walk(self._path):
             for file_name in files:
                 try:
                     file_path = path_join(root, file_name)
-                    self._stat_snapshot[file_path] = os.stat(file_path)
+                    stat_info = os.stat(file_path)
+                    self._stat_snapshot[file_path] = stat_info
+                    self._inode_to_path[stat_info.st_ino] = file_path
+                    walker_callback(file_path, stat_info)
                 except OSError:
                     continue
 
             for directory_name in directories:
                 try:
                     directory_path = path_join(root, directory_name)
-                    self._stat_snapshot[directory_path] = os.stat(directory_path)
+                    stat_info = os.stat(directory_path)
+                    self._stat_snapshot[directory_path] = stat_info
+                    self._inode_to_path[stat_info.st_ino] = directory_path
+                    walker_callback(directory_path, stat_info)
                 except OSError:
                     continue
+
 
     def __sub__(self, previous_dirsnap):
         """Allow subtracting a DirectorySnapshot object instance from
@@ -182,10 +194,20 @@ class DirectorySnapshot(object):
         """Returns a dictionary of stat information with file paths being keys."""
         return self._stat_snapshot
 
-    def stat_info(self, path, default=None):
+
+    def stat_info(self, path):
         """Returns a stat information object for the specified path from
         the snapshot."""
-        return self._stat_snapshot.get(path, default)
+        return self._stat_snapshot[path]
+
+
+    def path_for_inode(self, inode):
+        return self._inode_to_path[inode]
+
+
+    def stat_info_for_inode(self, inode):
+        return self.stat_info(self.path_for_inode(inode))
+
 
     @property
     def paths_set(self):
