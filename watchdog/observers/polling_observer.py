@@ -21,6 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import os
 from os.path import realpath, abspath, isdir as path_isdir
 from threading import Thread, Event as ThreadedEvent
 
@@ -176,6 +177,7 @@ class PollingObserver(Thread):
             if not isinstance(path, str):
                 raise TypeError(
                     "Path must be string, not '%s'." % type(path).__name__)
+            path = abspath(realpath(path)).rstrip(os.path.sep)
             self._schedule_path(name, event_handler, recursive, path)
 
 
