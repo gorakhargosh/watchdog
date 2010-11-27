@@ -59,6 +59,7 @@ trove_classifiers = (
     'Natural Language :: English',
     'Operating System :: POSIX :: Linux',
     'Operating System :: MacOS :: MacOS X',
+    'Operating System :: POSIX :: BSD',
     'Operating System :: Microsoft :: Windows :: Windows NT/2000',
     'Operating System :: OS Independent',
     'Programming Language :: Python',
