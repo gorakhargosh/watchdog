@@ -171,7 +171,6 @@ class _KqueueEventEmitter(Thread):
 
     @synchronized()
     def register_path(self, path, is_directory=False):
-        """Call from within a synchronized method."""
         path = path.rstrip(os.path.sep)
         if not path in self.fso_table:
             # If we haven't registered a kevent for this path already,
