@@ -33,9 +33,9 @@ try:
     from watchdog.observers.inotify_observer import InotifyObserver as Observer
 except ImportError:
     try:
-        import __watchdog_fsevents
-        #logging.debug('Using FSEventsObserver.')
+        import _watchdog_fsevents
         from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
+        #logging.debug('Using FSEventsObserver.')
     except ImportError:
         import select
         if hasattr(select, 'kqueue'):
