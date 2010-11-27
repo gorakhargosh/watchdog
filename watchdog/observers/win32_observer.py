@@ -44,9 +44,10 @@ from win32con import FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING, FILE_FLAG
     FILE_NOTIFY_CHANGE_SIZE, FILE_NOTIFY_CHANGE_LAST_WRITE, FILE_NOTIFY_CHANGE_SECURITY
 from win32file import ReadDirectoryChangesW, CreateFile, CloseHandle
 
-from os.path import realpath, abspath, sep as path_separator, join as path_join, isdir as path_isdir
+import os.path
 from threading import Thread, Event as ThreadedEvent
 
+from watchdog.utils import get_walker
 from watchdog.observers import DaemonThread
 from watchdog.observers.polling_observer import PollingObserver, _Rule
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
@@ -127,16 +128,35 @@ class _Win32EventEmitter(DaemonThread):
             last_renamed_from_filename = ""
             q = self.out_event_queue
             for action, filename in results:
-                filename = path_join(self.path, filename)
+                filename = os.path.join(self.path, filename)
                 if action == FILE_ACTION_RENAMED_OLD_NAME:
                     last_renamed_from_filename = filename
                 elif action == FILE_ACTION_RENAMED_NEW_NAME:
-                    if path_isdir(filename):
-                        q.put((self.path, DirMovedEvent(last_renamed_from_filename, filename)))
+                    if os.path.isdir(filename):
+                        renamed_dir_path = last_renamed_from_filename.rstrip(os.path.sep)
+                        new_dir_path = filename.rstrip(os.path.sep)
+
+                        # Fire moved events for all files within this
+                        # directory if recursive.
+                        if self.is_recursive:
+                            walk = get_walker(self.is_recursive)
+
+                            for root, directories, filenames in walk(new_dir_path):
+                                for d in directories:
+                                    full_path = os.path.join(root, d)
+                                    renamed_path = full_path.replace(new_dir_path, renamed_dir_path)
+                                    q.put((self.path, DirMovedEvent(renamed_path, full_path)))
+                                for f in filenames:
+                                    full_path = os.path.join(root, f)
+                                    renamed_path = full_path.replace(new_dir_path, renamed_dir_path)
+                                    q.put((self.path, FileMovedEvent(renamed_path, full_path)))
+
+                        # Now fire a moved event for the directory itself.
+                        q.put((self.path, DirMovedEvent(renamed_dir_path, new_dir_path)))
                     else:
                         q.put((self.path, FileMovedEvent(last_renamed_from_filename, filename)))
                 else:
-                    if path_isdir(filename):
+                    if os.path.isdir(filename):
                         action_event_map = DIR_ACTION_EVENT_MAP
                     else:
                         action_event_map = FILE_ACTION_EVENT_MAP
