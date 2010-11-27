@@ -1,5 +1,5 @@
-﻿# -*- coding: utf-8 -*-
-# win32ioc_observer.py: I/O Completion + ReadDirectoryChangesW-based observer 
+# -*- coding: utf-8 -*-
+# win32ioc_observer.py: I/O Completion + ReadDirectoryChangesW-based observer
 # implementation for Windows.
 #
 # Copyright (C) 2010 Luke McCarthy <luke@iogopro.co.uk>
@@ -23,7 +23,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from __future__ import with_statement
 
 import time
 import os.path
@@ -34,6 +33,7 @@ from watchdog.observers import DaemonThread
 from watchdog.utils import get_walker
 from watchdog.decorator_utils import synchronized
 from watchdog.observers.w32_api import *
+
 
 class _Watch(object):
     def __init__(self, iockey, group_name, event_handler, path, recursive, buffer_size=BUFFER_SIZE):
@@ -103,14 +103,14 @@ class _Watch(object):
                 else:
                     action_event_map = FILE_ACTION_EVENT_MAP
                 self.event_handler.dispatch(action_event_map[action](filename))
-    
+
     @synchronized()
     def close(self):
         if self.directory_handle is not None:
             CancelIo(self.directory_handle)
             CloseHandle(self.directory_handle)
             self.directory_handle = None
-    
+
     @synchronized()
     def remove(self):
         self.close()
@@ -119,7 +119,7 @@ class _Watch(object):
     @synchronized()
     def associate_with_ioc_port(self, ioc_port):
         CreateIoCompletionPort(self.directory_handle, ioc_port, self.iockey, 0)
-        
+
 
 class Win32IOCObserver(DaemonThread):
     def __init__(self, interval=1, *args, **kwargs):
@@ -129,10 +129,10 @@ class Win32IOCObserver(DaemonThread):
 
         self.map_name_to_iockeys = {}
         self.map_iockey_to_watch = {}
-        
+
         # Used to generate unique iokeys.
         self.iockey_counter = 0
-        
+
         # Blank I/O completion port.
         self.interval = interval
         self.ioc_timeout = interval * 1000
@@ -143,7 +143,7 @@ class Win32IOCObserver(DaemonThread):
     def iockeys_for_name(self, name):
         """Returns a list of all the iockeys for a given name."""
         return self.map_name_to_iockeys[name]
-    
+
     @synchronized()
     def watches_for_name(self, name):
         """Returns a list of all the watches for the given name."""
@@ -162,7 +162,7 @@ class Win32IOCObserver(DaemonThread):
     def watches(self):
         """A list of all the watches."""
         self.map_iockey_to_watches.values()
-        
+
 
     @synchronized()
     def schedule(self, name, event_handler, paths, recursive=False):
@@ -202,7 +202,7 @@ class Win32IOCObserver(DaemonThread):
                         del self.map_iockey_to_watch[watch.iockey]
                         del self.map_name_to_iockeys[name]
 
-    @synchronized()                    
+    @synchronized()
     def remove_iockey(self, iockey):
         watch = self.watch_for_key(iockey)
         del self.map_iockey_to_watch[iockey]
@@ -226,8 +226,10 @@ class Win32IOCObserver(DaemonThread):
             elif rc == 5:
                 # Error
                 self.remove_iockey(self, iockey)
-                
+
         # Clean up
         if self.ioc_port is not None:
             CloseHandle(self.ioc_port)
             self.ioc_port = None
+
+

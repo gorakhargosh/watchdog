@@ -206,7 +206,7 @@ def log(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue_observer import KqueueObserver as Observer
     elif args.debug_force_win32:
-        from watchdog.observers.win32_observer import Win32Observer as Observer    
+        from watchdog.observers.win32_observer import Win32Observer as Observer
     elif args.debug_force_win32ioc:
         from watchdog.observers.win32ioc_observer import Win32IOCObserver as Observer
     elif args.debug_force_inotify:

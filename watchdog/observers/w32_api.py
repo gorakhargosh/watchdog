@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # w32_api.py: Common routines and constants for the Win32 API used.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
@@ -44,7 +44,8 @@ from win32file import ReadDirectoryChangesW, \
 
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
-    
+
+
 # Windows API Constants.
 FILE_LIST_DIRECTORY = 0x0001            # CreateFile
 INVALID_HANDLE_VALUE = -1               # CreateIoCompletionPort to create an unassociated i/o completion port.
@@ -91,7 +92,7 @@ FILE_ACTION_EVENT_MAP = {
     FILE_ACTION_MODIFIED: FileModifiedEvent,
 }
 
-    
+
 def get_directory_handle(path, file_flags):
     """Returns a Windows handle to the specified directory path."""
     handle = CreateFile(path,
@@ -106,7 +107,7 @@ def get_directory_handle(path, file_flags):
 
 def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
     """Read changes to the directory using the specified directory handle.
-    
+
     http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
     """
     results = ReadDirectoryChangesW(handle,

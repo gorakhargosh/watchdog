@@ -55,7 +55,8 @@ class _Win32EventEmitter(DaemonThread):
         self.out_event_queue = out_event_queue
         self.handle_directory = get_directory_handle(self.path, WATCHDOG_FILE_FLAGS)
         self.is_recursive = recursive
-        
+
+
     def run(self):
         while not self.is_stopped:
             results = read_directory_changes(self.handle_directory, self.is_recursive)
