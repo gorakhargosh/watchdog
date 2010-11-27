@@ -85,6 +85,8 @@ if sys.version_info < (2, 6, 0):
     # Python 2.5 and below don't have the kqueue implementation in the
     # select module. This backported patch adds it.
     common_install_requires.append('select26')
+    # Argh depends on argparse. Added upstream.
+    #common_install_requires.append('argparse')
 
 install_requires = {
     PLATFORM_MACOSX: [],
