@@ -51,8 +51,9 @@ portably as possible using:
 * inotify on Linux
 * FSEvents on Mac OS X
 * kqueue on BSD
-* Windows API on Windows
-* polling as a fallback mechanism
+* ReadDirectoryChangesW on Windows
+* polling the directory for snapshots periodically and comparing them as
+  a fallback mechanism (slowest)
 
 Dependencies:
 -------------
