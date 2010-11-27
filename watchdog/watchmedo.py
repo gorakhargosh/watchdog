@@ -191,6 +191,9 @@ def tricks_generate_yaml(args):
 @arg('--recursive', default=False, help='monitors the directories recursively')
 @arg('--debug-force-polling', default=False, help='[debug flag] forces using the polling observer implementation.')
 @arg('--debug-force-kqueue', default=False, help='[debug flag] forces using the kqueue observer implementation.')
+@arg('--debug-force-win32', default=False, help='[debug flag] forces using the win32 observer implementation.')
+@arg('--debug-force-fsevents', default=False, help='[debug flag] forces using the fsevents observer implementation.')
+@arg('--debug-force-inotify', default=False, help='[debug flag] forces using the inotify observer implementation.')
 def log(args):
     from watchdog.tricks import LoggerTrick
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
@@ -198,13 +201,18 @@ def log(args):
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories)
     if args.debug_force_polling:
-        from watchdog.observers.polling_observer import PollingObserver
-        observer = PollingObserver()
+        from watchdog.observers.polling_observer import PollingObserver as Observer
     elif args.debug_force_kqueue:
-        from watchdog.observers.kqueue_observer import KqueueObserver
-        observer = KqueueObserver()
+        from watchdog.observers.kqueue_observer import KqueueObserver as Observer
+    elif args.debug_force_win32:
+        from watchdog.observers.win32_observer import Win32Observer as Observer
+    elif args.debug_force_inotify:
+        from watchdog.observers.inotify_observer import InotifyObserver as Observer
+    elif args.debug_force_fsevents:
+        from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
     else:
-        observer = Observer()
+        from watchdog import Observer
+    observer = Observer()
     observe_with(observer, 'logger', event_handler, args.directories, args.recursive)
 
 
