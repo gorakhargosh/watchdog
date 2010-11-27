@@ -80,7 +80,7 @@ def load_class(dotted_path, *args, **kwargs):
         module_name = '.'.join(dotted_path_split[:-1])
 
         module = load_module(module_name)
-        if hasattr(module, klass_name):
+        if has_attribute(module, klass_name):
             klass = getattr(module, klass_name)
             return klass
             # Finally create and return an instance of the class
@@ -102,5 +102,17 @@ def get_walker(recursive=False):
         walk = os.walk
     else:
         def walk(path):
-            yield next(os.walk(path))
+            try:
+                yield next(os.walk(path))
+            except NameError:
+                yield os.walk(path).next()
     return walk
+
+
+def has_attribute(ob, attribute):
+    """hasattr swallows exceptions. This one tests a Python object for the
+    presence of an attribute."""
+    return getattr(ob, attribute, None) is not None
+
+def get_parent_dir_path(path):
+    return os.path.realpath(os.path.abspath(os.path.dirname(path))).rstrip(os.path.sep)

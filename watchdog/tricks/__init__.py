@@ -24,7 +24,7 @@
 import subprocess
 
 from watchdog.events import PatternMatchingEventHandler
-from watchdog.utils import filter_paths
+from watchdog.utils import filter_paths, has_attribute
 
 import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -81,13 +81,13 @@ class ShellCommandTrick(Trick):
             }
 
         if self.shell_command is None:
-            if hasattr(event, 'dest_path'):
+            if has_attribute(event, 'dest_path'):
                 context.update({'dest_path': event.dest_path})
                 command = 'echo "%(event)s %(object)s from %(src_path)s to %(dest_path)s"' % context
             else:
                 command = 'echo "%(event)s %(object)s %(src_path)s"' % context
         else:
-            if hasattr(event, 'dest_path'):
+            if has_attribute(event, 'dest_path'):
                 context.update({'dest_path': event.dest_path})
             command = self.shell_command % context
         #logging.debug(command)

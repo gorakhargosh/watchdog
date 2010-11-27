@@ -33,6 +33,7 @@ Notes:
 import os
 from os.path import join as path_join, realpath, abspath, sep as path_sep
 from stat import S_ISDIR
+from watchdog.utils import get_walker
 
 class DirectorySnapshotDiff(object):
     """Difference between two directory snapshots."""
@@ -148,11 +149,7 @@ class DirectorySnapshot(object):
         self._inode_to_path = {}
         self.is_recursive = recursive
 
-        if recursive:
-            walk = os.walk
-        else:
-            def walk(path):
-                yield next(os.walk(path))
+        walk = get_walker(recursive)
 
         stat_info = os.stat(self._path)
         self._stat_snapshot[self._path] = stat_info

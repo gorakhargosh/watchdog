@@ -21,6 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import time
 from threading import Thread, Event as ThreadedEvent
 from os.path import realpath, abspath, join as path_join, sep as path_separator, dirname
 
@@ -88,21 +89,17 @@ class _Rule(object):
         self.descriptors = descriptors
 
 
-class InotifyObserver(Thread):
+class InotifyObserver(DaemonThread):
     """Inotify-based daemon observer thread for Linux."""
-    def __init__(self, interval=1,):
-        Thread.__init__(self)
+    def __init__(self, interval=1):
+        DaemonThread.__init__(self, interval)
         self.wm = WatchManager()
-        self.stopped = ThreadedEvent()
         self.notifiers = set()
         self.name_to_rule = dict()
-        self.setDaemon(True)
 
-    def stop(self):
-        self.stopped.set()
+    def on_stopping(self):
         for notifier in self.notifiers:
             notifier.stop()
-
 
     @synchronized()
     def schedule(self, name, event_handler, paths=None, recursive=False):
@@ -138,7 +135,6 @@ class InotifyObserver(Thread):
 
 
     def run(self):
-        import time
-        while not self.stopped.is_set():
-            time.sleep(1)
+        while not self.is_stopped:
+            time.sleep(self.interval)
 

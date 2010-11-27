@@ -19,3 +19,34 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+
+from watchdog.utils import has_attribute
+from threading import Thread, Event as ThreadedEvent
+
+class DaemonThread(Thread):
+    def __init__(self, interval=1, *args, **kwargs):
+        Thread.__init__(self)
+        if has_attribute(self, 'daemon'):
+            self.daemon = True
+        else:
+            self.setDaemon(True)
+        self.stopped = ThreadedEvent()
+        self.interval = interval
+        self.args = args
+        self.kwargs = kwargs
+
+    @property
+    def is_stopped(self):
+        try:
+            return self.stopped.is_set()
+        except AttributeError:
+            return self.stopped.isSet()
+
+    def on_stopping(self):
+        """Implement this instead of Thread.stop(), it calls this method
+        for you."""
+        pass
+
+    def stop(self):
+        self.stopped.set()
+        self.on_stopping()

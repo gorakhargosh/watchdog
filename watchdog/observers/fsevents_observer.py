@@ -26,7 +26,7 @@ import _watchdog_fsevents as _fsevents
 from threading import Thread, Event as ThreadedEvent
 from os.path import realpath, abspath, dirname, sep as path_separator
 
-from watchdog.decorator_utils import synchronized
+from watchdog.decorator_utils import synchronized, get_parent_dir_path
 from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
@@ -34,9 +34,6 @@ from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, Dir
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-
-def get_parent_dir_path(path):
-    return realpath(abspath(dirname(path))).rstrip(path_separator)
 
 class _Stream(object):
     """Stream object that acts as a conduit for the _fsevents module API."""

@@ -47,6 +47,7 @@ from win32file import ReadDirectoryChangesW, CreateFile, CloseHandle
 from os.path import realpath, abspath, sep as path_separator, join as path_join, isdir as path_isdir
 from threading import Thread, Event as ThreadedEvent
 
+from watchdog.observers import DaemonThread
 from watchdog.observers.polling_observer import PollingObserver, _Rule
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
@@ -108,22 +109,17 @@ def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
     return results
 
 
-class _Win32EventEmitter(Thread):
+class _Win32EventEmitter(DaemonThread):
     """"""
-    def __init__(self, path, out_event_queue, recursive, *args, **kwargs):
-        Thread.__init__(self)
-        self.stopped = ThreadedEvent()
-        self.setDaemon(True)
+    def __init__(self, path, out_event_queue, recursive, interval=1):
+        DaemonThread.__init__(self, interval)
         self.path = path
         self.out_event_queue = out_event_queue
         self.handle_directory = get_directory_handle(self.path)
         self.is_recursive = recursive
 
-    def stop(self):
-        self.stopped.set()
-
     def run(self):
-        while not self.stopped.is_set():
+        while not self.is_stopped:
             results = read_directory_changes(self.handle_directory, self.is_recursive)
 
             # TODO: Verify the assumption that the last renamed from event

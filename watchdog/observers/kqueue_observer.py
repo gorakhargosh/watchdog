@@ -21,25 +21,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+
 import os
 import stat
 import sys
 import errno
+import os.path
+
+from watchdog.utils import has_attribute
+
 try:
     # Python 3k
     from queue import Queue, Empty as QueueEmpty
 except ImportError:
     from Queue import Queue, Empty as QueueEmpty
-try:
-    import select
-except ImportError:
+import select
+if not has_attribute(select, 'kqueue'):
     import select26 as select
 
-from os.path import join as path_join, realpath, abspath
 from threading import Thread, Lock as ThreadedLock, Event as ThreadedEvent
 from watchdog.utils import get_walker
 from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized
+from watchdog.observers import DaemonThread
 from watchdog.observers.polling_observer import PollingObserver
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
     FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
@@ -125,12 +129,10 @@ class _FileSystemObject(object):
         self.is_directory = is_directory
 
 
-class _KqueueEventEmitter(Thread):
-    def __init__(self, path, out_event_queue, recursive, *args, **kwargs):
-        Thread.__init__(self)
-        self.stopped = ThreadedEvent()
-        self.setDaemon(True)
-        self.path = abspath(realpath(path))
+class _KqueueEventEmitter(DaemonThread):
+    def __init__(self, path, out_event_queue, recursive, interval=1):
+        DaemonThread.__init__(self, interval)
+        self.path = os.path.abspath(os.path.realpath(path))
         self.out_event_queue = out_event_queue
         self.is_recursive = recursive
         self.kq = select.kqueue()
@@ -140,14 +142,10 @@ class _KqueueEventEmitter(Thread):
         self.dir_snapshot = None
 
 
-    def stop(self):
-        """Stops monitoring."""
-        self.stopped.set()
-
     @synchronized()
     def register_dir_tree(self, path, recursive):
         """Registers event handling for an entire directory tree."""
-        path = abspath(realpath(path)).rstrip(os.path.sep)
+        path = os.path.abspath(os.path.realpath(path)).rstrip(os.path.sep)
 
         def walker_callback(path, stat_info, self=self):
             self.register_path(path, stat.S_ISDIR(stat_info.st_mode))
@@ -263,13 +261,13 @@ class _KqueueEventEmitter(Thread):
                     dir_path_renamed = path_renamed.rstrip(os.path.sep)
                     for root, directories, filenames in os.walk(path):
                         for directory_path in directories:
-                            full_path = path_join(root, directory_path)
+                            full_path = os.path.join(root, directory_path)
                             renamed_path = full_path.replace(path, dir_path_renamed)
                             out_event_queue.put((self.path, DirMovedEvent(src_path=renamed_path, dest_path=full_path)))
                             self.unregister_path(renamed_path)
                             self.register_path(full_path, is_directory=True)
                         for filename in filenames:
-                            full_path = path_join(root, filename)
+                            full_path = os.path.join(root, filename)
                             renamed_path = full_path.replace(path, dir_path_renamed)
                             out_event_queue.put((self.path, FileMovedEvent(src_path=renamed_path, dest_path=full_path)))
                             self.unregister_path(renamed_path)
@@ -327,7 +325,7 @@ class _KqueueEventEmitter(Thread):
 
     def run(self):
         self.register_dir_tree(self.path, self.is_recursive)
-        while not self.stopped.is_set():
+        while not self.is_stopped:
             try:
                 #if not os.path.exists(self.path):
                 #    self.stop()

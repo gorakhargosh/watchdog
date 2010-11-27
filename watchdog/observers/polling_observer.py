@@ -31,6 +31,7 @@ try:
 except ImportError:
     from Queue import Queue, Empty as QueueEmpty
 
+from watchdog.observers import DaemonThread
 from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized
 from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
@@ -39,17 +40,16 @@ from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, Dir
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-class _PollingEventEmitter(Thread):
+class _PollingEventEmitter(DaemonThread):
     """Daemon thread that monitors a given path recursively and emits
     file system events.
     """
     def __init__(self, path, interval=1, out_event_queue=None, recursive=False, name=None):
         """Monitors a given path and appends file system modification
         events to the output queue."""
-        Thread.__init__(self)
-        self.interval = interval
+        DaemonThread.__init__(self, interval)
+
         self.out_event_queue = out_event_queue
-        self.stopped = ThreadedEvent()
         self.snapshot = None
         self.path = path
         self.is_recursive = recursive
@@ -57,12 +57,6 @@ class _PollingEventEmitter(Thread):
             self.name = '%s(%s)' % (self.__class__.__name__, realpath(abspath(self.path)))
         else:
             self.name = name
-        self.setDaemon(True)
-
-
-    def stop(self):
-        """Stops monitoring the given path by setting a flag to stop."""
-        self.stopped.set()
 
 
     @synchronized()
@@ -84,7 +78,7 @@ class _PollingEventEmitter(Thread):
         based on the diff between two states of the same directory.
 
         """
-        while not self.stopped.is_set():
+        while not self.is_stopped:
             self.stopped.wait(self.interval)
             diff = self._get_directory_snapshot_diff()
             if diff and self.out_event_queue:
@@ -139,21 +133,18 @@ class _Rule(object):
 
 
 
-class PollingObserver(Thread):
+class PollingObserver(DaemonThread):
     """Observer daemon thread that spawns threads for each path to be monitored.
     """
-    def __init__(self, interval=1, *args, **kwargs):
-        Thread.__init__(self)
-        self.interval = interval
+    def __init__(self, interval=1):
+        DaemonThread.__init__(self, interval)
         self.event_queue = Queue()
         self.event_emitters = set()
         self.rules = {}
         self.map_name_to_paths = {}
-        self.setDaemon(True)
-        self.stopped = ThreadedEvent()
 
 
-    # The win32 observer overrides this method because all of the other
+    # The win32/kqueue observers override this method because all of the other
     # functionality of this class is the same as its own.
     def _create_event_emitter(self, path, recursive):
         return _PollingEventEmitter(path=path,
@@ -218,7 +209,7 @@ class PollingObserver(Thread):
 
     def run(self):
         """Dispatches events from the event queue to the callback handler."""
-        while not self.stopped.is_set():
+        while not self.is_stopped:
             #logging.debug('runloop')
             try:
                 (rule_path, event) = self.event_queue.get(block=True, timeout=self.interval)
@@ -229,10 +220,8 @@ class PollingObserver(Thread):
                 #logging.debug('queue empty')
                 continue
 
-
-    def stop(self):
-        """Stops all monitoring."""
-        self.stopped.set()
+    def on_stopping(self):
         for event_emitter in self.event_emitters:
             event_emitter.stop()
+
 

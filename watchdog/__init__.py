@@ -23,6 +23,7 @@
 
 
 #import logging
+from watchdog.utils import has_attribute
 from watchdog.version import __version__, VERSION_INFO, VERSION_STRING
 
 #logging.basicConfig(level=logging.DEBUG)
@@ -38,7 +39,7 @@ except ImportError:
         #logging.debug('Using FSEventsObserver.')
     except ImportError:
         import select
-        if hasattr(select, 'kqueue'):
+        if has_attribute(select, 'kqueue'):
             from watchdog.observers.kqueue_observer import KqueueObserver as Observer
             #logging.debug('Using KqueueObserver.')
         else:

@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 
 import logging
-from watchdog.utils import filter_paths
+from watchdog.utils import filter_paths, has_attribute
 from watchdog.decorator_utils import deprecated
 
 EVENT_TYPE_MOVED = 'moved'
@@ -198,7 +198,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         if self.ignore_directories and event.is_directory:
             return
 
-        if hasattr(event, 'dest_path'):
+        if has_attribute(event, 'dest_path'):
             paths = [event.src_path, event.dest_path]
         else:
             paths = [event.src_path]
