@@ -258,18 +258,20 @@ class _KqueueEventEmitter(Thread):
                 ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
                 try:
                     path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
+                    path = path.rstrip(os.path.sep)
 
                     # If we're in recursive mode, we fire move events for
                     # the entire contents of the moved directory.
                     if self.is_recursive:
+                        dir_path_renamed = path_renamed.rstrip(os.path.sep)
                         for root, directories, filenames in os.walk(path):
                             for directory_path in directories:
-                                renamed_path = path_join(path_renamed, directory_path)
                                 full_path = path_join(root, directory_path)
+                                renamed_path = full_path.replace(path, dir_path_renamed)
                                 q.put((self.path, DirMovedEvent(src_path=renamed_path, dest_path=full_path)))
                             for filename in filenames:
-                                renamed_path = path_join(path_renamed, filename)
                                 full_path = path_join(root, filename)
+                                renamed_path = full_path.replace(path, dir_path_renamed)
                                 q.put((self.path, FileMovedEvent(src_path=renamed_path, dest_path=full_path)))
 
                     # Fire the directory moved events after firing moved
