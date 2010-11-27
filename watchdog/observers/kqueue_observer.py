@@ -137,13 +137,6 @@ class _KqueueEventEmitter(Thread):
 
     def stop(self):
         self.stopped.set()
-        # Close all open file descriptors
-        for fd in self.descriptor_list:
-            try:
-                os.close(fd)
-            except OSError, e:
-                logging.warn(e)
-
 
     @synchronized()
     def register_dir_tree(self, path, recursive):
@@ -330,6 +323,13 @@ class _KqueueEventEmitter(Thread):
                 else:
                     raise
 
+        # Close all open file descriptors
+        for fd in self.descriptor_list:
+            try:
+                os.close(fd)
+            except OSError, e:
+                logging.warn(e)
+        self.kq.close()
 
 class KqueueObserver(PollingObserver):
     def _create_event_emitter(self, path, recursive):
