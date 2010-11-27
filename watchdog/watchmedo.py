@@ -208,7 +208,7 @@ def log(args):
     observe_with(observer, 'logger', event_handler, args.directories, args.recursive)
 
 
-@alias('shell-command')
+#@alias('shell-command')
 @arg('command', nargs='*', default=None, help='command that will be executed by the shell in reaction to matched events')
 @arg('--watch-directories', default='.', help='directories to watch (separated by %s)' % pathsep)
 @arg('--patterns', default='*', help='matches event paths with these patterns (separated by ;).')
