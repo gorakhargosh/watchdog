@@ -192,6 +192,7 @@ def tricks_generate_yaml(args):
 @arg('--debug-force-polling', default=False, help='[debug flag] forces using the polling observer implementation.')
 @arg('--debug-force-kqueue', default=False, help='[debug flag] forces using the kqueue observer implementation.')
 @arg('--debug-force-win32', default=False, help='[debug flag] forces using the win32 observer implementation.')
+@arg('--debug-force-win32ioc', default=False, help='[debug flag] forces using the win32 IOC observer implementation.')
 @arg('--debug-force-fsevents', default=False, help='[debug flag] forces using the fsevents observer implementation.')
 @arg('--debug-force-inotify', default=False, help='[debug flag] forces using the inotify observer implementation.')
 def log(args):
@@ -205,7 +206,9 @@ def log(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue_observer import KqueueObserver as Observer
     elif args.debug_force_win32:
-        from watchdog.observers.win32_observer import Win32Observer as Observer
+        from watchdog.observers.win32_observer import Win32Observer as Observer    
+    elif args.debug_force_win32ioc:
+        from watchdog.observers.win32ioc_observer import Win32IOCObserver as Observer
     elif args.debug_force_inotify:
         from watchdog.observers.inotify_observer import InotifyObserver as Observer
     elif args.debug_force_fsevents:

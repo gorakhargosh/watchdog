@@ -165,9 +165,8 @@ class PollingObserver(DaemonThread):
 
         self.map_name_to_paths[name] = set()
         for path in paths:
-            if not isinstance(path, str):
-                raise TypeError(
-                    "Path must be string, not '%s'." % type(path).__name__)
+            if not isinstance(path, basestring):
+                raise TypeError("Path must be string, not '%s'." % type(path).__name__)
             path = abspath(realpath(path)).rstrip(os.path.sep)
             self._schedule_path(name, event_handler, recursive, path)
 

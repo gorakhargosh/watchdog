@@ -39,75 +39,12 @@
 # the appropriate specified event handler.
 
 
-from win32con import FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, \
-    FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_CHANGE_DIR_NAME, FILE_NOTIFY_CHANGE_ATTRIBUTES, \
-    FILE_NOTIFY_CHANGE_SIZE, FILE_NOTIFY_CHANGE_LAST_WRITE, FILE_NOTIFY_CHANGE_SECURITY
-from win32file import ReadDirectoryChangesW, CreateFile, CloseHandle
-
+import time
 import os.path
-from threading import Thread, Event as ThreadedEvent
-
+from watchdog.observers.w32_api import *
 from watchdog.utils import get_walker
 from watchdog.observers import DaemonThread
-from watchdog.observers.polling_observer import PollingObserver, _Rule
-from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
-    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
-
-
-# Windows API Constant for the CreateFile Windows API function.
-FILE_LIST_DIRECTORY = 0x0001
-
-# Event buffer size.
-BUFFER_SIZE = 1024
-
-
-# We don't need to recalculate these flags every time a call is made to
-# the win32 API functions.
-WATCHDOG_FILE_SHARE_FLAGS = FILE_SHARE_READ | FILE_SHARE_WRITE
-WATCHDOG_FILE_NOTIFY_FLAGS = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | \
-    FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE | \
-    FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SECURITY
-
-# Constants defined by the Windows API.
-FILE_ACTION_CREATED = 1
-FILE_ACTION_DELETED = 2
-FILE_ACTION_MODIFIED = 3
-FILE_ACTION_RENAMED_OLD_NAME = 4
-FILE_ACTION_RENAMED_NEW_NAME = 5
-
-# Moved event is handled explicitly in the emitter thread.
-DIR_ACTION_EVENT_MAP = {
-    FILE_ACTION_CREATED: DirCreatedEvent,
-    FILE_ACTION_DELETED: DirDeletedEvent,
-    FILE_ACTION_MODIFIED: DirModifiedEvent,
-}
-FILE_ACTION_EVENT_MAP = {
-    FILE_ACTION_CREATED: FileCreatedEvent,
-    FILE_ACTION_DELETED: FileDeletedEvent,
-    FILE_ACTION_MODIFIED: FileModifiedEvent,
-}
-
-
-def get_directory_handle(path):
-    """Returns a Windows handle to the specified directory path."""
-    handle = CreateFile(path,
-                        FILE_LIST_DIRECTORY,
-                        WATCHDOG_FILE_SHARE_FLAGS,
-                        None,
-                        OPEN_EXISTING,
-                        FILE_FLAG_BACKUP_SEMANTICS,
-                        None)
-    return handle
-
-def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
-    """Read changes to the directory using the specified directory handle."""
-    results = ReadDirectoryChangesW(handle,
-                                    buffer_size,
-                                    recursive,
-                                    WATCHDOG_FILE_NOTIFY_FLAGS,
-                                    None,
-                                    None)
-    return results
+from watchdog.observers.polling_observer import PollingObserver
 
 
 class _Win32EventEmitter(DaemonThread):
@@ -116,9 +53,9 @@ class _Win32EventEmitter(DaemonThread):
         DaemonThread.__init__(self, interval)
         self.path = path
         self.out_event_queue = out_event_queue
-        self.handle_directory = get_directory_handle(self.path)
+        self.handle_directory = get_directory_handle(self.path, WATCHDOG_FILE_FLAGS)
         self.is_recursive = recursive
-
+        
     def run(self):
         while not self.is_stopped:
             results = read_directory_changes(self.handle_directory, self.is_recursive)
@@ -143,10 +80,9 @@ class _Win32EventEmitter(DaemonThread):
                         # directory if recursive.
                         walk = get_walker(self.is_recursive)
                         if self.is_recursive:
-                            #import time
-                            #time.sleep(1)
-                            # TODO: The following may not execute and we may need to wait for I/O to complete.
-                            # Needs looking into.
+                            time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
+                            # TODO: The following may not execute because we need to wait for I/O to complete.
+                            # An I/O Completion ports-based ReadDirectoryChangesW implementation is required.
                             for root, directories, filenames in walk(new_dir_path):
                                 for d in directories:
                                     full_path = os.path.join(root, d)
