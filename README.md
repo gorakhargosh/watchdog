@@ -50,7 +50,7 @@ portably as possible using:
 
 * inotify on Linux
 * FSEvents on Mac OS X
-* kqueue on BSD
+* kqueue on BSD/OS X
 * ReadDirectoryChangesW on Windows
 * polling the directory for snapshots periodically and comparing them as
   a fallback mechanism (slowest)
