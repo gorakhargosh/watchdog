@@ -81,6 +81,10 @@ class _Watch(object):
                     # directory if recursive.
                     walk = get_walker(self.is_recursive)
                     if self.is_recursive:
+                        # HACK: We introduce a forced delay before
+                        # traversing the moved directory. This will read
+                        # only file movement that finishes within this
+                        # delay time.
                         time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
                         # TODO: The following still does not execute because we need to wait for I/O to complete.
                         for root, directories, filenames in walk(new_dir_path):
