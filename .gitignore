@@ -15,8 +15,10 @@ __MACOSX__
 
 # Ignore these generated directories.
 .installed.cfg
-bin/python
-bin/ipython
+bin
+bin25/
+bin26/
+bin27/
 build/
 parts/
 develop-eggs/
