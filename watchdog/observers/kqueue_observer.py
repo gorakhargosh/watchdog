@@ -72,7 +72,6 @@ if sys.platform == 'darwin':
     WATCHDOG_OS_OPEN_FLAGS = O_EVTONLY
 else:
     WATCHDOG_OS_OPEN_FLAGS = os.O_RDONLY | os.O_NONBLOCK
-
 WATCHDOG_KQ_FILTER = select.KQ_FILTER_VNODE
 WATCHDOG_KQ_EV_FLAGS = select.KQ_EV_ADD | select.KQ_EV_ENABLE | select.KQ_EV_CLEAR
 WATCHDOG_KQ_FFLAGS = \
@@ -83,7 +82,6 @@ WATCHDOG_KQ_FFLAGS = \
     select.KQ_NOTE_LINK   | \
     select.KQ_NOTE_RENAME | \
     select.KQ_NOTE_REVOKE
-
 
 
 def create_kevent_for_path(path):
@@ -98,21 +96,28 @@ def create_kevent_for_path(path):
 
 # Flag tests.
 def is_deleted(kev):
+    """Determines whether the given kevent represents deletion."""
     return kev.fflags & select.KQ_NOTE_DELETE
 
+
 def is_modified(kev):
+    """Determines whether the given kevent represents modification."""
     fflags = kev.fflags
     return (fflags & select.KQ_NOTE_EXTEND) or (fflags & select.KQ_NOTE_WRITE)
 
+
 def is_attrib_modified(kev):
+    """Determines whether the given kevent represents attribute modification."""
     return kev.fflags & select.KQ_NOTE_ATTRIB
 
+
 def is_renamed(kev):
+    """Determines whether the given kevent represents movement."""
     return kev.fflags & select.KQ_NOTE_RENAME
 
 
-
 class _FileSystemObject(object):
+    """Handy structure to store relevant information in."""
     def __init__(self, fd, kev, path, is_directory):
         self.fd = fd
         self.path = path
@@ -136,10 +141,12 @@ class _KqueueEventEmitter(Thread):
 
 
     def stop(self):
+        """Stops monitoring."""
         self.stopped.set()
 
     @synchronized()
     def register_dir_tree(self, path, recursive):
+        """Registers event handling for an entire directory tree."""
         path = abspath(realpath(path)).rstrip(os.path.sep)
 
         def walker_callback(path, stat_info, self=self):
@@ -149,6 +156,7 @@ class _KqueueEventEmitter(Thread):
 
     @synchronized()
     def unregister_path(self, path):
+        """Bookkeeping method that unregisters watching a given path."""
         path = path.rstrip(os.path.sep)
         if path in self.fso_table:
             fso = self.fso_table[path]
@@ -164,6 +172,7 @@ class _KqueueEventEmitter(Thread):
 
     @synchronized()
     def register_path(self, path, is_directory=False):
+        """Bookkeeping method that registers watching a given path."""
         path = path.rstrip(os.path.sep)
         if not path in self.fso_table:
             # If we haven't registered a kevent for this path already,
@@ -176,6 +185,8 @@ class _KqueueEventEmitter(Thread):
             self.fso_table[path] = fso
 
     def __process_kevents_except_movement(self, event_list, out_event_queue):
+        """Process only basic kevents. Movement and directory modifications
+        need to be further processed."""
         files_renamed = set()
         dirs_renamed = set()
         dirs_modified = set()
@@ -215,6 +226,8 @@ class _KqueueEventEmitter(Thread):
                                           ref_dir_snapshot, \
                                           new_dir_snapshot, \
                                           files_renamed):
+        """Process kevent-hinted file renames. These may be deletes too
+        relative to the watched directory."""
         for path_renamed in files_renamed:
             # These are kqueue-hinted renames. We classify them into
             # either moved if the new path is found or deleted.
@@ -234,6 +247,8 @@ class _KqueueEventEmitter(Thread):
                                          ref_dir_snapshot, \
                                          new_dir_snapshot, \
                                          dirs_renamed):
+        """Process kevent-hinted directory renames. These may be deletes
+        too relative to the watched directory."""
         for path_renamed in dirs_renamed:
             # These are kqueue-hinted renames. We classify them into
             # either moved if the new path is found or deleted.
@@ -272,6 +287,8 @@ class _KqueueEventEmitter(Thread):
 
 
     def __process_kevent_dir_modifications(self, out_event_queue, ref_dir_snapshot, new_dir_snapshot, dirs_modified):
+        """Process kevent-hinted directory modifications. Created
+        files/directories are also detected here."""
         for dir_modified in dirs_modified:
             out_event_queue.put((self.path, DirModifiedEvent(src_path=dir_modified)))
             # Don't need to register here. It's already registered.
@@ -287,6 +304,8 @@ class _KqueueEventEmitter(Thread):
 
     @synchronized()
     def process_events(self, out_event_queue):
+        """Blocking call to kqueue.control that enlists events and then
+    processes them classifying them into various events defined in watchdog.events."""
         event_list = self.kq.control(list(self.kevent_list), MAX_EVENTS)
         files_renamed, dirs_renamed, dirs_modified = \
             self.__process_kevents_except_movement(event_list,
@@ -331,7 +350,9 @@ class _KqueueEventEmitter(Thread):
                 logging.warn(e)
         self.kq.close()
 
+
 class KqueueObserver(PollingObserver):
+    """BSD/OS X kqueue-based observer implementation."""
     def _create_event_emitter(self, path, recursive):
         return _KqueueEventEmitter(path=path,
                                    interval=self.interval,
