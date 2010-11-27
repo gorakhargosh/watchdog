@@ -136,11 +136,17 @@ class _Win32EventEmitter(DaemonThread):
                         renamed_dir_path = last_renamed_from_filename.rstrip(os.path.sep)
                         new_dir_path = filename.rstrip(os.path.sep)
 
+                        # Fire a moved event for the directory itself.
+                        q.put((self.path, DirMovedEvent(renamed_dir_path, new_dir_path)))
+
                         # Fire moved events for all files within this
                         # directory if recursive.
+                        walk = get_walker(self.is_recursive)
                         if self.is_recursive:
-                            walk = get_walker(self.is_recursive)
-
+                            #import time
+                            #time.sleep(1)
+                            # TODO: The following may not execute and we may need to wait for I/O to complete.
+                            # Needs looking into.
                             for root, directories, filenames in walk(new_dir_path):
                                 for d in directories:
                                     full_path = os.path.join(root, d)
@@ -151,8 +157,6 @@ class _Win32EventEmitter(DaemonThread):
                                     renamed_path = full_path.replace(new_dir_path, renamed_dir_path)
                                     q.put((self.path, FileMovedEvent(renamed_path, full_path)))
 
-                        # Now fire a moved event for the directory itself.
-                        q.put((self.path, DirMovedEvent(renamed_dir_path, new_dir_path)))
                     else:
                         q.put((self.path, FileMovedEvent(last_renamed_from_filename, filename)))
                 else:
