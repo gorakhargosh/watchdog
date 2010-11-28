@@ -52,8 +52,8 @@ Watchdog comes with a utility script called `watchmedo`.
 Please type `watchmedo --help` at the shell prompt to
 know more about this tool.
 
-Here is how you can log the current directory recursively 
-for events related only to `*.py` and `*.txt` files while 
+Here is how you can log the current directory recursively
+for events related only to `*.py` and `*.txt` files while
 ignoring all directory events:
 
 	watchmedo log --patterns="*.py;*.txt" --ignore-directories --recursive .
@@ -71,12 +71,13 @@ Supported Platforms:
 
 Dependencies:
 -------------
-1. [pywin32](http://sourceforge.net/projects/pywin32/) (only on Windows)
-2. [pyinotify](http://github.com/seb-m/pyinotify) (only on Linux)
-3. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
-4. [PyYAML](http://www.pyyaml.org/)
-5. [argh](http://pypi.python.org/pypi/argh)
-6. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
+1. Python 2.5 or above.
+2. [pywin32](http://sourceforge.net/projects/pywin32/) (only on Windows)
+3. [pyinotify](http://github.com/seb-m/pyinotify) (only on Linux)
+4. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
+5. [PyYAML](http://www.pyyaml.org/)
+6. [argh](http://pypi.python.org/pypi/argh)
+7. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
 
 
 Licensing:
