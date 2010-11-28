@@ -53,7 +53,8 @@ except ImportError:
                     import win32file
                     import win32con
                     #logging.debug('Using Win32Observer.')
-                    from watchdog.observers.win32_observer import Win32Observer as Observer
+                    #from watchdog.observers.win32_observer import Win32Observer as Observer
+                    from watchdog.observers.win32ioc_observer import Win32IOCObserver as Observer
                 except ImportError:
                     #logging.debug('Using PollingObserver as fallback.')
                     from watchdog.observers.polling_observer import PollingObserver as Observer
