@@ -57,17 +57,19 @@ Dependencies:
 -------------
 1. [pywin32](http://sourceforge.net/projects/pywin32/) (only on Windows)
 2. [pyinotify](http://github.com/seb-m/pyinotify) (only on Linux)
-3. XCode or gcc (only on Mac OS X)
+3. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
 4. [PyYAML](http://www.pyyaml.org/)
 5. [argh](http://pypi.python.org/pypi/argh)
-6. [select_backport](http://pypi.python.org/pypi/select_backport/) (for Python2.5/2.6 on BSD/Mac OS X)
+6. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
+
 
 Licensing:
 ----------
 Watchdog is licensed under the terms of the
 [MIT License](http://www.opensource.org/licenses/mit-license.html)
 
-Copyright (C) 2010 Gora Khargosh &lt;gora.khargosh@gmail.com&gt; and the Watchdog authors.
+Copyright (C) 2010 Gora Khargosh &lt;[gora.khargosh@gmail.com](mailto:gora.khargosh@gmail.com)&gt; and the Watchdog authors.
 
-Project source code on [Github](http://github.com/gorakhargosh/watchdog)
+Project source code at [Github](http://github.com/gorakhargosh/watchdog)
 
+Please report bugs at the [Github issue tracker](http://github.com/gorakhargosh/watchdog/issues).
