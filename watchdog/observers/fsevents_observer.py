@@ -26,8 +26,8 @@ import _watchdog_fsevents as _fsevents
 import os.path
 from threading import Thread, Event as ThreadedEvent
 
-from watchdog.utils import real_absolute_path, absolute_path
-from watchdog.decorator_utils import synchronized, get_parent_dir_path
+from watchdog.utils import real_absolute_path, absolute_path, get_parent_dir_path
+from watchdog.decorator_utils import synchronized
 from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.events import \
     DirMovedEvent, \
