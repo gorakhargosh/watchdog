@@ -25,7 +25,9 @@
 
 
 import time
+import os
 import os.path
+import stat
 import ctypes
 import pywintypes
 
@@ -67,6 +69,10 @@ class _Watch(object):
     @synchronized()
     def dispatch_events(self, num_bytes):
         # dispatch events
+        paths_created = set()
+        objects_deleted = set()
+
+
         last_renamed_from_filename = ""
         for action, filename in FILE_NOTIFY_INFORMATION(self.event_buffer.raw, num_bytes):
             filename = absolute_path(os.path.join(self.path, filename))
@@ -77,6 +83,9 @@ class _Watch(object):
                 if os.path.isdir(filename):
                     src_dir_path = last_renamed_from_filename
                     dest_dir_path = filename
+
+                    # Fire a moved event for the directory itself.
+                    self.event_handler.dispatch(DirMovedEvent(src_dir_path, dest_dir_path))
 
                     # Fire moved events for all files within this
                     # directory if recursive.
@@ -90,16 +99,61 @@ class _Watch(object):
                         for moved_event in get_moved_events_for(src_dir_path, dest_dir_path, recursive=True):
                             self.event_handler.dispatch(moved_event)
 
-                    # Fire a moved event for the directory itself.
-                    self.event_handler.dispatch(DirMovedEvent(src_dir_path, dest_dir_path))
                 else:
                     self.event_handler.dispatch(FileMovedEvent(last_renamed_from_filename, filename))
+
+            # If a file is moved to a subdirectory, Windows fires
+            # created/deleted events instead of renames. We need to convert
+            # these into moved events.
+            elif action == FILE_ACTION_CREATED:
+                paths_created.add(filename)
+            elif action == FILE_ACTION_DELETED:
+                paths_deleted.add(filename)
             else:
                 if os.path.isdir(filename):
                     action_event_map = DIR_ACTION_EVENT_MAP
                 else:
                     action_event_map = FILE_ACTION_EVENT_MAP
                 self.event_handler.dispatch(action_event_map[action](filename))
+
+
+            # If a file is moved to a subdirectory, Windows fires
+            # created/deleted events instead of renames. We need to convert
+            # these into moved events.
+            for path_created in paths_created:
+                created_stat_info = os.stat(path_created)
+                for path_deleted in paths_deleted:
+                    deleted_stat_info = os.stat(path_deleted)
+                    if created_stat_info.st_ino == deleted_stat_info.st_ino:
+                        paths_created.remove(path_created)
+                        paths_deleted.remove(path_deleted)
+
+                        if stat.S_ISDIR(created_stat_info):
+                            self.event_handler.dispatch(DirMovedEvent(path_deleted, path_created))
+                            # Fire moved events for all files within this
+                            # directory if recursive.
+                            if self.is_recursive:
+                                # HACK: We introduce a forced delay before
+                                # traversing the moved directory. This will read
+                                # only file movement that finishes within this
+                                # delay time.
+                                time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
+                                # TODO: The following still does not execute because we need to wait for I/O to complete.
+                                for moved_event in get_moved_events_for(path_deleted, path_created, recursive=True):
+                                    self.event_handler.dispatch(moved_event)
+                        else:
+                            self.event_handler.dispatch(FileMovedEvent(path_deleted, path_created))
+                    else:
+                        if stat.S_ISDIR(created_stat_info):
+                            created_event = DirCreatedEvent(path_created)
+                        else:
+                            created_event = FileCreatedEvent(path_created)
+                        if stat.S_ISDIR(deleted_stat_info):
+                            deleted_event = DirDeletedEvent(path_deleted)
+                        else:
+                            deleted_event = FileDeletedEvent(path_deleted)
+                        self.event_handler.dispatch(created_event)
+                        self.event_handler.dispatch(deleted_event)
 
 
     @synchronized()
