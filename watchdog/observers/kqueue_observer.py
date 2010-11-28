@@ -172,15 +172,22 @@ class _KqueueEventEmitter(DaemonThread):
     def register_path(self, path, is_directory=False):
         """Bookkeeping method that registers watching a given path."""
         path = path.rstrip(os.path.sep)
-        if not path in self.fso_table:
-            # If we haven't registered a kevent for this path already,
-            # add a new kevent for the path.
-            kev, fd = create_kevent_for_path(path)
-            self.kevent_list.append(kev)
-            fso = _FileSystemObject(fd, kev, path, is_directory)
-            self.descriptor_list.add(fd)
-            self.fso_table[fd] = fso
-            self.fso_table[path] = fso
+        if not path in self.fso_table and os.path.exists(path):
+            try:
+                # If we haven't registered a kevent for this path already,
+                # add a new kevent for the path.
+                kev, fd = create_kevent_for_path(path)
+                self.kevent_list.append(kev)
+                fso = _FileSystemObject(fd, kev, path, is_directory)
+                self.descriptor_list.add(fd)
+                self.fso_table[fd] = fso
+                self.fso_table[path] = fso
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    # No such file or directory.
+                    # Possibly a temporary file we can ignore.
+                    logging.warn(e)
+
 
     def __process_kevents_except_movement(self, event_list, out_event_queue):
         """Process only basic kevents. Movement and directory modifications
@@ -229,8 +236,8 @@ class _KqueueEventEmitter(DaemonThread):
         for path_renamed in files_renamed:
             # These are kqueue-hinted renames. We classify them into
             # either moved if the new path is found or deleted.
-            ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
             try:
+                ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
                 path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
                 out_event_queue.put((self.path, FileMovedEvent(src_path=path_renamed, dest_path=path)))
                 self.unregister_path(path_renamed)
@@ -250,8 +257,8 @@ class _KqueueEventEmitter(DaemonThread):
         for path_renamed in dirs_renamed:
             # These are kqueue-hinted renames. We classify them into
             # either moved if the new path is found or deleted.
-            ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
             try:
+                ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
                 path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
                 path = path.rstrip(os.path.sep)
 
