@@ -43,17 +43,15 @@ except KeyboardInterrupt:
 observer.join()</pre>
 
 
-Introduction:
--------------
-Watchdog lets your Python programs monitor filesystem events as
-portably as possible using:
+Supported Platforms:
+--------------------
 
-* inotify on Linux
-* FSEvents on Mac OS X
-* kqueue on BSD/OS X
-* ReadDirectoryChangesW on Windows
-* polling the directory for snapshots periodically and comparing them as
-  a fallback mechanism (slowest)
+* Linux (inotify)
+* Mac OS X (FSEevnts, kqueue)
+* FreeBSD/BSD (kqueue)
+* Windows (ReadDirectoryChangesW with I/O completion ports; ReadDirectoryChangesW worker threads)
+* OS-independent (polling the disk for directory snapshots and comparing them periodically; slow and not recommended)
+
 
 Dependencies:
 -------------
