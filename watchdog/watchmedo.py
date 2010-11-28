@@ -220,7 +220,16 @@ def log(args):
 
 
 #@alias('shell-command')
-@arg('command', nargs='*', default=None, help='command that will be executed by the shell in reaction to matched events')
+@arg('command', nargs='*', default=None, help='''shell command in response
+to matching events. These interpolation variables are available to your
+command string:
+
+%%(src_path)s    - event source path;
+%%(dest_path)s   - event destination path (for moved events);
+%%(event_type)s  - event type;
+%%(object)s      - `file` or `directory`.
+
+''')
 @arg('--watch-directories', default='.', help='directories to watch (separated by %s)' % pathsep)
 @arg('--patterns', default='*', help='matches event paths with these patterns (separated by ;).')
 @arg('--ignore-patterns', default='', help='ignores event paths with these patterns (separated by ;).')
