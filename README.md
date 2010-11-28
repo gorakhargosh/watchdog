@@ -53,10 +53,10 @@ Please type `watchmedo --help` at the shell prompt to
 know more about this tool.
 
 Here is how you can log the current directory recursively 
-for events related only to *.py and *.txt files while 
+for events related only to `*.py` and `*.txt` files while 
 ignoring all directory events:
 
-	watchmedo log --pattern="*.py;*.txt" --ignore-directories --recursive .
+	watchmedo log --patterns="*.py;*.txt" --ignore-directories --recursive .
 
 
 Supported Platforms:
