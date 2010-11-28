@@ -49,7 +49,7 @@ class _Stream(object):
         # Strip the path of the ending separator to ensure consistent keys
         # in the self.snapshot_for_path dictionary.
         self.is_recursive = recursive
-        self.paths = [real_absolute_path(path)) for path in set(paths)]
+        self.paths = [real_absolute_path(path) for path in set(paths)]
         self.event_handler = event_handler
         self.name = name
 
