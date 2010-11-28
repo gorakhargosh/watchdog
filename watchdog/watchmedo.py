@@ -157,7 +157,7 @@ def tricks_from(args):
 @arg('trick_paths', nargs='*', help='Dotted paths for all the tricks you want to generate')
 @arg('--python-path', default='.', help='string of paths separated by %s to add to the python path' % pathsep)
 @arg('--append-to-file', default=None, help='appends the generated tricks YAML to a file; if not specified, prints to standard output')
-@arg('-a-', '--append-only', dest='append_only', default=False, help='if --append-to-file is not specified, produces output for appending instead of a complete tricks yaml file.')
+@arg('-a', '--append-only', dest='append_only', default=False, help='if --append-to-file is not specified, produces output for appending instead of a complete tricks yaml file.')
 def tricks_generate_yaml(args):
     python_paths = path_split(args.python_path)
     add_to_sys_path(python_paths)
@@ -188,7 +188,7 @@ def tricks_generate_yaml(args):
 @arg('-p', '--pattern', '--patterns', dest='patterns', default='*', help='matches event paths with these patterns (separated by ;).')
 @arg('-i', '--ignore-pattern', '--ignore-patterns', dest='ignore_patterns', default='', help='ignores event paths with these patterns (separated by ;).')
 @arg('-D', '--ignore-directories', dest='ignore_directories', default=False, help='ignores events for directories')
-@arg('-r', '--recursive', dest='recursive', default=False, help='monitors the directories recursively')
+@arg('-R', '--recursive', dest='recursive', default=False, help='monitors the directories recursively')
 @arg('--debug-force-polling', default=False, help='[debug flag] forces using the polling observer implementation.')
 @arg('--debug-force-kqueue', default=False, help='[debug flag] forces using the kqueue observer implementation.')
 @arg('--debug-force-win32', default=False, help='[debug flag] forces using the win32 observer implementation.')
@@ -241,7 +241,7 @@ Example option usage:
 @arg('-p', '--pattern', '--patterns', dest='patterns', default='*', help='matches event paths with these patterns (separated by ;).')
 @arg('-i', '--ignore-pattern', '--ignore-patterns', dest='ignore_patterns', default='', help='ignores event paths with these patterns (separated by ;).')
 @arg('-D', '--ignore-directories', dest='ignore_directories', default=False, help='ignores events for directories')
-@arg('-r', '--recursive', dest='recursive', default=False, help='monitors the directories recursively')
+@arg('-R', '--recursive', dest='recursive', default=False, help='monitors the directories recursively')
 def shell_command(args):
     from watchdog.tricks import ShellCommandTrick
 

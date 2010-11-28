@@ -87,7 +87,7 @@ Installing from source:
 Supported Platforms:
 --------------------
 
-* Linux (inotify)
+* Linux 2.6 (inotify)
 * Mac OS X (FSEevnts, kqueue)
 * FreeBSD/BSD (kqueue)
 * Windows (ReadDirectoryChangesW with I/O completion ports; ReadDirectoryChangesW worker threads)
