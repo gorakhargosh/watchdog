@@ -56,7 +56,22 @@ Here is how you can log the current directory recursively
 for events related only to `*.py` and `*.txt` files while
 ignoring all directory events:
 
-	watchmedo log --patterns="*.py;*.txt" --ignore-directories --recursive .
+    watchmedo log --patterns="*.py;*.txt" --ignore-directories --recursive .
+
+Installation:
+-------------
+
+Installing from PyPI using pip:
+
+    pip install watchdog
+
+Installing from PyPI using easy_install:
+
+    easy_install watchdog
+
+Installing from source:
+
+    python setup.py install
 
 
 Supported Platforms:
