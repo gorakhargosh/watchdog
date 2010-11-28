@@ -1,46 +1,62 @@
 Watchdog
 ========
-Python API to monitor file system events.
+Python API and shell utilities to monitor file system events.
 
-Example Usage:
---------------
+Example API Usage:
+------------------
 
-<pre>import sys
-import time
-from watchdog import Observer
-from watchdog.events import FileSystemEventHandler
-import logging
+A simple program that uses watchdog to monitor directories specified
+as command-line arguments and logs events generated.
 
-logging.basicConfig(level=logging.DEBUG)
+	import sys
+	import time
+	from watchdog import Observer
+	from watchdog.events import FileSystemEventHandler
+	import logging
 
-class MyEventHandler(FileSystemEventHandler):
-    def catch_all_handler(self, event):
-        logging.debug(event)
+	logging.basicConfig(level=logging.DEBUG)
 
-    def on_moved(self, event):
-        self.catch_all_handler(event)
+	class MyEventHandler(FileSystemEventHandler):
+	    def catch_all_handler(self, event):
+	        logging.debug(event)
 
-    def on_created(self, event):
-        self.catch_all_handler(event)
+	    def on_moved(self, event):
+	        self.catch_all_handler(event)
 
-    def on_deleted(self, event):
-        self.catch_all_handler(event)
+	    def on_created(self, event):
+	        self.catch_all_handler(event)
 
-    def on_modified(self, event):
-        self.catch_all_handler(event)
+	    def on_deleted(self, event):
+	        self.catch_all_handler(event)
+
+	    def on_modified(self, event):
+	        self.catch_all_handler(event)
 
 
-event_handler = MyEventHandler()
-observer = Observer()
-observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
-observer.start()
-try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    observer.unschedule('a-unique-name')
-    observer.stop()
-observer.join()</pre>
+	event_handler = MyEventHandler()
+	observer = Observer()
+	observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
+	observer.start()
+	try:
+	    while True:
+	        time.sleep(1)
+	except KeyboardInterrupt:
+	    observer.unschedule('a-unique-name')
+	    observer.stop()
+	observer.join()
+
+
+Shell Utilities:
+----------------
+Watchdog comes with a utility script called `watchmedo`.
+Please type `watchmedo --help` at the shell prompt to
+know more about this tool.
+
+Here is how you can log the current directory recursively 
+for events related only to *.py and *.txt files while 
+ignoring all directory events:
+
+	watchmedo log --pattern="*.py;*.txt" --ignore-directories --recursive .
 
 
 Supported Platforms:
