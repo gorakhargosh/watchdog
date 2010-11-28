@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# watchmedo - Reads a tricks.yaml file and executes all the tricks.
+# watchmedo: Shell file monitoring utilities.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
