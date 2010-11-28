@@ -85,7 +85,8 @@ if sys.version_info < (2, 7, 0) and \
         ('linux' in sys.platform or 'bsd' in sys.platform or 'darwin' in sys.platform):
     # Python 2.6 and below have the broken/non-existent kqueue implementations in the
     # select module. This backported patch adds it.
-    common_install_requires.append('select_backport')
+    common_install_requires.append('select_backport >= 0.2')
+    common_install_requires.append('argparse >= 1.1')
 
 install_requires = {
     PLATFORM_MACOSX: [],
