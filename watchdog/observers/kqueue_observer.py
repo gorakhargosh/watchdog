@@ -172,7 +172,7 @@ class _KqueueEventEmitter(DaemonThread):
     def register_path(self, path, is_directory=False):
         """Bookkeeping method that registers watching a given path."""
         path = path.rstrip(os.path.sep)
-        if not path in self.fso_table and os.path.exists(path):
+        if not path in self.fso_table:
             try:
                 # If we haven't registered a kevent for this path already,
                 # add a new kevent for the path.
@@ -186,7 +186,15 @@ class _KqueueEventEmitter(DaemonThread):
                 if e.errno == errno.ENOENT:
                     # No such file or directory.
                     # Possibly a temporary file we can ignore.
-                    logging.warn(e)
+                    if is_directory:
+                        event_created_class = DirCreatedEvent
+                        event_deleted_class = DirDeletedEvent
+                    else:
+                        event_created_class = FileCreatedEvent
+                        event_deleted_class = FileDeletedEvent
+                    self.out_event_queue.put((self.path, event_created_class(path)))
+                    self.out_event_queue.put((self.path, event_deleted_class(path)))
+                    #logging.warn(e)
 
 
     def __process_kevents_except_movement(self, event_list, out_event_queue):
@@ -238,6 +246,12 @@ class _KqueueEventEmitter(DaemonThread):
             # either moved if the new path is found or deleted.
             try:
                 ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
+            except KeyError:
+                out_event_queue.put((self.path, FileCreatedEvent(path_renamed)))
+                out_event_queue.put((self.path, FileDeletedEvent(path_renamed)))
+                continue
+
+            try:
                 path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
                 out_event_queue.put((self.path, FileMovedEvent(src_path=path_renamed, dest_path=path)))
                 self.unregister_path(path_renamed)
@@ -259,6 +273,11 @@ class _KqueueEventEmitter(DaemonThread):
             # either moved if the new path is found or deleted.
             try:
                 ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
+            except KeyError:
+                out_event_queue.put((self.path, DirCreatedEvent(path_renamed)))
+                out_event_queue.put((self.path, DirDeletedEvent(path_renamed)))
+                continue
+            try:
                 path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
                 path = path.rstrip(os.path.sep)
 
