@@ -69,8 +69,8 @@ class _Watch(object):
     @synchronized()
     def dispatch_events(self, num_bytes):
         # dispatch events
-        paths_created = set()
-        objects_deleted = set()
+        #paths_created = set()
+        #paths_deleted = set()
 
 
         last_renamed_from_filename = ""
@@ -105,10 +105,10 @@ class _Watch(object):
             # If a file is moved to a subdirectory, Windows fires
             # created/deleted events instead of renames. We need to convert
             # these into moved events.
-            elif action == FILE_ACTION_CREATED:
-                paths_created.add(filename)
-            elif action == FILE_ACTION_DELETED:
-                paths_deleted.add(filename)
+            #elif action == FILE_ACTION_CREATED:
+            #    paths_created.add(filename)
+            #elif action == FILE_ACTION_DELETED:
+            #    paths_deleted.add(filename)
             else:
                 if os.path.isdir(filename):
                     action_event_map = DIR_ACTION_EVENT_MAP
@@ -116,7 +116,7 @@ class _Watch(object):
                     action_event_map = FILE_ACTION_EVENT_MAP
                 self.event_handler.dispatch(action_event_map[action](filename))
 
-
+"""
             # If a file is moved to a subdirectory, Windows fires
             # created/deleted events instead of renames. We need to convert
             # these into moved events.
@@ -154,7 +154,7 @@ class _Watch(object):
                             deleted_event = FileDeletedEvent(path_deleted)
                         self.event_handler.dispatch(created_event)
                         self.event_handler.dispatch(deleted_event)
-
+"""
 
     @synchronized()
     def close(self):
