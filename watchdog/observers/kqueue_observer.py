@@ -247,6 +247,8 @@ class _KqueueEventEmitter(DaemonThread):
             try:
                 ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
             except KeyError:
+                # Caught a temporary file most probably.
+                # So fire a created+deleted event sequence.
                 out_event_queue.put((self.path, FileCreatedEvent(path_renamed)))
                 out_event_queue.put((self.path, FileDeletedEvent(path_renamed)))
                 continue
@@ -274,6 +276,8 @@ class _KqueueEventEmitter(DaemonThread):
             try:
                 ref_stat_info = ref_dir_snapshot.stat_info(path_renamed)
             except KeyError:
+                # Caught a temporary directory most probably.
+                # So fire a created+deleted event sequence.
                 out_event_queue.put((self.path, DirCreatedEvent(path_renamed)))
                 out_event_queue.put((self.path, DirDeletedEvent(path_renamed)))
                 continue
