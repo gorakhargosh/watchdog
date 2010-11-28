@@ -256,7 +256,13 @@ def shell_command(args):
                                       ignore_directories=args.ignore_directories)
     observe_with(Observer(), 'shell-command', event_handler, args.directories, args.recursive)
 
-parser = ArghParser()
+
+epilog="""Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>.
+
+Licensed under the terms of the MIT license. Please see LICENSE in the
+source code for more information."""
+
+parser = ArghParser(epilog=epilog)
 parser.add_commands([tricks_from,
                      tricks_generate_yaml,
                      log,
