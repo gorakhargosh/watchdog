@@ -58,6 +58,12 @@ ignoring all directory events:
 
     watchmedo log --patterns="*.py;*.txt" --ignore-directories --recursive .
 
+If you'd like to execute shell commands in response to
+events you can use the `shell-command` subcommand like this:
+
+    watchmedo shell-command --patterns="*.py;*.txt" --recursive --command='echo "${watch_src_path}"' .
+
+
 Installation:
 -------------
 
