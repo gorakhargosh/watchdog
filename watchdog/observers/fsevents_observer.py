@@ -23,13 +23,21 @@
 
 import _watchdog_fsevents as _fsevents
 
+import os.path
 from threading import Thread, Event as ThreadedEvent
-from os.path import realpath, abspath, dirname, sep as path_separator
 
+from watchdog.utils import real_absolute_path, absolute_path
 from watchdog.decorator_utils import synchronized, get_parent_dir_path
 from watchdog.dirsnapshot import DirectorySnapshot
-from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
-    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
+from watchdog.events import \
+    DirMovedEvent, \
+    DirDeletedEvent, \
+    DirCreatedEvent, \
+    DirModifiedEvent, \
+    FileMovedEvent, \
+    FileDeletedEvent, \
+    FileCreatedEvent, \
+    FileModifiedEvent
 
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -41,7 +49,7 @@ class _Stream(object):
         # Strip the path of the ending separator to ensure consistent keys
         # in the self.snapshot_for_path dictionary.
         self.is_recursive = recursive
-        self.paths = [realpath(abspath(path)).rstrip(path_separator) for path in set(paths)]
+        self.paths = [real_absolute_path(path)) for path in set(paths)]
         self.event_handler = event_handler
         self.name = name
 
@@ -85,7 +93,7 @@ class FSEventsObserver(Thread):
         try:
             # Strip the path of the ending separator to ensure consistent keys
             # in the self.snapshot_for_path dictionary.
-            path.rstrip(path_separator)
+            path = absolute_path(path)
             snapshot = self.snapshot_for_path[path]
             #logging.debug(path)
             return (path, snapshot)
@@ -142,7 +150,7 @@ class FSEventsObserver(Thread):
         for path in stream.paths:
             # Strip the path of the ending separator to ensure consistent keys
             # in the self.snapshot_for_path dictionary.
-            path = path.rstrip(path_separator)
+            path = absolute_path(path)
             self.snapshot_for_path[path] = DirectorySnapshot(path, recursive=stream.is_recursive)
         def callback(paths, masks):
             for path in paths:

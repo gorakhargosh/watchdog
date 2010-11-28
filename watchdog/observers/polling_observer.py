@@ -21,9 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import os
-from os.path import realpath, abspath, isdir as path_isdir
-from threading import Thread, Event as ThreadedEvent
+import os.path
 
 try:
     # Python 3k
@@ -31,11 +29,20 @@ try:
 except ImportError:
     from Queue import Queue, Empty as QueueEmpty
 
+from watchdog.utils import real_absolute_path, absolute_path
 from watchdog.observers import DaemonThread
 from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized
-from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
-    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
+from watchdog.events import \
+    DirMovedEvent, \
+    DirDeletedEvent, \
+    DirCreatedEvent, \
+    DirModifiedEvent, \
+    FileMovedEvent, \
+    FileDeletedEvent, \
+    FileCreatedEvent, \
+    FileModifiedEvent
+
 
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
@@ -51,10 +58,10 @@ class _PollingEventEmitter(DaemonThread):
 
         self.out_event_queue = out_event_queue
         self.snapshot = None
-        self.path = path
+        self.path = real_absolute_path(path)
         self.is_recursive = recursive
         if name is None:
-            self.name = '%s(%s)' % (self.__class__.__name__, realpath(abspath(self.path)))
+            self.name = '%s(%s)' % (self.__class__.__name__, self.path
         else:
             self.name = name
 
@@ -167,14 +174,14 @@ class PollingObserver(DaemonThread):
         for path in paths:
             if not isinstance(path, basestring):
                 raise TypeError("Path must be string, not '%s'." % type(path).__name__)
-            path = abspath(realpath(path)).rstrip(os.path.sep)
+            path = real_absolute_path(path)
             self._schedule_path(name, event_handler, recursive, path)
 
 
     @synchronized()
     def _schedule_path(self, name, event_handler, recursive, path):
         """Starts monitoring the given path for file system events."""
-        if path_isdir(path) and not path in self.rules:
+        if os.path.isdir(path) and not path in self.rules:
             event_emitter = self._create_event_emitter(path=path, recursive=recursive)
             self.event_emitters.add(event_emitter)
             self.rules[path] = _Rule(path=path,

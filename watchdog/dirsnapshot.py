@@ -31,9 +31,10 @@ Notes:
 """
 
 import os
-from os.path import join as path_join, realpath, abspath, sep as path_sep
-from stat import S_ISDIR
-from watchdog.utils import get_walker
+import os.path
+import stat
+
+from watchdog.utils import get_walker, real_absolute_path
 
 class DirectorySnapshotDiff(object):
     """Difference between two directory snapshots."""
@@ -62,7 +63,7 @@ class DirectorySnapshotDiff(object):
             if path in ref_dirsnap.stat_snapshot:
                 ref_stat_info = ref_dirsnap.stat_info(path)
                 if stat_info.st_ino == ref_stat_info.st_ino and stat_info.st_mtime != ref_stat_info.st_mtime:
-                    if S_ISDIR(stat_info.st_mode):
+                    if stat.S_ISDIR(stat_info.st_mode):
                         self._dirs_modified.add(path)
                     else:
                         self._files_modified.add(path)
@@ -78,7 +79,7 @@ class DirectorySnapshotDiff(object):
                 if created_stat_info.st_ino == deleted_stat_info.st_ino:
                     paths_deleted.remove(deleted_path)
                     paths_created.remove(created_path)
-                    if S_ISDIR(created_stat_info.st_mode):
+                    if stat.S_ISDIR(created_stat_info.st_mode):
                         self._dirs_moved[deleted_path] = created_path
                     else:
                         self._files_moved[deleted_path] = created_path
@@ -87,14 +88,14 @@ class DirectorySnapshotDiff(object):
         # created files/directories.
         for path in paths_deleted:
             stat_info = ref_dirsnap.stat_info(path)
-            if S_ISDIR(stat_info.st_mode):
+            if stat.S_ISDIR(stat_info.st_mode):
                 self._dirs_deleted.add(path)
             else:
                 self._files_deleted.add(path)
 
         for path in paths_created:
             stat_info = dirsnap.stat_info(path)
-            if S_ISDIR(stat_info.st_mode):
+            if stat.S_ISDIR(stat_info.st_mode):
                 self._dirs_created.add(path)
             else:
                 self._files_created.add(path)
@@ -144,7 +145,7 @@ class DirectorySnapshotDiff(object):
 class DirectorySnapshot(object):
     """A snapshot of stat information of files in a directory."""
     def __init__(self, path, recursive=True, walker_callback=(lambda p, s: None)):
-        self._path = abspath(realpath(path)).rstrip(path_sep)
+        self._path = real_absolute_path(path)
         self._stat_snapshot = {}
         self._inode_to_path = {}
         self.is_recursive = recursive
@@ -159,7 +160,7 @@ class DirectorySnapshot(object):
         for root, directories, files in walk(self._path):
             for file_name in files:
                 try:
-                    file_path = path_join(root, file_name)
+                    file_path = os.path.join(root, file_name)
                     stat_info = os.stat(file_path)
                     self._stat_snapshot[file_path] = stat_info
                     self._inode_to_path[stat_info.st_ino] = file_path
@@ -169,7 +170,7 @@ class DirectorySnapshot(object):
 
             for directory_name in directories:
                 try:
-                    directory_path = path_join(root, directory_name)
+                    directory_path = os.path.join(root, directory_name)
                     stat_info = os.stat(directory_path)
                     self._stat_snapshot[directory_path] = stat_info
                     self._inode_to_path[stat_info.st_ino] = directory_path

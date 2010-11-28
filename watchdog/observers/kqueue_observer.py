@@ -28,7 +28,7 @@ import sys
 import errno
 import os.path
 
-from watchdog.utils import has_attribute
+from watchdog.utils import has_attribute, absolute_path, real_absolute_path
 
 try:
     # Python 3k
@@ -40,7 +40,6 @@ if not has_attribute(select, 'kqueue') or sys.version_info < (2,7,0):
     import select_backport as select
 
 from threading import Thread, Lock as ThreadedLock, Event as ThreadedEvent
-from watchdog.utils import get_walker
 from watchdog.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized
 from watchdog.observers import DaemonThread
@@ -132,7 +131,7 @@ class _FileSystemObject(object):
 class _KqueueEventEmitter(DaemonThread):
     def __init__(self, path, out_event_queue, recursive, interval=1):
         DaemonThread.__init__(self, interval)
-        self.path = os.path.abspath(os.path.realpath(path))
+        self.path = real_absolute_path(path)
         self.out_event_queue = out_event_queue
         self.is_recursive = recursive
         self.kq = select.kqueue()
@@ -145,8 +144,7 @@ class _KqueueEventEmitter(DaemonThread):
     @synchronized()
     def register_dir_tree(self, path, recursive):
         """Registers event handling for an entire directory tree."""
-        path = os.path.abspath(os.path.realpath(path)).rstrip(os.path.sep)
-
+        path = real_absolute_path(path)
         def walker_callback(path, stat_info, self=self):
             self.register_path(path, stat.S_ISDIR(stat_info.st_mode))
         self.dir_snapshot = DirectorySnapshot(path, recursive, walker_callback)
@@ -155,7 +153,7 @@ class _KqueueEventEmitter(DaemonThread):
     @synchronized()
     def unregister_path(self, path):
         """Bookkeeping method that unregisters watching a given path."""
-        path = path.rstrip(os.path.sep)
+        path = absolute_path(path)
         if path in self.fso_table:
             fso = self.fso_table[path]
             self.kevent_list.remove(fso.kev)
@@ -171,7 +169,7 @@ class _KqueueEventEmitter(DaemonThread):
     @synchronized()
     def register_path(self, path, is_directory=False):
         """Bookkeeping method that registers watching a given path."""
-        path = path.rstrip(os.path.sep)
+        path = absolute_path(path)
         if not path in self.fso_table:
             try:
                 # If we haven't registered a kevent for this path already,
@@ -283,12 +281,12 @@ class _KqueueEventEmitter(DaemonThread):
                 continue
             try:
                 path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
-                path = path.rstrip(os.path.sep)
+                path = absolute_path(path)
 
                 # If we're in recursive mode, we fire move events for
                 # the entire contents of the moved directory.
                 if self.is_recursive:
-                    dir_path_renamed = path_renamed.rstrip(os.path.sep)
+                    dir_path_renamed = absolute_path(path_renamed)
                     for root, directories, filenames in os.walk(path):
                         for directory_path in directories:
                             full_path = os.path.join(root, directory_path)

@@ -22,13 +22,32 @@
 # THE SOFTWARE.
 
 import logging
-from watchdog.utils import filter_paths, has_attribute
+import os.path
+
+from watchdog.utils import filter_paths, \
+    has_attribute, get_walker, absolute_path
 from watchdog.decorator_utils import deprecated
+
 
 EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
+
+
+def get_moved_events_for(src_dir_path, dest_dir_path, recursive=True):
+    walk = get_walker(recursive)
+    src_dir_path = absolute_path(src_dir_path)
+    dest_dir_path = absolute_path(dest_dir_path)
+    for root, directories, filenames in walk(dest_dir_path):
+        for directory in directories:
+            full_path = os.path.join(root, directory)
+            renamed_path = full_path.replace(dest_dir_path, src_dir_path)
+            yield DirMovedEvent(renamed_path, full_path)
+        for filename in filenames:
+            full_path = os.path.join(root, filename)
+            renamed_path = full_path.replace(dest_dir_path, src_dir_path)
+            yield FileMovedEvent(renamed_path, full_path)
 
 
 class FileSystemEvent(object):

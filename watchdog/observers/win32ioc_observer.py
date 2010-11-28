@@ -30,7 +30,7 @@ import ctypes
 import pywintypes
 
 from watchdog.observers import DaemonThread
-from watchdog.utils import get_walker
+from watchdog.utils import real_absolute_path, absolute_path
 from watchdog.decorator_utils import synchronized
 from watchdog.observers.w32_api import *
 
@@ -69,17 +69,17 @@ class _Watch(object):
         # dispatch events
         last_renamed_from_filename = ""
         for action, filename in FILE_NOTIFY_INFORMATION(self.event_buffer.raw, num_bytes):
-            filename = os.path.join(self.path, filename)
+            filename = absolute_path(os.path.join(self.path, filename))
+
             if action == FILE_ACTION_RENAMED_OLD_NAME:
                 last_renamed_from_filename = filename
             elif action == FILE_ACTION_RENAMED_NEW_NAME:
                 if os.path.isdir(filename):
-                    renamed_dir_path = last_renamed_from_filename.rstrip(os.path.sep)
-                    new_dir_path = filename.rstrip(os.path.sep)
+                    src_dir_path = last_renamed_from_filename
+                    dest_dir_path = filename
 
                     # Fire moved events for all files within this
                     # directory if recursive.
-                    walk = get_walker(self.is_recursive)
                     if self.is_recursive:
                         # HACK: We introduce a forced delay before
                         # traversing the moved directory. This will read
@@ -87,18 +87,11 @@ class _Watch(object):
                         # delay time.
                         time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
                         # TODO: The following still does not execute because we need to wait for I/O to complete.
-                        for root, directories, filenames in walk(new_dir_path):
-                            for d in directories:
-                                full_path = os.path.join(root, d)
-                                renamed_path = full_path.replace(new_dir_path, renamed_dir_path)
-                                self.event_handler.dispatch(DirMovedEvent(renamed_path, full_path))
-                            for f in filenames:
-                                full_path = os.path.join(root, f)
-                                renamed_path = full_path.replace(new_dir_path, renamed_dir_path)
-                                self.event_handler.dispatch(FileMovedEvent(renamed_path, full_path))
+                        for moved_event in get_moved_events_for(src_dir_path, dest_dir_path, recursive=True):
+                            self.event_handler.dispath(moved_event)
 
                     # Fire a moved event for the directory itself.
-                    self.event_handler.dispatch(DirMovedEvent(renamed_dir_path, new_dir_path))
+                    self.event_handler.dispatch(DirMovedEvent(src_dir_path, dest_dir_path))
                 else:
                     self.event_handler.dispatch(FileMovedEvent(last_renamed_from_filename, filename))
             else:
@@ -107,6 +100,7 @@ class _Watch(object):
                 else:
                     action_event_map = FILE_ACTION_EVENT_MAP
                 self.event_handler.dispatch(action_event_map[action](filename))
+
 
     @synchronized()
     def close(self):
@@ -182,7 +176,7 @@ class Win32IOCObserver(DaemonThread):
         for path in paths:
             if not isinstance(path, basestring):
                 raise TypeError("Path must be string, not '%s'." % type(path).__name__)
-            path = os.path.abspath(os.path.realpath(path)).rstrip(os.path.sep)
+            path = real_absolute_path(path)
             iockey = self.iockey_counter
             watch = _Watch(iockey, name, event_handler, path, recursive)
             self.iockey_counter += 1

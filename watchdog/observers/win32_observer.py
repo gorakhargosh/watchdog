@@ -42,7 +42,6 @@
 import time
 import os.path
 from watchdog.observers.w32_api import *
-from watchdog.utils import get_walker
 from watchdog.observers import DaemonThread
 from watchdog.observers.polling_observer import PollingObserver
 
@@ -71,15 +70,14 @@ class _Win32EventEmitter(DaemonThread):
                     last_renamed_from_filename = filename
                 elif action == FILE_ACTION_RENAMED_NEW_NAME:
                     if os.path.isdir(filename):
-                        renamed_dir_path = last_renamed_from_filename.rstrip(os.path.sep)
-                        new_dir_path = filename.rstrip(os.path.sep)
+                        renamed_dir_path = absolute_path(last_renamed_from_filename)
+                        new_dir_path = absolute_path(filename)
 
                         # Fire a moved event for the directory itself.
                         q.put((self.path, DirMovedEvent(renamed_dir_path, new_dir_path)))
 
                         # Fire moved events for all files within this
                         # directory if recursive.
-                        walk = get_walker(self.is_recursive)
                         if self.is_recursive:
                             # HACK: We introduce a forced delay before
                             # traversing the moved directory. This will read
@@ -87,16 +85,8 @@ class _Win32EventEmitter(DaemonThread):
                             # delay time.
                             time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
                             # TODO: The following may not execute because we need to wait for I/O to complete.
-                            for root, directories, filenames in walk(new_dir_path):
-                                for d in directories:
-                                    full_path = os.path.join(root, d)
-                                    renamed_path = full_path.replace(new_dir_path, renamed_dir_path)
-                                    q.put((self.path, DirMovedEvent(renamed_path, full_path)))
-                                for f in filenames:
-                                    full_path = os.path.join(root, f)
-                                    renamed_path = full_path.replace(new_dir_path, renamed_dir_path)
-                                    q.put((self.path, FileMovedEvent(renamed_path, full_path)))
-
+                            for moved_event in get_moved_events_for(renamed_dir_path, new_dir_path, recursive=True):
+                                q.put((self.path, moved_event))
                     else:
                         q.put((self.path, FileMovedEvent(last_renamed_from_filename, filename)))
                 else:

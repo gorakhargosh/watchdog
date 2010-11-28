@@ -22,6 +22,7 @@
 # THE SOFTWARE.
 
 import os
+import os.path
 import sys
 from fnmatch import fnmatch
 
@@ -114,5 +115,15 @@ def has_attribute(ob, attribute):
     presence of an attribute."""
     return getattr(ob, attribute, None) is not None
 
+
+def absolute_path(path):
+    return os.path.abspath(os.path.normpath(path))
+
+
+def real_absolute_path(path):
+    return os.path.realpath(absolute_path(path))
+
+
 def get_parent_dir_path(path):
-    return os.path.realpath(os.path.abspath(os.path.dirname(path))).rstrip(os.path.sep)
+    return absolute_path(os.path.dirname(path))
+

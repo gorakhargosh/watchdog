@@ -42,8 +42,16 @@ from win32file import ReadDirectoryChangesW, \
     GetQueuedCompletionStatus, \
     FILE_NOTIFY_INFORMATION
 
-from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
-    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
+from watchdog.events import \
+    DirMovedEvent, \
+    DirDeletedEvent, \
+    DirCreatedEvent, \
+    DirModifiedEvent, \
+    FileMovedEvent, \
+    FileDeletedEvent, \
+    FileCreatedEvent, \
+    FileModifiedEvent, \
+    get_moved_events_for
 
 
 # Windows API Constants.

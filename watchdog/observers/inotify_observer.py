@@ -22,49 +22,66 @@
 # THE SOFTWARE.
 
 import time
-from threading import Thread, Event as ThreadedEvent
-from os.path import realpath, abspath, join as path_join, sep as path_separator, dirname
+import os.path
 
 from pyinotify import ALL_EVENTS, \
     ProcessEvent, WatchManager, ThreadedNotifier
 
+from watchdog.observers import DaemonThread
+from watchdog.utils import absolute_path, real_absolute_path
 from watchdog.decorator_utils import synchronized
-from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
-    FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent, \
-    EVENT_TYPE_MOVED, EVENT_TYPE_DELETED, EVENT_TYPE_CREATED, EVENT_TYPE_MODIFIED
+from watchdog.events import \
+    DirMovedEvent, \
+    DirDeletedEvent, \
+    DirCreatedEvent, \
+    DirModifiedEvent, \
+    FileMovedEvent, \
+    FileDeletedEvent, \
+    FileCreatedEvent, \
+    FileModifiedEvent, \
+    EVENT_TYPE_MOVED, \
+    EVENT_TYPE_DELETED, \
+    EVENT_TYPE_CREATED, \
+    EVENT_TYPE_MODIFIED, \
+    get_moved_events_for
 
 
+
+def check_kwargs(kwargs, arg, method):
+    if not arg in kwargs:
+        raise ValueError('`%s` argument to method %s is not specified.' % arg, method)
 
 class _ProcessEventDispatcher(ProcessEvent):
     """ProcessEvent subclasses that dispatches events to our
     FileSystemEventHandler implementation."""
     def my_init(self, **kwargs):
-        if not 'event_handler' in kwargs:
-            raise ValueError('event_handler argument to  _ProcessEventDispatcher is not specified.')
+        check_kwargs(kwargs, 'event_handler', 'my_init')
+        check_kwargs(kwargs, 'recursive', 'my_init')
         self.event_handler = kwargs['event_handler']
+        self.is_recursive = kwargs['recursive']
 
     def process_IN_CREATE(self, event):
-        path = event.pathname
+        src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.on_created(DirCreatedEvent(path))
+            self.event_handler.on_created(DirCreatedEvent(src_path))
         else:
-            self.event_handler.on_created(FileCreatedEvent(path))
+            self.event_handler.on_created(FileCreatedEvent(src_path))
 
 
     def process_IN_DELETE(self, event):
-        path = event.pathname
+        src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.on_deleted(DirDeletedEvent(path))
+            self.event_handler.on_deleted(DirDeletedEvent(src_path))
         else:
-            self.event_handler.on_deleted(FileDeletedEvent(path))
+            self.event_handler.on_deleted(FileDeletedEvent(src_path))
 
 
     def process_IN_CLOSE_WRITE(self, event):
-        path = event.pathname
+        src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.on_modified(DirModifiedEvent(path))
+            self.event_handler.on_modified(DirModifiedEvent(src_path))
         else:
-            self.event_handler.on_modified(FileModifiedEvent(path))
+            self.event_handler.on_modified(FileModifiedEvent(src_path))
 
 
     def process_IN_ATTRIB(self, event):
@@ -74,12 +91,15 @@ class _ProcessEventDispatcher(ProcessEvent):
     def process_IN_MOVED_TO(self, event):
         # TODO: Moved event on a directory does not fire moved event for
         # files inside the directory. Fix?
-        path = event.src_pathname
-        dest_path = event.pathname
+        src_path = absolute_path(event.src_pathname)
+        dest_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.on_moved(DirMovedEvent(path, dest_path))
+            if self.is_recursive:
+                for moved_event in get_moved_events_for(src_path, dest_path):
+                    self.event_handler.on_moved(moved_event)
+            self.event_handler.on_moved(DirMovedEvent(src_path, dest_path))
         else:
-            self.event_handler.on_moved(FileMovedEvent(path, dest_path))
+            self.event_handler.on_moved(FileMovedEvent(src_path, dest_path))
 
 
 class _Rule(object):
@@ -112,12 +132,14 @@ class InotifyObserver(DaemonThread):
         #from pyinotify import PrintAllEvents
         #dispatcher = PrintAllEvents()
 
-        dispatcher = _ProcessEventDispatcher(event_handler=event_handler)
+        dispatcher = _ProcessEventDispatcher(event_handler=event_handler,
+                                             recursive=recursive)
         notifier = ThreadedNotifier(self.wm, dispatcher)
         self.notifiers.add(notifier)
         for path in paths:
             if not isinstance(path, basestring):
                 raise TypeError("Path must be string, not '%s'." % type(path).__name__)
+            path = real_absolute_path(path)
             descriptors = self.wm.add_watch(path, ALL_EVENTS, rec=recursive, auto_add=True)
         self.name_to_rule[name] = _Rule(name, notifier, descriptors)
         notifier.start()
