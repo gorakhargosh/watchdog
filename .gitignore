@@ -24,7 +24,7 @@ parts/
 develop-eggs/
 dist/
 eggs/
-watchdog.egg-info/
+*.egg-info/
 
 
 # Ignore these generated files.
