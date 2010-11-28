@@ -68,28 +68,31 @@ class ShellCommandTrick(Trick):
         self.shell_command = shell_command
 
     def do(self, event):
+        from string import Template
         if event.is_directory:
             object_type = 'directory'
         else:
             object_type = 'file'
 
         context = {
-            'src_path': event.src_path,
-            'dest_path': '',
-            'event': event.event_type,
-            'object': object_type,
+            'watch_src_path': event.src_path,
+            'watch_dest_path': '',
+            'watch_event_type': event.event_type,
+            'watch_object': object_type,
             }
 
         if self.shell_command is None:
             if has_attribute(event, 'dest_path'):
                 context.update({'dest_path': event.dest_path})
-                command = 'echo "%(event)s %(object)s from %(src_path)s to %(dest_path)s"' % context
+                command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
             else:
-                command = 'echo "%(event)s %(object)s %(src_path)s"' % context
+                command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
         else:
             if has_attribute(event, 'dest_path'):
-                context.update({'dest_path': event.dest_path})
-            command = self.shell_command % context
+                context.update({'watch_dest_path': event.dest_path})
+            command = self.shell_command
+
+        command = Template(command).safe_substitute(**context)
         #logging.debug(command)
         p = subprocess.Popen(command, shell=True)
 

@@ -220,17 +220,24 @@ def log(args):
 
 
 #@alias('shell-command')
-@arg('command', nargs='*', default=None, help='''shell command in response
+@arg('directories', nargs='*', default='.', help='directories to watch')
+@arg('-c', '--command', dest='command', default=None, help='''shell command executed in response
 to matching events. These interpolation variables are available to your
 command string:
 
-%%(src_path)s    - event source path;
-%%(dest_path)s   - event destination path (for moved events);
-%%(event_type)s  - event type;
-%%(object)s      - `file` or `directory`.
+${watch_src_path}    - event source path;
+${watch_dest_path}   - event destination path (for moved events);
+${watch_event_type}  - event type;
+${watch_object}      - `file` or `directory`.
 
+Note:
+Please ensure you do not use double quotes (") to quote your command
+string. That will force your shell to interpolate before the command is
+processed by this subcommand.
+
+Example option usage:
+--command='echo "${watch_src_path}"'
 ''')
-@arg('--watch-directories', default='.', help='directories to watch (separated by %s)' % pathsep)
 @arg('-p', '--pattern', '--patterns', dest='patterns', default='*', help='matches event paths with these patterns (separated by ;).')
 @arg('-i', '--ignore-pattern', '--ignore-patterns', dest='ignore_patterns', default='', help='ignores event paths with these patterns (separated by ;).')
 @arg('-D', '--ignore-directories', dest='ignore_directories', default=False, help='ignores events for directories')
@@ -240,17 +247,14 @@ def shell_command(args):
 
     if not args.command:
         args.command = None
-    else:
-        args.command = args.command[0]
 
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
-    watch_directories = path_split(args.watch_directories)
+    #watch_directories = path_split(args.watch_directories)
     event_handler = ShellCommandTrick(shell_command=args.command,
                                       patterns=patterns,
                                       ignore_patterns=ignore_patterns,
                                       ignore_directories=args.ignore_directories)
-    observe_with(Observer(), 'shell-command', event_handler, watch_directories, args.recursive)
-
+    observe_with(Observer(), 'shell-command', event_handler, args.directories, args.recursive)
 
 parser = ArghParser()
 parser.add_commands([tricks_from,
