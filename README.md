@@ -63,6 +63,10 @@ events you can use the `shell-command` subcommand like this:
 
     watchmedo shell-command --patterns="*.py;*.txt" --recursive --command='echo "${watch_src_path}"' .
 
+Please see the help information for these commands by typing:
+
+    watchmedo [command] --help
+
 
 Installation:
 -------------
