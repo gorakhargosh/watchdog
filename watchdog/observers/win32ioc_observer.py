@@ -88,7 +88,7 @@ class _Watch(object):
                         time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
                         # TODO: The following still does not execute because we need to wait for I/O to complete.
                         for moved_event in get_moved_events_for(src_dir_path, dest_dir_path, recursive=True):
-                            self.event_handler.dispath(moved_event)
+                            self.event_handler.dispatch(moved_event)
 
                     # Fire a moved event for the directory itself.
                     self.event_handler.dispatch(DirMovedEvent(src_dir_path, dest_dir_path))
