@@ -95,7 +95,7 @@ class _ProcessEventDispatcher(ProcessEvent):
         dest_path = absolute_path(event.pathname)
         if event.dir:
             if self.is_recursive:
-                for moved_event in get_moved_events_for(src_path, dest_path):
+                for moved_event in get_moved_events_for(src_path, dest_path, recursive=True):
                     self.event_handler.on_moved(moved_event)
             self.event_handler.on_moved(DirMovedEvent(src_path, dest_path))
         else:
