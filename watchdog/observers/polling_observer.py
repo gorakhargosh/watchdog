@@ -61,7 +61,7 @@ class _PollingEventEmitter(DaemonThread):
         self.path = real_absolute_path(path)
         self.is_recursive = recursive
         if name is None:
-            self.name = '%s(%s)' % (self.__class__.__name__, self.path
+            self.name = '%s(%s)' % (self.__class__.__name__, self.path)
         else:
             self.name = name
 
