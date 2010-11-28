@@ -36,8 +36,8 @@ try:
 except ImportError:
     from Queue import Queue, Empty as QueueEmpty
 import select
-if not has_attribute(select, 'kqueue'):
-    import select26 as select
+if not has_attribute(select, 'kqueue') or sys.version_info < (2,7,0):
+    import select_backport as select
 
 from threading import Thread, Lock as ThreadedLock, Event as ThreadedEvent
 from watchdog.utils import get_walker

@@ -23,6 +23,7 @@
 
 
 #import logging
+import sys
 from watchdog.utils import has_attribute
 from watchdog.version import __version__, VERSION_INFO, VERSION_STRING
 
@@ -39,14 +40,14 @@ except ImportError:
         #logging.debug('Using FSEventsObserver.')
     except ImportError:
         import select
-        if has_attribute(select, 'kqueue'):
+        if has_attribute(select, 'kqueue') and sys.version_info > (2,6,0):
             from watchdog.observers.kqueue_observer import KqueueObserver as Observer
             #logging.debug('Using KqueueObserver.')
         else:
             try:
-                import select26 as select
+                import select_backport as select
                 from watchdog.observers.kqueue_observer import KqueueObserver as Observer
-                #logging.debug('Using KqueueObserver from `select26`')
+                #logging.debug('Using KqueueObserver from `select_backport`')
             except ImportError:
                 try:
                     import win32file

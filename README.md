@@ -62,7 +62,7 @@ Dependencies:
 3. XCode or gcc (only on Mac OS X)
 4. [PyYAML](http://www.pyyaml.org/)
 5. [argh](http://pypi.python.org/pypi/argh)
-6. [select26](http://pypi.python.org/pypi/select26/) (for Python2.5 on BSD/Mac OS X)
+6. [select_backport](http://pypi.python.org/pypi/select_backport/) (for Python2.5/2.6 on BSD/Mac OS X)
 
 Licensing:
 ----------

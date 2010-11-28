@@ -81,12 +81,10 @@ ext_modules = {
 }
 
 common_install_requires = ['PyYAML >= 3.09', 'argh >= 0.8.1']
-if sys.version_info < (2, 6, 0):
-    # Python 2.5 and below don't have the kqueue implementation in the
+if sys.version_info < (2, 7, 0):
+    # Python 2.6 and below have the broken/non-existent kqueue implementations in the
     # select module. This backported patch adds it.
-    common_install_requires.append('select26')
-    # Argh depends on argparse. Added upstream.
-    #common_install_requires.append('argparse')
+    common_install_requires.append('select_backport')
 
 install_requires = {
     PLATFORM_MACOSX: [],
