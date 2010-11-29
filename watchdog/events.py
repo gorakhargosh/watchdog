@@ -207,6 +207,8 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         self.patterns = patterns
         self.ignore_patterns = ignore_patterns
         self.ignore_directories = ignore_directories
+        logging.debug(self.__class__.__name__)
+
 
     def dispatch(self, event):
         """Dispatches events to the appropriate methods.

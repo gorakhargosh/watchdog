@@ -32,8 +32,6 @@ import logging
 
 class Trick(PatternMatchingEventHandler):
     """Your tricks should subclass this class."""
-    def on_any_event(self, event):
-        self.do(event)
 
     @classmethod
     def generate_yaml(cls):
@@ -53,12 +51,9 @@ class Trick(PatternMatchingEventHandler):
 """
         return template_yaml % context
 
-    def do(self, event):
-        raise NotImplementedError("Method `do' not implemented in class %s." % self.__class__.__name__)
-
 
 class LoggerTrick(Trick):
-    def do(self, event):
+    def on_any_event(self, event):
         logging.info(event)
 
 
@@ -67,7 +62,7 @@ class ShellCommandTrick(Trick):
         Trick.__init__(self, patterns, ignore_patterns, ignore_directories)
         self.shell_command = shell_command
 
-    def do(self, event):
+    def on_any_event(self, event):
         from string import Template
         if event.is_directory:
             object_type = 'directory'
