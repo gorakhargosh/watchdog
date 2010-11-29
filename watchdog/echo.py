@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# echo.py: Tracing function calls using Python decorators.
+#
+# Copyright (C) 2008 by Thomas Guest <tag@wordaligned.org>
+# Please see http://wordaligned.org/articles/echo
+
 """ Echo calls made to functions and methods in a module.
 
 "Echoing" a function call means printing out the name of the function
@@ -42,7 +48,7 @@ def is_class_private_name(name):
 
 def method_name(method):
     """ Return a method's name.
-    
+
     This function returns the name the method is accessed by from
     outside the class (i.e. it prefixes "private" methods appropriately).
     """
