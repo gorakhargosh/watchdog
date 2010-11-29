@@ -3,3 +3,21 @@ tricks:
 - watchdog.tricks.LoggerTrick:
     kwargs:
       patterns: ["*.py", "*.js"]
+- watchmedo_webtricks.GoogleClosureTrick:
+    kwargs:
+      patterns: ['*.js']
+      hash_names: true
+      mappings_module: app/javascript_mappings.py
+      suffix: .min.js
+      compilation_level: advanced            # simple|advanced
+      source_directory: app/static/js/
+      destination_directory: app/public/js/
+      files:
+        index-page:
+        - app/static/js/vendor/jquery.js
+        - app/static/js/base.js
+        - app/static/js/index-page.js
+        about-page:
+        - app/static/js/vendor/jquery.js
+        - app/static/js/base.js
+        - app/static/js/about-page.js
