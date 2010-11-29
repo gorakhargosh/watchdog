@@ -67,7 +67,7 @@ class FSEventsObserver(Thread):
         self.streams = set()
         self.map_name_to_stream = {}
         self.snapshot_for_path = {}
-        Thread.__init__(self)
+        super(FSEventsObserver, self).__init__()
 
 
     def run(self):

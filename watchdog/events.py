@@ -90,7 +90,7 @@ class FileSystemMovedEvent(FileSystemEvent):
     """
     def __init__(self, src_path, dest_path, is_directory=False):
         self._dest_path = dest_path
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MOVED, src_path=src_path, is_directory=is_directory)
+        super(FileSystemMovedEvent, self).__init__(event_type=EVENT_TYPE_MOVED, src_path=src_path, is_directory=is_directory)
 
     @property
     @deprecated
@@ -108,15 +108,15 @@ class FileSystemMovedEvent(FileSystemEvent):
 # File events.
 class FileDeletedEvent(FileSystemEvent):
     def __init__(self, src_path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_DELETED, src_path=src_path)
+        super(FileDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED, src_path=src_path)
 
 class FileModifiedEvent(FileSystemEvent):
     def __init__(self, src_path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MODIFIED, src_path=src_path)
+        super(FileModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED, src_path=src_path)
 
 class FileCreatedEvent(FileSystemEvent):
     def __init__(self, src_path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_CREATED, src_path=src_path)
+        super(FileCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED, src_path=src_path)
 
 class FileMovedEvent(FileSystemMovedEvent):
     pass
@@ -124,19 +124,19 @@ class FileMovedEvent(FileSystemMovedEvent):
 # Directory events.
 class DirDeletedEvent(FileSystemEvent):
     def __init__(self, src_path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_DELETED, src_path=src_path, is_directory=True)
+        super(DirDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED, src_path=src_path, is_directory=True)
 
 class DirModifiedEvent(FileSystemEvent):
     def __init__(self, src_path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_MODIFIED, src_path=src_path, is_directory=True)
+        super(DirModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED, src_path=src_path, is_directory=True)
 
 class DirCreatedEvent(FileSystemEvent):
     def __init__(self, src_path):
-        FileSystemEvent.__init__(self, event_type=EVENT_TYPE_CREATED, src_path=src_path, is_directory=True)
+        super(DirCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED, src_path=src_path, is_directory=True)
 
 class DirMovedEvent(FileSystemMovedEvent):
     def __init__(self, src_path, dest_path):
-        FileSystemMovedEvent.__init__(self, src_path=src_path, dest_path=dest_path, is_directory=True)
+        super(DirMovedEvent, self).__init__(src_path=src_path, dest_path=dest_path, is_directory=True)
 
 
 
@@ -203,7 +203,7 @@ class FileSystemEventHandler(object):
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """Matches given patterns with file paths associated with occurring events."""
     def __init__(self, patterns=['*'], ignore_patterns=[], ignore_directories=False):
-        FileSystemEventHandler.__init__(self)
+        super(PatternMatchingEventHandler, self).__init__()
         self.patterns = patterns
         self.ignore_patterns = ignore_patterns
         self.ignore_directories = ignore_directories

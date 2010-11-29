@@ -54,7 +54,7 @@ class _PollingEventEmitter(DaemonThread):
     def __init__(self, path, interval=1, out_event_queue=None, recursive=False, name=None):
         """Monitors a given path and appends file system modification
         events to the output queue."""
-        DaemonThread.__init__(self, interval)
+        super(_PollingEventEmitter, self).__init__(interval)
 
         self.out_event_queue = out_event_queue
         self.snapshot = None
@@ -144,7 +144,7 @@ class PollingObserver(DaemonThread):
     """Observer daemon thread that spawns threads for each path to be monitored.
     """
     def __init__(self, interval=1):
-        DaemonThread.__init__(self, interval)
+        super(PollingObserver, self).__init__(interval)
         self.event_queue = Queue()
         self.event_emitters = set()
         self.rules = {}

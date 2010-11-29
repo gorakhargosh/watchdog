@@ -112,7 +112,7 @@ class _Rule(object):
 class InotifyObserver(DaemonThread):
     """Inotify-based daemon observer thread for Linux."""
     def __init__(self, interval=1):
-        DaemonThread.__init__(self, interval)
+        super(InotifyObserver, self).__init__(interval)
         self.wm = WatchManager()
         self.notifiers = set()
         self.name_to_rule = dict()

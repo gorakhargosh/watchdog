@@ -47,9 +47,9 @@ from watchdog.observers.polling_observer import PollingObserver
 
 
 class _Win32EventEmitter(DaemonThread):
-    """"""
+    """Win32 event emitter."""
     def __init__(self, path, out_event_queue, recursive, interval=1):
-        DaemonThread.__init__(self, interval)
+        super(_Win32EventEmitter, self).__init__(interval)
         self.path = path
         self.out_event_queue = out_event_queue
         self.handle_directory = get_directory_handle(self.path, WATCHDOG_FILE_FLAGS)
