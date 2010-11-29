@@ -191,6 +191,7 @@ def tricks_generate_yaml(args):
 @arg('-i', '--ignore-pattern', '--ignore-patterns', dest='ignore_patterns', default='', help='ignores event paths with these patterns (separated by ;).')
 @arg('-D', '--ignore-directories', dest='ignore_directories', default=False, help='ignores events for directories')
 @arg('-R', '--recursive', dest='recursive', default=False, help='monitors the directories recursively')
+@arg('--trace', default=False, help='dumps complete dispatching trace')
 @arg('--debug-force-polling', default=False, help='[debug flag] forces using the polling observer implementation.')
 @arg('--debug-force-kqueue', default=False, help='[debug flag] forces using the kqueue observer implementation.')
 @arg('--debug-force-win32', default=False, help='[debug flag] forces using the win32 observer implementation.')
@@ -198,7 +199,12 @@ def tricks_generate_yaml(args):
 @arg('--debug-force-fsevents', default=False, help='[debug flag] forces using the fsevents observer implementation.')
 @arg('--debug-force-inotify', default=False, help='[debug flag] forces using the inotify observer implementation.')
 def log(args):
+    from watchdog.utils import echo
     from watchdog.tricks import LoggerTrick
+
+    if args.trace:
+        echo.echo_class(LoggerTrick)
+
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     event_handler = LoggerTrick(patterns=patterns,
                                 ignore_patterns=ignore_patterns,

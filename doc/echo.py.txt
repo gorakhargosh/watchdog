@@ -1,0 +1,143 @@
+The echo module "echoes" calls to functions by tracing the arguments
+they're called with. It also supports echoing classes and modules by
+tracing all function calls made to them. Here's how.
+
+>>> import echo
+
+Let's define a function and echo calls to it:
+
+>>> def f(x, y, z):
+...     pass
+>>> f = echo.echo(f)
+>>> f(1, 2, 'three')
+f(x=1, y=2, z='three')
+
+We can also use decorator syntax:
+
+>>> @echo.echo
+... def f(x, y, z):
+...     pass
+...
+>>> f(1, 2, 'three')
+f(x=1, y=2, z='three')
+
+The decorated function maintain the undecorated function's attributes
+as far as possible:
+
+>>> def f():
+...     " I'm f, don't change my docstring "
+...     pass
+...
+>>> echo.echo(f).__doc__
+" I'm f, don't change my docstring "
+
+Default arguments are echoed:
+
+>>> @echo.echo
+... def fn_with_defaults(x=1, y=None):
+...     pass
+...
+>>> fn_with_defaults()
+fn_with_defaults(x=1, y=None)
+
+Arbitrary nameless arguments are echoed:
+
+>>> @echo.echo
+... def fn_with_nameless_args(*args):
+...     pass
+...
+>>> fn_with_nameless_args(1, 2, 3)
+fn_with_nameless_args(1, 2, 3)
+>>> fn_with_nameless_args("abc", (1, 2, 3))
+fn_with_nameless_args('abc', (1, 2, 3))
+
+And so are keyword arguments (though note that the order of the output
+                              "arg=value" pairs is undefined).
+
+>>> @echo.echo
+... def fn_with_keyword_args(**k):
+...     pass
+...
+>>> fn_with_keyword_args(breakfast="spam")
+fn_with_keyword_args(breakfast='spam')
+>>> fn_with_keyword_args(breakfast='spam', lunch='spam', dinner='spam')
+fn_with_keyword_args(...)
+
+You can mix default positional, arbitrary and keyword arguments:
+>>> @echo.echo
+... def full_monty(x, y, z='muesli', *v, **k):
+...     pass
+...
+>>> full_monty('spam', 'eggs', extra='more spam')
+full_monty(x='spam', y='eggs', z='muesli', extra='more spam')
+>>> full_monty('spam', 'eggs', 'more spam', extra='even more spam')
+full_monty(x='spam', y='eggs', z='more spam', extra='even more spam')
+
+You can echo functions in a class by decorating them.
+
+>>> class Example(object):
+...     @echo.echo
+...     def __init__(self): pass
+...     @echo.echo
+...     def m(self): pass
+...
+>>> ex = Example()
+__init__(self=<Example object at ...>)
+>>> ex.m()
+m(self=<Example object at ...>)
+
+This works equally well on classmethods and staticmethods, as well as
+on classic classes
+
+>>> class AnotherExample:
+... 	@classmethod
+... 	@echo.echo
+... 	def cm(klass): pass
+... 	@staticmethod
+... 	@echo.echo
+... 	def sm(): pass
+...
+>>> AnotherExample.cm()
+cm(klass=<class __builtin__.AnotherExample at ...>)
+>>> AnotherExample.sm()
+sm()
+>>> another_ex = AnotherExample()
+>>> another_ex.cm()
+cm(klass=<class __builtin__.AnotherExample at ...>)
+>>> another_ex.sm()
+sm()
+
+Alternatively, don't decorate the methods you want to echo up front,
+retrospectively decorate the whole class.
+
+>>> class YetAnotherExample(object):
+...     def __init__(self): pass
+...     def m(self, x, y): pass
+...     @classmethod
+...     def cm(klass, x, y): pass
+...     @staticmethod
+...     def sm(x, y): pass
+...
+>>> echo.echo_class(YetAnotherExample)
+>>> y = YetAnotherExample()
+__init__(self=<YetAnotherExample object at ...>)
+>>> y.m('echo', 'echo')
+m(self=<YetAnotherExample object at ...>, x='echo', y='echo')
+>>> y.cm('echo', 'echo')
+cm(klass=<class 'YetAnotherExample'>, x='echo', y='echo')
+>>> y.sm('echo', 'echo')
+sm(x='echo', y='echo')
+
+Private methods are echoed as well.
+
+>>> class Privates(object):
+... 	def __myob(self): pass
+... 	def do_something(self): self.__myob()
+...
+>>> Privates().do_something()
+>>> echo.echo_class(Privates)
+>>> Privates().do_something()
+do_something(self=<Privates object at ...>)
+__myob(self=<Privates object at ...>)
+
+

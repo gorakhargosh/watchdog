@@ -67,6 +67,52 @@ Please see the help information for these commands by typing:
 
     watchmedo [command] --help
 
+### About `watchmedo` Tricks:
+
+Watchmedo can read "tricks.yaml" files and execute tricks
+within them in response to file system events. Tricks are
+basically FileSystemEventHandlers that plugin authors can
+write. Trick classes are augmented with a few additional
+features that regular event handlers don't need.
+
+An example `tricks.yaml` file:
+
+    python-path: [app, foobar/bin, whatever/another/directory]
+    watches:
+      - app/static
+    tricks:
+    - watchdog.tricks.LoggerTrick:
+        kwargs:
+          patterns: ["*.py"]
+          ignore_patterns: ["*.pyc", "*.pyo"]
+          ignore_directories: True
+    - watchmedo_webtricks.GoogleClosureTrick:
+        kwargs:
+          patterns: ['app/static/js/*.js']
+          hash_names: true
+          mappings_module: app/javascript_mappings.py
+          suffix: .min.js
+          compilation_level: advanced            # simple|advanced
+          source_directory: app/static/js/
+          destination_directory: app/public/js/
+          files:
+            index-page:
+            - app/static/js/vendor/jquery.js
+            - app/static/js/base.js
+            - app/static/js/index-page.js
+            about-page:
+            - app/static/js/vendor/jquery.js
+            - app/static/js/base.js
+            - app/static/js/about-page.js
+
+Each trick class is initialized with the given kwargs
+keyword arguments and events are fed to an instance of
+the class as they arrive.
+
+Tricks will be included in the 0.4.0 release. I need community
+input about them. Please file enhancement requests at the
+[issue tracker](http://github.com/gorakhargosh/watchdog/issues').
+
 
 Installation:
 -------------
