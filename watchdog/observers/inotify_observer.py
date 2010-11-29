@@ -63,25 +63,25 @@ class _ProcessEventDispatcher(ProcessEvent):
     def process_IN_CREATE(self, event):
         src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.on_created(DirCreatedEvent(src_path))
+            self.event_handler.dispatch(DirCreatedEvent(src_path))
         else:
-            self.event_handler.on_created(FileCreatedEvent(src_path))
+            self.event_handler.dispatch(FileCreatedEvent(src_path))
 
 
     def process_IN_DELETE(self, event):
         src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.on_deleted(DirDeletedEvent(src_path))
+            self.event_handler.dispatch(DirDeletedEvent(src_path))
         else:
-            self.event_handler.on_deleted(FileDeletedEvent(src_path))
+            self.event_handler.dispatch(FileDeletedEvent(src_path))
 
 
     def process_IN_CLOSE_WRITE(self, event):
         src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.on_modified(DirModifiedEvent(src_path))
+            self.event_handler.dispatch(DirModifiedEvent(src_path))
         else:
-            self.event_handler.on_modified(FileModifiedEvent(src_path))
+            self.event_handler.dispatch(FileModifiedEvent(src_path))
 
 
     def process_IN_ATTRIB(self, event):
@@ -96,10 +96,10 @@ class _ProcessEventDispatcher(ProcessEvent):
         if event.dir:
             if self.is_recursive:
                 for moved_event in get_moved_events_for(src_path, dest_path, recursive=True):
-                    self.event_handler.on_moved(moved_event)
-            self.event_handler.on_moved(DirMovedEvent(src_path, dest_path))
+                    self.event_handler.dispatch(moved_event)
+            self.event_handler.dispatch(DirMovedEvent(src_path, dest_path))
         else:
-            self.event_handler.on_moved(FileMovedEvent(src_path, dest_path))
+            self.event_handler.dispatch(FileMovedEvent(src_path, dest_path))
 
 
 class _Rule(object):
