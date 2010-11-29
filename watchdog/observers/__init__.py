@@ -37,9 +37,9 @@ class DaemonThread(Thread):
 
     @property
     def is_stopped(self):
-        try:
+        if has_attribute(self.stopped, 'is_set'):
             return self.stopped.is_set()
-        except AttributeError:
+        else:
             return self.stopped.isSet()
 
     def on_stopping(self):
