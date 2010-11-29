@@ -130,7 +130,7 @@ class _FileSystemObject(object):
 
 class _KqueueEventEmitter(DaemonThread):
     def __init__(self, path, out_event_queue, recursive, interval=1):
-        DaemonThread.__init__(self, interval)
+        super(_KqueueEventEmitter, self).__init__(interval)
         self.path = real_absolute_path(path)
         self.out_event_queue = out_event_queue
         self.is_recursive = recursive

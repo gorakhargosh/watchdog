@@ -123,7 +123,7 @@ class _Watch(object):
 
 class Win32IOCObserver(DaemonThread):
     def __init__(self, interval=1, *args, **kwargs):
-        DaemonThread.__init__(self)
+        super(Win32IOCObserver, self).__init__()
         self.args = args
         self.kwargs = kwargs
 

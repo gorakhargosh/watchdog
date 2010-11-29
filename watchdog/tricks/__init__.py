@@ -60,7 +60,7 @@ class LoggerTrick(Trick):
 class ShellCommandTrick(Trick):
     """Execeutes shell commands in response to matched events."""
     def __init__(self, shell_command=None, patterns=['*'], ignore_patterns=[], ignore_directories=False):
-        Trick.__init__(self, patterns, ignore_patterns, ignore_directories)
+        super(ShellCommandTrick, self).__init__(patterns, ignore_patterns, ignore_directories)
         self.shell_command = shell_command
 
     def on_any_event(self, event):

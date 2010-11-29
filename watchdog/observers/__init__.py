@@ -25,7 +25,7 @@ from threading import Thread, Event as ThreadedEvent
 
 class DaemonThread(Thread):
     def __init__(self, interval=1, *args, **kwargs):
-        Thread.__init__(self)
+        super(DaemonThread, self).__init__()
         if has_attribute(self, 'daemon'):
             self.daemon = True
         else:
