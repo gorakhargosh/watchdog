@@ -67,8 +67,8 @@ Please see the help information for these commands by typing:
 
     watchmedo [command] --help
 
-About `watchmedo` Tricks:
-~~~~~~~~~~~~~~~~~~~~~~~~~
+### About `watchmedo` Tricks:
+
 Watchmedo can read "tricks.yaml" files and execute tricks
 within them in response to file system events. Tricks are
 basically FileSystemEventHandlers that plugin authors can
