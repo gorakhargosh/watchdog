@@ -23,11 +23,9 @@
 
 import subprocess
 
+from watchdog.utils import echo
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.utils import filter_paths, has_attribute
-
-import logging
-#logging.basicConfig(level=logging.DEBUG)
 
 
 class Trick(PatternMatchingEventHandler):
@@ -53,11 +51,14 @@ class Trick(PatternMatchingEventHandler):
 
 
 class LoggerTrick(Trick):
+    """A simple trick that does only logs events."""
+    @echo.echo
     def on_any_event(self, event):
-        logging.info(event)
+        pass
 
 
 class ShellCommandTrick(Trick):
+    """Execeutes shell commands in response to matched events."""
     def __init__(self, shell_command=None, patterns=['*'], ignore_patterns=[], ignore_directories=False):
         Trick.__init__(self, patterns, ignore_patterns, ignore_directories)
         self.shell_command = shell_command
@@ -88,7 +89,6 @@ class ShellCommandTrick(Trick):
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
-        #logging.debug(command)
         p = subprocess.Popen(command, shell=True)
 
 
