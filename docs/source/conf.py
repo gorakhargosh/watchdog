@@ -24,6 +24,11 @@ sys.path.insert(0, TOP_DIR_PATH)
 
 import watchdog.version
 
+PROJECT_NAME = u'watchdog'
+AUTHOR_NAME = u'Gora Khargosh'
+COPYRIGHT = u'2010, Gora Khargosh'
+
+
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -46,8 +51,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'watchdog'
-copyright = u'2010, Gora Khargosh'
+project = PROJECT_NAME
+copyright = COPYRIGHT
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -170,7 +175,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'watchdogdoc'
+htmlhelp_basename = '%sdoc' % PROJECT_NAME
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -184,8 +189,8 @@ htmlhelp_basename = 'watchdogdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'watchdog.tex', u'watchdog Documentation',
-   u'Gora Khargosh', 'manual'),
+  ('index', '%s.tex' % PROJECT_NAME, u'%s Documentation' % PROJECT_NAME,
+   AUTHOR_NAME, 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -217,18 +222,18 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'watchdog', u'watchdog Documentation',
-     [u'Gora Khargosh'], 1)
+    ('index', PROJECT_NAME, u'%s Documentation' % PROJECT_NAME,
+     [AUTHOR_NAME], 1)
 ]
 
 
 # -- Options for Epub output ---------------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u'watchdog'
-epub_author = u'Gora Khargosh'
-epub_publisher = u'Gora Khargosh'
-epub_copyright = u'2010, Gora Khargosh'
+epub_title = PROJECT_NAME
+epub_author = AUTHOR_NAME
+epub_publisher = AUTHOR_NAME
+epub_copyright = COPYRIGHT
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.
