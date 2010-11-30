@@ -3,8 +3,16 @@ include LICENSE
 include AUTHORS
 include watchmedo
 include watchmedo.bat
-include watchdog/_watchdog_fsevents.h
-include watchdog/observers/*.py
-include watchdog/tricks/*.py
-include watchdog/utils/*.py
-
+recursive-include watchdog/ *.py *.h *.c
+include docs/*.txt
+include docs/*.xml
+include docs/Makefile
+include docs/make.bat
+recursive-include docs/examples *.py *.yaml
+recursive-include docs/source *.rst *.rst.inc *.py
+global-exclude .DS_Store
+global-exclude Thumbs.db
+global-exclude Desktop.ini
+global-exclude *.swp
+global-exclude *~
+global-exclude *.bak

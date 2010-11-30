@@ -103,7 +103,7 @@ OS Independent Polling
     watched directories for changes by periodically comparing snapshots
     of the directory tree.
 
-    .. NOTE:: Windows Caveats
+    .. NOTE:: Windows caveats again.
 
               Because Windows has no concept of ``inodes`` as Unix-y
               platforms do, there is no current reliable way of determining
@@ -111,6 +111,6 @@ OS Independent Polling
               Windows API.
 
               You can use hashing for only those files in which you are
-              interested in your event handlers to determine whether
-              this although it is rather slow. |project_name| does not
+              interested in your event handlers to determine
+              this, although it is rather slow. |project_name| does not
               attempt to handle this on Windows. It is left to your discretion.
