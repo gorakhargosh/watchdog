@@ -56,21 +56,21 @@ class _Watch(object):
         self.event_handler = event_handler
         self.is_removed = False
 
-    @synchronized()
     def read_directory_changes(self):
-        try:
-            ReadDirectoryChangesW(self.directory_handle,
-                                  self.event_buffer,
-                                  self.is_recursive,
-                                  WATCHDOG_FILE_NOTIFY_FLAGS,
-                                  self.overlapped,
-                                  None)
-        except pywintypes.error, e:
-            if e.args[0] == 5:
-                self.close()
-                # observer bookkeeping to remove watch.
-            else:
-                raise
+        with self._lock:
+            try:
+                ReadDirectoryChangesW(self.directory_handle,
+                                      self.event_buffer,
+                                      self.is_recursive,
+                                      WATCHDOG_FILE_NOTIFY_FLAGS,
+                                      self.overlapped,
+                                      None)
+            except pywintypes.error, e:
+                if e.args[0] == 5:
+                    self.close()
+                    # observer bookkeeping to remove watch.
+                else:
+                    raise
 
     def queue_events(self, num_bytes, out_event_queue):
         with self._lock:
@@ -110,21 +110,21 @@ class _Watch(object):
                     out_event_queue((event_handler, action_event_map[action](filename)))
 
 
-    @synchronized()
     def close(self):
-        if self.directory_handle is not None:
-            CancelIo(self.directory_handle)
-            CloseHandle(self.directory_handle)
-            self.directory_handle = None
+        with self._lock:
+            if self.directory_handle is not None:
+                CancelIo(self.directory_handle)
+                CloseHandle(self.directory_handle)
+                self.directory_handle = None
 
-    @synchronized()
     def remove(self):
-        self.close()
-        self.is_removed = True
+        with self._lock:
+            self.close()
+            self.is_removed = True
 
-    @synchronized()
     def associate_with_ioc_port(self, ioc_port):
-        CreateIoCompletionPort(self.directory_handle, ioc_port, self.cookie, 0)
+        with self._lock:
+            CreateIoCompletionPort(self.directory_handle, ioc_port, self.cookie, 0)
 
 
 class Win32IOCObserver(DaemonThread):
