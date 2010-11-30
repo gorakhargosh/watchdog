@@ -21,7 +21,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from __future__ import with_statement
+
 import os.path
+import threading
 try:
     # Python 3k
     import queue
@@ -54,26 +57,19 @@ class _PollingEventEmitter(DaemonThread):
         events to the output queue."""
         super(_PollingEventEmitter, self).__init__(interval)
 
-        self.out_event_queue = out_event_queue
-        self.snapshot = None
-        self.path = real_absolute_path(path)
-        self.is_recursive = recursive
-        if name is None:
-            self.name = '%s(%s)' % (self.__class__.__name__, self.path)
-        else:
-            self.name = name
+        self._lock = threading.Lock()
+        self._q = out_event_queue
+        self._snapshot = DirectorySnapshot(path, recursive=recursive)
+        self._path = real_absolute_path(path)
+        self._is_recursive = recursive
 
 
-    @synchronized()
     def _get_directory_snapshot_diff(self):
         """Obtains a diff of two directory snapshots."""
-        if self.snapshot is None:
-            self.snapshot = DirectorySnapshot(self.path, recursive=self.is_recursive)
-            diff = None
-        else:
-            new_snapshot = DirectorySnapshot(self.path, recursive=self.is_recursive)
-            diff = new_snapshot - self.snapshot
-            self.snapshot = new_snapshot
+        with self._lock:
+            new_snapshot = DirectorySnapshot(self._path, recursive=self._is_recursive)
+            diff = new_snapshot - self._snapshot
+            self._snapshot = new_snapshot
         return diff
 
 
@@ -86,32 +82,24 @@ class _PollingEventEmitter(DaemonThread):
         while not self.is_stopped:
             self.stopped_event.wait(self.interval)
             diff = self._get_directory_snapshot_diff()
-            if diff and self.out_event_queue:
-                q = self.out_event_queue
 
-                for path in diff.files_deleted:
-                    q.put((self.path, FileDeletedEvent(path)))
+            for path in diff.files_deleted:
+                self._q.put((self._path, FileDeletedEvent(path)))
+            for path in diff.files_modified:
+                self._q.put((self._path, FileModifiedEvent(path)))
+            for path in diff.files_created:
+                self._q.put((self._path, FileCreatedEvent(path)))
+            for path, dest_path in diff.files_moved.items():
+                self._q.put((self._path, FileMovedEvent(path, dest_path)))
 
-                for path in diff.files_modified:
-                    q.put((self.path, FileModifiedEvent(path)))
-
-                for path in diff.files_created:
-                    q.put((self.path, FileCreatedEvent(path)))
-
-                for path, dest_path in diff.files_moved.items():
-                    q.put((self.path, FileMovedEvent(path, dest_path)))
-
-                for path in diff.dirs_modified:
-                    q.put((self.path, DirModifiedEvent(path)))
-
-                for path in diff.dirs_deleted:
-                    q.put((self.path, DirDeletedEvent(path)))
-
-                for path in diff.dirs_created:
-                    q.put((self.path, DirCreatedEvent(path)))
-
-                for path, dest_path in diff.dirs_moved.items():
-                    q.put((self.path, DirMovedEvent(path, dest_path)))
+            for path in diff.dirs_modified:
+                self._q.put((self._path, DirModifiedEvent(path)))
+            for path in diff.dirs_deleted:
+                self._q.put((self._path, DirDeletedEvent(path)))
+            for path in diff.dirs_created:
+                self._q.put((self._path, DirCreatedEvent(path)))
+            for path, dest_path in diff.dirs_moved.items():
+                self._q.put((self._path, DirMovedEvent(path, dest_path)))
 
 
 
