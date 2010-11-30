@@ -112,7 +112,7 @@ def is_renamed(kev):
     return kev.fflags & select.KQ_NOTE_RENAME
 
 
-class _FileSystemObject(object):
+class _Watch(object):
     """Handy structure to store relevant information in."""
     def __init__(self, fd, kev, path, is_directory):
         self.fd = fd
@@ -124,55 +124,50 @@ class _FileSystemObject(object):
 class _KqueueEventEmitter(DaemonThread):
     def __init__(self, path, out_event_queue, recursive, interval=1):
         super(_KqueueEventEmitter, self).__init__(interval)
-        self.path = real_absolute_path(path)
-        self.out_event_queue = out_event_queue
-        self.is_recursive = recursive
-        self.kq = select.kqueue()
-        self.kevent_list = list()
-        self.fso_table = dict()
-        self.descriptor_list = set()
-        self.dir_snapshot = None
+        
+        self._path = real_absolute_path(path)
+        self._q = out_event_queue
+        self._is_recursive = recursive
+        self._kq = select.kqueue()
+        self._kevent_list = list()
+        self._watch_table = dict()
+        self._descriptor_list = set()
 
-
-    @synchronized()
-    def register_dir_tree(self, path, recursive):
-        """Registers event handling for an entire directory tree."""
-        path = real_absolute_path(path)
         def walker_callback(path, stat_info, self=self):
-            self.register_path(path, stat.S_ISDIR(stat_info.st_mode))
-        self.dir_snapshot = DirectorySnapshot(path, recursive, walker_callback)
+            self._register_path(path, stat.S_ISDIR(stat_info.st_mode))
+        self._dir_snapshot = DirectorySnapshot(path, recursive, walker_callback)
 
 
     @synchronized()
-    def unregister_path(self, path):
+    def _unregister_path(self, path):
         """Bookkeeping method that unregisters watching a given path."""
         path = absolute_path(path)
-        if path in self.fso_table:
-            fso = self.fso_table[path]
-            self.kevent_list.remove(fso.kev)
-            del self.fso_table[path]
-            del self.fso_table[fso.fd]
+        if path in self._watch_table:
+            watch = self._watch_table[path]
+            self._kevent_list.remove(watch.kev)
+            del self._watch_table[path]
+            del self._watch_table[watch.fd]
             try:
-                os.close(fso.fd)
+                os.close(watch.fd)
             except OSError, e:
                 logging.warn(e)
-            self.descriptor_list.remove(fso.fd)
+            self._descriptor_list.remove(watch.fd)
 
 
     @synchronized()
-    def register_path(self, path, is_directory=False):
+    def _register_path(self, path, is_directory=False):
         """Bookkeeping method that registers watching a given path."""
         path = absolute_path(path)
-        if not path in self.fso_table:
+        if not path in self._watch_table:
             try:
                 # If we haven't registered a kevent for this path already,
                 # add a new kevent for the path.
                 kev, fd = create_kevent_for_path(path)
-                self.kevent_list.append(kev)
-                fso = _FileSystemObject(fd, kev, path, is_directory)
-                self.descriptor_list.add(fd)
-                self.fso_table[fd] = fso
-                self.fso_table[path] = fso
+                self._kevent_list.append(kev)
+                watch = _Watch(fd, kev, path, is_directory)
+                self._descriptor_list.add(fd)
+                self._watch_table[fd] = watch
+                self._watch_table[path] = watch
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     # No such file or directory.
@@ -183,12 +178,12 @@ class _KqueueEventEmitter(DaemonThread):
                     else:
                         event_created_class = FileCreatedEvent
                         event_deleted_class = FileDeletedEvent
-                    self.out_event_queue.put((self.path, event_created_class(path)))
-                    self.out_event_queue.put((self.path, event_deleted_class(path)))
+                    self._q.put((self._path, event_created_class(path)))
+                    self._q.put((self._path, event_deleted_class(path)))
                     #logging.warn(e)
 
 
-    def __process_kevents_except_movement(self, event_list, out_event_queue):
+    def _process_kevents_except_movement(self, event_list, out_event_queue):
         """Process only basic kevents. Movement and directory modifications
         need to be further processed."""
         files_renamed = set()
@@ -196,29 +191,29 @@ class _KqueueEventEmitter(DaemonThread):
         dirs_modified = set()
 
         for kev in event_list:
-            fso = self.fso_table[kev.ident]
-            src_path = fso.path
+            watch = self._watch_table[kev.ident]
+            src_path = watch.path
 
             if is_deleted(kev):
-                if fso.is_directory:
+                if watch.is_directory:
                     event = DirDeletedEvent(src_path=src_path)
                 else:
                     event = FileDeletedEvent(src_path=src_path)
-                out_event_queue.put((self.path, event))
-                self.unregister_path(src_path)
+                out_event_queue.put((self._path, event))
+                self._unregister_path(src_path)
             elif is_attrib_modified(kev):
-                if fso.is_directory:
+                if watch.is_directory:
                     event = DirModifiedEvent(src_path=src_path)
                 else:
                     event = FileModifiedEvent(src_path=src_path)
-                out_event_queue.put((self.path, event))
+                out_event_queue.put((self._path, event))
             elif is_modified(kev):
-                if fso.is_directory:
+                if watch.is_directory:
                     dirs_modified.add(src_path)
                 else:
-                    out_event_queue.put((self.path, FileModifiedEvent(src_path=src_path)))
+                    out_event_queue.put((self._path, FileModifiedEvent(src_path=src_path)))
             elif is_renamed(kev):
-                if fso.is_directory:
+                if watch.is_directory:
                     dirs_renamed.add(src_path)
                 else:
                     files_renamed.add(src_path)
@@ -226,7 +221,7 @@ class _KqueueEventEmitter(DaemonThread):
         return files_renamed, dirs_renamed, dirs_modified
 
 
-    def __process_kevent_file_renames(self, out_event_queue, \
+    def _process_kevent_file_renames(self, out_event_queue, \
                                           ref_dir_snapshot, \
                                           new_dir_snapshot, \
                                           files_renamed):
@@ -240,22 +235,22 @@ class _KqueueEventEmitter(DaemonThread):
             except KeyError:
                 # Caught a temporary file most probably.
                 # So fire a created+deleted event sequence.
-                out_event_queue.put((self.path, FileCreatedEvent(path_renamed)))
-                out_event_queue.put((self.path, FileDeletedEvent(path_renamed)))
+                out_event_queue.put((self._path, FileCreatedEvent(path_renamed)))
+                out_event_queue.put((self._path, FileDeletedEvent(path_renamed)))
                 continue
 
             try:
                 path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
-                out_event_queue.put((self.path, FileMovedEvent(src_path=path_renamed, dest_path=path)))
-                self.unregister_path(path_renamed)
-                self.register_path(path, is_directory=False)
+                out_event_queue.put((self._path, FileMovedEvent(src_path=path_renamed, dest_path=path)))
+                self._unregister_path(path_renamed)
+                self._register_path(path, is_directory=False)
             except KeyError:
                 # We could not find the new name.
-                out_event_queue.put((self.path, FileDeletedEvent(src_path=path_renamed)))
-                self.unregister_path(path_renamed)
+                out_event_queue.put((self._path, FileDeletedEvent(src_path=path_renamed)))
+                self._unregister_path(path_renamed)
 
 
-    def __process_kevent_dir_renames(self, out_event_queue, \
+    def _process_kevent_dir_renames(self, out_event_queue, \
                                          ref_dir_snapshot, \
                                          new_dir_snapshot, \
                                          dirs_renamed):
@@ -269,8 +264,8 @@ class _KqueueEventEmitter(DaemonThread):
             except KeyError:
                 # Caught a temporary directory most probably.
                 # So fire a created+deleted event sequence.
-                out_event_queue.put((self.path, DirCreatedEvent(path_renamed)))
-                out_event_queue.put((self.path, DirDeletedEvent(path_renamed)))
+                out_event_queue.put((self._path, DirCreatedEvent(path_renamed)))
+                out_event_queue.put((self._path, DirDeletedEvent(path_renamed)))
                 continue
             try:
                 path = new_dir_snapshot.path_for_inode(ref_stat_info.st_ino)
@@ -278,80 +273,79 @@ class _KqueueEventEmitter(DaemonThread):
 
                 # If we're in recursive mode, we fire move events for
                 # the entire contents of the moved directory.
-                if self.is_recursive:
+                if self._is_recursive:
                     dir_path_renamed = absolute_path(path_renamed)
                     for root, directories, filenames in os.walk(path):
                         for directory_path in directories:
                             full_path = os.path.join(root, directory_path)
                             renamed_path = full_path.replace(path, dir_path_renamed)
-                            out_event_queue.put((self.path, DirMovedEvent(src_path=renamed_path, dest_path=full_path)))
-                            self.unregister_path(renamed_path)
-                            self.register_path(full_path, is_directory=True)
+                            out_event_queue.put((self._path, DirMovedEvent(src_path=renamed_path, dest_path=full_path)))
+                            self._unregister_path(renamed_path)
+                            self._register_path(full_path, is_directory=True)
                         for filename in filenames:
                             full_path = os.path.join(root, filename)
                             renamed_path = full_path.replace(path, dir_path_renamed)
-                            out_event_queue.put((self.path, FileMovedEvent(src_path=renamed_path, dest_path=full_path)))
-                            self.unregister_path(renamed_path)
-                            self.register_path(full_path, is_directory=False)
+                            out_event_queue.put((self._path, FileMovedEvent(src_path=renamed_path, dest_path=full_path)))
+                            self._unregister_path(renamed_path)
+                            self._register_path(full_path, is_directory=False)
 
                 # Fire the directory moved events after firing moved
                 # events for its children file system objects.
-                out_event_queue.put((self.path, DirMovedEvent(src_path=path_renamed, dest_path=path)))
-                self.unregister_path(path_renamed)
-                self.register_path(path, is_directory=True)
+                out_event_queue.put((self._path, DirMovedEvent(src_path=path_renamed, dest_path=path)))
+                self._unregister_path(path_renamed)
+                self._register_path(path, is_directory=True)
             except KeyError:
                 # We could not find the new name.
-                out_event_queue.put((self.path, DirDeletedEvent(src_path=path_renamed)))
-                self.unregister_path(path)
+                out_event_queue.put((self._path, DirDeletedEvent(src_path=path_renamed)))
+                self._unregister_path(path)
 
 
-    def __process_kevent_dir_modifications(self, out_event_queue, ref_dir_snapshot, new_dir_snapshot, dirs_modified):
+    def _process_kevent_dir_modifications(self, out_event_queue, ref_dir_snapshot, new_dir_snapshot, dirs_modified):
         """Process kevent-hinted directory modifications. Created
         files/directories are also detected here."""
         for dir_modified in dirs_modified:
-            out_event_queue.put((self.path, DirModifiedEvent(src_path=dir_modified)))
+            out_event_queue.put((self._path, DirModifiedEvent(src_path=dir_modified)))
             # Don't need to register here. It's already registered.
-            #self.register_path(dir_modified, is_directory=True)
+            #self._register_path(dir_modified, is_directory=True)
         diff = new_dir_snapshot - ref_dir_snapshot
         for file_created in diff.files_created:
-            out_event_queue.put((self.path, FileCreatedEvent(src_path=file_created)))
-            self.register_path(file_created, is_directory=False)
+            out_event_queue.put((self._path, FileCreatedEvent(src_path=file_created)))
+            self._register_path(file_created, is_directory=False)
         for dir_created in diff.dirs_created:
-            out_event_queue.put((self.path, DirCreatedEvent(src_path=dir_created)))
-            self.register_path(dir_created, is_directory=True)
+            out_event_queue.put((self._path, DirCreatedEvent(src_path=dir_created)))
+            self._register_path(dir_created, is_directory=True)
 
 
     @synchronized()
-    def process_events(self, out_event_queue):
+    def _process_events(self, out_event_queue):
         """Blocking call to kqueue.control that enlists events and then
     processes them classifying them into various events defined in watchdog.events."""
-        event_list = self.kq.control(list(self.kevent_list), MAX_EVENTS)
+        event_list = self._kq.control(list(self._kevent_list), MAX_EVENTS)
         files_renamed, dirs_renamed, dirs_modified = \
-            self.__process_kevents_except_movement(event_list,
+            self._process_kevents_except_movement(event_list,
                                                    out_event_queue)
 
         # Take a fresh snapshot of the directory and update saved snapshot.
-        new_dir_snapshot = DirectorySnapshot(self.path, self.is_recursive)
-        ref_dir_snapshot = self.dir_snapshot
-        self.dir_snapshot = new_dir_snapshot
+        new_dir_snapshot = DirectorySnapshot(self._path, self._is_recursive)
+        ref_dir_snapshot = self._dir_snapshot
+        self._dir_snapshot = new_dir_snapshot
 
         # Process events for renames and directories modified.
         if files_renamed or dirs_renamed or dirs_modified:
-            self.__process_kevent_file_renames(out_event_queue, ref_dir_snapshot, new_dir_snapshot, files_renamed)
-            self.__process_kevent_dir_renames(out_event_queue, ref_dir_snapshot, new_dir_snapshot, dirs_renamed)
+            self._process_kevent_file_renames(out_event_queue, ref_dir_snapshot, new_dir_snapshot, files_renamed)
+            self._process_kevent_dir_renames(out_event_queue, ref_dir_snapshot, new_dir_snapshot, dirs_renamed)
 
             if dirs_modified:
-                self.__process_kevent_dir_modifications(out_event_queue, ref_dir_snapshot, new_dir_snapshot, dirs_modified)
+                self._process_kevent_dir_modifications(out_event_queue, ref_dir_snapshot, new_dir_snapshot, dirs_modified)
 
 
     def run(self):
-        self.register_dir_tree(self.path, self.is_recursive)
         while not self.is_stopped:
             try:
-                #if not os.path.exists(self.path):
+                #if not os.path.exists(self._path):
                 #    self.stop()
                 #    continue
-                self.process_events(self.out_event_queue)
+                self._process_events(self._q)
             except OSError, e:
                 if e.errno == errno.EBADF:
                     # select.kqueue seems to be blowing up on the first
@@ -362,12 +356,12 @@ class _KqueueEventEmitter(DaemonThread):
                     raise
 
         # Close all open file descriptors
-        for fd in self.descriptor_list:
+        for fd in self._descriptor_list:
             try:
                 os.close(fd)
             except OSError, e:
                 logging.warn(e)
-        self.kq.close()
+        self._kq.close()
 
 
 class KqueueObserver(PollingObserver):
