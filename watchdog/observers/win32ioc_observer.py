@@ -44,7 +44,7 @@ from watchdog.observers.w32_api import *
 class _Watch(object):
     def __init__(self, cookie, group_name, event_handler, path, recursive, buffer_size=BUFFER_SIZE):
         self._lock = threading.Lock()
-        
+
         self.cookie = cookie
         self.group_name = group_name
         self.path = path
@@ -72,23 +72,24 @@ class _Watch(object):
                 else:
                     raise
 
+
     def queue_events(self, num_bytes, out_event_queue):
         with self._lock:
             # queue events
             last_renamed_from_filename = ""
             for action, filename in FILE_NOTIFY_INFORMATION(self.event_buffer.raw, num_bytes):
                 filename = absolute_path(os.path.join(self.path, filename))
-    
+
                 if action == FILE_ACTION_RENAMED_OLD_NAME:
                     last_renamed_from_filename = filename
                 elif action == FILE_ACTION_RENAMED_NEW_NAME:
                     if os.path.isdir(filename):
                         src_dir_path = last_renamed_from_filename
                         dest_dir_path = filename
-    
+
                         # Fire a moved event for the directory itself.
-                        out_event_queue.put((self.event_handler, DirMovedEvent(src_dir_path, dest_dir_path)))
-    
+                        out_event_queue.put(DirMovedEvent(src_dir_path, dest_dir_path, handler=self.event_handler))
+
                         # Fire moved events for all files within this
                         # directory if recursive.
                         if self.is_recursive:
@@ -98,16 +99,16 @@ class _Watch(object):
                             # delay time.
                             time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
                             # TODO: The following still does not execute because we need to wait for I/O to complete.
-                            for moved_event in get_moved_events_for(src_dir_path, dest_dir_path, recursive=True):
-                                out_event_queue.put((self.event_handler, moved_event))
+                            for moved_event in get_moved_events_for(src_dir_path, dest_dir_path, recursive=True, handler=self.event_handler):
+                                out_event_queue.put(moved_event)
                     else:
-                        out_event_queue.put((self.event_handler, FileMovedEvent(last_renamed_from_filename, filename)))
+                        out_event_queue.put(FileMovedEvent(last_renamed_from_filename, filename, handler=self.event_handler)))
                 else:
                     if os.path.isdir(filename):
                         action_event_map = DIR_ACTION_EVENT_MAP
                     else:
                         action_event_map = FILE_ACTION_EVENT_MAP
-                    out_event_queue.put((self.event_handler, action_event_map[action](filename)))
+                    out_event_queue.put(action_event_map[action](filename, handler=self.event_handler))
 
 
     def close(self):
@@ -117,10 +118,12 @@ class _Watch(object):
                 CloseHandle(self.directory_handle)
                 self.directory_handle = None
 
+
     def remove(self):
         with self._lock:
             self.close()
             self.is_removed = True
+
 
     def associate_with_ioc_port(self, ioc_port):
         with self._lock:
@@ -223,8 +226,8 @@ class Win32IOCObserver(DaemonThread):
                 watch.queue_events(num_bytes, self._q)
                 while True:
                     try:
-                        event_handler, event = self._q.get_nowait()
-                        event_handler.dispatch(event)
+                        event = self._q.get_nowait()
+                        event.dispatch()
                     except queue.Empty:
                         break
                 watch.read_directory_changes()

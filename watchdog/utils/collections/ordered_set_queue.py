@@ -40,10 +40,15 @@ class OrderedSetQueue(queue.Queue):
 
     # Set-specific functionality.
     def _exists_in_set(self, item):
-        return item in self.all_items
+        return self._item_repr(item) in self.all_items
 
     def _add_to_set(self, item):
-        self.all_items.add(item)
+        self.all_items.add(self._item_repr(item))
 
     def _remove_from_set(self, item):
-        self.all_items.remove(item)
+        self.all_items.remove(self._item_repr(item))
+
+    # Override just this one to change the representation of the item.
+    def _item_repr(self, item):
+        return item
+
