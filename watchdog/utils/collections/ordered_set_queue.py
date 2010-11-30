@@ -29,11 +29,21 @@ class OrderedSetQueue(queue.Queue):
         self.all_items = set()
 
     def _put(self, item):
-        if item not in self.all_items:
+        if not self._exists_in_set(item):
             queue.Queue._put(self, item)
-            self.all_items.add(item)
+            self._add_to_set(item)
 
     def _get(self):
         item = queue.Queue._get(self)
-        self.all_items.remove(item)
+        self._remove_from_set(item)
         return item
+
+    # Set-specific functionality.
+    def _exists_in_set(self, item):
+        return item in self.all_items:
+
+    def _add_to_set(self, item):
+        self.all_items.add(item)
+
+    def _remove_from_set(self, item):
+        self.all_items.remove(item)

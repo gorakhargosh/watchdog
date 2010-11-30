@@ -24,9 +24,21 @@
 import logging
 import os.path
 
+from watchdog.utils.collection import OrderedQueueSet
 from watchdog.utils import filter_paths, \
     has_attribute, get_walker, absolute_path
 from watchdog.decorator_utils import deprecated
+
+
+class EventQueue(OrderedQueueSet):
+    def _exists_in_set(self, event):
+        return (event.src_path, event.event_type, event.is_directory) in self.all_items:
+
+    def _add_to_set(self, event):
+        self.all_items.add((event.src_path, event.event_type, event.is_directory))
+
+    def _remove_from_set(self, event):
+        self.all_items.remove((event.src_path, event.event_type, event.is_directory))
 
 
 EVENT_TYPE_MOVED = 'moved'
