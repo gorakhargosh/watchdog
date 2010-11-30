@@ -29,17 +29,9 @@ import errno
 import os.path
 
 from watchdog.utils import has_attribute
-
-try:
-    # Python 3k
-    from queue import Queue, Empty as QueueEmpty
-except ImportError:
-    from Queue import Queue, Empty as QueueEmpty
 import select
 if not has_attribute(select, 'kqueue') or sys.version_info < (2,7,0):
     import select_backport as select
-
-from threading import Thread, Lock as ThreadedLock, Event as ThreadedEvent
 
 from watchdog.utils import DaemonThread, absolute_path, real_absolute_path
 from watchdog.utils.dirsnapshot import DirectorySnapshot

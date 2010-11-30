@@ -15,8 +15,8 @@ decorators:
 
 import functools
 import warnings
-from threading import Lock
-from sys import settrace
+import threading
+import sys
 
 
 def synchronized(lock=None):
@@ -29,7 +29,7 @@ def synchronized(lock=None):
             ...
     """
     if lock is None:
-        lock = Lock()
+        lock = threading.Lock()
     def wrapper(function):
         def new_function(*args, **kwargs):
             lock.acquire()
@@ -69,10 +69,10 @@ def propertyx(function):
         if event == 'return':
             locals = frame.f_locals
             func_locals.update(dict((k, locals.get(k)) for k in keys))
-            settrace(None)
+            sys.settrace(None)
         return probe_func
 
-    settrace(probe_func)
+    sys.settrace(probe_func)
     function()
     return property(**func_locals)
 

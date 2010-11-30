@@ -22,12 +22,11 @@
 # THE SOFTWARE.
 
 import os.path
-
 try:
     # Python 3k
-    from queue import Queue, Empty as QueueEmpty
+    import queue
 except ImportError:
-    from Queue import Queue, Empty as QueueEmpty
+    import Queue as queue
 
 from watchdog.utils import real_absolute_path, absolute_path, DaemonThread
 from watchdog.utils.dirsnapshot import DirectorySnapshot
@@ -144,7 +143,7 @@ class PollingObserver(DaemonThread):
     """
     def __init__(self, interval=1):
         super(PollingObserver, self).__init__(interval)
-        self.event_queue = Queue()
+        self.event_queue = queue.Queue()
         self.event_emitters = set()
         self.rules = {}
         self.map_name_to_paths = {}
@@ -221,7 +220,7 @@ class PollingObserver(DaemonThread):
                 rule = self.rules[rule_path]
                 rule.event_handler.dispatch(event)
                 self.event_queue.task_done()
-            except QueueEmpty:
+            except queue.Empty:
                 #logging.debug('queue empty')
                 continue
 

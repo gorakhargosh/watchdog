@@ -23,9 +23,8 @@
 
 import subprocess
 
-from watchdog.utils import echo
+from watchdog.utils import echo, filter_paths, has_attribute
 from watchdog.events import PatternMatchingEventHandler
-from watchdog.utils import filter_paths, has_attribute
 
 
 class Trick(PatternMatchingEventHandler):

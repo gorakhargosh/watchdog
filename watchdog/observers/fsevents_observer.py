@@ -21,14 +21,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import os.path
+import threading
+
 import _watchdog_fsevents as _fsevents
 
-import os.path
-from threading import Thread, Event as ThreadedEvent
-
 from watchdog.utils import real_absolute_path, absolute_path, get_parent_dir_path
-from watchdog.decorator_utils import synchronized
 from watchdog.utils.dirsnapshot import DirectorySnapshot
+from watchdog.decorator_utils import synchronized
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
@@ -60,7 +60,7 @@ class _Stream(object):
         return self.__repr__()
 
 
-class FSEventsObserver(Thread):
+class FSEventsObserver(threading.Thread):
     event = None
 
     def __init__(self, *args, **kwargs):
@@ -79,7 +79,7 @@ class FSEventsObserver(Thread):
     def _wait_until_stream_registered(self):
         """Blocks until a stream is registered."""
         while not self.streams:
-            self.event = ThreadedEvent()
+            self.event = threading.Event()
             self.event.wait()
             if self.event is None:
                 return

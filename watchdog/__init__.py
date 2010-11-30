@@ -24,6 +24,7 @@
 
 #import logging
 import sys
+
 from watchdog.utils import has_attribute
 from watchdog.version import __version__, VERSION_INFO, VERSION_STRING
 

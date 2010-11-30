@@ -30,14 +30,15 @@ import yaml
 import time
 import uuid
 import logging
-
-from argh import arg, alias, ArghParser
-from watchdog import Observer, VERSION_STRING
-from watchdog.utils import read_text_file, load_class, absolute_path, get_parent_dir_path
 try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
+
+from argh import arg, alias, ArghParser
+
+from watchdog import Observer, VERSION_STRING
+from watchdog.utils import read_text_file, load_class, absolute_path, get_parent_dir_path
 
 
 logging.basicConfig(level=logging.DEBUG)
