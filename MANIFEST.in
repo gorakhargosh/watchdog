@@ -1,4 +1,4 @@
-include README.md
+include README
 include LICENSE
 include AUTHORS
 include watchmedo
