@@ -41,6 +41,7 @@
 
 import time
 import os.path
+import threading
 
 from watchdog.utils import DaemonThread
 from watchdog.observers.w32_api import *
@@ -51,35 +52,38 @@ class _Win32EventEmitter(DaemonThread):
     """Win32 event emitter."""
     def __init__(self, path, out_event_queue, recursive, interval=1):
         super(_Win32EventEmitter, self).__init__(interval)
+        
+        self._lock = threading.Lock()
+        
         self.path = path
-        self.out_event_queue = out_event_queue
-        self.handle_directory = get_directory_handle(self.path, WATCHDOG_FILE_FLAGS)
-        self.is_recursive = recursive
+        self._q = out_event_queue
+        self._handle_directory = get_directory_handle(self.path, WATCHDOG_FILE_FLAGS)
+        self._is_recursive = recursive
 
 
-    def run(self):
-        while not self.is_stopped:
-            results = read_directory_changes(self.handle_directory, self.is_recursive)
+    def _read_events(self):
+        with self._lock:
+            results = read_directory_changes(self._handle_directory, self._is_recursive)
 
             # TODO: Verify the assumption that the last renamed from event
             # points to a file which the next renamed to event matches.
-            last_renamed_from_filename = ""
-            q = self.out_event_queue
-            for action, filename in results:
-                filename = os.path.join(self.path, filename)
+            last_renamed_from_src_path = ""
+            for action, src_path in results:
+                src_path = os.path.join(self.path, src_path)
+                
                 if action == FILE_ACTION_RENAMED_OLD_NAME:
-                    last_renamed_from_filename = filename
+                    last_renamed_from_src_path = src_path
                 elif action == FILE_ACTION_RENAMED_NEW_NAME:
-                    if os.path.isdir(filename):
-                        renamed_dir_path = absolute_path(last_renamed_from_filename)
-                        new_dir_path = absolute_path(filename)
+                    if os.path.isdir(src_path):
+                        renamed_dir_path = absolute_path(last_renamed_from_src_path)
+                        new_dir_path = absolute_path(src_path)
 
                         # Fire a moved event for the directory itself.
-                        q.put((self.path, DirMovedEvent(renamed_dir_path, new_dir_path)))
+                        self._q.put((self.path, DirMovedEvent(renamed_dir_path, new_dir_path)))
 
                         # Fire moved events for all files within this
                         # directory if recursive.
-                        if self.is_recursive:
+                        if self._is_recursive:
                             # HACK: We introduce a forced delay before
                             # traversing the moved directory. This will read
                             # only file movement that finishes within this
@@ -87,18 +91,22 @@ class _Win32EventEmitter(DaemonThread):
                             time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
                             # TODO: The following may not execute because we need to wait for I/O to complete.
                             for moved_event in get_moved_events_for(renamed_dir_path, new_dir_path, recursive=True):
-                                q.put((self.path, moved_event))
+                                self._q.put((self.path, moved_event))
                     else:
-                        q.put((self.path, FileMovedEvent(last_renamed_from_filename, filename)))
+                        self._q.put((self.path, FileMovedEvent(last_renamed_from_src_path, src_path)))
                 else:
-                    if os.path.isdir(filename):
+                    if os.path.isdir(src_path):
                         action_event_map = DIR_ACTION_EVENT_MAP
                     else:
                         action_event_map = FILE_ACTION_EVENT_MAP
-                    q.put((self.path, action_event_map[action](filename)))
+                    self._q.put((self.path, action_event_map[action](src_path)))
 
+
+    def run(self):
+        while not self.is_stopped:
+            self._read_events()
         # Close the handle once the thread completes.
-        CloseHandle(self.handle_directory)
+        CloseHandle(self._handle_directory)
 
 
 class Win32Observer(PollingObserver):
