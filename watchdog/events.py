@@ -32,7 +32,7 @@ from watchdog.decorator_utils import deprecated
 
 class EventQueue(OrderedQueueSet):
     def _exists_in_set(self, event):
-        return (event.src_path, event.event_type, event.is_directory) in self.all_items:
+        return (event.src_path, event.event_type, event.is_directory) in self.all_items
 
     def _add_to_set(self, event):
         self.all_items.add((event.src_path, event.event_type, event.is_directory))
