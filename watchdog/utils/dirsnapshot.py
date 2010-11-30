@@ -187,6 +187,7 @@ class DirectorySnapshot(object):
         """
         return DirectorySnapshotDiff(previous_dirsnap, self)
 
+
     @property
     def stat_snapshot(self):
         """Returns a dictionary of stat information with file paths being keys."""
