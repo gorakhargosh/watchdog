@@ -5,5 +5,5 @@
 # Public domain.
 #
 
-../bin/python ../watchmedo shell-command --patterns="*.rst;*.rst.inc" --recursive --command='make html'
+bin/python watchmedo shell-command --patterns="*.rst;*.rst.inc;*.py" --recursive --command='make -C docs html' watchdog/ docs/source/
 
