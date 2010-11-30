@@ -228,6 +228,8 @@ class Win32IOCObserver(DaemonThread):
                 self.remove_iockey(self, iockey)
 
         # Clean up
+        for watch in self.watches():
+            watch.remove()
         if self.ioc_port is not None:
             CloseHandle(self.ioc_port)
             self.ioc_port = None
