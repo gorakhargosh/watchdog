@@ -40,7 +40,7 @@ class OrderedSetQueue(queue.Queue):
 
     # Set-specific functionality.
     def _exists_in_set(self, item):
-        return item in self.all_items:
+        return item in self.all_items
 
     def _add_to_set(self, item):
         self.all_items.add(item)
