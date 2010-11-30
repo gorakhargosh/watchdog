@@ -13,7 +13,7 @@ Introduction
 
 * Cross-platform Python API library for monitoring file system changes.
 * Suite of shell utilities that monitor file system changes
-  and execute other shell commands as response.
+  and execute other shell commands in response.
 
 
 Installation information:
@@ -91,10 +91,26 @@ Windows XP and later
 
     .. NOTE:: Since renaming is not the same operation as movement
               on Windows, |project_name| tries hard to convert renames to
-              movement operations. Also, since the ReadDirectoryChangesW_
-              API function returns movement events for directories
+              movement events. Also, because the ReadDirectoryChangesW_
+              API function returns rename/movement events for directories
               even before the underlying I/O is complete, |project_name|
               may not be able to completely scan the moved directory
-              to raise movement events for files and directories within it.
+              in order to successfully queue movement events for
+              files and directories within it.
 
+OS Independent Polling
+    |project_name| also includes a fallback-implementation that polls
+    watched directories for changes by periodically comparing snapshots
+    of the directory tree.
 
+    .. NOTE:: Windows Caveats
+
+              Because Windows has no concept of ``inodes`` as Unix-y
+              platforms do, there is no current reliable way of determining
+              file/directory movement on Windows without help from the
+              Windows API.
+
+              You can use hashing for only those files in which you are
+              interested in your event handlers to determine whether
+              this although it is rather slow. |project_name| does not
+              attempt to handle this on Windows. It is left to your discretion.
