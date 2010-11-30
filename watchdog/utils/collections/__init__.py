@@ -24,4 +24,3 @@
 __all__ = ['OrderedSetQueue']
 
 from watchdog.utils.collections.ordered_set_queue import OrderedSetQueue
-

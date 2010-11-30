@@ -6,12 +6,12 @@
 # http://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
 
 try:
-    from queue import Queue
+    import queue
 except ImportError:
-    from Queue import Queue
+    import Queue as queue
 
 
-class OrderedSetQueue(Queue):
+class OrderedSetQueue(queue.Queue):
     """Thread-safe implementation of an ordered set queue.
 
     Disallows adding a duplicate item while maintaining the
@@ -25,15 +25,15 @@ class OrderedSetQueue(Queue):
 
     """
     def _init(self, maxsize):
-        Queue._init(maxsize)
+        queue.Queue._init(self, maxsize)
         self.all_items = set()
 
     def _put(self, item):
         if item not in self.all_items:
-            Queue._put(self, item)
+            queue.Queue._put(self, item)
             self.all_items.add(item)
 
     def _get(self):
-        item = Queue._get(self)
+        item = queue.Queue._get(self)
         self.all_items.remove(item)
         return item
