@@ -24,7 +24,46 @@
 import os
 import os.path
 import sys
+import threading
+
 from fnmatch import fnmatch
+
+class DaemonThread(threading.Thread):
+    def __init__(self, interval=1, *args, **kwargs):
+        super(DaemonThread, self).__init__()
+        if has_attribute(self, 'daemon'):
+            self.daemon = True
+        else:
+            self.setDaemon(True)
+        self._stopped_event = threading.Event()
+        self._interval = interval
+        self._args = args
+        self._kwargs = kwargs
+
+    @property
+    def interval(self):
+        return self._interval
+        
+    @property
+    def stopped_event(self):
+        return self._stopped_event
+
+    @property
+    def is_stopped(self):
+        if has_attribute(self._stopped_event, 'is_set'):
+            return self._stopped_event.is_set()
+        else:
+            return self._stopped_event.isSet()
+
+    def on_stopping(self):
+        """Implement this instead of Thread.stop(), it calls this method
+        for you."""
+        pass
+
+    def stop(self):
+        self._stopped_event.set()
+        self.on_stopping()
+
 
 def match_patterns(pathname, patterns):
     """Returns True if the pathname matches any of the given patterns."""

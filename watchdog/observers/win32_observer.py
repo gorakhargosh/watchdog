@@ -41,8 +41,8 @@
 
 import time
 import os.path
+from watchdog.utils import DaemonThread
 from watchdog.observers.w32_api import *
-from watchdog.observers import DaemonThread
 from watchdog.observers.polling_observer import PollingObserver
 
 

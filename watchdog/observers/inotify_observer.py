@@ -27,8 +27,7 @@ import os.path
 from pyinotify import ALL_EVENTS, \
     ProcessEvent, WatchManager, ThreadedNotifier
 
-from watchdog.observers import DaemonThread
-from watchdog.utils import absolute_path, real_absolute_path
+from watchdog.utils import DaemonThread, absolute_path, real_absolute_path
 from watchdog.decorator_utils import synchronized
 from watchdog.events import \
     DirMovedEvent, \

@@ -31,8 +31,7 @@ import stat
 import ctypes
 import pywintypes
 
-from watchdog.observers import DaemonThread
-from watchdog.utils import real_absolute_path, absolute_path
+from watchdog.utils import DaemonThread, real_absolute_path, absolute_path
 from watchdog.decorator_utils import synchronized
 from watchdog.observers.w32_api import *
 

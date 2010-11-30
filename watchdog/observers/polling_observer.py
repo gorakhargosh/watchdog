@@ -29,9 +29,8 @@ try:
 except ImportError:
     from Queue import Queue, Empty as QueueEmpty
 
-from watchdog.utils import real_absolute_path, absolute_path
+from watchdog.utils import real_absolute_path, absolute_path, DaemonThread
 from watchdog.utils.dirsnapshot import DirectorySnapshot
-from watchdog.observers import DaemonThread
 from watchdog.decorator_utils import synchronized
 from watchdog.events import \
     DirMovedEvent, \
@@ -86,7 +85,7 @@ class _PollingEventEmitter(DaemonThread):
 
         """
         while not self.is_stopped:
-            self.stopped.wait(self.interval)
+            self.stopped_event.wait(self.interval)
             diff = self._get_directory_snapshot_diff()
             if diff and self.out_event_queue:
                 q = self.out_event_queue
