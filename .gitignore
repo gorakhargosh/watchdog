@@ -25,7 +25,7 @@ develop-eggs/
 dist/
 eggs/
 *.egg-info/
-
+MANIFEST
 
 # Ignore these generated files.
 bin/buildout
