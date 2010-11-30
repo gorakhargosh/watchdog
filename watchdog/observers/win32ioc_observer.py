@@ -36,7 +36,7 @@ try:
 except ImportError:
     import Queue as queue
 
-from watchdog.utils.collections import OrderedSetQueue
+from watchdog.events import EventQueue
 from watchdog.utils import DaemonThread, real_absolute_path, absolute_path
 from watchdog.observers.w32_api import *
 
@@ -135,7 +135,7 @@ class Win32IOCObserver(DaemonThread):
 
         self._args = args
         self._kwargs = kwargs
-        self._q = OrderedSetQueue()
+        self._q = EventQueue()
 
         self._map_name_to_cookies = {}
         self._map_cookie_to_watch = {}
