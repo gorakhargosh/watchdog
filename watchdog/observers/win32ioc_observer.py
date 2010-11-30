@@ -87,7 +87,7 @@ class _Watch(object):
                         dest_dir_path = filename
     
                         # Fire a moved event for the directory itself.
-                        out_event_queue.put((event_handler, DirMovedEvent(src_dir_path, dest_dir_path)))
+                        out_event_queue.put((self.event_handler, DirMovedEvent(src_dir_path, dest_dir_path)))
     
                         # Fire moved events for all files within this
                         # directory if recursive.
@@ -99,15 +99,15 @@ class _Watch(object):
                             time.sleep(WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY)
                             # TODO: The following still does not execute because we need to wait for I/O to complete.
                             for moved_event in get_moved_events_for(src_dir_path, dest_dir_path, recursive=True):
-                                out_event_queue.put((event_handler, moved_event))
+                                out_event_queue.put((self.event_handler, moved_event))
                     else:
-                        out_event_queue.put((event_handler, FileMovedEvent(last_renamed_from_filename, filename)))
+                        out_event_queue.put((self.event_handler, FileMovedEvent(last_renamed_from_filename, filename)))
                 else:
                     if os.path.isdir(filename):
                         action_event_map = DIR_ACTION_EVENT_MAP
                     else:
                         action_event_map = FILE_ACTION_EVENT_MAP
-                    out_event_queue((event_handler, action_event_map[action](filename)))
+                    out_event_queue.put((self.event_handler, action_event_map[action](filename)))
 
 
     def close(self):
