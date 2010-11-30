@@ -102,7 +102,7 @@ class _Watch(object):
                             for moved_event in get_moved_events_for(src_dir_path, dest_dir_path, recursive=True, handler=self.event_handler):
                                 out_event_queue.put(moved_event)
                     else:
-                        out_event_queue.put(FileMovedEvent(last_renamed_from_filename, filename, handler=self.event_handler)))
+                        out_event_queue.put(FileMovedEvent(last_renamed_from_filename, filename, handler=self.event_handler))
                 else:
                     if os.path.isdir(filename):
                         action_event_map = DIR_ACTION_EVENT_MAP
