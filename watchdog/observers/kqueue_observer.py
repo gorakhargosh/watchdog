@@ -40,7 +40,7 @@ if not has_attribute(select, 'kqueue') or sys.version_info < (2,7,0):
     import select_backport as select
 
 from threading import Thread, Lock as ThreadedLock, Event as ThreadedEvent
-from watchdog.dirsnapshot import DirectorySnapshot
+from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized
 from watchdog.observers import DaemonThread
 from watchdog.observers.polling_observer import PollingObserver

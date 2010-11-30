@@ -28,7 +28,7 @@ from threading import Thread, Event as ThreadedEvent
 
 from watchdog.utils import real_absolute_path, absolute_path, get_parent_dir_path
 from watchdog.decorator_utils import synchronized
-from watchdog.dirsnapshot import DirectorySnapshot
+from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
