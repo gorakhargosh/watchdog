@@ -5,6 +5,8 @@
 # Public domain.
 #
 
+make -C docs html
+
 bin/python watchmedo shell-command \
     --patterns="*.rst;*.rst.inc;*.py;*.py.swp;*.rst.swp;*.rst.inc.swp" \
     --ignore-patterns=".*;*~" \
