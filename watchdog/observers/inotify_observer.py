@@ -23,12 +23,12 @@
 
 import time
 import os.path
+import threading
 
 from pyinotify import ALL_EVENTS, \
     ProcessEvent, WatchManager, ThreadedNotifier
 
 from watchdog.utils import DaemonThread, absolute_path, real_absolute_path
-from watchdog.decorator_utils import synchronized
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
@@ -45,10 +45,10 @@ from watchdog.events import \
     get_moved_events_for
 
 
-
 def check_kwargs(kwargs, arg, method):
     if not arg in kwargs:
         raise ValueError('`%s` argument to method %s is not specified.' % arg, method)
+
 
 class _ProcessEventDispatcher(ProcessEvent):
     """ProcessEvent subclasses that dispatches events to our
@@ -58,6 +58,7 @@ class _ProcessEventDispatcher(ProcessEvent):
         check_kwargs(kwargs, 'recursive', 'my_init')
         self.event_handler = kwargs['event_handler']
         self.is_recursive = kwargs['recursive']
+
 
     def process_IN_CREATE(self, event):
         src_path = absolute_path(event.pathname)
@@ -110,52 +111,57 @@ class _Rule(object):
 
 class InotifyObserver(DaemonThread):
     """Inotify-based daemon observer thread for Linux."""
-    def __init__(self, interval=1):
+    def __init__(self, interval=0.5):
         super(InotifyObserver, self).__init__(interval)
-        self.wm = WatchManager()
-        self.notifiers = set()
-        self.name_to_rule = dict()
+
+        self._lock = threading.RLock()
+        
+        self._wm = WatchManager()
+        self._notifiers = set()
+        self._name_to_rule = dict()
+
 
     def on_stopping(self):
-        for notifier in self.notifiers:
-            notifier.stop()
+        with self._lock:
+            for notifier in self._notifiers:
+                notifier.stop()
 
-    @synchronized()
+
     def schedule(self, name, event_handler, paths=None, recursive=False):
         """Schedules monitoring."""
-        if not paths:
-            raise ValueError('Please specify a few paths.')
-        if isinstance(paths, basestring):
-            paths = [paths]
+        with self._lock:
+            if not paths:
+                raise ValueError('Please specify a few paths.')
+            if isinstance(paths, basestring):
+                paths = [paths]
 
-        #from pyinotify import PrintAllEvents
-        #dispatcher = PrintAllEvents()
+            #from pyinotify import PrintAllEvents
+            #dispatcher = PrintAllEvents()
 
-        dispatcher = _ProcessEventDispatcher(event_handler=event_handler,
-                                             recursive=recursive)
-        notifier = ThreadedNotifier(self.wm, dispatcher)
-        self.notifiers.add(notifier)
-        for path in paths:
-            if not isinstance(path, basestring):
-                raise TypeError("Path must be string, not '%s'." % type(path).__name__)
-            path = real_absolute_path(path)
-            descriptors = self.wm.add_watch(path, ALL_EVENTS, rec=recursive, auto_add=True)
-        self.name_to_rule[name] = _Rule(name, notifier, descriptors)
-        notifier.start()
+            dispatcher = _ProcessEventDispatcher(event_handler=event_handler,
+                                                 recursive=recursive)
+            notifier = ThreadedNotifier(self._wm, dispatcher)
+            self._notifiers.add(notifier)
+            for path in paths:
+                if not isinstance(path, basestring):
+                    raise TypeError("Path must be string, not '%s'." % type(path).__name__)
+                path = real_absolute_path(path)
+                descriptors = self._wm.add_watch(path, ALL_EVENTS, rec=recursive, auto_add=True)
+            self._name_to_rule[name] = _Rule(name, notifier, descriptors)
+            notifier.start()
 
 
-    @synchronized()
     def unschedule(self, *names):
-        if not names:
-            for name, rule in self.name_to_rule.items():
-                self.wm.rm_watch(rule.descriptors.values())
-        else:
-            for name in names:
-                rule = self.name_to_rule[name]
-                self.wm.rm_watch(rule.descriptors.values())
+        with self._lock:
+            if not names:
+                for name, rule in self._name_to_rule.items():
+                    self._wm.rm_watch(rule.descriptors.values())
+            else:
+                for name in names:
+                    rule = self._name_to_rule[name]
+                    self._wm.rm_watch(rule.descriptors.values())
 
 
     def run(self):
         while not self.is_stopped:
             time.sleep(self.interval)
-

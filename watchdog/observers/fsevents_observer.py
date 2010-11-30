@@ -28,7 +28,6 @@ import _watchdog_fsevents as _fsevents
 
 from watchdog.utils import real_absolute_path, absolute_path, get_parent_dir_path
 from watchdog.utils.dirsnapshot import DirectorySnapshot
-from watchdog.decorator_utils import synchronized
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
@@ -38,9 +37,6 @@ from watchdog.events import \
     FileDeletedEvent, \
     FileCreatedEvent, \
     FileModifiedEvent
-
-#import logging
-#logging.basicConfig(level=logging.DEBUG)
 
 
 class _Stream(object):
@@ -64,10 +60,13 @@ class FSEventsObserver(threading.Thread):
     event = None
 
     def __init__(self, *args, **kwargs):
+        super(FSEventsObserver, self).__init__()
+        
+        self._lock = threading.RLock()        
+    
         self.streams = set()
         self.map_name_to_stream = {}
         self.snapshot_for_path = {}
-        super(FSEventsObserver, self).__init__()
 
 
     def run(self):
@@ -104,44 +103,37 @@ class FSEventsObserver(threading.Thread):
             return self._get_snapshot_for_path(path)
 
 
-    @synchronized()
     def _get_directory_snapshot_diff(self, path, recursive):
         """Obtains a diff of two directory snapshots."""
         # The path will be reset to the watched directory path
         # and a snapshot will be stored for the correct key.
-        (path, snapshot) = self._get_snapshot_for_path(path)
-        new_snapshot = DirectorySnapshot(path, recursive=recursive)
-        self.snapshot_for_path[path] = new_snapshot
+        with self._lock:
+            (path, snapshot) = self._get_snapshot_for_path(path)
+            new_snapshot = DirectorySnapshot(path, recursive=recursive)
+            self.snapshot_for_path[path] = new_snapshot
         return new_snapshot - snapshot
 
 
-    @synchronized()
     def _dispatch_events_for_path(self, event_handler, recursive, path):
-        diff = self._get_directory_snapshot_diff(path, recursive)
-        if diff:
-            for path in diff.files_deleted:
-                event_handler.dispatch(FileDeletedEvent(path))
-
-            for path in diff.files_modified:
-                event_handler.dispatch(FileModifiedEvent(path))
-
-            for path in diff.files_created:
-                event_handler.dispatch(FileCreatedEvent(path))
-
-            for path, dest_path in diff.files_moved.items():
-                event_handler.dispatch(FileMovedEvent(path, dest_path))
-
-            for path in diff.dirs_modified:
-                event_handler.dispatch(DirModifiedEvent(path))
-
-            for path in diff.dirs_deleted:
-                event_handler.dispatch(DirDeletedEvent(path))
-
-            for path in diff.dirs_created:
-                event_handler.dispatch(DirCreatedEvent(path))
-
-            for path, dest_path in diff.dirs_moved.items():
-                event_handler.dispatch(DirMovedEvent(path, dest_path))
+        with self._lock:
+            diff = self._get_directory_snapshot_diff(path, recursive)
+            if diff:
+                for path in diff.files_deleted:
+                    event_handler.dispatch(FileDeletedEvent(path))
+                for path in diff.files_modified:
+                    event_handler.dispatch(FileModifiedEvent(path))
+                for path in diff.files_created:
+                    event_handler.dispatch(FileCreatedEvent(path))
+                for path, dest_path in diff.files_moved.items():
+                    event_handler.dispatch(FileMovedEvent(path, dest_path))
+                for path in diff.dirs_modified:
+                    event_handler.dispatch(DirModifiedEvent(path))
+                for path in diff.dirs_deleted:
+                    event_handler.dispatch(DirDeletedEvent(path))
+                for path in diff.dirs_created:
+                    event_handler.dispatch(DirCreatedEvent(path))
+                for path, dest_path in diff.dirs_moved.items():
+                    event_handler.dispatch(DirMovedEvent(path, dest_path))
 
 
     def _schedule_and_set_callback(self, stream):
@@ -159,63 +151,63 @@ class FSEventsObserver(threading.Thread):
         _fsevents.schedule(self, stream, callback, stream.paths)
 
 
-    @synchronized()
     def _schedule_all_streams(self):
-        for stream in self.streams:
-            self._schedule_and_set_callback(stream)
-        self.streams = None
+        with self._lock:
+            for stream in self.streams:
+                self._schedule_and_set_callback(stream)
+            self.streams = None
 
 
-    @synchronized()
     def _schedule_stream(self, stream):
-        if self.streams is None:
-            self._schedule_and_set_callback(stream)
-        elif stream in self.streams:
-            raise ValueError("Stream already scheduled.")
-        else:
-            self.streams.add(stream)
-            if self.event is not None:
-                self.event.set()
+        with self._lock:
+            if self.streams is None:
+                self._schedule_and_set_callback(stream)
+            elif stream in self.streams:
+                raise ValueError("Stream already scheduled.")
+            else:
+                self.streams.add(stream)
+                if self.event is not None:
+                    self.event.set()
 
 
-    @synchronized()
     def _unschedule_stream(self, stream):
-        if self.streams is None:
-            _fsevents.unschedule(stream)
-        else:
-            self.streams.remove(stream)
+        with self._lock:
+            if self.streams is None:
+                _fsevents.unschedule(stream)
+            else:
+                self.streams.remove(stream)
 
 
-    @synchronized()
     def schedule(self, name, event_handler, paths=None, recursive=False):
-        if not paths:
-            raise ValueError('Please specify a few paths.')
-        if isinstance(paths, basestring):
-            paths = [paths]
+        with self._lock:
+            if not paths:
+                raise ValueError('Please specify a few paths.')
+            if isinstance(paths, basestring):
+                paths = [paths]
+    
+            for path in paths:
+                if not isinstance(path, basestring):
+                    raise TypeError("Path must be string, not '%s'." % type(path).__name__)
+    
+            s = _Stream(name, event_handler, paths, recursive)
+            self.map_name_to_stream[name] = s
+            self._schedule_stream(s)
 
-        for path in paths:
-            if not isinstance(path, basestring):
-                raise TypeError("Path must be string, not '%s'." % type(path).__name__)
 
-        s = _Stream(name, event_handler, paths, recursive)
-        self.map_name_to_stream[name] = s
-        self._schedule_stream(s)
-
-
-    @synchronized()
     def unschedule(self, *names):
-        if not names:
-            for name, stream in self.map_name_to_stream.items():
-                self._unschedule_stream(stream)
-        else:
-            for name in names:
-                if name in self.map_name_to_stream:
-                    s = self.map_name_to_stream[name]
-                    self._unschedule_stream(s)
-                    # TODO: Clean up this code.
-                    #for path in s.paths:
-                    #    del self.snapshot_for_path[path]
-                    del self.map_name_to_stream[name]
+        with self._lock:
+            if not names:
+                for name, stream in self.map_name_to_stream.items():
+                    self._unschedule_stream(stream)
+            else:
+                for name in names:
+                    if name in self.map_name_to_stream:
+                        s = self.map_name_to_stream[name]
+                        self._unschedule_stream(s)
+                        # TODO: Clean up this code.
+                        #for path in s.paths:
+                        #    del self.snapshot_for_path[path]
+                        del self.map_name_to_stream[name]
 
 
     def stop(self):
@@ -225,4 +217,3 @@ class FSEventsObserver(threading.Thread):
             event = self.event
             self.event = None
             event.set()
-
