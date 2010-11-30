@@ -31,6 +31,7 @@ try:
 except ImportError:
     import Queue as queue
 
+from watchdog.utils.collections import OrderedSetQueue
 from watchdog.utils import real_absolute_path, absolute_path, DaemonThread
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.decorator_utils import synchronized
@@ -131,7 +132,7 @@ class PollingObserver(DaemonThread):
     """
     def __init__(self, interval=1):
         super(PollingObserver, self).__init__(interval)
-        self.event_queue = queue.Queue()
+        self.event_queue = OrderedSetQueue()
         self.event_emitters = set()
         self.rules = {}
         self.map_name_to_paths = {}
