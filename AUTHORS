@@ -4,6 +4,7 @@ Tim Golden <mail@timgolden.me.uk>
 Andrew Schaaf <andrew@andrewschaaf.com>
 Luke McCarthy <luke@iogopro.co.uk>
 Thomas Guest <tag@wordaligned.org>
+Lukáš Lalinský <lalinsky@gmail.com>
 
 Watchdog also includes open source libraries or adapted code
 from the following projects:
@@ -13,3 +14,4 @@ from the following projects:
 - pyinotify - http://github.com/seb-m/pyinotify
 - fsmonitor - http://github.com/shaurz/fsmonitor
 - echo - http://wordaligned.org/articles/echo
+- Lukáš Lalinský's ordered set queue implementation - http://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
