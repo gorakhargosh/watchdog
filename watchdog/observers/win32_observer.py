@@ -52,9 +52,9 @@ class _Win32EventEmitter(DaemonThread):
     """Win32 event emitter."""
     def __init__(self, path, out_event_queue, recursive, interval=1):
         super(_Win32EventEmitter, self).__init__(interval)
-        
+
         self._lock = threading.Lock()
-        
+
         self.path = path
         self._q = out_event_queue
         self._handle_directory = get_directory_handle(self.path, WATCHDOG_FILE_FLAGS)
@@ -70,7 +70,7 @@ class _Win32EventEmitter(DaemonThread):
             last_renamed_from_src_path = ""
             for action, src_path in results:
                 src_path = os.path.join(self.path, src_path)
-                
+
                 if action == FILE_ACTION_RENAMED_OLD_NAME:
                     last_renamed_from_src_path = src_path
                 elif action == FILE_ACTION_RENAMED_NEW_NAME:
@@ -103,7 +103,7 @@ class _Win32EventEmitter(DaemonThread):
 
 
     def run(self):
-        while not self.is_stopped:
+        while not self.is_stopped():
             self._read_events()
         # Close the handle once the thread completes.
         CloseHandle(self._handle_directory)

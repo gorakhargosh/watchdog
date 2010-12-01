@@ -228,13 +228,14 @@ class Win32IOCObserver(DaemonThread):
                     try:
                         event = self._q.get_nowait()
                         event.dispatch()
+                        self._q.task_done()
                     except queue.Empty:
                         break
                 watch.read_directory_changes()
 
 
     def run(self):
-        while not self.is_stopped:
+        while not self.is_stopped():
             # read status of io completion queue
             rc, num_bytes, cookie, _ = GetQueuedCompletionStatus(self._ioc_port, self._ioc_timeout)
             if rc == 0:
