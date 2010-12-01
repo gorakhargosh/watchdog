@@ -32,7 +32,7 @@ from watchdog.decorator_utils import deprecated
 
 class EventQueue(OrderedSetQueue):
     def _item_repr(self, event):
-        return event.repr()
+        return event
 
 
 EVENT_TYPE_MOVED = 'moved'
@@ -41,7 +41,7 @@ EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
 
 
-def get_moved_events_for(src_dir_path, dest_dir_path, recursive, handler):
+def get_moved_events_for(src_dir_path, dest_dir_path, recursive, handlers):
     walk = get_walker(recursive)
     src_dir_path = absolute_path(src_dir_path)
     dest_dir_path = absolute_path(dest_dir_path)
@@ -49,11 +49,11 @@ def get_moved_events_for(src_dir_path, dest_dir_path, recursive, handler):
         for directory in directories:
             full_path = os.path.join(root, directory)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path)
-            yield DirMovedEvent(renamed_path, full_path, handler=handler)
+            yield DirMovedEvent(renamed_path, full_path, handlers=handlers)
         for filename in filenames:
             full_path = os.path.join(root, filename)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path)
-            yield FileMovedEvent(renamed_path, full_path, handler=handler)
+            yield FileMovedEvent(renamed_path, full_path, handlers=handlers)
 
 
 class FileSystemEvent(object):
@@ -61,11 +61,11 @@ class FileSystemEvent(object):
     Represents a file system event that is triggered when a change occurs
     in a directory that is being monitored.
     """
-    def __init__(self, event_type, src_path, is_directory=False, handler=None):
+    def __init__(self, event_type, src_path, is_directory=False, handlers=None):
         self._src_path = src_path
         self._is_directory = is_directory
         self._event_type = event_type
-        self._handler = handler
+        self._handlers = handlers
 
     def __str__(self):
         return self.__repr__()
@@ -74,14 +74,11 @@ class FileSystemEvent(object):
         return str((self.event_type, self.src_path, self.is_directory))
 
     def repr(self):
-        return (self.event_type, self.src_path, self.is_directory, self.handler)
+        return (self.event_type, self.src_path, self.is_directory)
 
     def dispatch(self):
-        self.handler.dispatch(self)
-
-    @property
-    def handler(self):
-        return self._handler
+        for handler in self._handlers:
+            handler.dispatch(self)
 
     @property
     def is_directory(self):
@@ -105,16 +102,16 @@ class FileSystemMovedEvent(FileSystemEvent):
     """
     Base class for file system movement.
     """
-    def __init__(self, src_path, dest_path, is_directory=False, handler=None):
+    def __init__(self, src_path, dest_path, is_directory=False, handlers=None):
         super(FileSystemMovedEvent, self).__init__(event_type=EVENT_TYPE_MOVED,
                                                    src_path=src_path,
                                                    is_directory=is_directory,
-                                                   handler=handler)
+                                                   handlers=handlers)
         self._dest_path = dest_path
 
 
     def repr(self):
-        return (self.event_type, self.src_path, self.dest_path, self.is_directory, self.handler)
+        return (self.event_type, self.src_path, self.dest_path, self.is_directory)
 
 
     @property
@@ -134,54 +131,54 @@ class FileSystemMovedEvent(FileSystemEvent):
 
 # File events.
 class FileDeletedEvent(FileSystemEvent):
-    def __init__(self, src_path, handler=None):
+    def __init__(self, src_path, handlers=None):
         super(FileDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED,
                                                src_path=src_path,
-                                               handler=handler)
+                                               handlers=handlers)
 
 class FileModifiedEvent(FileSystemEvent):
-    def __init__(self, src_path, handler=None):
+    def __init__(self, src_path, handlers=None):
         super(FileModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED,
                                                 src_path=src_path,
-                                                handler=handler)
+                                                handlers=handlers)
 
 class FileCreatedEvent(FileSystemEvent):
-    def __init__(self, src_path, handler=None):
+    def __init__(self, src_path, handlers=None):
         super(FileCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED,
                                                src_path=src_path,
-                                               handler=handler)
+                                               handlers=handlers)
 
 class FileMovedEvent(FileSystemMovedEvent):
     pass
 
 # Directory events.
 class DirDeletedEvent(FileSystemEvent):
-    def __init__(self, src_path, handler=None):
+    def __init__(self, src_path, handlers=None):
         super(DirDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED,
                                               src_path=src_path,
                                               is_directory=True,
-                                              handler=handler)
+                                              handlers=handlers)
 
 class DirModifiedEvent(FileSystemEvent):
-    def __init__(self, src_path, handler=None):
+    def __init__(self, src_path, handlers=None):
         super(DirModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED,
                                                src_path=src_path,
                                                is_directory=True,
-                                               handler=handler)
+                                               handlers=handlers)
 
 class DirCreatedEvent(FileSystemEvent):
-    def __init__(self, src_path, handler=None):
+    def __init__(self, src_path, handlers=None):
         super(DirCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED,
                                               src_path=src_path,
                                               is_directory=True,
-                                              handler=handler)
+                                              handlers=handlers)
 
 class DirMovedEvent(FileSystemMovedEvent):
-    def __init__(self, src_path, dest_path, handler=None):
+    def __init__(self, src_path, dest_path, handlers=None):
         super(DirMovedEvent, self).__init__(src_path=src_path,
                                             dest_path=dest_path,
                                             is_directory=True,
-                                            handler=handler)
+                                            handlers=handlers)
 
 
 
