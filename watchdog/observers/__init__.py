@@ -20,3 +20,48 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from __future__ import with_statement
+
+import threading
+from watchdog.utils import DaemonThread, real_absolute_path
+
+
+class _EventEmitter(DaemonThread):
+    def __init__(self, path, handler, event_queue,
+                 recursive=False, interval=1):
+        super(_EventEmitter, self).__init__(interval)
+
+        self._handlers = set([handler])
+        self._lock = threading.Lock()
+        self._path = real_absolute_path(path)
+        self._event_queue = event_queue
+        self._is_recursive = recursive
+
+    @property
+    def lock(self):
+        return self._lock
+
+    @property
+    def is_recursive(self):
+        return self._is_recursive
+
+    @property
+    def event_queue(self):
+        return self._event_queue
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def handlers(self):
+        return self._handlers
+
+    def add_handler(self, handler):
+        with self._lock:
+            self._handlers.add(handler)
+
+    def remove_handler(self, handler):
+        with self._lock:
+            self._handlers.remove(handler)
+

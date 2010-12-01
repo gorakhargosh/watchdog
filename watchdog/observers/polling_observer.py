@@ -26,14 +26,18 @@ from __future__ import with_statement
 import os.path
 import threading
 try:
-    # Python 3k
     import queue
 except ImportError:
     import Queue as queue
 
-from watchdog.utils.collections import OrderedSetQueue
-from watchdog.utils import real_absolute_path, absolute_path, DaemonThread
+#from watchdog.utils import echo
+
 from watchdog.utils.dirsnapshot import DirectorySnapshot
+from watchdog.utils import \
+    real_absolute_path, \
+    absolute_path, \
+    DaemonThread
+from watchdog.observers import _EventEmitter
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
@@ -42,32 +46,32 @@ from watchdog.events import \
     FileMovedEvent, \
     FileDeletedEvent, \
     FileCreatedEvent, \
-    FileModifiedEvent
+    FileModifiedEvent, \
+    EventQueue
 
 
-#import logging
-#logging.basicConfig(level=logging.DEBUG)
 
-class _PollingEventEmitter(DaemonThread):
+class _PollingEventEmitter(_EventEmitter):
     """Daemon thread that monitors a given path recursively and emits
     file system events.
     """
-    def __init__(self, path, interval=1, out_event_queue=None, recursive=False, name=None):
+    def __init__(self, path, handler, event_queue,
+                 recursive=False, interval=1):
         """Monitors a given path and appends file system modification
         events to the output queue."""
-        super(_PollingEventEmitter, self).__init__(interval)
-
-        self._lock = threading.Lock()
-        self._q = out_event_queue
+        super(_PollingEventEmitter, self).__init__(path,
+                                                   handler,
+                                                   event_queue,
+                                                   recursive,
+                                                   interval)
         self._snapshot = DirectorySnapshot(path, recursive=recursive)
-        self._path = real_absolute_path(path)
-        self._is_recursive = recursive
 
-
+    #@echo.echo
     def _get_directory_snapshot_diff(self):
         """Obtains a diff of two directory snapshots."""
-        with self._lock:
-            new_snapshot = DirectorySnapshot(self._path, recursive=self._is_recursive)
+        with self.lock:
+            new_snapshot = DirectorySnapshot(self.path,
+                                             recursive=self.is_recursive)
             diff = new_snapshot - self._snapshot
             self._snapshot = new_snapshot
         return diff
@@ -79,146 +83,155 @@ class _PollingEventEmitter(DaemonThread):
         based on the diff between two states of the same directory.
 
         """
-        while not self.is_stopped:
+        while not self.is_stopped():
             self.stopped_event.wait(self.interval)
             diff = self._get_directory_snapshot_diff()
 
             for path in diff.files_deleted:
-                self._q.put((self._path, FileDeletedEvent(path)))
+                self.event_queue.put(
+                    FileDeletedEvent(path, handlers=self.handlers))
             for path in diff.files_modified:
-                self._q.put((self._path, FileModifiedEvent(path)))
+                self.event_queue.put(
+                    FileModifiedEvent(path, handlers=self.handlers))
             for path in diff.files_created:
-                self._q.put((self._path, FileCreatedEvent(path)))
+                self.event_queue.put(
+                    FileCreatedEvent(path, handlers=self.handlers))
             for path, dest_path in diff.files_moved.items():
-                self._q.put((self._path, FileMovedEvent(path, dest_path)))
+                self.event_queue.put(
+                    FileMovedEvent(path, dest_path, handlers=self.handlers))
 
             for path in diff.dirs_modified:
-                self._q.put((self._path, DirModifiedEvent(path)))
+                self.event_queue.put(
+                    DirModifiedEvent(path, handlers=self.handlers))
             for path in diff.dirs_deleted:
-                self._q.put((self._path, DirDeletedEvent(path)))
+                self.event_queue.put(
+                    DirDeletedEvent(path, handlers=self.handlers))
             for path in diff.dirs_created:
-                self._q.put((self._path, DirCreatedEvent(path)))
+                self.event_queue.put(
+                    DirCreatedEvent(path, handlers=self.handlers))
             for path, dest_path in diff.dirs_moved.items():
-                self._q.put((self._path, DirMovedEvent(path, dest_path)))
-
-
-
-class _Rule(object):
-    '''
-    A rule object represents
-    '''
-    def __init__(self, path, event_handler, event_emitter):
-        self._path = path
-        self._event_handler = event_handler
-        self._event_emitter = event_emitter
-
-    @property
-    def path(self):
-        return self._path
-
-    @property
-    def event_handler(self):
-        return self._event_handler
-
-    @property
-    def event_emitter(self):
-        return self._event_emitter
+                self.event_queue.put(
+                    DirMovedEvent(path, dest_path, handlers=self.handlers))
 
 
 
 class PollingObserver(DaemonThread):
     """Observer daemon thread that spawns threads for each path to be monitored.
     """
-    def __init__(self, interval=1):
-        super(PollingObserver, self).__init__(interval)
-        
-        self._lock = threading.RLock()
-        
-        self._event_queue = OrderedSetQueue()
-        self._event_emitters = set()
-        self._rules = {}
-        self._map_name_to_paths = {}
+    def __init__(self, interval=0.5):
+        super(PollingObserver, self).__init__(interval=interval)
+
+        self._lock = threading.Lock()
+
+        # All the emitters created as a result of scheduling a group of
+        # paths under a name.
+        self._emitters_for_name = {}
+
+        # Collection of all the emitters.
+        self._emitters = set()
+
+        # Used to detect emitters with duplicate signatures.
+        self._emitter_for_signature = {}
+
+        # Event queue that will be filled by worker-emitter threads with events.
+        self._event_queue = EventQueue()
+
+        # Maintains a mapping of names to their event handlers.
+        # There's a one-to-one mapping between names and event handlers.
+        self._handler_for_name = {}
+
 
     @property
     def event_queue(self):
         return self._event_queue
-        
 
-    # The win32/kqueue observers override this method because all of the other
-    # functionality of this class is the same as its own.
-    def _create_event_emitter(self, path, recursive):
+
+    #@echo.echo
+    def create_event_emitter(self, path, handler, event_queue, recursive, interval):
         return _PollingEventEmitter(path=path,
-                                    interval=self.interval,
-                                    out_event_queue=self._event_queue,
-                                    recursive=recursive)
+                                    handler=handler,
+                                    event_queue=event_queue,
+                                    recursive=recursive,
+                                    interval=interval)
 
-
+    #@echo.echo
     def schedule(self, name, event_handler, paths=None, recursive=False):
         """Schedules monitoring specified paths and calls methods in the
         given callback handler based on events occurring in the file system.
         """
+        if not paths:
+            raise ValueError('Please specify a few paths.')
+        if isinstance(paths, basestring):
+            paths = [paths]
+
         with self._lock:
-            if not paths:
-                raise ValueError('Please specify a few paths.')
-            if isinstance(paths, basestring):
-                paths = [paths]
-    
-            self._map_name_to_paths[name] = set()
+            if name in self._emitters_for_name:
+                raise ValueError("Duplicate watch entry named '%s'" % name)
+
+            self._emitters_for_name[name] = set()
             for path in paths:
                 if not isinstance(path, basestring):
-                    raise TypeError("Path must be string, not '%s'." % type(path).__name__)
+                    raise TypeError("Path must be string, not '%s'." %
+                                    type(path).__name__)
+
                 path = real_absolute_path(path)
-                self._schedule_path(name, event_handler, recursive, path)
+                if not os.path.isdir(path):
+                    raise ValueError("Path '%s' is not a directory." % path)
 
+                try:
+                    # If we have an emitter for this path already with
+                    # this signature, we don't create a new
+                    # emitter. Instead we add the handler to the event
+                    # object, which when dispatched calls the handler code.
+                    emitter = self._emitter_for_signature[(path, recursive)]
+                    emitter.add_handler(handler)
+                except KeyError:
+                    # Create a new emitter and start it.
+                    emitter = self.create_event_emitter(path=path,
+                                                        handler=event_handler,
+                                                        event_queue=self.event_queue,
+                                                        recursive=recursive,
+                                                        interval=self.interval)
+                    self._handler_for_name[name] = event_handler
+                    self._emitters_for_name[name].add(emitter)
+                    self._emitters.add(emitter)
+                    self._emitter_for_signature[(path, recursive)] = emitter
 
-    def _schedule_path(self, name, event_handler, recursive, path):
-        """Starts monitoring the given path for file system events."""
-        with self._lock:
-            if os.path.isdir(path) and not path in self._rules:
-                event_emitter = self._create_event_emitter(path=path, recursive=recursive)
-                self._event_emitters.add(event_emitter)
-                self._rules[path] = _Rule(path=path,
-                                        event_handler=event_handler,
-                                        event_emitter=event_emitter)
-                self._map_name_to_paths[name].add(path)
-                event_emitter.start()
+            for emitter in self._emitters:
+                if not emitter.is_alive():
+                    emitter.start()
 
 
     def unschedule(self, *names):
         """Stops monitoring specified paths for file system events."""
         with self._lock:
-            if not names:
-                for name, path in self._map_name_to_paths.items():
-                    self._unschedule_path(path)
-            else:
-                for name in names:
-                    for path in self._map_name_to_paths[name]:
-                        self._unschedule_path(path)
-                    del self._map_name_to_paths[name]
+            for name in names:
+                # Each handler is given a name.
+                handler = self._handler_for_name[name]
 
-
-    def _unschedule_path(self, path):
-        """Stops watching a given path if already being monitored."""
-        with self._lock:
-            if path in self._rules:
-                rule = self._rules.pop(path)
-                rule.event_emitter.stop()
-                self._event_emitters.remove(rule.event_emitter)
+                for emitter in self._emitters_for_name[name]:
+                    if handler in emitter.handlers:
+                        emitter.remove_handler(handler)
+                        if not emitter.handlers:
+                            emitter.stop()
+                            del self._emitter_for_signature[(emitter.path, emitter.is_recursive)]
+                del self._emitters_for_name[name]
 
 
     def run(self):
-        while not self.is_stopped:
+        while not self.is_stopped():
             try:
-                (rule_path, event) = self._event_queue.get(block=True, timeout=self.interval)
-                rule = self._rules[rule_path]
-                rule.event_handler.dispatch(event)
-                self._event_queue.task_done()
+                event = self.event_queue.get(block=True, timeout=self.interval)
+                event.dispatch()
+                self.event_queue.task_done()
             except queue.Empty:
                 continue
+        self._clean_up()
 
 
-    def on_stopping(self):
-        for event_emitter in self._event_emitters:
-            event_emitter.stop()
-
-
+    def _clean_up(self):
+        for emitter in self._emitters:
+            emitter.join()
+        self._emitters_for_name.clear()
+        self._emitter_for_signature.clear()
+        self._emitters.clear()
