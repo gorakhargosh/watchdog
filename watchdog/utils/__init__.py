@@ -28,6 +28,12 @@ import threading
 
 from fnmatch import fnmatch
 
+def has_attribute(ob, attribute):
+    """hasattr swallows exceptions. This one tests a Python object for the
+    presence of an attribute."""
+    return getattr(ob, attribute, None) is not None
+
+
 class DaemonThread(threading.Thread):
     def __init__(self, interval=1, *args, **kwargs):
         super(DaemonThread, self).__init__()
@@ -40,29 +46,37 @@ class DaemonThread(threading.Thread):
         self._args = args
         self._kwargs = kwargs
 
+        if not has_attribute(self._stopped_event.is_set, 'is_set'):
+            self._stopped_event.is_set = self._stopped_event.isSet
+
+
     @property
     def interval(self):
         return self._interval
-        
+
+
     @property
     def stopped_event(self):
         return self._stopped_event
 
-    @property
+
     def is_stopped(self):
-        if has_attribute(self._stopped_event, 'is_set'):
-            return self._stopped_event.is_set()
-        else:
-            return self._stopped_event.isSet()
+        return self._stopped_event.is_set()
+
 
     def on_stopping(self):
         """Implement this instead of Thread.stop(), it calls this method
         for you."""
         pass
 
+
     def stop(self):
         self._stopped_event.set()
         self.on_stopping()
+
+
+if not has_attribute(DaemonThread, 'is_alive'):
+    DaemonThread.is_alive = DaemonThread.isAlive
 
 
 def match_patterns(pathname, patterns):
@@ -148,11 +162,6 @@ def get_walker(recursive=False):
                 yield os.walk(path).next()
     return walk
 
-
-def has_attribute(ob, attribute):
-    """hasattr swallows exceptions. This one tests a Python object for the
-    presence of an attribute."""
-    return getattr(ob, attribute, None) is not None
 
 
 def absolute_path(path):
