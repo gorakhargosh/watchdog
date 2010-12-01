@@ -83,7 +83,7 @@ class _PollingEventEmitter(_EventEmitter):
         based on the diff between two states of the same directory.
 
         """
-        while not self.is_stopped():
+        while not self.is_stopped:
             self.stopped_event.wait(self.interval)
             diff = self._get_directory_snapshot_diff()
 
