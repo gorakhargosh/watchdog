@@ -219,7 +219,7 @@ class PollingObserver(DaemonThread):
 
 
     def run(self):
-        while not self.is_stopped():
+        while not self.is_stopped:
             try:
                 event = self.event_queue.get(block=True, timeout=self.interval)
                 event.dispatch()

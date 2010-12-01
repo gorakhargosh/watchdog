@@ -60,6 +60,7 @@ class DaemonThread(threading.Thread):
         return self._stopped_event
 
 
+    @property
     def is_stopped(self):
         return self._stopped_event.is_set()
 

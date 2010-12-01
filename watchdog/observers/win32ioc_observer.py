@@ -235,7 +235,7 @@ class Win32IOCObserver(DaemonThread):
 
 
     def run(self):
-        while not self.is_stopped():
+        while not self.is_stopped:
             # read status of io completion queue
             rc, num_bytes, cookie, _ = GetQueuedCompletionStatus(self._ioc_port, self._ioc_timeout)
             if rc == 0:

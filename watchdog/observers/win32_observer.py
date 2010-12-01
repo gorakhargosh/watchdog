@@ -103,7 +103,7 @@ class _Win32EventEmitter(DaemonThread):
 
 
     def run(self):
-        while not self.is_stopped():
+        while not self.is_stopped:
             self._read_events()
         # Close the handle once the thread completes.
         CloseHandle(self._handle_directory)
