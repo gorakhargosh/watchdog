@@ -32,6 +32,7 @@ Notes:
 
 import os
 import os.path
+import sys
 import stat
 
 from watchdog.utils import get_walker, real_absolute_path
