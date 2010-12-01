@@ -72,17 +72,19 @@ class DirectorySnapshotDiff(object):
         paths_created = dirsnap.paths_set - ref_dirsnap.paths_set
 
         # Detect all the moves/renames.
-        for created_path in paths_created.copy():
-            created_stat_info = dirsnap.stat_info(created_path)
-            for deleted_path in paths_deleted.copy():
-                deleted_stat_info = ref_dirsnap.stat_info(deleted_path)
-                if created_stat_info.st_ino == deleted_stat_info.st_ino:
-                    paths_deleted.remove(deleted_path)
-                    paths_created.remove(created_path)
-                    if stat.S_ISDIR(created_stat_info.st_mode):
-                        self._dirs_moved[deleted_path] = created_path
-                    else:
-                        self._files_moved[deleted_path] = created_path
+        # Doesn't work on Windows, so exlude on Windows.
+        if 'win' not in sys.platform:
+            for created_path in paths_created.copy():
+                created_stat_info = dirsnap.stat_info(created_path)
+                for deleted_path in paths_deleted.copy():
+                    deleted_stat_info = ref_dirsnap.stat_info(deleted_path)
+                    if created_stat_info.st_ino == deleted_stat_info.st_ino:
+                        paths_deleted.remove(deleted_path)
+                        paths_created.remove(created_path)
+                        if stat.S_ISDIR(created_stat_info.st_mode):
+                            self._dirs_moved[deleted_path] = created_path
+                        else:
+                            self._files_moved[deleted_path] = created_path
 
         # Now that we have renames out of the way, enlist the deleted and
         # created files/directories.
