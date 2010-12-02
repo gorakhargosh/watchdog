@@ -61,9 +61,9 @@ class FSEventsObserver(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         super(FSEventsObserver, self).__init__()
-        
-        self._lock = threading.RLock()        
-    
+
+        self._lock = threading.RLock()
+
         self.streams = set()
         self.map_name_to_stream = {}
         self.snapshot_for_path = {}
@@ -179,16 +179,19 @@ class FSEventsObserver(threading.Thread):
 
 
     def schedule(self, name, event_handler, paths=None, recursive=False):
+        if not paths:
+            raise ValueError('Please specify a few paths.')
+        if isinstance(paths, basestring):
+            paths = [paths]
+
         with self._lock:
-            if not paths:
-                raise ValueError('Please specify a few paths.')
-            if isinstance(paths, basestring):
-                paths = [paths]
-    
+            if name in self.map_name_to_stream:
+                raise ValueError("Duplicate name specified '%s'" % name)
+
             for path in paths:
                 if not isinstance(path, basestring):
                     raise TypeError("Path must be string, not '%s'." % type(path).__name__)
-    
+
             s = _Stream(name, event_handler, paths, recursive)
             self.map_name_to_stream[name] = s
             self._schedule_stream(s)

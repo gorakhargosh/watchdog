@@ -27,12 +27,10 @@ import os.path
 from watchdog.utils.collections import OrderedSetQueue
 from watchdog.utils import filter_paths, \
     has_attribute, get_walker, absolute_path
-from watchdog.decorator_utils import deprecated
 
 
 class EventQueue(OrderedSetQueue):
-    def _item_repr(self, event):
-        return event
+    pass
 
 
 EVENT_TYPE_MOVED = 'moved'
@@ -58,6 +56,8 @@ def get_moved_events_for(src_dir_path, dest_dir_path, recursive, handlers):
 
 class FileSystemEvent(object):
     """
+    Immutable type that represents an event.
+
     Represents a file system event that is triggered when a change occurs
     in a directory that is being monitored.
     """
@@ -65,16 +65,15 @@ class FileSystemEvent(object):
         self._src_path = src_path
         self._is_directory = is_directory
         self._event_type = event_type
-        self._handlers = handlers
+        if handlers is None:
+            handlers = []
+        self._handlers = frozenset(handlers)
 
     def __str__(self):
         return self.__repr__()
 
     def __repr__(self):
         return str((self.event_type, self.src_path, self.is_directory))
-
-    def repr(self):
-        return (self.event_type, self.src_path, self.is_directory)
 
     def dispatch(self):
         for handler in self._handlers:
@@ -89,18 +88,30 @@ class FileSystemEvent(object):
         return self._src_path
 
     @property
-    @deprecated
-    def path(self):
-        return self._src_path
-
-    @property
     def event_type(self):
         return self._event_type
 
 
+    # Used for comparison of events.
+    def _key(self):
+        return (self.event_type,
+                self.src_path,
+                self.is_directory,
+                self._handlers)
+
+    def __eq__(self, event):
+        return self._key() == event._key()
+
+    def __ne__(self, event):
+        return self._key() != event._key()
+
+    def __hash__(self):
+        return hash(self._key())
+
+
 class FileSystemMovedEvent(FileSystemEvent):
     """
-    Base class for file system movement.
+    Immutable type representing file system movement.
     """
     def __init__(self, src_path, dest_path, is_directory=False, handlers=None):
         super(FileSystemMovedEvent, self).__init__(event_type=EVENT_TYPE_MOVED,
@@ -109,24 +120,21 @@ class FileSystemMovedEvent(FileSystemEvent):
                                                    handlers=handlers)
         self._dest_path = dest_path
 
-
-    def repr(self):
-        return (self.event_type, self.src_path, self.dest_path, self.is_directory)
-
-
-    @property
-    @deprecated
-    def new_path(self):
-        return self._dest_path
-
-
     @property
     def dest_path(self):
         return self._dest_path
 
+    # Used for hashing this as an immutable object.
+    def _key(self):
+        return (self.event_type,
+                self.src_path,
+                self.dest_path,
+                self.is_directory,
+                self._handlers)
 
     def __repr__(self):
         return str((self.event_type, self.src_path, self.dest_path, self.is_directory))
+
 
 
 # File events.
@@ -183,7 +191,11 @@ class DirMovedEvent(FileSystemMovedEvent):
 
 
 class FileSystemEventHandler(object):
-    """File system base event handler."""
+    """File system base event handler.
+
+    Keep your file system event handlers immutable too
+    for hashing to work. Event handlers are used in event signatures.
+    """
 
     def dispatch(self, event):
         """Dispatches events to the appropriate methods.
@@ -246,9 +258,10 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     """Matches given patterns with file paths associated with occurring events."""
     def __init__(self, patterns=['*'], ignore_patterns=[], ignore_directories=False):
         super(PatternMatchingEventHandler, self).__init__()
-        self.patterns = patterns
-        self.ignore_patterns = ignore_patterns
-        self.ignore_directories = ignore_directories
+
+        self._patterns = patterns
+        self._ignore_patterns = ignore_patterns
+        self._ignore_directories = ignore_directories
 
     def dispatch(self, event):
         """Dispatches events to the appropriate methods.
@@ -256,7 +269,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         Arguments:
         - event: The event object representing the file system event.
         """
-        if self.ignore_directories and event.is_directory:
+        if self._ignore_directories and event._is_directory:
             return
 
         if has_attribute(event, 'dest_path'):
@@ -264,7 +277,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         else:
             paths = [event.src_path]
 
-        if filter_paths(paths, self.patterns, self.ignore_patterns):
+        if filter_paths(paths, self._patterns, self._ignore_patterns):
             self.on_any_event(event)
             _method_map = {
                 EVENT_TYPE_MODIFIED: self.on_modified,

@@ -23,32 +23,19 @@ class OrderedSetQueue(queue.Queue):
 
     :author: Lukáš Lalinský
 
+    item must be an immutable hashable type that can be used
+    as a dictionary key for this to work.
     """
     def _init(self, maxsize):
         queue.Queue._init(self, maxsize)
-        self.all_items = set()
+        self._set_of_items = set()
 
     def _put(self, item):
-        if not self._exists_in_set(item):
+        if item not in self._set_of_items:
             queue.Queue._put(self, item)
-            self._add_to_set(item)
+            self._set_of_items.add(item)
 
     def _get(self):
         item = queue.Queue._get(self)
-        self._remove_from_set(item)
+        self._set_of_items.remove(item)
         return item
-
-    # Set-specific functionality.
-    def _exists_in_set(self, item):
-        return self._item_repr(item) in self.all_items
-
-    def _add_to_set(self, item):
-        self.all_items.add(self._item_repr(item))
-
-    def _remove_from_set(self, item):
-        self.all_items.remove(self._item_repr(item))
-
-    # Override just this one to change the representation of the item.
-    def _item_repr(self, item):
-        return item
-
