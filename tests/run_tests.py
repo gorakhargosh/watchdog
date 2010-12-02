@@ -54,8 +54,7 @@ if __name__ == "__main__":
     config_path = path_join(parent_dir_path, 'nose.cfg')
 
     argv = [__file__]
-    argv += '--with-doctest --with-coverage'.split()
-    argv += ['--cover-package=%s' % ','.join(cover_packages)]
-    #argv += ['--config=%s' % config_path]
-    argv += ['--verbosity=3']
+    argv.append('--with-coverage')
+    argv.append('--cover-package=%s' % ','.join(cover_packages))
+    argv.append('--config=%s' % config_path)
     nose.run(argv=argv)
