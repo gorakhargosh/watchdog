@@ -1,6 +1,4 @@
 #!/bin/sh
 
-bin/nosetests -c nose.cfg 
-
-
+bin/python tests/run_tests.py
 

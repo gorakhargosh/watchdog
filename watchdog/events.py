@@ -86,7 +86,7 @@ class FileSystemEvent(object):
     All FileSystemEvent objects are required to be immutable and hence
     can be used as keys in dictionaries or be added to sets.
     
-    **Doctests**
+    **Usage**
     
     >>> a = FileSystemEvent('modified', '/path/x', False)
     >>> equal_a = FileSystemEvent('modified', '/path/x', False)

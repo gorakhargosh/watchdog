@@ -19,6 +19,7 @@ from watchdog.utils import platform
 # Explicitly define which packages/modules to cover.
 cover_packages = [
     'watchdog.version',
+    'watchdog.platform',
     'watchdog.events',
     'watchdog.utils.echo',
     'watchdog.utils.dirsnapshot',
