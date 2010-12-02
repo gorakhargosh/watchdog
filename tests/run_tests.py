@@ -20,7 +20,7 @@ from watchdog.utils import platform
 cover_packages = [
     'watchdog.version',
     'watchdog.events',
-#    'watchdog.utils.echo',
+    'watchdog.utils.echo',
     'watchdog.utils.dirsnapshot',
     'watchdog.utils.collections.ordered_set_queue',
     'watchdog.observers.polling_observer',
