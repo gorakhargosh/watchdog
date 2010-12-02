@@ -72,11 +72,11 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         command = sys.argv[2]
     else:
-        command = "./bin/python tests/run_tests.py"
+        command = "make -C docs html; bin/python tests/run_tests.py"
 
     previous_checksum = 0
     while True:
-        calculated_checksum = check_sum(path, patterns=['*.py'])
+        calculated_checksum = check_sum(path, patterns=['*.py', '*.rst', '*.rst.inc'])
         if calculated_checksum != previous_checksum:
             previous_checksum = calculated_checksum
             subprocess.Popen(command, shell=True)
