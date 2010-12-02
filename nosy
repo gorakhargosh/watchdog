@@ -1,0 +1,85 @@
+# nosetests continuously. 
+
+import os
+import os.path
+import sys
+import stat
+import time
+import subprocess
+from fnmatch import fnmatch
+
+
+def match_patterns(pathname, patterns):
+    """Returns True if the pathname matches any of the given patterns."""
+    for pattern in patterns:
+        if fnmatch(pathname, pattern):
+            return True
+    return False
+
+
+def filter_paths(pathnames, patterns=["*"], ignore_patterns=[]):
+    """Filters from a set of paths based on acceptable patterns and
+    ignorable patterns."""
+    result = []
+    if patterns is None:
+        patterns = []
+    if ignore_patterns is None:
+        ignore_patterns = []
+    for path in pathnames:
+        if match_patterns(path, patterns) and not match_patterns(path, ignore_patterns):
+            result.append(path)
+    return result
+
+
+def absolute_walker(path, recursive):
+    if recursive:
+        walk = os.walk
+    else:
+        def walk(path):
+            return os.walk(path).next()
+    for root, directories, filenames in walk(path):
+        yield root
+        for directory in directories:
+            yield os.path.abspath(os.path.join(root, directory))
+        for filename in filenames:
+            yield os.path.abspath(os.path.join(root, filename))
+
+
+def glob_recursive(path, patterns=["*"], ignore_patterns=[]):
+    full_paths = []
+    for root, directories, filenames in os.walk(path):
+        for filename in filenames:
+            full_path = os.path.abspath(os.path.join(root, filename))
+            full_paths.append(full_path)
+    filepaths = filter_paths(full_paths, patterns, ignore_patterns)
+    return filepaths
+
+
+def check_sum(path='.', patterns=["*"], ignore_patterns=[]):
+    sum = 0
+    for f in glob_recursive(path, patterns, ignore_patterns):
+        stats = os.stat(f)
+        sum += stats[stat.ST_SIZE] + stats[stat.ST_MTIME]
+    return sum
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    else:
+        path = '.'
+
+    if len(sys.argv) > 2:
+        command = sys.argv[2]
+    else:
+        command = "./bin/python tests/run_tests.py"
+
+    previous_checksum = 0
+    while True:
+        calculated_checksum = check_sum(path, patterns=['*.py'])
+        if calculated_checksum != previous_checksum:
+            previous_checksum = calculated_checksum
+            subprocess.Popen(command, shell=True)
+            time.sleep(2)
+
+
