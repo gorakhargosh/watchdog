@@ -1,8 +1,7 @@
 .. include:: global.rst.inc
 
-************
 Introduction
-************
+============
 :Author: |author_name|
 :Contact: |author_email|
 :Copyright: |copyright|
@@ -17,11 +16,11 @@ Introduction
 
 
 Installation information:
-=========================
+-------------------------
 
 
 Supported Platforms:
---------------------
+~~~~~~~~~~~~~~~~~~~~
 |project_name| uses native APIs as much as possible falling back
 to polling the disk periodically to compare directory snapshots
 only when it cannot use an API natively-provided by the underlying

@@ -28,4 +28,3 @@ Modules
 
    modules/events
    modules/polling_observer
-
