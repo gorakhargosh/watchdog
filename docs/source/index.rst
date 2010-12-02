@@ -20,3 +20,11 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+Modules
+=======
+
+.. toctree::
+   :maxdepth: 2
+
+   modules/polling_observer
+
