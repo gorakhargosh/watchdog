@@ -1,5 +1,6 @@
 #!/bin/sh
 
-bin/nosetests -c nose.cfg
+bin/nosetests -c nose.cfg 
+
 
 

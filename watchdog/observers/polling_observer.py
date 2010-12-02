@@ -55,12 +55,11 @@ class _PollingEventEmitter(_EventEmitter):
     """Daemon thread that monitors a given path recursively and emits
     file system events.
     """
-    def __init__(self, path, handler, event_queue,
+    def __init__(self, path, event_queue,
                  recursive=False, interval=1):
         """Monitors a given path and appends file system modification
         events to the output queue."""
         super(_PollingEventEmitter, self).__init__(path,
-                                                   handler,
                                                    event_queue,
                                                    recursive,
                                                    interval)
@@ -88,31 +87,22 @@ class _PollingEventEmitter(_EventEmitter):
             diff = self._get_directory_snapshot_diff()
 
             for path in diff.files_deleted:
-                self.event_queue.put(
-                    FileDeletedEvent(path, handlers=self.handlers))
+                self.event_queue.put(FileDeletedEvent(path))
             for path in diff.files_modified:
-                self.event_queue.put(
-                    FileModifiedEvent(path, handlers=self.handlers))
+                self.event_queue.put(FileModifiedEvent(path))
             for path in diff.files_created:
-                self.event_queue.put(
-                    FileCreatedEvent(path, handlers=self.handlers))
+                self.event_queue.put(FileCreatedEvent(path))
             for path, dest_path in diff.files_moved.items():
-                self.event_queue.put(
-                    FileMovedEvent(path, dest_path, handlers=self.handlers))
+                self.event_queue.put(FileMovedEvent(path, dest_path))
 
             for path in diff.dirs_modified:
-                self.event_queue.put(
-                    DirModifiedEvent(path, handlers=self.handlers))
+                self.event_queue.put(DirModifiedEvent(path))
             for path in diff.dirs_deleted:
-                self.event_queue.put(
-                    DirDeletedEvent(path, handlers=self.handlers))
+                self.event_queue.put(DirDeletedEvent(path))
             for path in diff.dirs_created:
-                self.event_queue.put(
-                    DirCreatedEvent(path, handlers=self.handlers))
+                self.event_queue.put(DirCreatedEvent(path))
             for path, dest_path in diff.dirs_moved.items():
-                self.event_queue.put(
-                    DirMovedEvent(path, dest_path, handlers=self.handlers))
-
+                self.event_queue.put(DirMovedEvent(path, dest_path))
 
 
 class PollingObserver(DaemonThread):
@@ -216,6 +206,19 @@ class PollingObserver(DaemonThread):
                             emitter.stop()
                             del self._emitter_for_signature[(emitter.path, emitter.is_recursive)]
                 del self._emitters_for_name[name]
+
+
+    @property
+    def __handlers(self):
+        return self._handlers
+
+    def __add_handler(self, handler):
+        with self._lock:
+            self._handlers.add(handler)
+
+    def __remove_handler(self, handler):
+        with self._lock:
+            self._handlers.remove(handler)
 
 
     def run(self):

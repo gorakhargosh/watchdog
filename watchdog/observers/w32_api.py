@@ -21,114 +21,118 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from win32con import FILE_SHARE_READ, \
-    FILE_SHARE_WRITE, \
-    FILE_SHARE_DELETE, \
-    OPEN_EXISTING, \
-    FILE_FLAG_BACKUP_SEMANTICS, \
-    FILE_FLAG_OVERLAPPED, \
-    FILE_NOTIFY_CHANGE_FILE_NAME, \
-    FILE_NOTIFY_CHANGE_DIR_NAME, \
-    FILE_NOTIFY_CHANGE_ATTRIBUTES, \
-    FILE_NOTIFY_CHANGE_SIZE, \
-    FILE_NOTIFY_CHANGE_LAST_WRITE, \
-    FILE_NOTIFY_CHANGE_SECURITY
 
-from win32file import ReadDirectoryChangesW, \
-    CreateFile, \
-    CloseHandle, \
-    CancelIo, \
-    CreateIoCompletionPort, \
-    GetQueuedCompletionStatus, \
-    FILE_NOTIFY_INFORMATION
+from watchdog.utils import platform
 
-from watchdog.events import \
-    DirMovedEvent, \
-    DirDeletedEvent, \
-    DirCreatedEvent, \
-    DirModifiedEvent, \
-    FileMovedEvent, \
-    FileDeletedEvent, \
-    FileCreatedEvent, \
-    FileModifiedEvent, \
-    get_moved_events_for
+if platform.is_windows():
+    from win32con import FILE_SHARE_READ, \
+        FILE_SHARE_WRITE, \
+        FILE_SHARE_DELETE, \
+        OPEN_EXISTING, \
+        FILE_FLAG_BACKUP_SEMANTICS, \
+        FILE_FLAG_OVERLAPPED, \
+        FILE_NOTIFY_CHANGE_FILE_NAME, \
+        FILE_NOTIFY_CHANGE_DIR_NAME, \
+        FILE_NOTIFY_CHANGE_ATTRIBUTES, \
+        FILE_NOTIFY_CHANGE_SIZE, \
+        FILE_NOTIFY_CHANGE_LAST_WRITE, \
+        FILE_NOTIFY_CHANGE_SECURITY
 
+    from win32file import ReadDirectoryChangesW, \
+        CreateFile, \
+        CloseHandle, \
+        CancelIo, \
+        CreateIoCompletionPort, \
+        GetQueuedCompletionStatus, \
+        FILE_NOTIFY_INFORMATION
 
-# Windows API Constants.
-FILE_LIST_DIRECTORY = 0x0001            # CreateFile
-INVALID_HANDLE_VALUE = -1               # CreateIoCompletionPort to create an unassociated i/o completion port.
-FILE_NOTIFY_CHANGE_LAST_ACCESS = 0x20   # ReadDirectoryChangesW
-FILE_NOTIFY_CHANGE_CREATION = 0x40      # ReadDirectoryChangesW
-
-# Event buffer size.
-BUFFER_SIZE = 1024
-
-# File action constants defined by the Windows API.
-FILE_ACTION_CREATED = 1
-FILE_ACTION_DELETED = 2
-FILE_ACTION_MODIFIED = 3
-FILE_ACTION_RENAMED_OLD_NAME = 4
-FILE_ACTION_RENAMED_NEW_NAME = 5
-
-# We don't need to recalculate these flags every time a call is made to
-# the win32 API functions.
-WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
-WATCHDOG_FILE_FLAGS_ASYNC = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED
-WATCHDOG_FILE_SHARE_FLAGS = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
-WATCHDOG_FILE_NOTIFY_FLAGS = FILE_NOTIFY_CHANGE_FILE_NAME | \
-    FILE_NOTIFY_CHANGE_DIR_NAME | \
-    FILE_NOTIFY_CHANGE_ATTRIBUTES | \
-    FILE_NOTIFY_CHANGE_SIZE | \
-    FILE_NOTIFY_CHANGE_LAST_WRITE | \
-    FILE_NOTIFY_CHANGE_SECURITY | \
-    FILE_NOTIFY_CHANGE_LAST_ACCESS | \
-    FILE_NOTIFY_CHANGE_CREATION
-
-# HACK:
-WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY = 1   # seconds
+    from watchdog.events import \
+        DirMovedEvent, \
+        DirDeletedEvent, \
+        DirCreatedEvent, \
+        DirModifiedEvent, \
+        FileMovedEvent, \
+        FileDeletedEvent, \
+        FileCreatedEvent, \
+        FileModifiedEvent, \
+        get_moved_events_for
 
 
-# Moved event is handled explicitly in the emitter thread.
-DIR_ACTION_EVENT_MAP = {
-    FILE_ACTION_CREATED: DirCreatedEvent,
-    FILE_ACTION_DELETED: DirDeletedEvent,
-    FILE_ACTION_MODIFIED: DirModifiedEvent,
-}
-FILE_ACTION_EVENT_MAP = {
-    FILE_ACTION_CREATED: FileCreatedEvent,
-    FILE_ACTION_DELETED: FileDeletedEvent,
-    FILE_ACTION_MODIFIED: FileModifiedEvent,
-}
+    # Windows API Constants.
+    FILE_LIST_DIRECTORY = 0x0001            # CreateFile
+    INVALID_HANDLE_VALUE = -1               # CreateIoCompletionPort to create an unassociated i/o completion port.
+    FILE_NOTIFY_CHANGE_LAST_ACCESS = 0x20   # ReadDirectoryChangesW
+    FILE_NOTIFY_CHANGE_CREATION = 0x40      # ReadDirectoryChangesW
+
+    # Event buffer size.
+    BUFFER_SIZE = 1024
+
+    # File action constants defined by the Windows API.
+    FILE_ACTION_CREATED = 1
+    FILE_ACTION_DELETED = 2
+    FILE_ACTION_MODIFIED = 3
+    FILE_ACTION_RENAMED_OLD_NAME = 4
+    FILE_ACTION_RENAMED_NEW_NAME = 5
+
+    # We don't need to recalculate these flags every time a call is made to
+    # the win32 API functions.
+    WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
+    WATCHDOG_FILE_FLAGS_ASYNC = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED
+    WATCHDOG_FILE_SHARE_FLAGS = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+    WATCHDOG_FILE_NOTIFY_FLAGS = FILE_NOTIFY_CHANGE_FILE_NAME | \
+        FILE_NOTIFY_CHANGE_DIR_NAME | \
+        FILE_NOTIFY_CHANGE_ATTRIBUTES | \
+        FILE_NOTIFY_CHANGE_SIZE | \
+        FILE_NOTIFY_CHANGE_LAST_WRITE | \
+        FILE_NOTIFY_CHANGE_SECURITY | \
+        FILE_NOTIFY_CHANGE_LAST_ACCESS | \
+        FILE_NOTIFY_CHANGE_CREATION
+
+    # HACK:
+    WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY = 1   # seconds
 
 
-def get_directory_handle(path, file_flags):
-    """Returns a Windows handle to the specified directory path."""
-    handle = CreateFile(path,
-                        FILE_LIST_DIRECTORY,
-                        WATCHDOG_FILE_SHARE_FLAGS,
-                        None,
-                        OPEN_EXISTING,
-                        file_flags,
-                        None)
-    return handle
+    # Moved event is handled explicitly in the emitter thread.
+    DIR_ACTION_EVENT_MAP = {
+        FILE_ACTION_CREATED: DirCreatedEvent,
+        FILE_ACTION_DELETED: DirDeletedEvent,
+        FILE_ACTION_MODIFIED: DirModifiedEvent,
+    }
+    FILE_ACTION_EVENT_MAP = {
+        FILE_ACTION_CREATED: FileCreatedEvent,
+        FILE_ACTION_DELETED: FileDeletedEvent,
+        FILE_ACTION_MODIFIED: FileModifiedEvent,
+    }
 
 
-def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
-    """Read changes to the directory using the specified directory handle.
-
-    http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
-    """
-    results = ReadDirectoryChangesW(handle,
-                                    buffer_size,
-                                    recursive,
-                                    WATCHDOG_FILE_NOTIFY_FLAGS,
-                                    None,
-                                    None)
-    return results
+    def get_directory_handle(path, file_flags):
+        """Returns a Windows handle to the specified directory path."""
+        handle = CreateFile(path,
+                            FILE_LIST_DIRECTORY,
+                            WATCHDOG_FILE_SHARE_FLAGS,
+                            None,
+                            OPEN_EXISTING,
+                            file_flags,
+                            None)
+        return handle
 
 
-def create_io_completion_port():
-    """
-    http://timgolden.me.uk/pywin32-docs/win32file__CreateIoCompletionPort_meth.html
-    """
-    return CreateIoCompletionPort(INVALID_HANDLE_VALUE, None, 0, 0)
+    def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
+        """Read changes to the directory using the specified directory handle.
+    
+        http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
+        """
+        results = ReadDirectoryChangesW(handle,
+                                        buffer_size,
+                                        recursive,
+                                        WATCHDOG_FILE_NOTIFY_FLAGS,
+                                        None,
+                                        None)
+        return results
+
+
+    def create_io_completion_port():
+        """
+        http://timgolden.me.uk/pywin32-docs/win32file__CreateIoCompletionPort_meth.html
+        """
+        return CreateIoCompletionPort(INVALID_HANDLE_VALUE, None, 0, 0)

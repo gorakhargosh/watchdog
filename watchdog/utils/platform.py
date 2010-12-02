@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# platform.py: platform determination.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
@@ -20,34 +21,37 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from __future__ import with_statement
+import sys
 
-import threading
-from watchdog.utils import DaemonThread, real_absolute_path
+PLATFORM_WINDOWS = 'windows'
+PLATFORM_LINUX = 'linux'
+PLATFORM_BSD = 'bsd'
+PLATFORM_DARWIN = 'darwin'
+PLATFORM_UNKNOWN = 'unknown'
 
+def get_platform_name():
+    if sys.platform.startswith("win"):
+        return PLATFORM_WINDOWS
+    elif sys.platform.startswith('darwin'):
+        return PLATFORM_DARWIN
+    elif sys.platform.startswith('linux'):
+        return PLATFORM_LINUX
+    elif sys.platform.startswith('bsd'):
+        return PLATFORM_BSD
+    else:
+        return PLATFORM_UNKNOWN
 
-class _EventEmitter(DaemonThread):
-    def __init__(self, path, event_queue,
-                 recursive=False, interval=1):
-        super(_EventEmitter, self).__init__(interval)
+__platform__ = get_platform_name()
 
-        self._lock = threading.Lock()
-        self._path = real_absolute_path(path)
-        self._event_queue = event_queue
-        self._is_recursive = recursive
+def is_linux():
+    return __platform__ == PLATFORM_LINUX
 
-    @property
-    def lock(self):
-        return self._lock
+def is_bsd():
+    return __platform__ == PLATFORM_BSD
 
-    @property
-    def is_recursive(self):
-        return self._is_recursive
+def is_darwin():
+    return __platform__ == PLATFORM_DARWIN
 
-    @property
-    def event_queue(self):
-        return self._event_queue
+def is_windows():
+    return __platform__ == PLATFORM_WINDOWS
 
-    @property
-    def path(self):
-        return self._path
