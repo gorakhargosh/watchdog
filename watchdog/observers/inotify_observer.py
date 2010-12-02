@@ -24,11 +24,16 @@
 import time
 import os.path
 import threading
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 from pyinotify import ALL_EVENTS, \
     ProcessEvent, WatchManager, ThreadedNotifier
 
 from watchdog.utils import DaemonThread, absolute_path, real_absolute_path
+from watchdog.utils.collections import OrderedSetQueue
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
@@ -54,34 +59,43 @@ class _ProcessEventDispatcher(ProcessEvent):
     """ProcessEvent subclasses that dispatches events to our
     FileSystemEventHandler implementation."""
     def my_init(self, **kwargs):
-        check_kwargs(kwargs, 'event_handler', 'my_init')
+        check_kwargs(kwargs, 'handler', 'my_init')
+        check_kwargs(kwargs, 'event_queue', 'my_init')
         check_kwargs(kwargs, 'recursive', 'my_init')
-        self.event_handler = kwargs['event_handler']
-        self.is_recursive = kwargs['recursive']
+
+        self._event_queue = kwargs['event_queue']
+        self._is_recursive = kwargs['recursive']
+        self._handlers = kwargs['handlers']
 
 
     def process_IN_CREATE(self, event):
         src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.dispatch(DirCreatedEvent(src_path))
+            self._event_queue.put(DirCreatedEvent(src_path,
+                                                  handlers=self._handlers))
         else:
-            self.event_handler.dispatch(FileCreatedEvent(src_path))
+            self._event_queue.put(FileCreatedEvent(src_path,
+                                                   handlers=self._handlers))
 
 
     def process_IN_DELETE(self, event):
         src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.dispatch(DirDeletedEvent(src_path))
+            self._event_queue.put(DirDeletedEvent(src_path,
+                                                  handlers=self._handlers))
         else:
-            self.event_handler.dispatch(FileDeletedEvent(src_path))
+            self._event_queue.put(FileDeletedEvent(src_path,
+                                                   handlers=self._handlers))
 
 
     def process_IN_CLOSE_WRITE(self, event):
         src_path = absolute_path(event.pathname)
         if event.dir:
-            self.event_handler.dispatch(DirModifiedEvent(src_path))
+            self._event_queue.put(DirModifiedEvent(src_path,
+                                                   handlers=self._handlers))
         else:
-            self.event_handler.dispatch(FileModifiedEvent(src_path))
+            self._event_queue.put(FileModifiedEvent(src_path,
+                                                    handlers=self._handlers))
 
 
     def process_IN_ATTRIB(self, event):
@@ -94,74 +108,120 @@ class _ProcessEventDispatcher(ProcessEvent):
         src_path = absolute_path(event.src_pathname)
         dest_path = absolute_path(event.pathname)
         if event.dir:
-            if self.is_recursive:
-                for moved_event in get_moved_events_for(src_path, dest_path, recursive=True):
-                    self.event_handler.dispatch(moved_event)
-            self.event_handler.dispatch(DirMovedEvent(src_path, dest_path))
+            if self._is_recursive:
+                for moved_event in get_moved_events_for(src_path,
+                                                        dest_path,
+                                                        recursive=True,
+                                                        handlers=self._handlers):
+                    self._event_queue.put(moved_event)
+            self._event_queue.put(DirMovedEvent(src_path,
+                                                dest_path,
+                                                handlers=self._handlers))
         else:
-            self.event_handler.dispatch(FileMovedEvent(src_path, dest_path))
+            self._event_queue.put(FileMovedEvent(src_path,
+                                                 dest_path,
+                                                 handlers=self._handlers))
 
 
-class _Rule(object):
-    def __init__(self, name, notifier, descriptors):
-        self.name = name
-        self.notifier = notifier
+class _Watch(object):
+    def __init__(self, group_name, notifier, descriptors):
+        self.group_name = group_name
         self.descriptors = descriptors
+        self.notifier = notifier
 
 
 class InotifyObserver(DaemonThread):
     """Inotify-based daemon observer thread for Linux."""
-    def __init__(self, interval=0.5):
+    def __init__(self, interval=1):
         super(InotifyObserver, self).__init__(interval)
 
-        self._lock = threading.RLock()
-        
+        self._lock = threading.Lock()
+
+        # Pyinotify watch manager.
         self._wm = WatchManager()
+
+        # Set of all notifiers spawned.
         self._notifiers = set()
-        self._name_to_rule = dict()
+
+        # Set of all the watches.
+        self._watches = set()
+
+        # Watch objects for a given name.
+        self._watches_for_name = {}
+
+        # Event queue buffer.
+        self._event_queue = EventQueue()
 
 
-    def on_stopping(self):
-        with self._lock:
-            for notifier in self._notifiers:
-                notifier.stop()
+
+    def _remove_watch(self, watch):
+        self._wm.rm_watch(watch.descriptor.values())
+        watch.notifier.stop()
+        self._notifiers.remove(watch.notifier)
+        self._watches.remove(watch)
+        self._watches_for_name[watch.group_name].remove(watch)
+
+
+    def _remove_watches(self, watches):
+        for watch in watches:
+            self._remove_watch(watch)
 
 
     def schedule(self, name, event_handler, paths=None, recursive=False):
         """Schedules monitoring."""
-        with self._lock:
             if not paths:
                 raise ValueError('Please specify a few paths.')
             if isinstance(paths, basestring):
                 paths = [paths]
 
-            #from pyinotify import PrintAllEvents
-            #dispatcher = PrintAllEvents()
+            with self._lock:
+                if name in _watch_for_name:
+                    raise ValueError("Duplicate watch entry named '%s'" % name)
 
-            dispatcher = _ProcessEventDispatcher(event_handler=event_handler,
-                                                 recursive=recursive)
-            notifier = ThreadedNotifier(self._wm, dispatcher)
-            self._notifiers.add(notifier)
-            for path in paths:
-                if not isinstance(path, basestring):
-                    raise TypeError("Path must be string, not '%s'." % type(path).__name__)
-                path = real_absolute_path(path)
-                descriptors = self._wm.add_watch(path, ALL_EVENTS, rec=recursive, auto_add=True)
-            self._name_to_rule[name] = _Rule(name, notifier, descriptors)
-            notifier.start()
+                self._watches_for_name[name] = set()
+                for path in paths:
+                    if not isinstance(path, basestring):
+                        raise TypeError("Path must be string, not '%s'." % type(path).__name__)
+                    if not os.path.isdir(path):
+                        raise ValueError("Path '%s' is not a directory." % path)
+
+                    path = real_absolute_path(path)
+                    dispatcher = _ProcessEventDispatcher(handlers=set([event_handler]),
+                                                         recursive=recursive,
+                                                         event_queue=self._event_queue)
+                    notifier = ThreadedNotifier(self._wm, dispatcher)
+                    descriptors = self._wm.add_watch(path, ALL_EVENTS, rec=recursive, auto_add=True)
+
+                    # Book-keeping
+                    watch = _Watch(group_name, notifier, descriptors)
+                    self._notifiers.add(notifier)
+                    self._watches.add(watch)
+                    self._watches_for_name[name].add(watch)
+
+                    notifier.start()
 
 
     def unschedule(self, *names):
         with self._lock:
-            if not names:
-                for name, rule in self._name_to_rule.items():
-                    self._wm.rm_watch(rule.descriptors.values())
-            else:
-                for name in names:
-                    rule = self._name_to_rule[name]
-                    self._wm.rm_watch(rule.descriptors.values())
+            for name in names:
+                try:
+                    self._remove_watches(self._watches_for_name[name])
+                except KeyError:
+                    raise KeyError("Watch named '%s' not found." % name)
 
 
     def run(self):
         while not self.is_stopped:
-            time.sleep(self.interval)
+            #time.sleep(self.interval)
+            try:
+                event = self._event_queue.get(block=True, timeout=self.interval)
+                event.dispatch()
+                self._event_queue.task_done()
+            except queue.Empty:
+                continue
+        self._clean_up()
+
+
+    def _clean_up(self):
+        for watch in self._watches:
+            self._remove_watch(watch)

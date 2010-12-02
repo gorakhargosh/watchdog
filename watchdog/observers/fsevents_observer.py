@@ -114,26 +114,27 @@ class FSEventsObserver(threading.Thread):
         return new_snapshot - snapshot
 
 
-    def _dispatch_events_for_path(self, event_handler, recursive, path):
+    def _dispatch_events_for_path(self, handler, recursive, path):
         with self._lock:
             diff = self._get_directory_snapshot_diff(path, recursive)
             if diff:
                 for path in diff.files_deleted:
-                    event_handler.dispatch(FileDeletedEvent(path))
+                    handler.dispatch(FileDeletedEvent(path, handler))
                 for path in diff.files_modified:
-                    event_handler.dispatch(FileModifiedEvent(path))
+                    handler.dispatch(FileModifiedEvent(path, handler))
                 for path in diff.files_created:
-                    event_handler.dispatch(FileCreatedEvent(path))
+                    handler.dispatch(FileCreatedEvent(path, handler))
                 for path, dest_path in diff.files_moved.items():
-                    event_handler.dispatch(FileMovedEvent(path, dest_path))
+                    handler.dispatch(FileMovedEvent(path, dest_path, handler))
+
                 for path in diff.dirs_modified:
-                    event_handler.dispatch(DirModifiedEvent(path))
+                    handler.dispatch(DirModifiedEvent(path, handler))
                 for path in diff.dirs_deleted:
-                    event_handler.dispatch(DirDeletedEvent(path))
+                    handler.dispatch(DirDeletedEvent(path, handler))
                 for path in diff.dirs_created:
-                    event_handler.dispatch(DirCreatedEvent(path))
+                    handler.dispatch(DirCreatedEvent(path, handler))
                 for path, dest_path in diff.dirs_moved.items():
-                    event_handler.dispatch(DirMovedEvent(path, dest_path))
+                    handler.dispatch(DirMovedEvent(path, dest_path, handler))
 
 
     def _schedule_and_set_callback(self, stream):
