@@ -1,6 +1,9 @@
 .. include:: ../global.rst.inc
 
-:module: eatchdog.observers.polling_observer
+=========================================
+:mod: watchdog.observers.polling_observer
+=========================================
 
-.. autoclass:: PollingObserver
-   :members: 
+
+.. autoclass:: watchdog.observers.polling_observer.PollingObserver
+   :members:

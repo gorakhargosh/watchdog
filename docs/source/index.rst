@@ -26,5 +26,6 @@ Modules
 .. toctree::
    :maxdepth: 2
 
+   modules/events
    modules/polling_observer
 
