@@ -90,15 +90,25 @@ class FileSystemEvent(object):
     
     >>> a = FileSystemEvent('modified', '/path/x', False)
     >>> equal_a = FileSystemEvent('modified', '/path/x', False)
-    >>> not_equal_a = FileSystemEvent('modified', '/path/y', False)
+    >>> not_equal_a_1 = FileSystemEvent('modified', '/path/y', False)
+    >>> not_equal_a_2 = FileSystemEvent('modified', '/path/x', True)
+    >>> not_equal_a_3 = FileSystemEvent('deleted', '/path/x', False)
     >>> a == equal_a
     True
     >>> a != equal_a
     False
-    >>> a != not_equal_a
-    True
-    >>> a == not_equal_a
+    >>> a == not_equal_a_1
     False
+    >>> a != not_equal_a_1
+    True
+    >>> a == not_equal_a_2
+    False
+    >>> a != not_equal_a_2
+    True
+    >>> a == not_equal_a_3
+    False
+    >>> a != not_equal_a_3
+    True
     """
     def __init__(self, event_type, src_path, is_directory=False):
         self._src_path = src_path
