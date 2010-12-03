@@ -88,6 +88,10 @@ def match_patterns(pathname, patterns):
     return False
 
 
+def match_allowed_and_ignored_patterns(pathname, allowed_patterns, ignore_patterns):
+    return match_patterns(pathname, allowed_patterns) and not match_patterns(pathname, ignore_patterns)
+
+
 def filter_paths(pathnames, patterns=["*"], ignore_patterns=[]):
     """Filters from a set of paths based on acceptable patterns and
     ignorable patterns."""
