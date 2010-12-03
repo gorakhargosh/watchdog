@@ -1,6 +1,7 @@
 
 from nose.tools import *
 from nose import SkipTest
+from utils import assert_readonly_public_attributes
 from watchdog.events import \
     FileSystemEvent, \
     FileSystemMovedEvent, \
@@ -18,7 +19,8 @@ from watchdog.events import \
     EVENT_TYPE_MODIFIED, \
     EVENT_TYPE_CREATED, \
     EVENT_TYPE_DELETED, \
-    EVENT_TYPE_MOVED
+    EVENT_TYPE_MOVED, \
+    generate_sub_moved_events_for
 
 path_1 = '/path/xyz'
 path_2 = '/path/abc'
@@ -75,6 +77,11 @@ class TestFileSystemEvent:
         assert_equal(path_1, event1.src_path)
         assert_equal(path_2, event2.src_path)
 
+    def test_behavior_readonly_public_attributes(self):
+        event = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
+        assert_readonly_public_attributes(event)
+
+
 class TestFileSystemMovedEvent:
     def test___init__(self):
         event = FileSystemMovedEvent(path_1, path_2, True)
@@ -92,6 +99,12 @@ class TestFileSystemMovedEvent:
         event = FileSystemMovedEvent(path_1, path_2, True)
         assert_equal(path_2, event.dest_path)
 
+
+    def test_behavior_readonly_public_attributes(self):
+        event = FileSystemMovedEvent(path_2, path_1, True)
+        assert_readonly_public_attributes(event)
+
+
 class TestFileDeletedEvent:
     def test___init__(self):
         event = FileDeletedEvent(path_1)
@@ -102,6 +115,18 @@ class TestFileDeletedEvent:
     def test___repr__(self):
         event = FileDeletedEvent(path_1)
         assert_equal("<FileDeletedEvent: src_path=%s>" % path_1, event.__repr__())
+
+    # Behavior tests.
+    def test_behavior_readonly_public_attributes(self):
+        event = FileDeletedEvent(path_1)
+        assert_readonly_public_attributes(event)
+
+    # Inherited properties.
+    def test_is_directory(self):
+        event1 = FileDeletedEvent(path_1)
+        assert_false(event1.is_directory)
+
+
 
 class TestFileModifiedEvent:
     def test___init__(self):
@@ -114,6 +139,17 @@ class TestFileModifiedEvent:
         event = FileModifiedEvent(path_1)
         assert_equal("<FileModifiedEvent: src_path=%s>" % path_1, event.__repr__())
 
+    # Behavior
+    def test_behavior_readonly_public_attributes(self):
+        event = FileModifiedEvent(path_1)
+        assert_readonly_public_attributes(event)
+
+    # Inherited Properties
+    def test_is_directory(self):
+        event1 = FileModifiedEvent(path_1)
+        assert_false(event1.is_directory)
+
+
 class TestFileCreatedEvent:
     def test___init__(self):
         event = FileCreatedEvent(path_1)
@@ -124,6 +160,11 @@ class TestFileCreatedEvent:
     def test___repr__(self):
         event = FileCreatedEvent(path_1)
         assert_equal("<FileCreatedEvent: src_path=%s>" % path_1, event.__repr__())
+
+    def test_behavior_readonly_public_attributes(self):
+        event = FileCreatedEvent(path_1)
+        assert_readonly_public_attributes(event)
+
 
 class TestFileMovedEvent:
     def test___init__(self):
@@ -137,6 +178,11 @@ class TestFileMovedEvent:
         event = FileMovedEvent(path_1, path_2)
         assert_equal("<FileMovedEvent: src_path=%s, dest_path=%s>" % (path_1, path_2), event.__repr__())
 
+    def test_behavior_readonly_public_attributes(self):
+        event = FileMovedEvent(path_1, path_2)
+        assert_readonly_public_attributes(event)
+
+
 class TestDirDeletedEvent:
     def test___init__(self):
         event = DirDeletedEvent(path_1)
@@ -147,6 +193,11 @@ class TestDirDeletedEvent:
     def test___repr__(self):
         event = DirDeletedEvent(path_1)
         assert_equal("<DirDeletedEvent: src_path=%s>" % path_1, event.__repr__())
+
+    def test_behavior_readonly_public_attributes(self):
+        event = DirDeletedEvent(path_1)
+        assert_readonly_public_attributes(event)
+
 
 class TestDirModifiedEvent:
     def test___init__(self):
@@ -159,6 +210,11 @@ class TestDirModifiedEvent:
         event = DirModifiedEvent(path_1)
         assert_equal("<DirModifiedEvent: src_path=%s>" % path_1, event.__repr__())
 
+    def test_behavior_readonly_public_attributes(self):
+        event = DirModifiedEvent(path_1)
+        assert_readonly_public_attributes(event)
+
+
 class TestDirCreatedEvent:
     def test___init__(self):
         event = DirCreatedEvent(path_1)
@@ -169,6 +225,11 @@ class TestDirCreatedEvent:
     def test___repr__(self):
         event = DirCreatedEvent(path_1)
         assert_equal("<DirCreatedEvent: src_path=%s>" % path_1, event.__repr__())
+
+    def test_behavior_readonly_public_attributes(self):
+        event = DirCreatedEvent(path_1)
+        assert_readonly_public_attributes(event)
+
 
 class TestDirMovedEvent:
     def test___init__(self):
@@ -183,9 +244,43 @@ class TestDirMovedEvent:
         assert_equal("<DirMovedEvent: src_path=%s, dest_path=%s>" % (path_1, path_2), event.__repr__())
 
     def test_sub_moved_events(self):
-        # dir_moved_event = DirMovedEvent(src_path, dest_path)
-        # assert_equal(expected, dir_moved_event.sub_moved_events())
-        raise SkipTest # TODO: implement your test here
+        mock_walker_path = [
+            ('/path',
+                ['ad', 'bd'],
+                ['af', 'bf', 'cf']),
+            ('/path/ad',
+                [],
+                ['af', 'bf', 'cf']),
+            ('/path/bd',
+                [],
+                ['af', 'bf', 'cf']),
+        ]
+        dest_path = '/path'
+        src_path = '/foobar'
+        expected_events = set([
+            DirMovedEvent('/foobar/ad', '/path/ad'),
+            DirMovedEvent('/foobar/bd', '/path/bd'),
+            FileMovedEvent('/foobar/af', '/path/af'),
+            FileMovedEvent('/foobar/bf', '/path/bf'),
+            FileMovedEvent('/foobar/cf', '/path/cf'),
+            FileMovedEvent('/foobar/ad/af', '/path/ad/af'),
+            FileMovedEvent('/foobar/ad/bf', '/path/ad/bf'),
+            FileMovedEvent('/foobar/ad/cf', '/path/ad/cf'),
+            FileMovedEvent('/foobar/bd/af', '/path/bd/af'),
+            FileMovedEvent('/foobar/bd/bf', '/path/bd/bf'),
+            FileMovedEvent('/foobar/bd/cf', '/path/bd/cf'),
+        ])
+        dir_moved_event = DirMovedEvent(src_path, dest_path)
+
+        def _mock_os_walker(path):
+            for root, directories, filenames in mock_walker_path:
+                yield (root, directories, filenames)
+        calculated_events = set(dir_moved_event.sub_moved_events(_walker=_mock_os_walker))
+        assert_equal(expected_events, calculated_events)
+
+    def test_behavior_readonly_public_attributes(self):
+        event = DirMovedEvent(path_1, path_2)
+        assert_readonly_public_attributes(event)
 
 
 class TestFileSystemEventHandler:
@@ -366,6 +461,35 @@ class TestLoggingEventHandler:
 
 class TestGenerateSubMovedEventsFor:
     def test_generate_sub_moved_events_for(self):
-        # assert_equal(expected, generate_sub_moved_events_for(src_dir_path, dest_dir_path))
-        raise SkipTest # TODO: implement your test here
+        mock_walker_path = [
+            ('/path',
+                ['ad', 'bd'],
+                ['af', 'bf', 'cf']),
+            ('/path/ad',
+                [],
+                ['af', 'bf', 'cf']),
+            ('/path/bd',
+                [],
+                ['af', 'bf', 'cf']),
+        ]
+        dest_path = '/path'
+        src_path = '/foobar'
+        expected_events = set([
+            DirMovedEvent('/foobar/ad', '/path/ad'),
+            DirMovedEvent('/foobar/bd', '/path/bd'),
+            FileMovedEvent('/foobar/af', '/path/af'),
+            FileMovedEvent('/foobar/bf', '/path/bf'),
+            FileMovedEvent('/foobar/cf', '/path/cf'),
+            FileMovedEvent('/foobar/ad/af', '/path/ad/af'),
+            FileMovedEvent('/foobar/ad/bf', '/path/ad/bf'),
+            FileMovedEvent('/foobar/ad/cf', '/path/ad/cf'),
+            FileMovedEvent('/foobar/bd/af', '/path/bd/af'),
+            FileMovedEvent('/foobar/bd/bf', '/path/bd/bf'),
+            FileMovedEvent('/foobar/bd/cf', '/path/bd/cf'),
+        ])
+        def _mock_os_walker(path):
+            for root, directories, filenames in mock_walker_path:
+                yield (root, directories, filenames)
+        calculated_events = set(generate_sub_moved_events_for(src_path, dest_path, _walker=_mock_os_walker))
+        assert_equal(expected_events, calculated_events)
 

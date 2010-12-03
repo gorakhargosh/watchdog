@@ -258,14 +258,14 @@ dest_path=%(dest_path)s>" % \
                      dest_path=self.dest_path)
 
 
-    def sub_moved_events(self):
+    def sub_moved_events(self, _walker=os.walk):
         """Generates moved events for file sytem objects within the moved directory.
         
         :returns: 
             iterable of event objects of type :class:`FileMovedEvent` and 
             :class:`DirMovedEvent`.
         """
-        yield generate_sub_moved_events_for(self.src_path, self.dest_path)
+        return list(generate_sub_moved_events_for(self.src_path, self.dest_path, _walker=_walker))
 
 
 
@@ -509,13 +509,8 @@ class LoggingEventHandler(FileSystemEventHandler):
         return event
 
 
-# Keep older code working.
-# DEPRECATED
-LoggingFileSystemEventHandler = LoggingEventHandler
 
-
-
-def generate_sub_moved_events_for(src_dir_path, dest_dir_path):
+def generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
     """Generates an event list of :class:`DirMovedEvent` and :class:`FileMovedEvent` 
     objects for all the files and directories within the given moved directory
     that were moved along with the directory.
@@ -530,7 +525,7 @@ def generate_sub_moved_events_for(src_dir_path, dest_dir_path):
     """
     src_dir_path = absolute_path(src_dir_path)
     dest_dir_path = absolute_path(dest_dir_path)
-    for root, directories, filenames in os.walk(dest_dir_path):
+    for root, directories, filenames in _walker(dest_dir_path):
         for directory in directories:
             full_path = os.path.join(root, directory)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path)

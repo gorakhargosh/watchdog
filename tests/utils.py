@@ -10,6 +10,13 @@ import os.path
 import tempfile
 import shutil
 
+from nose.tools import assert_raises
+
+def assert_readonly_public_attributes(o):
+    for prop in list_attributes(o, True):
+        assert_raises(AttributeError, setattr, o, prop, None)
+
+
 def list_attributes(o, only_public=True):
     if only_public:
         def isattribute(o, attribute):
