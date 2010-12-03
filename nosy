@@ -72,7 +72,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         command = sys.argv[2]
     else:
-        command = "make -C docs html; bin/python tests/run_tests.py"
+        #command = "make -C docs html; bin/python tests/run_tests.py"
+        command = "bin/python tests/run_tests.py"
 
     previous_checksum = 0
     while True:
