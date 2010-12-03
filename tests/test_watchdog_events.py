@@ -25,6 +25,7 @@ from watchdog.events import \
 path_1 = '/path/xyz'
 path_2 = '/path/abc'
 
+
 class TestFileSystemEvent:
     def test___eq__(self):
         event1 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
@@ -284,6 +285,62 @@ class TestDirMovedEvent:
 
 
 class TestFileSystemEventHandler:
+    def test__dispatch(self):
+        class AssertingEventHandler(FileSystemEventHandler):
+            def on_any_event(self, event):
+                assert True
+            def on_modified(self, event):
+                assert False, "Unreachable code."
+            def on_deleted(self, event):
+                assert False, "Unreachable code."
+            def on_created(self, event):
+                assert False, "Unreachable code."
+            def on_moved(self, event):
+                assert False, "Unreachable code."
+
+        class ModifiedEventHandler(AssertingEventHandler):
+            def on_modified(self, event):
+                assert True
+        class DeletedEventHandler(AssertingEventHandler):
+            def on_deleted(self, event):
+                assert True
+        class CreatedEventHandler(AssertingEventHandler):
+            def on_created(self, event):
+                assert True
+        class MovedEventHandler(AssertingEventHandler):
+            def on_moved(self, event):
+                assert True
+
+        modified_handler = ModifiedEventHandler()
+        deleted_handler = DeletedEventHandler()
+        created_handler = CreatedEventHandler()
+        moved_handler = MovedEventHandler()
+
+        modified_event = DirModifiedEvent('/path/x')
+        deleted_event = DirDeletedEvent('/path/x')
+        created_event = FileCreatedEvent('/path/x')
+        moved_event = FileMovedEvent('/path/abc', '/path/xyz')
+
+        modified_handler._dispatch(modified_event)
+        assert_raises(AssertionError, modified_handler._dispatch, created_event)
+        assert_raises(AssertionError, modified_handler._dispatch, deleted_event)
+        assert_raises(AssertionError, modified_handler._dispatch, moved_event)
+
+        deleted_handler._dispatch(deleted_event)
+        assert_raises(AssertionError, deleted_handler._dispatch, created_event)
+        assert_raises(AssertionError, deleted_handler._dispatch, modified_event)
+        assert_raises(AssertionError, deleted_handler._dispatch, moved_event)
+
+        created_handler._dispatch(created_event)
+        assert_raises(AssertionError, created_handler._dispatch, deleted_event)
+        assert_raises(AssertionError, created_handler._dispatch, modified_event)
+        assert_raises(AssertionError, created_handler._dispatch, moved_event)
+
+        moved_handler._dispatch(moved_event)
+        assert_raises(AssertionError, moved_handler._dispatch, created_event)
+        assert_raises(AssertionError, moved_handler._dispatch, modified_event)
+        assert_raises(AssertionError, moved_handler._dispatch, deleted_event)
+
     def test_on_any_event(self):
         handler = FileSystemEventHandler()
         event = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, is_directory=False)
