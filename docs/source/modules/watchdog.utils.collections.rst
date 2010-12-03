@@ -8,7 +8,7 @@
 
 
 Classes
-=============
+=======
 .. autoclass:: OrderedSetQueue
    :members:
    :show-inheritance:
