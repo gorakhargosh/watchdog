@@ -18,10 +18,10 @@ from watchdog.utils import platform
 
 # Explicitly define which packages/modules to cover.
 cover_packages = [
-    'watchdog.version',
-    'watchdog.platform',
+    #'watchdog.version',
+    #'watchdog.platform',
     'watchdog.events',
-    'watchdog.utils.echo',
+    #'watchdog.utils.echo',
     'watchdog.utils.dirsnapshot',
     'watchdog.utils.collections.ordered_set_queue',
     'watchdog.observers.polling_observer',
@@ -56,6 +56,9 @@ if __name__ == "__main__":
 
     argv = [__file__]
     argv.append('--with-coverage')
+    # Coverage by itself generates more usable reports.
+    #argv.append('--cover-erase')
+    #argv.append('--cover-html')
     argv.append('--cover-package=%s' % ','.join(cover_packages))
     argv.append('--config=%s' % config_path)
     nose.run(argv=argv)
