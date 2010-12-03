@@ -8,9 +8,9 @@
 """
     Thread-safe implementation of an ordered set queue.
 
+    :module: watchdog.utils.collection.ordered_set_queue
     :author: Lukáš Lalinský <lalinsky@gmail.com>
     :author: Gora Khargosh <gora.khargosh@gmail.com>
-
 """
 
 
