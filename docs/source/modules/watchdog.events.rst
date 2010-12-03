@@ -1,8 +1,8 @@
 .. include:: ../global.rst.inc
 
-=======================
-:mod: `watchdog.events`
-=======================
+=================
+`watchdog.events`
+=================
 
 .. automodule:: watchdog.events
 

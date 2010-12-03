@@ -21,6 +21,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+"""
+    :module: watchdog.observers.polling_observer
+    :author: Gora Khargosh <gora.khargosh@gmail.com>
+"""
+
+
 from __future__ import with_statement
 
 import os.path

@@ -3,8 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to watchdog's documentation!
-====================================
+
+Watchdog
+========
+
+Python API library and shell utilities to monitor file system events.
 
 Contents:
 
@@ -13,6 +16,18 @@ Contents:
 
    introduction
 
+
+Modules and API
+===============
+
+.. toctree::
+   :maxdepth: 2
+
+   modules/watchdog.events
+   modules/watchdog.utils.collections
+   modules/watchdog.observers.polling_observer
+
+
 Indices and tables
 ==================
 
@@ -20,11 +35,3 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-Modules
-=======
-
-.. toctree::
-   :maxdepth: 2
-
-   modules/events
-   modules/polling_observer

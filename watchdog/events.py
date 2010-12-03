@@ -22,10 +22,8 @@
 # THE SOFTWARE.
 
 """   
-.. module: events
-   :synopsis: File system events and event handlers.
-    
-.. moduleauthor: Gora Khargosh <gora.khargosh@gmail.com>
+    :module: watchdog.events
+    :author: Gora Khargosh <gora.khargosh@gmail.com>
 """
 
 import os
@@ -261,6 +259,11 @@ dest_path=%(dest_path)s>" % \
     def sub_moved_events(self, _walker=os.walk):
         """Generates moved events for file sytem objects within the moved directory.
         
+        
+        :param _walker:
+            Walker used to walk directory trees :func:`os.walk` style. Sanity tests
+            use this parameter to inject a mock walker that behaves like 
+            :func:`os.walk`.
         :returns: 
             iterable of event objects of type :class:`FileMovedEvent` and 
             :class:`DirMovedEvent`.
@@ -377,17 +380,17 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 
     @property
     def patterns(self):
-        """Patterns to allow matching event paths."""
+        """(Read-only) Patterns to allow matching event paths."""
         return self._patterns
 
     @property
     def ignore_patterns(self):
-        """Patterns to ignore matching event paths."""
+        """(Read-only) Patterns to ignore matching event paths."""
         return self._ignore_patterns
 
     @property
     def ignore_directories(self):
-        """True if directories should be ignored; False otherwise."""
+        """(Read-only) True if directories should be ignored; False otherwise."""
         return self._ignore_directories
 
 
@@ -519,6 +522,10 @@ def generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
         The source path of the moved directory.
     :param dest_dir_path: 
         The destination path of the moved directory.
+    :param _walker:
+        Walker used to walk directory trees :func:`os.walk` style. Sanity tests
+        use this parameter to inject a mock walker that behaves like 
+        :func:`os.walk`.
     :returns:
         An iterable of file system events of type :class:`DirMovedEvent` and 
         :class:`FileMovedEvent`.
