@@ -37,7 +37,8 @@ except ImportError:
 
 from argh import arg, alias, ArghParser
 
-from watchdog import Observer, VERSION_STRING
+from watchdog.observers import Observer
+from watchdog.version import VERSION_STRING
 from watchdog.utils import read_text_file, load_class, absolute_path, get_parent_dir_path
 
 
@@ -223,7 +224,7 @@ def log(args):
     elif args.debug_force_fsevents:
         from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
     else:
-        from watchdog import Observer
+        from watchdog.observers import Observer
     observer = Observer()
     observe_with(observer, 'logger', event_handler, args.directories, args.recursive)
 
@@ -266,7 +267,7 @@ def shell_command(args):
     observe_with(Observer(), 'shell-command', event_handler, args.directories, args.recursive)
 
 
-epilog="""Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>.
+epilog = """Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>.
 
 Licensed under the terms of the MIT license. Please see LICENSE in the
 source code for more information."""

@@ -22,8 +22,65 @@
 
 from __future__ import with_statement
 
+#import logging
+import sys
 import threading
-from watchdog.utils import DaemonThread, real_absolute_path
+
+from watchdog.utils import DaemonThread, real_absolute_path, has_attribute
+#logging.basicConfig(level=logging.DEBUG)
+
+
+try:
+    import pyinotify
+    #logging.debug('Using InotifyObserver.')
+    from watchdog.observers.inotify_observer import InotifyObserver as Observer
+except ImportError:
+    try:
+        import _watchdog_fsevents
+        from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
+        #logging.debug('Using FSEventsObserver.')
+    except ImportError:
+        import select
+        if has_attribute(select, 'kqueue') and sys.version_info > (2, 6, 0):
+            from watchdog.observers.kqueue_observer import KqueueObserver as Observer
+            #logging.debug('Using KqueueObserver.')
+        else:
+            try:
+                import select_backport as select
+                from watchdog.observers.kqueue_observer import KqueueObserver as Observer
+                #logging.debug('Using KqueueObserver from `select_backport`')
+            except ImportError:
+                try:
+                    import win32file
+                    import win32con
+                    #logging.debug('Using Win32Observer.')
+                    #from watchdog.observers.win32_observer import Win32Observer as Observer
+                    from watchdog.observers.win32ioc_observer import Win32IOCObserver as Observer
+                except ImportError:
+                    #logging.debug('Using PollingObserver as fallback.')
+                    from watchdog.observers.polling_observer import PollingObserver as Observer
+
+
+def _watch(event_handler, paths, recursive=False, main_callback=None):
+    """A simple way to watch paths. Private API at the moment."""
+    import uuid
+
+    observer = Observer()
+    if main_callback is None:
+        def main_callback():
+            import time
+            while True:
+                time.sleep(1)
+
+    identifier = uuid.uuid1().hex
+    observer.schedule(identifier, event_handler, paths, recursive)
+    observer.start()
+    try:
+        main_callback()
+    except KeyboardInterrupt:
+        observer.unschedule(identifier)
+        observer.stop()
+    observer.join()
 
 
 class _EventEmitter(DaemonThread):

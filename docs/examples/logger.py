@@ -4,7 +4,7 @@ import watchdog
 import watchdog.tricks
 
 event_handler = watchdog.tricks.LoggerTrick()
-observer = watchdog.Observer()
+observer = watchdog.observers.Observer()
 observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
 observer.start()
 try:

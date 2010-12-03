@@ -1,6 +1,6 @@
 import sys
 import time
-from watchdog import Observer
+from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import logging
 

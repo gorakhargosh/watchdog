@@ -13,7 +13,7 @@ class MyEventHandler(watchdog.events.PatternMatchingEventHandler):
 event_handler = MyEventHandler(patterns=['*.py', '*.pyc'],
                                 ignore_patterns=['version.py'],
                                 ignore_directories=True)
-observer = watchdog.Observer()
+observer = watchdog.observers.Observer()
 observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
 observer.start()
 try:
