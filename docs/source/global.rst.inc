@@ -4,9 +4,10 @@
 .. |author_email| replace:: gora.khargosh@gmail.com
 .. |copyright| replace:: Copyright (C) 2010 Gora Khargosh.
 .. |project_name| replace:: ``watchdog``
+.. |project_version| replace:: 0.4.0
 
-.. _Issue Tracker: http://github.com/gorakhargosh/watchdog/issues
-.. _Code Repository: http://github.com/gorakhargosh/watchdog
+.. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
+.. _code repository: http://github.com/gorakhargosh/watchdog
 
 
 .. _PyInotify: http://github.com/seb-m/pyinotify
@@ -17,3 +18,4 @@
 .. _ReadDirectoryChangesW: http://msdn.microsoft.com/en-us/library/aa365465(VS.85).aspx
 .. _GetQueuedCompletionStatus: http://msdn.microsoft.com/en-us/library/aa364986(v=VS.85).aspx
 .. _CreateIoCompletionPort: http://msdn.microsoft.com/en-us/library/aa363862(v=VS.85).aspx
+.. _pip: http://pypi.python.org/pypi/pip

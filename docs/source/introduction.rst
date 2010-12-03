@@ -1,7 +1,7 @@
 .. include:: global.rst.inc
 
-Introduction
-============
+Getting Started
+===============
 :Author: |author_name|
 :Contact: |author_email|
 :Copyright: |copyright|
@@ -13,10 +13,31 @@ Introduction
 * Cross-platform Python API library for monitoring file system changes.
 * Suite of shell utilities that monitor file system changes
   and execute other shell commands in response.
-
+  
 
 Installation information:
 -------------------------
+Installing from PyPI using pip_:
+
+.. parsed-literal::
+
+    $ pip install |project_name|
+    
+Installing from source:
+
+.. parsed-literal::
+    
+    $ wget -c http://watchdog-python.googlecode.com/files/|project_name|-|project_version|.tar.gz
+    $ tar zxvf |project_name|-|project_version|.tar.gz
+    $ python setup.py install
+
+Installing from the `code repository`_:
+
+.. parsed-literal::
+
+    $ git clone git://github.com/gorakhargosh/|project_name|.git
+    $ cd |project_name|
+    $ python setup.py install
 
 
 Supported Platforms:
@@ -46,20 +67,20 @@ Mac OS X
     * FSEvents_
 
     |project_name| can use whichever one is available, preferring
-    FSEvents over kqueue. kqueue_ uses open file descriptors for monitoring
-    and the currently implementation uses
+    FSEvents over ``kqueue(2)``. ``kqueue(2)`` uses open file descriptors for monitoring
+    and the current implementation uses
     `Mac OS X File System Monitoring Performance Guidelines`_ to open
     these file descriptors only to monitor events, thus allowing
-    OS X to unmount volumes which are being watched without locking them.
+    OS X to unmount volumes that are being watched without locking them.
 
-    .. NOTE:: More information about how |project_name| uses kqueue is noted
+    .. NOTE:: More information about how |project_name| uses ``kqueue(2)`` is noted
               in `BSD Unix variants`_. Much of this information applies to
               Mac OS X as well.
 
 
 _`BSD Unix variants`
     BSD variants come with kqueue_ which programs can use to monitor
-    changes to open file descriptors. Because of the way kqueue works,
+    changes to open file descriptors. Because of the way ``kqueue(2)`` works,
     |project_name| needs to open these files and directories in read-only
     non-blocking mode and keep books about them.
 
