@@ -5,6 +5,15 @@
 # --------------------
 # http://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
 
+"""
+    Thread-safe implementation of an ordered set queue.
+
+    :author: Lukáš Lalinský <lalinsky@gmail.com>
+    :author: Gora Khargosh <gora.khargosh@gmail.com>
+
+"""
+
+
 try:
     import queue
 except ImportError:
@@ -21,10 +30,35 @@ class OrderedSetQueue(queue.Queue):
     is not replaced, the order is maintained. The set is used
     merely to check for the existence of an item.
 
-    :author: Lukáš Lalinský
-
-    item must be an immutable hashable type that can be used
-    as a dictionary key for this to work.
+    Queued items must be immutable and hashable so that they can be used
+    as dictionary keys. You must implement **only read-only properties** and
+    the :func:`__hash__()`, :func:`__eq__()`, and :func:`__ne__` methods 
+    for items to be hashable. An example implementation follows::
+    
+        class Item(object):
+            def __init__(self, a, b):
+                self._a = a
+                self._b = b
+            
+            @property
+            def a(self):
+                return self._a
+                
+            @property
+            def b(self):
+                return self._b
+    
+            def _key(self):
+                return (self._a, self._b)
+    
+            def __eq__(self, item):
+                return self._key() == item._key()
+            
+            def __ne__(self, item):
+                return self._key() != item._key()
+            
+            def __hash__(self):
+                return hash(self._key())
     """
     def _init(self, maxsize):
         queue.Queue._init(self, maxsize)
