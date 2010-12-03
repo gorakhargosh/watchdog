@@ -23,7 +23,7 @@ cover_packages = [
     'watchdog.events',
     #'watchdog.utils.echo',
     'watchdog.utils.dirsnapshot',
-    'watchdog.utils.collections.ordered_set_queue',
+    'watchdog.utils.collections',
     'watchdog.observers.polling_observer',
 ]
 cover_packages_windows = [
