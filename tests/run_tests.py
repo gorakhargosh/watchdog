@@ -21,6 +21,8 @@ cover_packages = [
     #'watchdog.version',
     #'watchdog.platform',
     'watchdog.events',
+    'watchdog.tricks',
+    'watchdog.utils',
     #'watchdog.utils.echo',
     'watchdog.utils.dirsnapshot',
     'watchdog.utils.collections',
