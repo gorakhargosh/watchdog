@@ -20,3 +20,18 @@
 .. _GetQueuedCompletionStatus: http://msdn.microsoft.com/en-us/library/aa364986(v=VS.85).aspx
 .. _CreateIoCompletionPort: http://msdn.microsoft.com/en-us/library/aa363862(v=VS.85).aspx
 .. _pip: http://pypi.python.org/pypi/pip
+.. _github: http://github.com/
+.. _git: http://git-scm.org/
+.. _coverage: http://nedbatchelder.com/code/coverage/
+.. _nose: http://somethingaboutorange.com/mrl/projects/nose/0.11.2/
+.. _zc.buildout: http://www.buildout.org/
+.. _sphinx: http://sphinx.pocoo.org/
+.. _Python: http://python.org
+
+.. _pyinotify: http://github.com/seb-m/pyinotify
+.. _pywin32: http://sourceforge.net/projects/pywin32/
+.. _xcode: http://developer.apple.com/technologies/tools/xcode.html
+.. _pyyaml: http://www.pyyaml.org/
+.. _argh: http://pypi.python.org/pypi/argh
+.. _argparse: http://pypi.python.org/pypi/argparse
+.. _select_backport: http://pypi.python.org/pypi/select_backport/
