@@ -1,25 +1,33 @@
 .. include:: global.rst.inc
 
+.. _installation:
 
-Installation:
-=============
-.. contents::
+Installation
+============
+|project_name| requires Python 2.5 or above to work. If you are using a
+Linux/FreeBSD/Mac OS X system, you already have Python installed. However,
+you may wish to upgrade your system to Python 2.7 at least, because this
+version comes with updates that can reduce compatibility
+problems. See a list of :ref:`installation-dependencies`
 
-Installing from PyPI using pip_:
+Installing from PyPI using pip
+------------------------------
 
 .. parsed-literal::
 
     $ pip install |project_name|
-    
-Installing from source:
+
+Installing from source
+----------------------
 
 .. parsed-literal::
-    
+
     $ wget -c http://watchdog-python.googlecode.com/files/|project_name|-|project_version|.tar.gz
     $ tar zxvf |project_name|-|project_version|.tar.gz
     $ python setup.py install
 
-Installing from the `code repository`_:
+Installing from the code repository
+-----------------------------------
 
 .. parsed-literal::
 
@@ -27,9 +35,47 @@ Installing from the `code repository`_:
     $ cd |project_name|
     $ python setup.py install
 
+.. _installation-dependencies:
 
-Supported Platforms:
---------------------
+Dependencies
+------------
+|project_name| depends on many libraries to do its job. The following is
+a list of dependencies you need based on the operating system you are
+using.
+
++---------------------+-------------+-------------+-------------+-------------+
+| Operating system    |   Windows   |  Linux 2.6  | Mac OS X/   |     BSD     |
+| Dependency (row)    |             |             |   Darwin    |             |
++=====================+=============+=============+=============+=============+
+| pyinotify_          |             |     Yes     |             |             |
++---------------------+-------------+-------------+-------------+-------------+
+| pywin32_            |     Yes     |             |             |             |
++---------------------+-------------+-------------+-------------+-------------+
+| XCode_              |             |             |     Yes     |             |
++---------------------+-------------+-------------+-------------+-------------+
+| pyyaml_             |     Yes     |     Yes     |     Yes     |     Yes     |
++---------------------+-------------+-------------+-------------+-------------+
+| argh_               |     Yes     |     Yes     |     Yes     |     Yes     |
++---------------------+-------------+-------------+-------------+-------------+
+| argparse_           |     Yes     |     Yes     |     Yes     |     Yes     |
++---------------------+-------------+-------------+-------------+-------------+
+| select_backport_    |             |             |     Yes     |     Yes     |
+| (Python 2.6/2.6)    |             |             |             |             |
++---------------------+-------------+-------------+-------------+-------------+
+| a lot of luck       |     Yes     |             |             |             |
++---------------------+-------------+-------------+-------------+-------------+
+
+.. _pyinotify: http://github.com/seb-m/pyinotify
+.. _pywin32: http://sourceforge.net/projects/pywin32/
+.. _xcode: http://developer.apple.com/technologies/tools/xcode.html
+.. _pyyaml: http://www.pyyaml.org/
+.. _argh: http://pypi.python.org/pypi/argh
+.. _argparse: http://pypi.python.org/pypi/argparse
+.. _select_backport: http://pypi.python.org/pypi/select_backport/
+
+
+Supported Platforms
+-------------------
 |project_name| uses native APIs as much as possible falling back
 to polling the disk periodically to compare directory snapshots
 only when it cannot use an API natively-provided by the underlying
