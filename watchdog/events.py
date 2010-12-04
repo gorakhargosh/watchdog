@@ -488,6 +488,10 @@ class LoggingEventHandler(FileSystemEventHandler):
         return event
 
 
+class LoggingFileSystemEventHandler(LoggingEventHandler):
+    """For backwards-compatibility. Please use :class:`LoggingEventHandler` instead."""
+    pass
+
 
 def generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
     """Generates an event list of :class:`DirMovedEvent` and :class:`FileMovedEvent`

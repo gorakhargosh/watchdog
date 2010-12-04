@@ -1,7 +1,9 @@
 
 from nose.tools import *
 from nose import SkipTest
+
 from utils import assert_readonly_public_attributes
+from watchdog.utils import has_attribute, filter_paths
 from watchdog.events import \
     FileSystemEvent, \
     FileSystemMovedEvent, \
@@ -390,6 +392,118 @@ g_allowed_patterns = ["*.py", "*.txt"]
 g_ignore_patterns = ["*.foo"]
 
 class TestPatternMatchingEventHandler:
+    def test_dispatch(self):
+        # Utilities.
+        patterns = ['*.py', '*.txt']
+        ignore_patterns = ["*.pyc"]
+        def assert_event_type(event, event_type):
+            if event.event_type != event_type:
+                assert False, "%s: event.event_type is not %s" % (event, event_type)
+        def assert_check_directory(handler, event):
+            if handler.ignore_directories and event.is_directory:
+                assert False, "Event %s should have been ignored by event.ignore_directories=True" % event
+        def assert_patterns(event, patterns=patterns, ignore_patterns=ignore_patterns):
+            if has_attribute(event, 'dest_path'):
+                paths = [event.src_path, event.dest_path]
+            else:
+                paths = [event.src_path]
+            filtered_paths = filter_paths(paths, patterns, ignore_patterns)
+            assert_true(filtered_paths)
+
+        dir_del_event_match = DirDeletedEvent('/path/blah.py')
+        dir_del_event_not_match = DirDeletedEvent('/path/foobar')
+        dir_del_event_ignored = DirDeletedEvent('/path/foobar.pyc')
+        file_del_event_match = FileDeletedEvent('/path/blah.txt')
+        file_del_event_not_match = FileDeletedEvent('/path/foobar')
+        file_del_event_ignored = FileDeletedEvent('/path/blah.pyc')
+
+        dir_cre_event_match = DirCreatedEvent('/path/blah.py')
+        dir_cre_event_not_match = DirCreatedEvent('/path/foobar')
+        dir_cre_event_ignored = DirCreatedEvent('/path/foobar.pyc')
+        file_cre_event_match = FileCreatedEvent('/path/blah.txt')
+        file_cre_event_not_match = FileCreatedEvent('/path/foobar')
+        file_cre_event_ignored = FileCreatedEvent('/path/blah.pyc')
+
+        dir_mod_event_match = DirModifiedEvent('/path/blah.py')
+        dir_mod_event_not_match = DirModifiedEvent('/path/foobar')
+        dir_mod_event_ignored = DirModifiedEvent('/path/foobar.pyc')
+        file_mod_event_match = FileModifiedEvent('/path/blah.txt')
+        file_mod_event_not_match = FileModifiedEvent('/path/foobar')
+        file_mod_event_ignored = FileModifiedEvent('/path/blah.pyc')
+
+        dir_mov_event_match = DirMovedEvent('/path/blah.py', '/path/blah')
+        dir_mov_event_not_match = DirMovedEvent('/path/foobar', '/path/blah')
+        dir_mov_event_ignored = DirMovedEvent('/path/foobar.pyc', '/path/blah')
+        file_mov_event_match = FileMovedEvent('/path/blah.txt', '/path/blah')
+        file_mov_event_not_match = FileMovedEvent('/path/foobar', '/path/blah')
+        file_mov_event_ignored = FileMovedEvent('/path/blah.pyc', '/path/blah')
+
+        all_dir_events = [
+            dir_mod_event_match,
+            dir_mod_event_not_match,
+            dir_mod_event_ignored,
+            dir_del_event_match,
+            dir_del_event_not_match,
+            dir_del_event_ignored,
+            dir_cre_event_match,
+            dir_cre_event_not_match,
+            dir_cre_event_ignored,
+            dir_mov_event_match,
+            dir_mov_event_not_match,
+            dir_mov_event_ignored,
+        ]
+        all_file_events = [
+            file_mod_event_match,
+            file_mod_event_not_match,
+            file_mod_event_ignored,
+            file_del_event_match,
+            file_del_event_not_match,
+            file_del_event_ignored,
+            file_cre_event_match,
+            file_cre_event_not_match,
+            file_cre_event_ignored,
+            file_mov_event_match,
+            file_mov_event_not_match,
+            file_mov_event_ignored,
+        ]
+        all_events = all_file_events + all_dir_events
+
+        class TestingPatternMatchingEventHandler(PatternMatchingEventHandler):
+            def on_any_event(self, event):
+                assert_check_directory(self, event)
+
+            def on_modified(self, event):
+                assert_check_directory(self, event)
+                assert_event_type(event, EVENT_TYPE_MODIFIED)
+                assert_patterns(event)
+
+            def on_deleted(self, event):
+                assert_check_directory(self, event)
+                assert_event_type(event, EVENT_TYPE_DELETED)
+                assert_patterns(event)
+
+            def on_moved(self, event):
+                assert_check_directory(self, event)
+                assert_event_type(event, EVENT_TYPE_MOVED)
+                assert_patterns(event)
+
+            def on_created(self, event):
+                assert_check_directory(self, event)
+                assert_event_type(event, EVENT_TYPE_CREATED)
+                assert_patterns(event)
+
+        no_dirs_handler = TestingPatternMatchingEventHandler(patterns=patterns,
+                                                             ignore_patterns=ignore_patterns,
+                                                             ignore_directories=True)
+        handler = TestingPatternMatchingEventHandler(patterns=patterns,
+                                                     ignore_patterns=ignore_patterns,
+                                                     ignore_directories=False)
+
+        for event in all_events:
+            no_dirs_handler._dispatch(event)
+        for event in all_events:
+            handler._dispatch(event)
+
     def test___init__(self):
         handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
         handler2 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, False)
