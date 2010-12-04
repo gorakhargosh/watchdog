@@ -15,19 +15,20 @@ Python API library and shell utilities to monitor file system events.
 
 * Cross-platform Python API library for monitoring file system changes.
 * Suite of shell utilities that monitor file system changes
-  and execute other shell commands in response.    
+  and execute other shell commands in response.
 
-Contents:
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
 
-   install
+   installation
    quickstart
 
 
 Modules and API
-===============
+---------------
 
 .. toctree::
    :maxdepth: 2

@@ -1,5 +1,7 @@
 .. include:: global.rst.inc
 
+.. _quickstart:
+
 Quickstart
 ==========
 .. contents::
@@ -10,8 +12,8 @@ Quickstart
 * Suite of shell utilities that monitor file system changes
   and execute other shell commands in response.
  
-Example using the library
---------------------------
+A Simple Example
+----------------
 
 ::
     
@@ -34,4 +36,6 @@ Example using the library
         observer.unschedule('a-unique-name')
         observer.stop()
     observer.join()
+ 
+To stop the program, press Control-C.
  
