@@ -14,6 +14,7 @@ from watchdog.utils.collections import OrderedSetQueue
 
 class TestOrderedSetQueue:
     def test_behavior_ordered_set(self):
+        """When the queue is filled faster than it is consumed from."""
         dir_mod_event = DirModifiedEvent("/path/x")
         file_mod_event = FileModifiedEvent('/path/y')
         event_list = [
