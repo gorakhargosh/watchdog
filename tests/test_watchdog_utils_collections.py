@@ -67,6 +67,3 @@ class TestOrderedSetQueue:
         consumer_thread = threading.Thread(target=event_consumer, args=(event_queue,))
         consumer_thread.start()
         consumer_thread.join()
-
-
-
