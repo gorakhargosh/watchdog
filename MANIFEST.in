@@ -8,6 +8,7 @@ include docs/*.txt
 include docs/*.xml
 include docs/Makefile
 include docs/make.bat
+recursive-include docs/source/_themes *
 recursive-include docs/examples *.py *.yaml
 recursive-include docs/source *.rst *.rst.inc *.py
 #global-exclude .DS_Store
