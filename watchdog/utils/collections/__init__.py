@@ -45,38 +45,40 @@ class OrderedSetQueue(queue.Queue):
 
     Disallows adding a duplicate item while maintaining the
     order of items in the queue. The implementation leverages
-    locking already implemented in the Python Queue class
+    locking already implemented in the base class
     redefining only the primitives. Since the internal queue
     is not replaced, the order is maintained. The set is used
     merely to check for the existence of an item.
 
     Queued items must be immutable and hashable so that they can be used
     as dictionary keys. You must implement **only read-only properties** and
-    the :func:`__hash__()`, :func:`__eq__()`, and :func:`__ne__` methods 
-    for items to be hashable. An example implementation follows::
-    
+    the :meth:`Item.__hash__()`, :meth:`Item.__eq__()`, and
+    :meth:`Item.__ne__()` methods for items to be hashable.
+
+    An example implementation follows::
+
         class Item(object):
             def __init__(self, a, b):
                 self._a = a
                 self._b = b
-            
+
             @property
             def a(self):
                 return self._a
-                
+
             @property
             def b(self):
                 return self._b
-    
+
             def _key(self):
                 return (self._a, self._b)
-    
+
             def __eq__(self, item):
                 return self._key() == item._key()
-            
+
             def __ne__(self, item):
                 return self._key() != item._key()
-            
+
             def __hash__(self):
                 return hash(self._key())
     """

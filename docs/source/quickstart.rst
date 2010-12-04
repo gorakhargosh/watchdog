@@ -17,7 +17,7 @@ to detect changes. Here is what we will do with the API:
 3. Schedule monitoring a few paths with the observer instance
    attaching the event handler.
 
-4. Start the observer and wait for it to start generating events
+4. Start the observer thread and wait for it generate events
    without blocking our main thread.
 
 By default, an :class:`watchdog.observers.Observer` instance will not monitor
