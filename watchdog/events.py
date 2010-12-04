@@ -244,7 +244,7 @@ dest_path=%(dest_path)s>" % \
             iterable of event objects of type :class:`FileMovedEvent` and
             :class:`DirMovedEvent`.
         """
-        return list(generate_sub_moved_events_for(self.src_path, self.dest_path, _walker=_walker))
+        return list(_generate_sub_moved_events_for(self.src_path, self.dest_path, _walker=_walker))
 
 
 
@@ -399,7 +399,7 @@ class LoggingFileSystemEventHandler(LoggingEventHandler):
     """For backwards-compatibility. Please use :class:`LoggingEventHandler` instead."""
 
 
-def generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
+def _generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
     """Generates an event list of :class:`DirMovedEvent` and :class:`FileMovedEvent`
     objects for all the files and directories within the given moved directory
     that were moved along with the directory.

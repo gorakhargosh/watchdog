@@ -24,7 +24,7 @@ from watchdog.events import \
     EVENT_TYPE_CREATED, \
     EVENT_TYPE_DELETED, \
     EVENT_TYPE_MOVED, \
-    generate_sub_moved_events_for
+    _generate_sub_moved_events_for
 
 path_1 = '/path/xyz'
 path_2 = '/path/abc'
@@ -560,6 +560,6 @@ class TestGenerateSubMovedEventsFor:
         def _mock_os_walker(path):
             for root, directories, filenames in mock_walker_path:
                 yield (root, directories, filenames)
-        calculated_events = set(generate_sub_moved_events_for(src_path, dest_path, _walker=_mock_os_walker))
+        calculated_events = set(_generate_sub_moved_events_for(src_path, dest_path, _walker=_mock_os_walker))
         assert_equal(expected_events, calculated_events)
 
