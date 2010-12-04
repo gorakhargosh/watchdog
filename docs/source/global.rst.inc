@@ -8,6 +8,7 @@
 
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _code repository: http://github.com/gorakhargosh/watchdog
+.. _mailing list: http://groups.google.com/group/watchdog-python
 
 
 .. _PyInotify: http://github.com/seb-m/pyinotify

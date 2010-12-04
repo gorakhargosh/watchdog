@@ -29,12 +29,23 @@ You can use pip_ to install |project_name| quickly and easily::
 Need more help with installing? See :ref:`installation`.
 
 
+User's Guide
+============
+
 .. toctree::
    :maxdepth: 2
 
    installation
    quickstart
    api
+
+Contribute
+==========
+Found a bug in or want a feature added to |project_name|?
+You can fork the official `code repository`_ or file an issue ticket
+at the `issue tracker`_. You can also ask questions at the official
+`mailing list`_.
+
 
 Indices and tables
 ==================

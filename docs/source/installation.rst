@@ -74,8 +74,8 @@ using.
 .. _select_backport: http://pypi.python.org/pypi/select_backport/
 
 
-Supported Platforms
--------------------
+Supported Platforms (and Caveats)
+---------------------------------
 |project_name| uses native APIs as much as possible falling back
 to polling the disk periodically to compare directory snapshots
 only when it cannot use an API natively-provided by the underlying
