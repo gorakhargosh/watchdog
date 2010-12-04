@@ -1,4 +1,5 @@
-# nosetests continuously. 
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import os
 import os.path
@@ -72,10 +73,23 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         command = sys.argv[2]
     else:
-        #command = "make -C docs html; bin/python tests/run_tests.py"
-        # The reports coverage generates all by itself are more user friendly than the ones which nosetests generates.
-        command = "coverage erase; bin/python tests/run_tests.py; coverage html"
-        #command = "bin/python tests/run_tests.py"
+        commands = [
+            # Build documentation automatically as well as the source code
+            # changes.
+            "make -C docs html",
+
+            # The reports coverage generates all by itself are more
+            # user-friendly than the ones which `nosetests --with-coverage`
+            # generates. Therefore, we call `coverage` explicitly to
+            # generate reports, and to keep the reports in synchronization
+            # with the source code, we erase all coverage information
+            # before regenerating reports or running `nosetests`.
+            "bin/coverage erase",
+            "bin/python-tests tests/run_tests.py",
+            "bin/coverage html",
+        ]
+        command = '; '.join(commands)
+
 
     previous_checksum = 0
     while True:
@@ -85,5 +99,5 @@ if __name__ == "__main__":
             subprocess.Popen(command, shell=True)
         time.sleep(2)
 
-        
+
 
