@@ -397,7 +397,6 @@ class LoggingEventHandler(FileSystemEventHandler):
 
 class LoggingFileSystemEventHandler(LoggingEventHandler):
     """For backwards-compatibility. Please use :class:`LoggingEventHandler` instead."""
-    pass
 
 
 def generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
@@ -436,5 +435,4 @@ class EventQueue(OrderedSetQueue):
     adding themselves to the queue to avoid dispatching multiple event handling
     calls.
     """
-    pass
 
