@@ -33,21 +33,21 @@ from watchdog.utils import DaemonThread, real_absolute_path, has_attribute
 try:
     import pyinotify
     #logging.debug('Using InotifyObserver.')
-    from watchdog.observers.inotify_observer import InotifyObserver as Observer
+    from watchdog.observers.inotify_observer import InotifyObserver as _Observer
 except ImportError:
     try:
         import _watchdog_fsevents
-        from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
+        from watchdog.observers.fsevents_observer import FSEventsObserver as _Observer
         #logging.debug('Using FSEventsObserver.')
     except ImportError:
         import select
         if has_attribute(select, 'kqueue') and sys.version_info > (2, 6, 0):
-            from watchdog.observers.kqueue_observer import KqueueObserver as Observer
+            from watchdog.observers.kqueue_observer import KqueueObserver as _Observer
             #logging.debug('Using KqueueObserver.')
         else:
             try:
                 import select_backport as select
-                from watchdog.observers.kqueue_observer import KqueueObserver as Observer
+                from watchdog.observers.kqueue_observer import KqueueObserver as _Observer
                 #logging.debug('Using KqueueObserver from `select_backport`')
             except ImportError:
                 try:
@@ -55,10 +55,58 @@ except ImportError:
                     import win32con
                     #logging.debug('Using Win32Observer.')
                     #from watchdog.observers.win32_observer import Win32Observer as Observer
-                    from watchdog.observers.win32ioc_observer import Win32IOCObserver as Observer
+                    from watchdog.observers.win32ioc_observer import Win32IOCObserver as _Observer
                 except ImportError:
                     #logging.debug('Using PollingObserver as fallback.')
-                    from watchdog.observers.polling_observer import PollingObserver as Observer
+                    from watchdog.observers.polling_observer import PollingObserver as _Observer
+
+class Observer(_Observer):
+    """
+    Observer thread that allows scheduling event handling
+    for specified paths without blocking the main thread of the callee
+    Python program.
+
+    :param interval:
+        Interval (in seconds) to check for events.
+    :type interval:
+        ``int``
+    """
+    def __init__(self, interval=1):
+        super(Observer, self).__init__(interval=interval)
+
+    def schedule(self, name, event_handler, paths=None, recursive=False):
+        """
+        Schedules watching all the paths and calls appropriate methods specified
+        in the given event handler in response to file system events.
+
+        :param name:
+            A unique symbolic name used to identify this set of paths and the
+            associated event handler. This identifier is used to unschedule
+            watching using the :meth:`Observer.unschedule` method.
+        :type name:
+            ``str``
+        :param event_handler:
+            An event handler instance that has appropriate event handling
+            methods which will be called by the observer in response to
+            file system events.
+        :type event_handler:
+            :class:`watchdog.events.FileSystemEventHandler` or a subclass
+        :param paths:
+            A list of directory paths that will be monitored.
+        :type paths:
+            an iterable, for example, a ``list`` or ``set``, of ``str``
+        """
+        _Observer.schedule(self, name, event_handler, paths, recursive)
+
+    def unschedule(self, *names):
+        """Unschedules watching all the paths specified for a given names
+        and detaches all associated event handlers."""
+        _Observer.unschedule(self, *names)
+
+
+    def stop(self):
+        """Stops all event monitoring for an :class:`Observer` instance."""
+        _Observer.stop(self)
 
 
 def _watch(event_handler, paths, recursive=False, main_callback=None):

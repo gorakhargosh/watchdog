@@ -33,13 +33,14 @@ A Simple Example
 
     import time
     import logging
-    import watchdog
+    from watchdog.observers import Observer
+    from watchdog.events import LoggingEventHandler
 
     logging.basicConfig(level=logging.DEBUG)
 
-    observer = watchdog.observers.Observer()
+    observer = Observer()
     observer.schedule(name='a-unique-name',
-                      event_handler=watchdog.events.LoggingEventHandler(),
+                      event_handler=LoggingEventHandler(),
                       paths=['.'],
                       recursive=False)
     observer.start()

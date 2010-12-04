@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-"""   
+"""
     :module: watchdog.events
     :author: Gora Khargosh <gora.khargosh@gmail.com>
 """
@@ -47,33 +47,9 @@ class FileSystemEvent(object):
     """
     Immutable type that represents a file system event that is triggered
     when a change occurs on the monitored file system.
-    
+
     All FileSystemEvent objects are required to be immutable and hence
     can be used as keys in dictionaries or be added to sets.
-    
-    **Usage**
-    
-    >>> a = FileSystemEvent('modified', '/path/x', False)
-    >>> equal_a = FileSystemEvent('modified', '/path/x', False)
-    >>> not_equal_a_1 = FileSystemEvent('modified', '/path/y', False)
-    >>> not_equal_a_2 = FileSystemEvent('modified', '/path/x', True)
-    >>> not_equal_a_3 = FileSystemEvent('deleted', '/path/x', False)
-    >>> a == equal_a
-    True
-    >>> a != equal_a
-    False
-    >>> a == not_equal_a_1
-    False
-    >>> a != not_equal_a_1
-    True
-    >>> a == not_equal_a_2
-    False
-    >>> a != not_equal_a_2
-    True
-    >>> a == not_equal_a_3
-    False
-    >>> a != not_equal_a_3
-    True
     """
     def __init__(self, event_type, src_path, is_directory=False):
         self._src_path = src_path
@@ -258,14 +234,14 @@ dest_path=%(dest_path)s>" % \
 
     def sub_moved_events(self, _walker=os.walk):
         """Generates moved events for file sytem objects within the moved directory.
-        
-        
+
+
         :param _walker:
             Walker used to walk directory trees :func:`os.walk` style. Sanity tests
-            use this parameter to inject a mock walker that behaves like 
+            use this parameter to inject a mock walker that behaves like
             :func:`os.walk`.
-        :returns: 
-            iterable of event objects of type :class:`FileMovedEvent` and 
+        :returns:
+            iterable of event objects of type :class:`FileMovedEvent` and
             :class:`DirMovedEvent`.
         """
         return list(generate_sub_moved_events_for(self.src_path, self.dest_path, _walker=_walker))
@@ -279,9 +255,9 @@ class FileSystemEventHandler(object):
     def _dispatch(self, event):
         """Dispatches events to the appropriate methods.
 
-        :param event: 
+        :param event:
             The event object representing the file system event.
-        :type event: 
+        :type event:
             :class:`FileSystemEvent`
         """
         self.on_any_event(event)
@@ -298,9 +274,9 @@ class FileSystemEventHandler(object):
     def on_any_event(self, event):
         """Catch-all event handler.
 
-        :param event: 
+        :param event:
             The event object representing the file system event.
-        :type event: 
+        :type event:
             :class:`FileSystemEvent`
         """
         return event
@@ -308,9 +284,9 @@ class FileSystemEventHandler(object):
     def on_moved(self, event):
         """Called when a file or a directory is moved or renamed.
 
-        :param event: 
+        :param event:
             Event representing file/directory movement.
-        :type event: 
+        :type event:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
         if not event.event_type == EVENT_TYPE_MOVED:
@@ -320,7 +296,7 @@ class FileSystemEventHandler(object):
     def on_created(self, event):
         """Called when a file or directory is created.
 
-        :param event: 
+        :param event:
             Event representing file/directory creation.
         :type event:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
@@ -421,9 +397,9 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     def on_any_event(self, event):
         """Catch-all event handler.
 
-        :param event: 
+        :param event:
             The event object representing the file system event.
-        :type event: 
+        :type event:
             :class:`FileSystemEvent`
         """
         super(PatternMatchingEventHandler, self).on_any_event(event)
@@ -434,9 +410,9 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     def on_moved(self, event):
         """Called when a file or a directory is moved or renamed.
 
-        :param event: 
+        :param event:
             Event representing file/directory movement.
-        :type event: 
+        :type event:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
         super(PatternMatchingEventHandler, self).on_moved(event)
@@ -446,7 +422,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     def on_created(self, event):
         """Called when a file or directory is created.
 
-        :param event: 
+        :param event:
             Event representing file/directory creation.
         :type event:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
@@ -514,20 +490,20 @@ class LoggingEventHandler(FileSystemEventHandler):
 
 
 def generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
-    """Generates an event list of :class:`DirMovedEvent` and :class:`FileMovedEvent` 
+    """Generates an event list of :class:`DirMovedEvent` and :class:`FileMovedEvent`
     objects for all the files and directories within the given moved directory
     that were moved along with the directory.
-    
-    :param src_dir_path: 
+
+    :param src_dir_path:
         The source path of the moved directory.
-    :param dest_dir_path: 
+    :param dest_dir_path:
         The destination path of the moved directory.
     :param _walker:
         Walker used to walk directory trees :func:`os.walk` style. Sanity tests
-        use this parameter to inject a mock walker that behaves like 
+        use this parameter to inject a mock walker that behaves like
         :func:`os.walk`.
     :returns:
-        An iterable of file system events of type :class:`DirMovedEvent` and 
+        An iterable of file system events of type :class:`DirMovedEvent` and
         :class:`FileMovedEvent`.
     """
     src_dir_path = absolute_path(src_dir_path)
@@ -544,7 +520,7 @@ def generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
 
 
 class EventQueue(OrderedSetQueue):
-    """Thread-safe event queue based on a thread-safe ordered-set queue 
+    """Thread-safe event queue based on a thread-safe ordered-set queue
     to ensure duplicate :class:`FileSystemEvent` objects are prevented from
     adding themselves to the queue to avoid dispatching multiple event handling
     calls.

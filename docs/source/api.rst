@@ -10,5 +10,6 @@ API Reference
 
    modules/watchdog.events
    modules/watchdog.utils.collections
+   modules/watchdog.observers
    modules/watchdog.observers.polling_observer
 
