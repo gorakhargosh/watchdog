@@ -8,7 +8,7 @@ Installation
 Linux/FreeBSD/Mac OS X system, you already have Python installed. However,
 you may wish to upgrade your system to Python 2.7 at least, because this
 version comes with updates that can reduce compatibility
-problems. See a list of :ref:`installation-dependencies`
+problems. See a list of :ref:`installation-dependencies`.
 
 Installing from PyPI using pip
 ------------------------------
@@ -17,8 +17,8 @@ Installing from PyPI using pip
 
     $ pip install |project_name|
 
-Installing from source
-----------------------
+Installing from source tarballs
+-------------------------------
 
 .. parsed-literal::
 

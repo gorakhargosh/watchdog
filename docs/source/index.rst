@@ -11,32 +11,30 @@ Watchdog
 
 Python API library and shell utilities to monitor file system events.
 
-|project_name| is 2 things:
+Directory monitoring made easy with
+-----------------------------------
 
-* Cross-platform Python API library for monitoring file system changes.
-* Suite of shell utilities that monitor file system changes
-  and execute other shell commands in response.
+* A cross-platform API.
 
-Contents
---------
+* A shell tool to run commands in response to directory changes.
+
+Get started quickly with a simple example in :ref:`quickstart`.
+
+Easy installation
+-----------------
+You can use pip_ to install |project_name| quickly and easily::
+
+    $ pip install watchdog
+
+Need more help with installing? See :ref:`installation`.
+
 
 .. toctree::
    :maxdepth: 2
 
    installation
    quickstart
-
-
-Modules and API
----------------
-
-.. toctree::
-   :maxdepth: 2
-
-   modules/watchdog.events
-   modules/watchdog.utils.collections
-   modules/watchdog.observers.polling_observer
-
+   api
 
 Indices and tables
 ==================
