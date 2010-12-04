@@ -8,9 +8,7 @@ include docs/*.txt
 include docs/*.xml
 include docs/Makefile
 include docs/make.bat
-recursive-include docs/source/_themes *
-recursive-include docs/examples *.py *.yaml
-recursive-include docs/source *.rst *.rst.inc *.py
+recursive-include docs/source *
 #global-exclude .DS_Store
 #global-exclude Thumbs.db
 #global-exclude Desktop.ini
