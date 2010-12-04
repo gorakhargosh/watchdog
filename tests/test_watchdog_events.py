@@ -29,6 +29,15 @@ from watchdog.events import \
 path_1 = '/path/xyz'
 path_2 = '/path/abc'
 
+def assert_event_type(event, event_type):
+    assert_true(event.event_type == event_type)
+    #if event.event_type != event_type:
+    #    assert False, "%s: event.event_type is not %s" % (event, event_type)
+
+def assert_check_directory(handler, event):
+    assert_false(handler.ignore_directories and event.is_directory)
+    #if handler.ignore_directories and event.is_directory:
+    #    assert False, "Event %s should have been ignored by event.ignore_directories=True" % event
 
 class TestFileSystemEvent:
     def test___eq__(self):
@@ -291,9 +300,6 @@ class TestDirMovedEvent:
 class TestFileSystemEventHandler:
     def test__dispatch(self):
         # Utilities.
-        def assert_event_type(event, event_type):
-            if event.event_type != event_type:
-                assert False, "%s: event.event_type is not %s" % (event, event_type)
 
         dir_del_event = DirDeletedEvent('/path/blah.py')
         file_del_event = FileDeletedEvent('/path/blah.txt')
@@ -344,12 +350,6 @@ class TestPatternMatchingEventHandler:
         # Utilities.
         patterns = ['*.py', '*.txt']
         ignore_patterns = ["*.pyc"]
-        def assert_event_type(event, event_type):
-            if event.event_type != event_type:
-                assert False, "%s: event.event_type is not %s" % (event, event_type)
-        def assert_check_directory(handler, event):
-            if handler.ignore_directories and event.is_directory:
-                assert False, "Event %s should have been ignored by event.ignore_directories=True" % event
         def assert_patterns(event, patterns=patterns, ignore_patterns=ignore_patterns):
             if has_attribute(event, 'dest_path'):
                 paths = [event.src_path, event.dest_path]
@@ -479,10 +479,6 @@ class TestPatternMatchingEventHandler:
 class TestLoggingEventHandler:
     def test__dispatch(self):
         # Utilities.
-        def assert_event_type(event, event_type):
-            if event.event_type != event_type:
-                assert False, "%s: event.event_type is not %s" % (event, event_type)
-
         dir_del_event = DirDeletedEvent('/path/blah.py')
         file_del_event = FileDeletedEvent('/path/blah.txt')
         dir_cre_event = DirCreatedEvent('/path/blah.py')
