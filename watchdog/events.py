@@ -279,7 +279,6 @@ class FileSystemEventHandler(object):
         :type event:
             :class:`FileSystemEvent`
         """
-        return event
 
     def on_moved(self, event):
         """Called when a file or a directory is moved or renamed.
@@ -289,9 +288,6 @@ class FileSystemEventHandler(object):
         :type event:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
-        if not event.event_type == EVENT_TYPE_MOVED:
-            raise ValueError("Expected event type `%s`. Got `%s`", EVENT_TYPE_MOVED, event.event_type)
-        return event
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -301,9 +297,6 @@ class FileSystemEventHandler(object):
         :type event:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
-        if not event.event_type == EVENT_TYPE_CREATED:
-            raise ValueError("Expected event type `%s`. Got `%s`", EVENT_TYPE_CREATED, event.event_type)
-        return event
 
 
     def on_deleted(self, event):
@@ -314,9 +307,6 @@ class FileSystemEventHandler(object):
         :type event:
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
-        if not event.event_type == EVENT_TYPE_DELETED:
-            raise ValueError("Expected event type `%s`. Got `%s`", EVENT_TYPE_DELETED, event.event_type)
-        return event
 
     def on_modified(self, event):
         """Called when a file or directory is modified.
@@ -326,10 +316,6 @@ class FileSystemEventHandler(object):
         :type event:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
         """
-        if not event.event_type == EVENT_TYPE_MODIFIED:
-            raise ValueError("Expected event type `%s`. Got `%s`", EVENT_TYPE_MODIFIED, event.event_type)
-        return event
-
 
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
@@ -340,19 +326,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         self._patterns = patterns
         self._ignore_patterns = ignore_patterns
         self._ignore_directories = ignore_directories
-
-
-    def _check_patterns_for_event(self, event):
-        if self.ignore_directories and event.is_directory:
-            raise ValueError('Directories are ignored, yet received a directory event %s' % event)
-        if has_attribute(event, 'dest_path'):
-            paths = set([event.src_path, event.dest_path])
-        else:
-            paths = set([event.src_path])
-        filtered_paths = filter_paths(paths, self.patterns, self.ignore_patterns)
-        if not filtered_paths:
-            raise ValueError("Pattern matching failed for event %s" % event)
-
 
     @property
     def patterns(self):
@@ -402,9 +375,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`FileSystemEvent`
         """
-        super(PatternMatchingEventHandler, self).on_any_event(event)
-        self._check_patterns_for_event(event)
-        return event
 
 
     def on_moved(self, event):
@@ -415,9 +385,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
-        super(PatternMatchingEventHandler, self).on_moved(event)
-        self._check_patterns_for_event(event)
-        return event
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -427,9 +394,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
-        super(PatternMatchingEventHandler, self).on_created(event)
-        self._check_patterns_for_event(event)
-        return event
 
 
     def on_deleted(self, event):
@@ -440,9 +404,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
-        super(PatternMatchingEventHandler, self).on_deleted(event)
-        self._check_patterns_for_event(event)
-        return event
 
     def on_modified(self, event):
         """Called when a file or directory is modified.
@@ -452,9 +413,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
         """
-        super(PatternMatchingEventHandler, self).on_modified(event)
-        self._check_patterns_for_event(event)
-        return event
 
 
 class LoggingEventHandler(FileSystemEventHandler):
@@ -464,28 +422,24 @@ class LoggingEventHandler(FileSystemEventHandler):
 
         what = 'directory' if event.is_directory else 'file'
         logging.info("Moved %s: from %s to %s", what, event.src_path, event.dest_path)
-        return event
 
     def on_created(self, event):
         super(LoggingEventHandler, self).on_created(event)
 
         what = 'directory' if event.is_directory else 'file'
         logging.info("Created %s: %s", what, event.src_path)
-        return event
 
     def on_deleted(self, event):
         super(LoggingEventHandler, self).on_deleted(event)
 
         what = 'directory' if event.is_directory else 'file'
         logging.info("Deleted %s: %s", what, event.src_path)
-        return event
 
     def on_modified(self, event):
         super(LoggingEventHandler, self).on_modified(event)
 
         what = 'directory' if event.is_directory else 'file'
         logging.info("Modified %s: %s", what, event.src_path)
-        return event
 
 
 class LoggingFileSystemEventHandler(LoggingEventHandler):

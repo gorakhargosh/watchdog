@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# test_watchdog_events.py: tests for the watchdog.events module.
 
 from nose.tools import *
 from nose import SkipTest
@@ -288,111 +290,57 @@ class TestDirMovedEvent:
 
 class TestFileSystemEventHandler:
     def test__dispatch(self):
-        class AssertingEventHandler(FileSystemEventHandler):
+        # Utilities.
+        def assert_event_type(event, event_type):
+            if event.event_type != event_type:
+                assert False, "%s: event.event_type is not %s" % (event, event_type)
+
+        dir_del_event = DirDeletedEvent('/path/blah.py')
+        file_del_event = FileDeletedEvent('/path/blah.txt')
+        dir_cre_event = DirCreatedEvent('/path/blah.py')
+        file_cre_event = FileCreatedEvent('/path/blah.txt')
+        dir_mod_event = DirModifiedEvent('/path/blah.py')
+        file_mod_event = FileModifiedEvent('/path/blah.txt')
+        dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
+        file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
+
+        all_events = [
+            dir_mod_event,
+            dir_del_event,
+            dir_cre_event,
+            dir_mov_event,
+            file_mod_event,
+            file_del_event,
+            file_cre_event,
+            file_mov_event,
+        ]
+
+        class TestableEventHandler(FileSystemEventHandler):
             def on_any_event(self, event):
                 assert True
+
             def on_modified(self, event):
-                assert False, "Unreachable code."
+                assert_event_type(event, EVENT_TYPE_MODIFIED)
+
             def on_deleted(self, event):
-                assert False, "Unreachable code."
-            def on_created(self, event):
-                assert False, "Unreachable code."
+                assert_event_type(event, EVENT_TYPE_DELETED)
+
             def on_moved(self, event):
-                assert False, "Unreachable code."
+                assert_event_type(event, EVENT_TYPE_MOVED)
 
-        class ModifiedEventHandler(AssertingEventHandler):
-            def on_modified(self, event):
-                assert True
-        class DeletedEventHandler(AssertingEventHandler):
-            def on_deleted(self, event):
-                assert True
-        class CreatedEventHandler(AssertingEventHandler):
             def on_created(self, event):
-                assert True
-        class MovedEventHandler(AssertingEventHandler):
-            def on_moved(self, event):
-                assert True
+                assert_event_type(event, EVENT_TYPE_CREATED)
 
-        modified_handler = ModifiedEventHandler()
-        deleted_handler = DeletedEventHandler()
-        created_handler = CreatedEventHandler()
-        moved_handler = MovedEventHandler()
+        handler = TestableEventHandler()
 
-        modified_event = DirModifiedEvent('/path/x')
-        deleted_event = DirDeletedEvent('/path/x')
-        created_event = FileCreatedEvent('/path/x')
-        moved_event = FileMovedEvent('/path/abc', '/path/xyz')
-
-        modified_handler._dispatch(modified_event)
-        assert_raises(AssertionError, modified_handler._dispatch, created_event)
-        assert_raises(AssertionError, modified_handler._dispatch, deleted_event)
-        assert_raises(AssertionError, modified_handler._dispatch, moved_event)
-
-        deleted_handler._dispatch(deleted_event)
-        assert_raises(AssertionError, deleted_handler._dispatch, created_event)
-        assert_raises(AssertionError, deleted_handler._dispatch, modified_event)
-        assert_raises(AssertionError, deleted_handler._dispatch, moved_event)
-
-        created_handler._dispatch(created_event)
-        assert_raises(AssertionError, created_handler._dispatch, deleted_event)
-        assert_raises(AssertionError, created_handler._dispatch, modified_event)
-        assert_raises(AssertionError, created_handler._dispatch, moved_event)
-
-        moved_handler._dispatch(moved_event)
-        assert_raises(AssertionError, moved_handler._dispatch, created_event)
-        assert_raises(AssertionError, moved_handler._dispatch, modified_event)
-        assert_raises(AssertionError, moved_handler._dispatch, deleted_event)
-
-    def test_on_any_event(self):
-        handler = FileSystemEventHandler()
-        event = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, is_directory=False)
-        assert_equal(event, handler.on_any_event(event))
-
-    def test_on_created(self):
-        handler = FileSystemEventHandler()
-
-        event = FileCreatedEvent(path_1)
-        assert_equal(event, handler.on_created(event))
-        event = DirCreatedEvent(path_1)
-        assert_equal(event, handler.on_created(event))
-        event = DirDeletedEvent(path_2)
-        assert_raises(ValueError, handler.on_created, event)
-
-    def test_on_deleted(self):
-        handler = FileSystemEventHandler()
-
-        event = FileDeletedEvent(path_1)
-        assert_equal(event, handler.on_deleted(event))
-        event = DirDeletedEvent(path_1)
-        assert_equal(event, handler.on_deleted(event))
-        event = DirModifiedEvent(path_2)
-        assert_raises(ValueError, handler.on_deleted, event)
-
-    def test_on_modified(self):
-        handler = FileSystemEventHandler()
-
-        event = FileModifiedEvent(path_1)
-        assert_equal(event, handler.on_modified(event))
-        event = DirModifiedEvent(path_1)
-        assert_equal(event, handler.on_modified(event))
-        event = DirDeletedEvent(path_2)
-        assert_raises(ValueError, handler.on_modified, event)
-
-    def test_on_moved(self):
-        handler = FileSystemEventHandler()
-
-        event = FileMovedEvent(path_1, path_2)
-        assert_equal(event, handler.on_moved(event))
-        event = DirMovedEvent(path_1, path_2)
-        assert_equal(event, handler.on_moved(event))
-        event = DirDeletedEvent(path_2)
-        assert_raises(ValueError, handler.on_moved, event)
+        for event in all_events:
+            handler._dispatch(event)
 
 g_allowed_patterns = ["*.py", "*.txt"]
 g_ignore_patterns = ["*.foo"]
 
 class TestPatternMatchingEventHandler:
-    def test_dispatch(self):
+    def test__dispatch(self):
         # Utilities.
         patterns = ['*.py', '*.txt']
         ignore_patterns = ["*.pyc"]
@@ -468,7 +416,7 @@ class TestPatternMatchingEventHandler:
         ]
         all_events = all_file_events + all_dir_events
 
-        class TestingPatternMatchingEventHandler(PatternMatchingEventHandler):
+        class TestableEventHandler(PatternMatchingEventHandler):
             def on_any_event(self, event):
                 assert_check_directory(self, event)
 
@@ -492,17 +440,18 @@ class TestPatternMatchingEventHandler:
                 assert_event_type(event, EVENT_TYPE_CREATED)
                 assert_patterns(event)
 
-        no_dirs_handler = TestingPatternMatchingEventHandler(patterns=patterns,
-                                                             ignore_patterns=ignore_patterns,
-                                                             ignore_directories=True)
-        handler = TestingPatternMatchingEventHandler(patterns=patterns,
-                                                     ignore_patterns=ignore_patterns,
-                                                     ignore_directories=False)
+        no_dirs_handler = TestableEventHandler(patterns=patterns,
+                                               ignore_patterns=ignore_patterns,
+                                               ignore_directories=True)
+        handler = TestableEventHandler(patterns=patterns,
+                                       ignore_patterns=ignore_patterns,
+                                       ignore_directories=False)
 
         for event in all_events:
             no_dirs_handler._dispatch(event)
         for event in all_events:
             handler._dispatch(event)
+
 
     def test___init__(self):
         handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
@@ -526,108 +475,58 @@ class TestPatternMatchingEventHandler:
         handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
         assert_equals(handler1.patterns, g_allowed_patterns)
 
-    def test_on_any_event(self):
-        handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
-        handler2 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, False)
-
-        assert_raises(ValueError, handler1.on_any_event, DirModifiedEvent('foobar.py'))
-        event = DirModifiedEvent('foobar.py')
-        assert_equal(event, handler2.on_any_event(event))
-        assert_raises(ValueError, handler1.on_any_event, FileModifiedEvent('foobar.boo'))
-        event = FileModifiedEvent('foobar.py')
-        assert_equal(event, handler1.on_any_event(event))
-
-    def test_on_moved(self):
-        handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
-        handler2 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, False)
-
-        assert_raises(ValueError, handler1.on_moved, DirModifiedEvent('foobar.py'))
-        assert_raises(ValueError, handler1.on_moved, FileMovedEvent('foobar.boo', 'foobar.blah'))
-        event = FileMovedEvent('foobar.py', 'foobar.blah')
-        assert_equal(event, handler1.on_moved(event))
-        event = DirMovedEvent('foobar.py', 'foobar')
-        assert_equal(event, handler2.on_moved(event))
-
-
-    def test_on_created(self):
-        handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
-        handler2 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, False)
-
-        event = DirCreatedEvent('foobar.py')
-        assert_raises(ValueError, handler1.on_created, event)
-        assert_equal(event, handler2.on_created(event))
-
-        assert_raises(ValueError, handler1.on_created, FileMovedEvent('foobar.boo', 'foobar.blah'))
-
-        event = FileCreatedEvent('foobar.py')
-        assert_equal(event, handler1.on_created(event))
-
-    def test_on_deleted(self):
-        handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
-        handler2 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, False)
-
-        event = DirDeletedEvent('foobar.py')
-        assert_raises(ValueError, handler1.on_deleted, event)
-        assert_equal(event, handler2.on_deleted(event))
-
-        assert_raises(ValueError, handler1.on_deleted, FileMovedEvent('foobar.boo', 'foobar.blah'))
-
-        event = FileDeletedEvent('foobar.py')
-        assert_equal(event, handler1.on_deleted(event))
-
-    def test_on_modified(self):
-        handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
-        handler2 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, False)
-
-        event = DirModifiedEvent('foobar.py')
-        assert_raises(ValueError, handler1.on_modified, event)
-        assert_equal(event, handler2.on_modified(event))
-
-        assert_raises(ValueError, handler1.on_modified, FileMovedEvent('foobar.boo', 'foobar.blah'))
-
-        event = FileModifiedEvent('foobar.py')
-        assert_equal(event, handler1.on_modified(event))
-
 
 class TestLoggingEventHandler:
-    def test_on_created(self):
-        handler = LoggingEventHandler()
+    def test__dispatch(self):
+        # Utilities.
+        def assert_event_type(event, event_type):
+            if event.event_type != event_type:
+                assert False, "%s: event.event_type is not %s" % (event, event_type)
 
-        event = DirModifiedEvent('/foobar')
-        assert_raises(ValueError, handler.on_created, event)
+        dir_del_event = DirDeletedEvent('/path/blah.py')
+        file_del_event = FileDeletedEvent('/path/blah.txt')
+        dir_cre_event = DirCreatedEvent('/path/blah.py')
+        file_cre_event = FileCreatedEvent('/path/blah.txt')
+        dir_mod_event = DirModifiedEvent('/path/blah.py')
+        file_mod_event = FileModifiedEvent('/path/blah.txt')
+        dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
+        file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
 
-        event = DirCreatedEvent('/foobar')
-        assert_equal(event, handler.on_created(event))
+        all_events = [
+            dir_mod_event,
+            dir_del_event,
+            dir_cre_event,
+            dir_mov_event,
+            file_mod_event,
+            file_del_event,
+            file_cre_event,
+            file_mov_event,
+        ]
 
+        class TestableEventHandler(LoggingEventHandler):
+            def on_any_event(self, event):
+                assert True
 
-    def test_on_deleted(self):
-        handler = LoggingEventHandler()
+            def on_modified(self, event):
+                super(TestableEventHandler, self).on_modified(event)
+                assert_event_type(event, EVENT_TYPE_MODIFIED)
 
-        event = DirModifiedEvent('/foobar')
-        assert_raises(ValueError, handler.on_deleted, event)
+            def on_deleted(self, event):
+                super(TestableEventHandler, self).on_deleted(event)
+                assert_event_type(event, EVENT_TYPE_DELETED)
 
-        event = FileDeletedEvent('/foobar')
-        assert_equal(event, handler.on_deleted(event))
+            def on_moved(self, event):
+                super(TestableEventHandler, self).on_moved(event)
+                assert_event_type(event, EVENT_TYPE_MOVED)
 
+            def on_created(self, event):
+                super(TestableEventHandler, self).on_created(event)
+                assert_event_type(event, EVENT_TYPE_CREATED)
 
-    def test_on_modified(self):
-        handler = LoggingEventHandler()
+        handler = TestableEventHandler()
 
-        event = DirModifiedEvent('/foobar')
-        assert_equal(event, handler.on_modified(event))
-
-        event = DirCreatedEvent('/foobar')
-        assert_raises(ValueError, handler.on_modified, event)
-
-
-    def test_on_moved(self):
-        handler = LoggingEventHandler()
-
-        event = FileMovedEvent('/foobar', '/blah')
-        assert_equal(event, handler.on_moved(event))
-
-        event = DirModifiedEvent('/foobar')
-        assert_raises(ValueError, handler.on_moved, event)
+        for event in all_events:
+            handler._dispatch(event)
 
 
 class TestGenerateSubMovedEventsFor:
