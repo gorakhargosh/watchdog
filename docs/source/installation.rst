@@ -24,6 +24,7 @@ Installing from source tarballs
 
     $ wget -c http://watchdog-python.googlecode.com/files/|project_name|-|project_version|.tar.gz
     $ tar zxvf |project_name|-|project_version|.tar.gz
+    $ cd |project_name|-|project_version|
     $ python setup.py install
 
 Installing from the code repository
