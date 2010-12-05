@@ -7,7 +7,8 @@ from watchdog.observers.api import \
     BaseObserver, \
     EventEmitter, \
     ObservedWatch, \
-    EventDispatcher
+    EventDispatcher, \
+    EventQueue
 from watchdog.events import LoggingEventHandler, FileModifiedEvent
 
 class TestObservedWatch:
@@ -41,9 +42,8 @@ class TestObservedWatch:
         assert_true(watch1.__ne__(watch_ne2))
 
     def test___repr__(self):
-        # observed_watch = ObservedWatch(path, recursive)
-        # assert_equal(expected, observed_watch.__repr__())
-        raise SkipTest # TODO: implement your test here
+        observed_watch = ObservedWatch('/foobar', True)
+        assert_equal('<ObservedWatch: path=/foobar, is_recursive=True>', observed_watch.__repr__())
 
     def test_is_recursive(self):
         # observed_watch = ObservedWatch(path, recursive)
@@ -60,45 +60,6 @@ class TestObservedWatch:
         # assert_equal(expected, observed_watch.signature())
         raise SkipTest # TODO: implement your test here
 
-class TestEventEmitterSet:
-    def test___contains__(self):
-        # event_emitter_set = EventEmitterSet()
-        # assert_equal(expected, event_emitter_set.__contains__(watch))
-        raise SkipTest # TODO: implement your test here
-
-    def test___eq__(self):
-        # event_emitter_set = EventEmitterSet()
-        # assert_equal(expected, event_emitter_set.__eq__(emitter_set))
-        raise SkipTest # TODO: implement your test here
-
-    def test___init__(self):
-        # event_emitter_set = EventEmitterSet()
-        raise SkipTest # TODO: implement your test here
-
-    def test___ne__(self):
-        # event_emitter_set = EventEmitterSet()
-        # assert_equal(expected, event_emitter_set.__ne__(emitter_set))
-        raise SkipTest # TODO: implement your test here
-
-    def test_add(self):
-        # event_emitter_set = EventEmitterSet()
-        # assert_equal(expected, event_emitter_set.add(emitter))
-        raise SkipTest # TODO: implement your test here
-
-    def test_clear(self):
-        # event_emitter_set = EventEmitterSet()
-        # assert_equal(expected, event_emitter_set.clear())
-        raise SkipTest # TODO: implement your test here
-
-    def test_get(self):
-        # event_emitter_set = EventEmitterSet()
-        # assert_equal(expected, event_emitter_set.get(watch))
-        raise SkipTest # TODO: implement your test here
-
-    def test_remove(self):
-        # event_emitter_set = EventEmitterSet()
-        # assert_equal(expected, event_emitter_set.remove(emitter))
-        raise SkipTest # TODO: implement your test here
 
 class TestEventEmitter:
     def test___init__(self):
@@ -136,10 +97,8 @@ class TestEventDispatcher:
         raise SkipTest # TODO: implement your test here
 
     def test_dispatch_event(self):
-        event_dispatcher = EventDispatcher()
         event = FileModifiedEvent('/foobar')
         watch = ObservedWatch('/path', True)
-        assert_raises(NotImplementedError, event_dispatcher.dispatch_event, event, watch)
 
         class TestableEventDispatcher(EventDispatcher):
             def dispatch_event(self, event, watch):
@@ -176,6 +135,7 @@ class TestBaseObserver:
         observer = BaseObserver(EventEmitter)
         handler = LoggingEventHandler()
 
+
         watch = observer.schedule(handler, '/foobar', True)
         observer.add_handler_for_watch(handler, watch)
         observer.add_handler_for_watch(handler, watch)
@@ -185,8 +145,10 @@ class TestBaseObserver:
         assert_raises(KeyError, observer.unschedule, watch)
 
 
-        observer.schedule(handler, '/foobar', True)
+        watch = observer.schedule(handler, '/foobar', True)
+        observer.event_queue.put((FileModifiedEvent('/foobar'), watch))
         observer.start()
+        time.sleep(1)
         observer.unschedule_all()
         observer.stop()
 

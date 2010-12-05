@@ -90,68 +90,6 @@ class ObservedWatch(object):
         return "<ObservedWatch: path=%s, is_recursive=%s>" % self.signature
 
 
-class EventEmitterSet(object):
-    """Set collection of :class:`EventEmitter`."""
-    def __init__(self):
-        self._emitters = set()
-        self._emitter_for_signature = dict()
-
-    def add(self, emitter):
-        """
-        Adds an event emitter to the set collection.
-
-        :param emitter:
-            Emitter to be added.
-        :type emitter:
-            :class:`EventEmitter`
-        """
-        self._emitter_for_signature[(emitter.watch.path, emitter.watch.is_recursive)] = emitter
-        self._emitters.add(emitter)
-
-    def remove(self, emitter):
-        """
-        Removes an emitter from the set collection.
-
-        :param emitter:
-            Emitter to be removed.
-        :type emitter:
-            :class:`EventEmitter`
-        """
-        del self._emitter_for_signature[emitter.watch.signature]
-        self._emitters.remove(emitter)
-        emitter.stop()
-
-    def get(self, watch):
-        """
-        Obtains the emitter for the given watch object.
-
-        :param path:
-            Path of the emitter.
-        :param recursive:
-            ``True`` if recursive; ``False`` otherwise.
-        :raises:
-            ``KeyError`` if an emitter is not found.
-        """
-        return self._emitter_for_signature[watch.signature]
-
-    def clear(self):
-        """
-        Removes all event emitters from the set collection.
-        """
-        for emitter in self._emitters:
-            emitter.stop()
-        self._emitters.clear()
-        self._emitter_for_signature.clear()
-
-    def __contains__(self, watch):
-        return emitter in self._emitters
-
-    def __eq__(self, emitter_set):
-        return self._emitters == emitter_set._emitters
-
-    def __ne__(self, emitter_set):
-        return self._emitters != emitter_set._emitters
-
 
 # Observer classes
 class EventEmitter(DaemonThread):
@@ -203,7 +141,6 @@ class EventEmitter(DaemonThread):
         :type interval:
             ``float``
         """
-        raise NotImplementedError()
 
     def on_thread_exit(self):
         """Override this method for cleaning up immediately before the daemon
@@ -257,7 +194,6 @@ class EventDispatcher(DaemonThread):
             An instance of :class:`ObservedWatch` or a subclass of
             :class:`ObservedWatch`
         """
-        raise NotImplementedError()
 
     def _dispatch_events(self, event_queue, timeout):
         """Consumes events from an event queue. Blocks on the queue for the
@@ -299,8 +235,28 @@ class BaseObserver(EventDispatcher):
         self._emitter_class = emitter_class
         self._lock = threading.Lock()
         self._watches = set()
-        self._emitters = EventEmitterSet()
         self._handlers = dict()
+        self._emitters = set()
+        self._emitter_for_signature = dict()
+
+
+    def _add_emitter(self, emitter):
+        self._emitter_for_signature[emitter.watch.signature] = emitter
+        self._emitters.add(emitter)
+
+    def _remove_emitter(self, emitter):
+        del self._emitter_for_signature[emitter.watch.signature]
+        self._emitters.remove(emitter)
+        emitter.stop()
+
+    def _get_emitter_for_watch(self, watch):
+        return self._emitter_for_signature[watch.signature]
+
+    def _clear_emitters(self):
+        for emitter in self._emitters:
+            emitter.stop()
+        self._emitters.clear()
+        self._emitter_for_signature.clear()
 
     def _add_handler_for_watch(self, event_handler, watch):
         try:
@@ -350,16 +306,15 @@ class BaseObserver(EventDispatcher):
                 # If we have an emitter for this watch already, we don't create a
                 # new emitter. Instead we add the handler to the event
                 # object.
-                emitter = self._emitters.get(watch)
+                emitter = self._get_emitter_for_watch(watch)
             except KeyError:
                 # Create a new emitter and start it.
                 emitter = self._emitter_class(event_queue=self.event_queue,
-                                             watch=watch,
-                                             interval=self.interval)
-                self._emitters.add(emitter)
+                                              watch=watch,
+                                              interval=self.interval)
+                self._add_emitter(emitter)
                 emitter.start()
             self._watches.add(watch)
-
         return watch
 
     def add_handler_for_watch(self, event_handler, watch):
@@ -378,7 +333,6 @@ class BaseObserver(EventDispatcher):
             :class:`ObservedWatch`
         """
         with self._lock:
-            print('adding handler for watch %s' % watch)
             self._add_handler_for_watch(event_handler, watch)
 
     def remove_handler_for_watch(self, event_handler, watch):
@@ -397,7 +351,6 @@ class BaseObserver(EventDispatcher):
             :class:`ObservedWatch`
         """
         with self._lock:
-            print('removing handler for watch %s' % watch)
             self._remove_handler_for_watch(event_handler, watch)
 
     def unschedule(self, watch):
@@ -411,9 +364,9 @@ class BaseObserver(EventDispatcher):
         """
         with self._lock:
             try:
-                emitter = self._emitters.get(watch)
+                emitter = self._get_emitter_for_watch(watch)
                 self._remove_handlers_for_watch(watch)
-                self._emitters.remove(emitter)
+                self._remove_emitter(emitter)
                 self._watches.remove(watch)
             except KeyError:
                 raise
@@ -423,7 +376,7 @@ class BaseObserver(EventDispatcher):
         handlers."""
         with self._lock:
             self._handlers.clear()
-            self._emitters.clear()
+            self._clear_emitters()
             self._watches.clear()
 
     def on_thread_exit(self):

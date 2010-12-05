@@ -16,10 +16,6 @@ Immutables
 
 Collections
 -----------
-.. autoclass:: EventEmitterSet
-   :members:
-   :show-inheritance:
-
 .. autoclass:: EventQueue
    :members:
    :show-inheritance:
