@@ -212,7 +212,7 @@ class EventEmitter(DaemonThread):
     def run(self):
         while self.should_keep_running():
             self.queue_events(self._event_queue, self.watch, self.interval)
-        self.on_exit()
+        self.on_thread_exit()
 
 
 
@@ -289,7 +289,7 @@ class EventDispatcher(DaemonThread):
                 self._dispatch_events(self.event_queue, self.interval)
             except queue.Empty:
                 continue
-        self.on_exit()
+        self.on_thread_exit()
 
 
 class BaseObserver(EventDispatcher):
@@ -317,6 +317,7 @@ class BaseObserver(EventDispatcher):
     def _remove_handler_for_watch(self, handler, watch):
         handlers = self._get_handlers_for_watch(watch)
         handlers.remove(handler)
+
 
     def schedule(self, event_handler, path, recursive=False):
         """
