@@ -89,28 +89,6 @@ class ObservedWatch(object):
     def __repr__(self):
         return "<ObservedWatch: path=%s, is_recursive=%s>" % self.signature
 
-    def add_handler(self, handler, _curried_observer):
-        """Adds a handler to the watch.
-
-        :param event_handler:
-            An event handler instance that has appropriate event handling
-            methods which will be called by the observer in response to
-            file system events.
-        :type event_handler:
-            :class:`watchdog.events.FileSystemEventHandler` or a subclass
-        """
-        _curried_observer.add_handler_for_watch(handler, self)
-
-    def remove_handler(self, handler, _curried_observer):
-        """Removes a handler to the watch.
-
-        :param event_handler:
-            Event handler to be removed.
-        :type event_handler:
-            :class:`watchdog.events.FileSystemEventHandler` or a subclass
-        """
-        _curried_observer.remove_handler_for_watch(handler, self)
-
 
 class EventEmitterSet(object):
     """Set collection of :class:`EventEmitter`."""
@@ -233,7 +211,7 @@ class EventEmitter(DaemonThread):
 
     def run(self):
         while self.should_keep_running():
-            self.queue_events(self.event_queue, self.watch, self.interval)
+            self.queue_events(self._event_queue, self.watch, self.interval)
         self.on_exit()
 
 
@@ -381,9 +359,6 @@ class BaseObserver(EventDispatcher):
                 emitter.start()
             self._watches.add(watch)
 
-        # Convenience functions for the watch object.
-        watch.add_handler = functools.partial(watch.add_handler, _curried_observer=self)
-        watch.remove_handler = functools.partial(watch.remove_handler, _curried_observer=self)
         return watch
 
     def add_handler_for_watch(self, event_handler, watch):

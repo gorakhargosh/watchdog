@@ -26,6 +26,7 @@ cover_packages = [
     #'watchdog.utils.echo',
     'watchdog.utils.dirsnapshot',
     'watchdog.utils.collections',
+    'watchdog.observers.api',
     'watchdog.observers.polling_observer',
 ]
 cover_packages_windows = [
