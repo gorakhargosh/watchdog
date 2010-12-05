@@ -38,8 +38,12 @@ except ImportError:
 from watchdog.utils import DaemonThread
 from watchdog.utils.collections import OrderedSetQueue
 
-# Collection classes
 
+DEFAULT_EMITTER_INTERVAL = 1    # in seconds.
+DEFAULT_OBSERVER_INTERVAL = 1   # in seconds.
+
+
+# Collection classes
 class EventQueue(OrderedSetQueue):
     """Thread-safe event queue based on a thread-safe ordered-set queue
     to ensure duplicate :class:`FileSystemEvent` objects are prevented from
@@ -110,7 +114,7 @@ class EventEmitter(DaemonThread):
     :type interval:
         ``float``
     """
-    def __init__(self, event_queue, watch, interval=1):
+    def __init__(self, event_queue, watch, interval=DEFAULT_EMITTER_INTERVAL):
         DaemonThread.__init__(self)
         self._event_queue = event_queue
         self._watch = watch
@@ -164,7 +168,7 @@ class EventDispatcher(DaemonThread):
     :type interval:
         ``float``
     """
-    def __init__(self, interval=1):
+    def __init__(self, interval=DEFAULT_OBSERVER_INTERVAL):
         DaemonThread.__init__(self)
         self._event_queue = EventQueue()
         self._interval = interval
@@ -230,7 +234,7 @@ class EventDispatcher(DaemonThread):
 
 class BaseObserver(EventDispatcher):
     """Base observer."""
-    def __init__(self, emitter_class, interval=1):
+    def __init__(self, emitter_class, interval=DEFAULT_OBSERVER_INTERVAL):
         EventDispatcher.__init__(self, interval)
         self._emitter_class = emitter_class
         self._lock = threading.Lock()
