@@ -43,7 +43,7 @@ from watchdog.utils import \
     real_absolute_path, \
     absolute_path, \
     DaemonThread
-from watchdog.observers import _EventEmitter
+from watchdog.utils import EventEmitter
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
@@ -57,7 +57,7 @@ from watchdog.events import \
 
 
 
-class _PollingEventEmitter(_EventEmitter):
+class _PollingEventEmitter(EventEmitter):
     """Daemon thread that monitors a given path recursively and emits
     file system events.
     """

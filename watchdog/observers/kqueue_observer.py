@@ -42,7 +42,7 @@ if platform.is_bsd() or platform.is_darwin():
 
     from watchdog.utils import absolute_path, real_absolute_path
     from watchdog.utils.dirsnapshot import DirectorySnapshot
-    from watchdog.observers import _EventEmitter
+    from watchdog.utils import EventEmitter
     from watchdog.observers.polling_observer import PollingObserver
     from watchdog.events import DirMovedEvent, DirDeletedEvent, DirCreatedEvent, DirModifiedEvent, \
         FileMovedEvent, FileDeletedEvent, FileCreatedEvent, FileModifiedEvent
@@ -125,7 +125,7 @@ if platform.is_bsd() or platform.is_darwin():
             self.is_directory = is_directory
 
 
-    class _KqueueEventEmitter(_EventEmitter):
+    class _KqueueEventEmitter(EventEmitter):
         def __init__(self, path, handler, event_queue, recursive, interval=1):
             super(_KqueueEventEmitter, self).__init__(path, handler, event_queue, recursive, interval)
 
