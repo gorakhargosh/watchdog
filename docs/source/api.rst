@@ -9,7 +9,8 @@ API Reference
    :maxdepth: 2
 
    modules/watchdog.events
-   modules/watchdog.utils.collections
    modules/watchdog.observers
    modules/watchdog.observers.polling_observer
+   modules/watchdog.utils
+   modules/watchdog.utils.collections
 

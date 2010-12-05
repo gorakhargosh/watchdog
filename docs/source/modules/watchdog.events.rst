@@ -6,10 +6,6 @@
 
 .. automodule:: watchdog.events
 
-Functions
-=========
-.. autofunction:: generate_sub_moved_events_for
-
 
 Event Classes
 =============
@@ -17,15 +13,15 @@ Event Classes
    :members:
    :show-inheritance:
    :inherited-members:
-   
+
 .. autoclass:: FileSystemMovedEvent
    :members:
    :show-inheritance:
-   
+
 .. autoclass:: FileMovedEvent
    :members:
    :show-inheritance:
-   
+
 .. autoclass:: DirMovedEvent
    :members:
    :show-inheritance:
@@ -77,4 +73,3 @@ Miscellaneous Classes
    :show-inheritance:
 
 
- 
