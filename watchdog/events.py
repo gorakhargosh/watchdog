@@ -30,10 +30,8 @@ import os
 import os.path
 import logging
 
-from watchdog.utils.collections import OrderedSetQueue
 from watchdog.utils import filter_paths, \
-    has_attribute, get_walker, absolute_path, \
-    match_allowed_and_ignored_patterns
+    has_attribute, get_walker, absolute_path
 
 
 EVENT_TYPE_MOVED = 'moved'
@@ -270,7 +268,6 @@ class FileSystemEventHandler(object):
         event_type = event.event_type
         _method_map[event_type](event)
 
-
     def on_any_event(self, event):
         """Catch-all event handler.
 
@@ -427,12 +424,4 @@ def _generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk)
             full_path = os.path.join(root, filename)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path)
             yield FileMovedEvent(renamed_path, full_path)
-
-
-class EventQueue(OrderedSetQueue):
-    """Thread-safe event queue based on a thread-safe ordered-set queue
-    to ensure duplicate :class:`FileSystemEvent` objects are prevented from
-    adding themselves to the queue to avoid dispatching multiple event handling
-    calls.
-    """
 

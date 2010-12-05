@@ -14,16 +14,3 @@ Classes
    :show-inheritance:
    :inherited-members:
 
-.. autoclass:: EventEmitter
-   :members:
-   :show-inheritance:
-   :inherited-members:
-
-.. autoclass:: EventDispatcher
-   :members:
-   :show-inheritance:
-   :inherited-members:
-
-.. autoclass:: ObserverMixin
-   :members:
-

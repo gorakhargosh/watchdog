@@ -8,7 +8,7 @@
 
 
 Event Classes
-=============
+-------------
 .. autoclass:: FileSystemEvent
    :members:
    :show-inheritance:
@@ -52,7 +52,7 @@ Event Classes
 
 
 Event Handler Classes
-=====================
+---------------------
 .. autoclass:: FileSystemEventHandler
    :members:
    :show-inheritance:
@@ -64,12 +64,3 @@ Event Handler Classes
 .. autoclass:: LoggingEventHandler
    :members:
    :show-inheritance:
-
-
-Miscellaneous Classes
-=====================
-.. autoclass:: EventQueue
-   :members:
-   :show-inheritance:
-
-
