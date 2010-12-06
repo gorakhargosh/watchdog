@@ -46,12 +46,13 @@ from watchdog.events import \
 
 class PollingEmitter(EventEmitter):
     """
-    Platform-independent emitter that polls a directory to detect file changes.
+    Platform-independent emitter that polls a directory to detect file
+    system changes.
     """
     def __init__(self, event_queue, watch, interval=DEFAULT_EMITTER_INTERVAL):
         EventEmitter.__init__(self, event_queue, watch, interval)
         self._snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
 
     def on_thread_exit(self):
         self._snapshot = None
