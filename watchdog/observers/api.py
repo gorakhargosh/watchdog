@@ -76,6 +76,8 @@ class ObservedWatch(object):
 
     @property
     def signature(self):
+        """The key signature of a watch. This is used to index handlers
+        for a particular watch."""
         return self._key()
 
     def _key(self):
