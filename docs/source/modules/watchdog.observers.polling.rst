@@ -1,10 +1,10 @@
 .. include:: ../global.rst.inc
 
-====================================
-`watchdog.observers.polling_emitter`
-====================================
+============================
+`watchdog.observers.polling`
+============================
 
-.. automodule:: watchdog.observers.polling_emitter
+.. automodule:: watchdog.observers.polling
 
 Classes
 =======

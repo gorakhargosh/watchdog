@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 
 """
-    :module: watchdog.observers.polling_emitter
+    :module: watchdog.observers.polling
     :author: Gora Khargosh <gora.khargosh@gmail.com>
 """
 
