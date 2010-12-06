@@ -25,26 +25,24 @@
     :author: Gora Khargosh <gora.khargosh@gmail.com>
 """
 
-from __future__ import with_statement
 from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_INTERVAL
-from watchdog.utils import has_attribute
 
 try:
-    from watchdog.observers.inotify_emitter import InotifyEmitter as Emitter
+    from watchdog.observers.inotify import InotifyEmitter as Emitter
 except ImportError:
     try:
-        from watchdog.observers.fsevents_emitter import FSEventsEmitter as Emitter
+        from watchdog.observers.fsevents import FSEventsEmitter as Emitter
     except ImportError:
         try:
-            from watchdog.observers.kqueue_emitter import KqueueEmitter as Emitter
+            from watchdog.observers.kqueue import KqueueEmitter as Emitter
         except ImportError:
             try:
-                from watchdog.observers.win32_async_emitter import Win32AsyncEmitter as Emitter
+                from watchdog.observers.win32_async import AsyncWin32Emitter as Emitter
             except ImportError:
                 try:
-                    from watchdog.observers.win32_sync_emitter import Win32SyncEmitter as Emitter
+                    from watchdog.observers.win32 import Win32Emitter as Emitter
                 except ImportError:
-                    from watchdog.observers.polling_emitter import PollingEmitter as Emitter
+                    from watchdog.observers.polling import PollingEmitter as Emitter
 
 
 class Observer(BaseObserver):
@@ -54,3 +52,4 @@ class Observer(BaseObserver):
     """
     def __init__(self, interval=DEFAULT_OBSERVER_INTERVAL):
         BaseObserver.__init__(self, emitter_class=Emitter, interval=interval)
+
