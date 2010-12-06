@@ -6,7 +6,7 @@ from nose import SkipTest
 from nose.tools import *
 
 from watchdog.observers.api import EventQueue, ObservedWatch
-from watchdog.observers.polling_emitter import PollingEmitter
+from watchdog.observers.polling import PollingEmitter
 
 class TestPollingEmitter:
     def test___init__(self):

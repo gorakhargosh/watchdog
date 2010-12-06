@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# polling_emitter.py: Generic polling emitter implementation.
+# polling.py: Generic polling emitter implementation.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
