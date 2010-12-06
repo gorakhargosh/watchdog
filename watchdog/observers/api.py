@@ -74,12 +74,6 @@ class ObservedWatch(object):
         """Determines whether subdirectories are watched for the path."""
         return self._is_recursive
 
-    @property
-    def signature(self):
-        """The key signature of a watch. This is used to index handlers
-        for a particular watch."""
-        return self._key()
-
     def _key(self):
         return (self.path, self.is_recursive)
 
@@ -93,7 +87,7 @@ class ObservedWatch(object):
         return hash(self._key())
 
     def __repr__(self):
-        return "<ObservedWatch: path=%s, is_recursive=%s>" % self.signature
+        return "<ObservedWatch: path=%s, is_recursive=%s>" % (self.path, self.is_recursive)
 
 
 
@@ -243,38 +237,38 @@ class BaseObserver(EventDispatcher):
         self._watches = set()
         self._handlers = dict()
         self._emitters = set()
-        self._emitter_for_signature = dict()
+        self._emitter_for_watch = dict()
 
 
     def _add_emitter(self, emitter):
-        self._emitter_for_signature[emitter.watch.signature] = emitter
+        self._emitter_for_watch[emitter.watch] = emitter
         self._emitters.add(emitter)
 
     def _remove_emitter(self, emitter):
-        del self._emitter_for_signature[emitter.watch.signature]
+        del self._emitter_for_watch[emitter.watch]
         self._emitters.remove(emitter)
         emitter.stop()
 
     def _get_emitter_for_watch(self, watch):
-        return self._emitter_for_signature[watch.signature]
+        return self._emitter_for_watch[watch]
 
     def _clear_emitters(self):
         for emitter in self._emitters:
             emitter.stop()
         self._emitters.clear()
-        self._emitter_for_signature.clear()
+        self._emitter_for_watch.clear()
 
     def _add_handler_for_watch(self, event_handler, watch):
         try:
-            self._handlers[watch.signature].add(event_handler)
+            self._handlers[watch].add(event_handler)
         except KeyError:
-            self._handlers[watch.signature] = set([event_handler])
+            self._handlers[watch] = set([event_handler])
 
     def _get_handlers_for_watch(self, watch):
-        return self._handlers[watch.signature]
+        return self._handlers[watch]
 
     def _remove_handlers_for_watch(self, watch):
-        del self._handlers[watch.signature]
+        del self._handlers[watch]
 
     def _remove_handler_for_watch(self, handler, watch):
         handlers = self._get_handlers_for_watch(watch)
