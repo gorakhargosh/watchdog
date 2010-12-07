@@ -26,16 +26,36 @@
 :synopsis: Utility classes and functions.
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 
+Functions
+---------
+
+.. autofunction:: absolute_path
+
+.. autofunction:: filter_paths
+
+.. autofunction:: get_parent_dir_path
+
+.. autofunction:: get_walker
+
+.. autofunction:: has_attribute
+
+.. autofunction:: load_class
+
+.. autofunction:: load_module
+
+.. autofunction:: match_patterns
+
+.. autofunction:: read_text_file
+
+.. autofunction:: real_absolute_path
+
+
 Classes
-=======
+-------
 .. autoclass:: DaemonThread
    :members:
    :show-inheritance:
    :inherited-members:
-
-.. autofunction:: has_attribute
-
-.. autofunction:: match_patterns
 
 """
 
@@ -50,11 +70,20 @@ def has_attribute(ob, attribute):
     """
     :func:`hasattr` swallows exceptions. :func:`has_attribute` tests a Python object for the
     presence of an attribute.
+
+    :param ob:
+        object to inspect
+    :param attribute:
+        ``str`` for the name of the attribute.
     """
     return getattr(ob, attribute, None) is not None
 
 
 class DaemonThread(threading.Thread):
+    """
+    Daemon thread convenience class, sets a few properties and makes
+    writing daemon threads a little easier.
+    """
     def __init__(self):
         threading.Thread.__init__(self)
         if has_attribute(self, 'daemon'):
@@ -98,20 +127,42 @@ if not has_attribute(DaemonThread, 'is_alive'):
 
 
 def match_patterns(pathname, patterns):
-    """Returns True if the pathname matches any of the given patterns."""
+    """
+    Returns True if the pathname matches any of the given patterns.
+
+    :param pathname:
+        A path name that will be matched against a wildcard pattern.
+    :param patterns:
+        A list of wildcard patterns to match the filename against.
+    :returns:
+        ``True`` if the pattern matches; ``False`` otherwise.
+    """
     for pattern in patterns:
         if fnmatch(pathname, pattern):
             return True
     return False
 
 
-def match_allowed_and_ignored_patterns(pathname, allowed_patterns, ignore_patterns):
-    return match_patterns(pathname, allowed_patterns) and not match_patterns(pathname, ignore_patterns)
+#def match_allowed_and_ignored_patterns(pathname, allowed_patterns, ignore_patterns):
+#    return match_patterns(pathname, allowed_patterns) and not match_patterns(pathname, ignore_patterns)
 
 
 def filter_paths(pathnames, patterns=["*"], ignore_patterns=[]):
-    """Filters from a set of paths based on acceptable patterns and
-    ignorable patterns."""
+    """
+    Filters from a set of paths based on acceptable patterns and
+    ignorable patterns.
+
+    :param pathnames:
+        A list of path names that will be filtered based on matching and
+        ignored patterns.
+    :param patterns:
+        Allow filenames matching wildcard patterns specified in this list.
+    :param ignore_patterns:
+        Ignores filenames matching wildcard patterns specified in this list.
+    :returns:
+        A list of pathnames that matched the allowable patterns and passed
+        through the ignored patterns.
+    """
     result = []
     if patterns is None:
         patterns = []
@@ -168,12 +219,27 @@ def load_class(dotted_path, *args, **kwargs):
 
 
 def read_text_file(file_path, mode='rb'):
-    """Returns the contents of a file after opening it in read-only mode."""
+    """
+    Returns the contents of a file after opening it in read-only mode.
+
+    :param file_path:
+        Path to the file to be read from.
+    :param mode:
+        Mode string.
+    """
     return open(file_path, mode).read()
 
 
 def get_walker(recursive=False):
-    """Returns a recursive or a non-recursive directory walker."""
+    """
+    Returns a recursive or a non-recursive directory walker.
+
+    :param recursive:
+        ``True`` produces a recursive walker; ``False`` produces a non-recursive
+        walker
+    :returns:
+        A walker function.
+    """
     if recursive:
         walk = os.walk
     else:
@@ -185,15 +251,38 @@ def get_walker(recursive=False):
     return walk
 
 
-
 def absolute_path(path):
+    """
+    Returns the absolute path for the given path and normalizes the path as well.
+
+    :param path:
+        Path for which the absolute normalized path will be found.
+    :returns:
+        Absolute normalized path.
+    """
     return os.path.abspath(os.path.normpath(path))
 
 
 def real_absolute_path(path):
+    """
+    Returns the real absolute normalized path for the given path.
+
+    :param path:
+        Path for which the real absolute normalized path will be found.
+    :returns:
+        Real absolute normalized path.
+    """
     return os.path.realpath(absolute_path(path))
 
 
 def get_parent_dir_path(path):
+    """
+    Returns the parent directory path.
+
+    :param path:
+        Path for which the parent directory will be obtained.
+    :returns:
+        Parent directory path.
+    """
     return absolute_path(os.path.dirname(path))
 
