@@ -40,7 +40,7 @@ from watchdog.utils.collections import OrderedSetQueue
 
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
-DEFAULT_OBSERVER_INTERVAL = 1   # in seconds.
+DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
 
 
 # Collection classes
@@ -163,26 +163,26 @@ class EventDispatcher(DaemonThread):
     Consumer daemon thread base class subclassed by event observer threads
     that dispatch events from an event queue to appropriate event handlers.
 
-    :param interval:
-        Interval period (in seconds) between successive attempts at dispatching
-        events.
-    :type interval:
+    :param tiemout:
+        Event queue blocking timeout (in seconds).
+    :type timeout:
         ``float``
     """
-    def __init__(self, interval=DEFAULT_OBSERVER_INTERVAL):
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         DaemonThread.__init__(self)
         self._event_queue = EventQueue()
-        self._interval = interval
+        self._timeout = timeout
 
     @property
-    def interval(self):
+    def timeout(self):
         """Event queue block timeout."""
-        return self._interval
+        return self._timeout
 
     @property
     def event_queue(self):
-        """The event queue which is populated with file system events and from
-        which events are dispatched."""
+        """The event queue which is populated with file system events
+        by emitters and from which events are dispatched by a dispatcher
+        thread."""
         return self._event_queue
 
     def dispatch_event(self, event, watch):
@@ -227,7 +227,7 @@ class EventDispatcher(DaemonThread):
     def run(self):
         while self.should_keep_running():
             try:
-                self._dispatch_events(self.event_queue, self.interval)
+                self._dispatch_events(self.event_queue, self.timeout)
             except queue.Empty:
                 continue
         self.on_thread_exit()
@@ -235,8 +235,8 @@ class EventDispatcher(DaemonThread):
 
 class BaseObserver(EventDispatcher):
     """Base observer."""
-    def __init__(self, emitter_class, interval=DEFAULT_OBSERVER_INTERVAL):
-        EventDispatcher.__init__(self, interval)
+    def __init__(self, emitter_class, timeout=DEFAULT_OBSERVER_TIMEOUT):
+        EventDispatcher.__init__(self, timeout)
         self._emitter_class = emitter_class
         self._lock = threading.Lock()
         self._watches = set()
@@ -316,7 +316,7 @@ class BaseObserver(EventDispatcher):
                 # Create a new emitter and start it.
                 emitter = self._emitter_class(event_queue=self.event_queue,
                                               watch=watch,
-                                              timeout=self.interval)
+                                              timeout=self.timeout)
                 self._add_emitter(emitter)
                 emitter.start()
             self._watches.add(watch)

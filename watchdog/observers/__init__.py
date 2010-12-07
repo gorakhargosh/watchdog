@@ -25,7 +25,7 @@
     :author: Gora Khargosh <gora.khargosh@gmail.com>
 """
 
-from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_INTERVAL
+from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_TIMEOUT
 
 try: # pragma: no cover
     from watchdog.observers.inotify import InotifyEmitter as Emitter
@@ -50,6 +50,6 @@ class Observer(BaseObserver):
     Observer thread that schedules watching directories and dispatches
     calls to event handlers.
     """
-    def __init__(self, interval=DEFAULT_OBSERVER_INTERVAL):
-        BaseObserver.__init__(self, emitter_class=Emitter, interval=interval)
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+        BaseObserver.__init__(self, emitter_class=Emitter, timeout=timeout)
 

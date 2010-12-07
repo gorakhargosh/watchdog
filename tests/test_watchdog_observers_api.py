@@ -68,34 +68,34 @@ class TestEventEmitter:
         event_emitter = EventEmitter(event_queue, watch, timeout=1)
         event_emitter.queue_event(FileModifiedEvent('/foobar/blah'))
 
-    def test_interval(self):
-        # event_emitter = EventEmitter(event_queue, watch, interval)
-        # assert_equal(expected, event_emitter.interval())
+    def test_timeout(self):
+        # event_emitter = EventEmitter(event_queue, watch, timeout)
+        # assert_equal(expected, event_emitter.timeout())
         raise SkipTest # TODO: implement your test here
 
     def test_on_thread_exit(self):
-        # event_emitter = EventEmitter(event_queue, watch, interval)
+        # event_emitter = EventEmitter(event_queue, watch, timeout)
         # assert_equal(expected, event_emitter.on_thread_exit())
         raise SkipTest # TODO: implement your test here
 
     def test_queue_events(self):
-        # event_emitter = EventEmitter(event_queue, watch, interval)
-        # assert_equal(expected, event_emitter.queue_events(event_queue, watch, interval))
+        # event_emitter = EventEmitter(event_queue, watch, timeout)
+        # assert_equal(expected, event_emitter.queue_events(event_queue, watch, timeout))
         raise SkipTest # TODO: implement your test here
 
     def test_run(self):
-        # event_emitter = EventEmitter(event_queue, watch, interval)
+        # event_emitter = EventEmitter(event_queue, watch, timeout)
         # assert_equal(expected, event_emitter.run())
         raise SkipTest # TODO: implement your test here
 
     def test_watch(self):
-        # event_emitter = EventEmitter(event_queue, watch, interval)
+        # event_emitter = EventEmitter(event_queue, watch, timeout)
         # assert_equal(expected, event_emitter.watch())
         raise SkipTest # TODO: implement your test here
 
 class TestEventDispatcher:
     def test___init__(self):
-        # event_dispatcher = EventDispatcher(interval)
+        # event_dispatcher = EventDispatcher(timeout)
         raise SkipTest # TODO: implement your test here
 
     def test_dispatch_event(self):
@@ -113,22 +113,22 @@ class TestEventDispatcher:
         event_dispatcher.stop()
 
     def test_event_queue(self):
-        # event_dispatcher = EventDispatcher(interval)
+        # event_dispatcher = EventDispatcher(timeout)
         # assert_equal(expected, event_dispatcher.event_queue())
         raise SkipTest # TODO: implement your test here
 
-    def test_interval(self):
-        # event_dispatcher = EventDispatcher(interval)
-        # assert_equal(expected, event_dispatcher.interval())
+    def test_timeout(self):
+        # event_dispatcher = EventDispatcher(timeout)
+        # assert_equal(expected, event_dispatcher.timeout())
         raise SkipTest # TODO: implement your test here
 
     def test_on_thread_exit(self):
-        # event_dispatcher = EventDispatcher(interval)
+        # event_dispatcher = EventDispatcher(timeout)
         # assert_equal(expected, event_dispatcher.on_thread_exit())
         raise SkipTest # TODO: implement your test here
 
     def test_run(self):
-        # event_dispatcher = EventDispatcher(interval)
+        # event_dispatcher = EventDispatcher(timeout)
         # assert_equal(expected, event_dispatcher.run())
         raise SkipTest # TODO: implement your test here
 
@@ -155,41 +155,41 @@ class TestBaseObserver:
         observer.stop()
 
     def test___init__(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         raise SkipTest # TODO: implement your test here
 
     def test_add_handler_for_watch(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         # assert_equal(expected, base_observer.add_handler_for_watch(event_handler, watch))
         raise SkipTest # TODO: implement your test here
 
     def test_dispatch_event(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         # assert_equal(expected, base_observer.dispatch_event(event, watch))
         raise SkipTest # TODO: implement your test here
 
     def test_on_thread_exit(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         # assert_equal(expected, base_observer.on_thread_exit())
         raise SkipTest # TODO: implement your test here
 
     def test_remove_handler_for_watch(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         # assert_equal(expected, base_observer.remove_handler_for_watch(event_handler, watch))
         raise SkipTest # TODO: implement your test here
 
     def test_schedule(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         # assert_equal(expected, base_observer.schedule(event_handler, path, recursive))
         raise SkipTest # TODO: implement your test here
 
     def test_unschedule(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         # assert_equal(expected, base_observer.unschedule(watch))
         raise SkipTest # TODO: implement your test here
 
     def test_unschedule_all(self):
-        # base_observer = BaseObserver(emitter_class, interval)
+        # base_observer = BaseObserver(emitter_class, timeout)
         # assert_equal(expected, base_observer.unschedule_all())
         raise SkipTest # TODO: implement your test here
 

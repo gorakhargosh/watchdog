@@ -11,8 +11,8 @@ from watchdog.observers.polling import PollingEmitter
 class TestPollingEmitter:
     def test___init__(self):
         #class PollingObserver(BaseObserver):
-        #    def __init__(self, interval=1):
-        #        BaseObserver.__init__(self, emitter_class=PollingEmitter, interval=interval)
+        #    def __init__(self, timeout=1):
+        #        BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
         event_queue = EventQueue()
         watch = ObservedWatch('.', recursive=False)
         emitter = PollingEmitter(event_queue, watch)
@@ -23,12 +23,12 @@ class TestPollingEmitter:
 
 
     def test_on_thread_exit(self):
-        # polling_emitter = PollingEmitter(event_queue, watch, interval)
+        # polling_emitter = PollingEmitter(event_queue, watch, timeout)
         # assert_equal(expected, polling_emitter.on_thread_exit())
         raise SkipTest # TODO: implement your test here
 
     def test_queue_events(self):
-        # polling_emitter = PollingEmitter(event_queue, watch, interval)
-        # assert_equal(expected, polling_emitter.queue_events(event_queue, watch, interval))
+        # polling_emitter = PollingEmitter(event_queue, watch, timeout)
+        # assert_equal(expected, polling_emitter.queue_events(event_queue, watch, timeout))
         raise SkipTest # TODO: implement your test here
 
