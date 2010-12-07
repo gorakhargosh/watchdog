@@ -35,11 +35,11 @@ try:
 except ImportError:
     import Queue as queue
 
-from watchdog.utils import DaemonThread
+from watchdog.utils import DaemonThread, real_absolute_path
 from watchdog.utils.collections import OrderedSetQueue
 
 
-DEFAULT_EMITTER_INTERVAL = 1    # in seconds.
+DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_INTERVAL = 1   # in seconds.
 
 
@@ -61,7 +61,7 @@ class ObservedWatch(object):
         ``True`` if watch is recursive; ``False`` otherwise.
     """
     def __init__(self, path, recursive):
-        self._path = path
+        self._path = real_absolute_path(path)
         self._is_recursive = recursive
 
     @property
@@ -105,26 +105,29 @@ class EventEmitter(DaemonThread):
         The watch to observe and produce events for.
     :type watch:
         :class:`ObservedWatch`
-    :param interval:
-        Interval period (in seconds) between successive attempts at reading events.
-    :type interval:
+    :param timeout:
+        Timeout (in seconds) between successive attempts at reading events.
+    :type timeout:
         ``float``
     """
-    def __init__(self, event_queue, watch, interval=DEFAULT_EMITTER_INTERVAL):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         DaemonThread.__init__(self)
         self._event_queue = event_queue
         self._watch = watch
-        self._interval = interval
+        self._timeout = timeout
 
     @property
-    def interval(self):
-        return self._interval
+    def timeout(self):
+        return self._timeout
 
     @property
     def watch(self):
         return self._watch
 
-    def queue_events(self, event_queue, watch, interval):
+    def queue_event(self, event):
+        self.event_queue.put((event, self.watch))
+
+    def queue_events(self, timeout):
         """Override this method to populate the event queue with events
         per interval period.
 
@@ -136,9 +139,10 @@ class EventEmitter(DaemonThread):
             The watch to observe and produce events for.
         :type watch:
             :class:`ObservedWatch`
-        :param interval:
-            Interval period (in seconds) between successive attempts at reading events.
-        :type interval:
+        :param timeout:
+            Timeout (in seconds) between successive attempts at
+            reading events.
+        :type timeout:
             ``float``
         """
 
@@ -148,7 +152,7 @@ class EventEmitter(DaemonThread):
 
     def run(self):
         while self.should_keep_running():
-            self.queue_events(self._event_queue, self.watch, self.interval)
+            self.queue_events(self._event_queue, self.watch, self.timeout)
         self.on_thread_exit()
 
 
