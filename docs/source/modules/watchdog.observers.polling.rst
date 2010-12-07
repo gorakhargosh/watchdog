@@ -7,7 +7,7 @@
 .. automodule:: watchdog.observers.polling
 
 Classes
-=======
+-------
 .. autoclass:: PollingEmitter
    :members:
    :show-inheritance:

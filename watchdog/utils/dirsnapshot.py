@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# dirsnapshot.py: Directory snapshotter.
+# dirsnapshot.py: Directory snapshots and comparison.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
@@ -22,12 +22,26 @@
 # THE SOFTWARE.
 
 """
-Directory snapshotting classes and functionality.
+    :module: watchdog.utils.dirsnapshot
+    :synopsis: Directory snapshots and comparison.
+    :author: Gora Khargosh <gora.khargosh@gmail.com>
 
-Notes:
-- Does not currently take into consideration stat information beyond
-  partition boundaries.
+    .. NOTE:: This implementation does not take partition boundaries
+            into consideration. It will only work when the directory
+            tree is entirely on the same file system. More specifically,
+            any part of the code that depends on inode numbers can
+            break if partition boundaries are crossed. In these cases,
+            the snapshot diff will represent file/directory movement as
+            created and deleted events.
 
+            Windows does not have any concept of ``inodes`` which prevents
+            this snapshotter to determine file or directory renames/movement
+            on it. The snapshotter does not try to handle this on Windows.
+            File or directory movement will show up as creation and deletion
+            events.
+
+            Please do not use this on a virtual file system mapped to
+            a network share.
 """
 
 import os
@@ -38,16 +52,22 @@ import stat
 from watchdog.utils import get_walker, real_absolute_path
 
 class DirectorySnapshotDiff(object):
-    """Difference between two directory snapshots."""
+    """
+    Compares two directory snapshots and creates an object that represents
+    the difference between the two snapshots.
+
+    :param ref_dirsnap:
+        The reference directory snapshot.
+    :type ref_dirsnap:
+        :class:`DirectorySnapshot`
+    :param dirsnap:
+        The directory snapshot which will be compared
+        with the reference snapshot.
+    :type dirsnap:
+        :class:`DirectorySnapshot`
+    """
     def __init__(self, ref_dirsnap, dirsnap):
         """
-        Compares two directory snapshots and creates an object that represents
-        the difference between the two snapshots.
-
-        Arguments:
-        - ref_dirsnap: The reference directory snapshot object instance.
-        - dirsnap:  The directory snapshot object instance which will be compared
-                    with the reference.
         """
         self._files_deleted = set()
         self._files_modified = set()
@@ -130,23 +150,50 @@ class DirectorySnapshotDiff(object):
 
     @property
     def dirs_modified(self):
+        """
+        Set of directories that were modified.
+        """
         return self._dirs_modified
 
     @property
     def dirs_moved(self):
+        """
+        Dictionary of directories that were moved.
+        """
         return self._dirs_moved
 
     @property
     def dirs_deleted(self):
+        """
+        Set of directories that were deleted.
+        """
         return self._dirs_deleted
 
     @property
     def dirs_created(self):
+        """
+        Set of directories that were created.
+        """
         return self._dirs_created
 
 
 class DirectorySnapshot(object):
-    """A snapshot of stat information of files in a directory."""
+    """
+    A snapshot of stat information of files in a directory.
+
+    :param path:
+        The directory path for which a snapshot should be taken.
+    :type path:
+        ``str``
+    :param recursive:
+        ``True`` if the entired directory tree should be included in the
+        snapshot; ``False`` otherwise.
+    :type recursive:
+        ``bool``
+    :param walker_callback:
+        A function with the signature ``walker_callback(path, stat_info)``
+        which will be called for every entry in the directory tree.
+    """
     def __init__(self, path, recursive=True, walker_callback=(lambda p, s: None)):
         self._path = real_absolute_path(path)
         self._stat_snapshot = {}
@@ -186,34 +233,57 @@ class DirectorySnapshot(object):
         """Allow subtracting a DirectorySnapshot object instance from
         another.
 
-        Returns a DirectorySnapshotDiff object instance.
+        :returns:
+            A :class:`DirectorySnapshotDiff` object.
         """
         return DirectorySnapshotDiff(previous_dirsnap, self)
 
 
     @property
     def stat_snapshot(self):
-        """Returns a dictionary of stat information with file paths being keys."""
+        """
+        Returns a dictionary of stat information with file paths being keys.
+        """
         return self._stat_snapshot
 
 
     def stat_info(self, path):
-        """Returns a stat information object for the specified path from
-        the snapshot."""
+        """
+        Returns a stat information object for the specified path from
+        the snapshot.
+
+        :param path:
+            The path for which stat information should be obtained
+            from a snapshot.
+        """
         return self._stat_snapshot[path]
 
 
     def path_for_inode(self, inode):
+        """
+        Determines the path that an inode represents in a snapshot.
+
+        :param inode:
+            inode number.
+        """
         return self._inode_to_path[inode]
 
 
     def stat_info_for_inode(self, inode):
+        """
+        Determines stat information for a given inode.
+
+        :param inode:
+            inode number.
+        """
         return self.stat_info(self.path_for_inode(inode))
 
 
     @property
     def paths_set(self):
-        """Set of files in the snapshot."""
+        """
+        Set of file/directory paths in the snapshot.
+        """
         return set(self._stat_snapshot)
 
 

@@ -70,7 +70,7 @@ if platform.is_bsd() or platform.is_darwin():
         EVENT_TYPE_DELETED
 
     # Maximum number of events to process.
-    MAX_EVENTS = 104896
+    MAX_EVENTS = 4096
 
     # Mac OS X file system performance guidelines:
     # --------------------------------------------
@@ -158,7 +158,7 @@ if platform.is_bsd() or platform.is_darwin():
 
         def get_for_fd(self, fd):
             """
-            Given an file descriptor, returns the kevent descriptor object
+            Given a file descriptor, returns the kevent descriptor object
             for it.
 
             :param fd:
@@ -339,7 +339,46 @@ if platform.is_bsd() or platform.is_darwin():
 
     class KqueueEmitter(EventEmitter):
         """
-        kqueue(2)-based emitter.
+        kqueue(2)-based event emitter.
+
+        .. NOTE:: About ``kqueue(2)`` and this implementation.
+
+                  ``kqueue(2)`` monitors file system events only for
+                  open descriptors, which means, this emitter does a lot of
+                  book-keeping behind the scenes to keep track of open
+                  descriptors for every entry in the monitored directory tree.
+
+                  This also means the number of maximum open file descriptors
+                  on your system must be increased **manually**.
+                  Usually, issuing a call to ``ulimit`` should suffice::
+
+                      ulimit -n 1024
+
+                  Ensure that you pick a number that is larger than the
+                  number of files you expect to be monitored.
+
+                  ``kqueue(2)`` does not provide enough information about the
+                  following things:
+
+                  * The destination path of a file or directory that is renamed.
+                  * Creation of a file or directory within a directory; in this
+                    case, ``kqueue(2)`` only indicates a modified event on the
+                    parent directory.
+
+                  Therefore, this emitter takes a snapshot of the directory
+                  tree when ``kqueue(2)`` detects a change on the file system
+                  to be able to determine the above information.
+
+        :param event_queue:
+            The event queue to fill with events.
+        :param watch:
+            A watch object representing the directory to monitor.
+        :type watch:
+            :class:`watchdog.observers.api.ObservedWatch`
+        :param timeout:
+            Read events blocking timeout (in seconds).
+        :type timeout:
+            ``float``
         """
         def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
             EventEmitter.__init__(self, event_queue, watch, timeout)
@@ -426,6 +465,16 @@ if platform.is_bsd() or platform.is_darwin():
 
 
         def _queue_events_except_renames_and_dir_modifications(self, event_list):
+            """
+            Queues events from the kevent list returned from the call to
+            :meth:`select.kqueue.control`.
+
+            .. NOTE:: Queues only the deletions, file modifications,
+                      attribute modifications. The other events, namely,
+                      file creation, directory modification, file rename,
+                      directory rename, directory creation, etc. are
+                      determined by comparing directory snapshots.
+            """
             paths_renamed = set()
             dirs_modified = set()
 
@@ -446,7 +495,9 @@ if platform.is_bsd() or platform.is_darwin():
                 elif is_modified(kev):
                     if descriptor.is_directory:
                         # When a directory is modified, it may be due to
-                        # sub-file/directory renames or new file/directory creation.
+                        # sub-file/directory renames or new file/directory
+                        # creation. We determine all this by comparing
+                        # snapshots later.
                         dirs_modified.add(src_path)
                     else:
                         self.queue_event(FileModifiedEvent(src_path))

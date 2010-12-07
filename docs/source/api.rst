@@ -12,6 +12,8 @@ API Reference
    modules/watchdog.observers
    modules/watchdog.observers.api
    modules/watchdog.observers.polling
+   modules/watchdog.observers.kqueue
    modules/watchdog.utils
+   modules/watchdog.utils.dirsnapshot
    modules/watchdog.utils.collections
 
