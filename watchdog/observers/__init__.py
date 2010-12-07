@@ -22,6 +22,7 @@
 
 """
 :module: watchdog.observers
+:synopsis: Observer that picks a native implementation if available.
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 
 

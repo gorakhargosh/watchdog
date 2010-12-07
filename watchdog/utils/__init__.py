@@ -23,6 +23,7 @@
 
 """
 :module: watchdog.utils
+:synopsis: Utility classes and functions.
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 
 Classes
@@ -31,6 +32,11 @@ Classes
    :members:
    :show-inheritance:
    :inherited-members:
+
+.. autofunction:: has_attribute
+
+.. autofunction:: match_patterns
+
 """
 
 import os
@@ -41,8 +47,10 @@ import threading
 from fnmatch import fnmatch
 
 def has_attribute(ob, attribute):
-    """hasattr swallows exceptions. This one tests a Python object for the
-    presence of an attribute."""
+    """
+    :func:`hasattr` swallows exceptions. :func:`has_attribute` tests a Python object for the
+    presence of an attribute.
+    """
     return getattr(ob, attribute, None) is not None
 
 
