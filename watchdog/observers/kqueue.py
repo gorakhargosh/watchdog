@@ -88,8 +88,7 @@ if platform.is_bsd() or platform.is_darwin():
     # this flag, the volume would be marked as busy and would not be unmounted.
     O_EVTONLY = 0x8000
 
-    # Flags pre-calculated that we will use for the kevent filter, flags, and
-    # fflags attributes.
+    # Pre-calculated values for the kevent filter, flags, and fflags attributes.
     if platform.is_darwin():
         WATCHDOG_OS_OPEN_FLAGS = O_EVTONLY
     else:
@@ -352,14 +351,23 @@ if platform.is_bsd() or platform.is_darwin():
             self._descriptors = KeventDescriptorSet()
 
             def walker_callback(path, stat_info, self=self):
-                self._register(path, stat.S_ISDIR(stat_info.st_mode))
+                self._register_kevent(path, stat.S_ISDIR(stat_info.st_mode))
             self._snapshot = DirectorySnapshot(watch.path,
                                                watch.is_recursive,
                                                walker_callback)
 
 
-        def _register(self, path, is_directory):
-            # Called to register a kevent descriptor for a new file or directory.
+        def _register_kevent(self, path, is_directory):
+            """
+            Registers a kevent descriptor for the given path.
+
+            :param path:
+                Path for which a kevent descriptor will be created.
+            :param is_directory:
+                ``True`` if the path refers to a directory; ``False`` otherwise.
+            :type is_directory:
+                ``bool``
+            """
             try:
                 self._descriptors.add(path, is_directory)
             except OSError, e:
@@ -379,39 +387,46 @@ if platform.is_bsd() or platform.is_darwin():
                     # All other errors are propagated.
                     raise
 
-        def _unregister(self, path):
-            # Unregisters a path from the kevent descriptors.
+        def _unregister_kevent(self, path):
+            """
+            Convenience function to close the kevent descriptor for a
+            specified kqueue-monitored path.
+
+            :param path:
+                Path for which the kevent descriptor will be closed.
+            """
             self._descriptors.remove(path)
 
         def queue_event(self, event):
+            """
+            Handles queueing a single event object.
+
+            :param event:
+                An instance of :class:`watchdog.events.FileSystemEvent`
+                or a subclass.
+            """
             # Handles all the book keeping for queued events.
             # We do not need to fire moved/deleted events for all subitems in
             # a directory tree here, because this function is called by kqueue
             # for all those events anyway.
             with self._lock:
                 if event.event_type == EVENT_TYPE_MOVED:
-                    self._unregister(event.src_path)
-                    self._register(event.dest_path, event.is_directory)
+                    self._unregister_kevent(event.src_path)
+                    self._register_kevent(event.dest_path, event.is_directory)
                 elif event.event_type == EVENT_TYPE_DELETED:
-                    self._unregister(event.src_path)
+                    self._unregister_kevent(event.src_path)
                 EventEmitter.queue_event(self, event)
 
 
-        def _queue_from_dirs_renamed(self,
-                                     dirs_renamed,
-                                     ref_snapshot,
-                                     new_snapshot):
+        def _queue_dirs_modified(self,
+                                 dirs_modified,
+                                 ref_snapshot,
+                                 new_snapshot):
             pass
 
-        def _queue_from_dirs_modified(self,
-                                      dirs_modified,
-                                      ref_snapshot,
-                                      new_snapshot):
-            pass
 
         def _queue_events_except_renames_and_dir_modifications(self, event_list):
-            files_renamed = set()
-            dirs_renamed = set()
+            paths_renamed = set()
             dirs_modified = set()
 
             for kev in event_list:
@@ -430,49 +445,93 @@ if platform.is_bsd() or platform.is_darwin():
                         self.queue_event(FileModifiedEvent(src_path))
                 elif is_modified(kev):
                     if descriptor.is_directory:
-                        # When a directory is modified,
-                        # it may be due to sub-file/directory renames or
-                        # new file/directory creation.
+                        # When a directory is modified, it may be due to
+                        # sub-file/directory renames or new file/directory creation.
                         dirs_modified.add(src_path)
                     else:
                         self.queue_event(FileModifiedEvent(src_path))
                 elif is_renamed(kev):
-                    if descriptor.is_directory:
-                        dirs_renamed.add(src_path)
-                    else:
-                        self._queue_file_renamed(src_path, ref_snapshot, new_snapshot)
-            return files_renamed, dirs_renamed, dirs_modified
+                    # Kqueue does not specify the destination names for renames
+                    # to, so we have to process these after taking a snapshot
+                    # of the directory.
+                    paths_renamed.add(src_path)
+            return paths_renamed, dirs_modified
 
-        def _queue_file_renamed(self, src_path, ref_snapshot, new_snapshot):
+
+        def _queue_renamed(self, src_path, is_directory, ref_snapshot, new_snapshot):
+            """
+            Compares information from two directory snapshots (one taken before
+            the rename operation and another taken right after) to determine the
+            destination path of the file system object renamed, and adds
+            appropriate events to the event queue.
+            """
             try:
                 ref_stat_info = ref_snapshot.stat_info(src_path)
             except KeyError:
-                # Caught a temporary file that was renamed and then deleted.
-                # Fire a sequence of created and deleted events for the
-                # path.
-                self.queue_event(FileCreatedEvent(src_path))
-                self.queue_event(FileDeletedEvent(src_path))
-                continue
+                # Probably caught a temporary file/directory that was renamed
+                # and deleted. Fires a sequence of created and deleted events
+                # for the path.
+                if is_directory:
+                    self.queue_event(DirCreatedEvent(src_path))
+                    self.queue_event(DirDeletedEvent(src_path))
+                else:
+                    self.queue_event(FileCreatedEvent(src_path))
+                    self.queue_event(FileDeletedEvent(src_path))
+                # We don't process any further and bail out assuming
+                # the event represents deletion/creation instead of movement.
+                return
+
             try:
-                dest_path = new_snapshot.path_for_inode(ref_stat_info.st_ino)
-                self.queue_event(FileMovedEvent(src_path, dest_path))
+                dest_path = absolute_path(new_snapshot.path_for_inode(ref_stat_info.st_ino))
+                if is_directory:
+                    event = DirMovedEvent(src_path, dest_path)
+                    # TODO: Do we need to fire moved events for the items
+                    # inside the directory tree? Does kqueue does this
+                    # all by itself? Check this and then enable this code
+                    # only if it doesn't already.
+                    #if self.watch.is_recursive:
+                    #    for sub_event in event.sub_moved_events():
+                    #        self.queue_event(sub_event)
+                else:
+                    event = FileMovedEvent(src_path, dest_path)
+                self.queue_event(event)
             except KeyError:
                 # If the new snapshot does not have an inode for the
                 # old path, we haven't found the new name. Therefore,
                 # we mark it as deleted and remove unregister the path.
-                self.queue_event(FileDeletedEvent(src_path))
+                if is_directory:
+                    self.queue_event(DirDeletedEvent(src_path))
+                else:
+                    self.queue_event(FileDeletedEvent(src_path))
 
 
-        def _read_events(self, kevent_list, timeout=None, max_events=MAX_EVENTS):
-            """Blocks until timeout."""
-            return self._kq.control(kevent_list, max_events=max_events, timeout=timeout)
+        def _read_events(self, timeout=None):
+            """
+            Reads events from a call to the blocking
+            :meth:`select.kqueue.control()` method.
+
+            :param timeout:
+                Blocking timeout for reading events.
+            :type timeout:
+                ``float`` (seconds)
+            """
+            return self._kq.control(self._descriptors.kevents(), max_events=MAX_EVENTS, timeout=timeout)
+
 
         def queue_events(self, timeout):
-            try:
-                while self._lock:
-                    event_list = self._read_events(self._descriptors.kevents(),
-                                                   timeout=timeout)
-                    dirs_renamed, dir_modified = \
+            """
+            Queues events by reading them from a call to the blocking
+            :meth:`select.kqueue.control()` method.
+
+            :param timeout:
+                Blocking timeout for reading events.
+            :type timeout:
+                ``float`` (seconds)
+            """
+            with self._lock:
+                try:
+                    event_list = self._read_events(timeout=timeout)
+                    paths_renamed, dir_modified = \
                         self._queue_events_except_renames_and_dir_modifications(event_list)
 
                     # Take a fresh snapshot of the directory and update the
@@ -481,21 +540,21 @@ if platform.is_bsd() or platform.is_darwin():
                     ref_snapshot = self._snapshot
                     self._snapshot = new_snapshot
 
-                    if dirs_renamed or dirs_modified:
-                        self._queue_from_dirs_renamed(ref_snapshot,
-                                                      new_snapshot,
-                                                      dirs_renamed)
+                    if paths_renamed or dirs_modified:
+                        for src_path in paths_renamed:
+                            self._queue_renamed(src_path, is_directory, ref_snapshot, new_snapshot)
                         self._queue_from_dirs_modified(ref_snapshot,
                                                        new_snapshot,
                                                        dirs_modified)
-            except OSerror, e:
-                if e.errno == errno.EBADF:
-                    #logging.debug(e)
-                    continue
-                else:
-                    raise
+                except OSerror, e:
+                    if e.errno == errno.EBADF:
+                        #logging.debug(e)
+                        pass
+                    else:
+                        raise
 
         def on_thread_exit(self):
+            # Clean up.
             with self._lock:
                 self._descriptors.clear()
                 self._kq.close()
