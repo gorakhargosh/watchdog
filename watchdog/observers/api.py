@@ -163,7 +163,7 @@ class EventDispatcher(DaemonThread):
     Consumer daemon thread base class subclassed by event observer threads
     that dispatch events from an event queue to appropriate event handlers.
 
-    :param tiemout:
+    :param timeout:
         Event queue blocking timeout (in seconds).
     :type timeout:
         ``float``
