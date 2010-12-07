@@ -63,8 +63,10 @@ class TestObservedWatch:
 
 class TestEventEmitter:
     def test___init__(self):
-        # event_emitter = EventEmitter(event_queue, watch, interval)
-        raise SkipTest # TODO: implement your test here
+        event_queue = EventQueue()
+        watch = ObservedWatch('/foobar', True)
+        event_emitter = EventEmitter(event_queue, watch, timeout=1)
+        event_emitter.queue_event(FileModifiedEvent('/foobar/blah'))
 
     def test_interval(self):
         # event_emitter = EventEmitter(event_queue, watch, interval)

@@ -125,20 +125,21 @@ class EventEmitter(DaemonThread):
         return self._watch
 
     def queue_event(self, event):
-        self.event_queue.put((event, self.watch))
+        """
+        Handles queueing a single event object.
+
+        :param event:
+            Event to be queued.
+        :type event:
+            An instance of :class:`watchdog.events.FileSystemEvent`
+            or a subclass.
+        """
+        self._event_queue.put((event, self.watch))
 
     def queue_events(self, timeout):
         """Override this method to populate the event queue with events
         per interval period.
 
-        :param event_queue:
-            Event queue to populate with one set of events.
-        :type event_queue:
-            :class:`watchdog.events.EventQueue`
-        :param watch:
-            The watch to observe and produce events for.
-        :type watch:
-            :class:`ObservedWatch`
         :param timeout:
             Timeout (in seconds) between successive attempts at
             reading events.
@@ -152,7 +153,7 @@ class EventEmitter(DaemonThread):
 
     def run(self):
         while self.should_keep_running():
-            self.queue_events(self._event_queue, self.watch, self.timeout)
+            self.queue_events(self.timeout)
         self.on_thread_exit()
 
 
@@ -315,7 +316,7 @@ class BaseObserver(EventDispatcher):
                 # Create a new emitter and start it.
                 emitter = self._emitter_class(event_queue=self.event_queue,
                                               watch=watch,
-                                              interval=self.interval)
+                                              timeout=self.interval)
                 self._add_emitter(emitter)
                 emitter.start()
             self._watches.add(watch)

@@ -163,6 +163,7 @@ class FileCreatedEvent(FileSystemEvent):
                 dict(class_name=self.__class__.__name__,
                      src_path=self.src_path)
 
+
 class FileMovedEvent(FileSystemMovedEvent):
     """File system event representing file movement on the file system."""
     def __init__(self, src_path, dest_path):
@@ -177,6 +178,7 @@ dest_path=%(dest_path)s>" % \
                      src_path=self.src_path,
                      dest_path=self.dest_path)
 
+
 # Directory events.
 class DirDeletedEvent(FileSystemEvent):
     """File system event representing directory deletion on the file system."""
@@ -190,6 +192,7 @@ class DirDeletedEvent(FileSystemEvent):
                 dict(class_name=self.__class__.__name__,
                      src_path=self.src_path)
 
+
 class DirModifiedEvent(FileSystemEvent):
     """File system event representing directory modification on the file system."""
     def __init__(self, src_path):
@@ -201,6 +204,7 @@ class DirModifiedEvent(FileSystemEvent):
         return "<%(class_name)s: src_path=%(src_path)s>" % \
                 dict(class_name=self.__class__.__name__,
                      src_path=self.src_path)
+
 
 class DirCreatedEvent(FileSystemEvent):
     """File system event representing directory creation on the file system."""

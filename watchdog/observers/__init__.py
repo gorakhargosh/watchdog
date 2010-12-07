@@ -27,21 +27,21 @@
 
 from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_INTERVAL
 
-try:
+try: # pragma: no cover
     from watchdog.observers.inotify import InotifyEmitter as Emitter
-except ImportError:
-    try:
+except ImportError: # pragma: no cover
+    try: # pragma: no cover
         from watchdog.observers.fsevents import FSEventsEmitter as Emitter
-    except ImportError:
-        try:
+    except ImportError: # pragma: no cover
+        try: # pragma: no cover
             from watchdog.observers.kqueue import KqueueEmitter as Emitter
-        except ImportError:
-            try:
+        except ImportError: # pragma: no cover
+            try: # pragma: no cover
                 from watchdog.observers.win32_async import AsyncWin32Emitter as Emitter
-            except ImportError:
-                try:
+            except ImportError: # pragma: no cover
+                try: # pragma: no cover
                     from watchdog.observers.win32 import Win32Emitter as Emitter
-                except ImportError:
+                except ImportError: # pragma: no cover
                     from watchdog.observers.polling import PollingEmitter as Emitter
 
 
