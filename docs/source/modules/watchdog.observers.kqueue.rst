@@ -1,2 +1,0 @@
-.. include:: ../global.rst.inc
-
