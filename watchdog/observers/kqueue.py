@@ -22,18 +22,37 @@
 # THE SOFTWARE.
 
 """
-    :module: watchdog.observers.kqueue
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
-    :platforms: Mac OS X and BSD with kqueue(2).
+:module: watchdog.observers.kqueue
+:synopsis: ``kqueue(2)`` based emitter implementation.
+:author: Gora Khargosh <gora.khargosh@gmail.com>
+:platforms: Mac OS X and BSD with kqueue(2).
 
-    * Python 2.5 does not come with a ``select.kqueue``
-    * Python 2.6 comes with a broken ``select.kqueue`` that cannot take
+.. NOTE:: About ``select.kqueue`` and Python versions.
+
+    * Python 2.5 does not ship with ``select.kqueue``
+    * Python 2.6 ships with a broken ``select.kqueue`` that cannot take
       multiple events in the event list passed to ``kqueue.control``.
     * Python 2.7 ships with a working ``select.kqueue``
       implementation.
 
     I have backported the Python 2.7 implementation to Python 2.5 and 2.6
     in the ``select_backport`` package available on PyPI.
+
+Classes
+-------
+.. autoclass:: KqueueEmitter
+   :members:
+   :show-inheritance:
+
+Collections and Utility Classes
+-------------------------------
+.. autoclass:: KeventDescriptor
+   :members:
+   :show-inheritance:
+
+.. autoclass:: KeventDescriptorSet
+   :members:
+   :show-inheritance:
 
 """
 
@@ -171,9 +190,21 @@ if platform.is_bsd() or platform.is_darwin():
             with self._lock:
                 return self._descriptor_for_fd[fd]
 
+        def get(self, path):
+            """
+            Obtains a :class:`KeventDescriptor` object for the specified path.
+
+            :param path:
+                Path for which the descriptor will be obtained.
+            """
+            return self.__getitem__(path)
+
         def __getitem__(self, path):
             """
             Obtains a :class:`KeventDescriptor` object for the specified path.
+
+            :param path:
+                Path for which the descriptor will be obtained.
             """
             with self._lock:
                 path = absolute_path(path)
@@ -183,6 +214,9 @@ if platform.is_bsd() or platform.is_darwin():
             """
             Determines whether a :class:`KeventDescriptor has been registered
             for the specified path.
+
+            :param path:
+                Path for which the descriptor will be obtained.
             """
             with self._lock:
                 path = absolute_path(path)
@@ -308,7 +342,7 @@ if platform.is_bsd() or platform.is_darwin():
 
         @property
         def is_directory(self):
-            """Determines whether the kevent descriptor is for a directory.
+            """Determines whether the kevent descriptor refers to a directory.
 
             :returns:
                 ``True`` or ``False``

@@ -22,8 +22,15 @@
 # THE SOFTWARE.
 
 """
-    :module: watchdog.observers.polling
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
+:module: watchdog.observers.polling
+:synopsis: Polling emitter implementation.
+:author: Gora Khargosh <gora.khargosh@gmail.com>
+
+Classes
+-------
+.. autoclass:: PollingEmitter
+   :members:
+   :show-inheritance:
 """
 
 

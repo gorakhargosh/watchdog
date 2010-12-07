@@ -22,9 +22,36 @@
 # THE SOFTWARE.
 
 """
-    :module: watchdog.observers.api
-    :synopsis: Classes useful to observer implementers.
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
+:module: watchdog.observers.api
+:synopsis: Classes useful to observer implementers.
+:author: Gora Khargosh <gora.khargosh@gmail.com>
+
+Immutables
+----------
+.. autoclass:: ObservedWatch
+   :members:
+   :show-inheritance:
+
+
+Collections
+-----------
+.. autoclass:: EventQueue
+   :members:
+   :show-inheritance:
+
+Classes
+-------
+.. autoclass:: EventEmitter
+   :members:
+   :show-inheritance:
+
+.. autoclass:: EventDispatcher
+   :members:
+   :show-inheritance:
+
+.. autoclass:: BaseObserver
+   :members:
+   :show-inheritance:
 """
 
 from __future__ import with_statement

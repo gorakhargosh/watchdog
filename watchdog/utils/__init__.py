@@ -22,8 +22,15 @@
 # THE SOFTWARE.
 
 """
-    :module: watchdog.utils
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
+:module: watchdog.utils
+:author: Gora Khargosh <gora.khargosh@gmail.com>
+
+Classes
+=======
+.. autoclass:: DaemonThread
+   :members:
+   :show-inheritance:
+   :inherited-members:
 """
 
 import os

@@ -22,26 +22,37 @@
 # THE SOFTWARE.
 
 """
-    :module: watchdog.utils.dirsnapshot
-    :synopsis: Directory snapshots and comparison.
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
+:module: watchdog.utils.dirsnapshot
+:synopsis: Directory snapshots and comparison.
+:author: Gora Khargosh <gora.khargosh@gmail.com>
 
-    .. NOTE:: This implementation does not take partition boundaries
-            into consideration. It will only work when the directory
-            tree is entirely on the same file system. More specifically,
-            any part of the code that depends on inode numbers can
-            break if partition boundaries are crossed. In these cases,
-            the snapshot diff will represent file/directory movement as
-            created and deleted events.
+.. NOTE:: This implementation does not take partition boundaries
+        into consideration. It will only work when the directory
+        tree is entirely on the same file system. More specifically,
+        any part of the code that depends on inode numbers can
+        break if partition boundaries are crossed. In these cases,
+        the snapshot diff will represent file/directory movement as
+        created and deleted events.
 
-            Windows does not have any concept of ``inodes`` which prevents
-            this snapshotter to determine file or directory renames/movement
-            on it. The snapshotter does not try to handle this on Windows.
-            File or directory movement will show up as creation and deletion
-            events.
+        Windows does not have any concept of ``inodes`` which prevents
+        this snapshotter to determine file or directory renames/movement
+        on it. The snapshotter does not try to handle this on Windows.
+        File or directory movement will show up as creation and deletion
+        events.
 
-            Please do not use this on a virtual file system mapped to
-            a network share.
+        Please do not use this on a virtual file system mapped to
+        a network share.
+
+Classes
+-------
+.. autoclass:: DirectorySnapshot
+   :members:
+   :show-inheritance:
+
+.. autoclass:: DirectorySnapshotDiff
+   :members:
+   :show-inheritance:
+
 """
 
 import os

@@ -21,8 +21,17 @@
 # THE SOFTWARE.
 
 """
-    :module: watchdog.observers
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
+:module: watchdog.observers
+:author: Gora Khargosh <gora.khargosh@gmail.com>
+
+
+Classes
+=======
+.. autoclass:: Observer
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
 """
 
 from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_TIMEOUT

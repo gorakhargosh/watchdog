@@ -26,11 +26,19 @@
 # http://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
 
 """
-    Utility collections.
+Utility collections.
 
-    :module: watchdog.utils.collections
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
-    :author: Lukáš Lalinský <lalinsky@gmail.com>
+:module: watchdog.utils.collections
+:author: Gora Khargosh <gora.khargosh@gmail.com>
+:author: Lukáš Lalinský <lalinsky@gmail.com>
+
+Classes
+=======
+.. autoclass:: OrderedSetQueue
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
 """
 
 

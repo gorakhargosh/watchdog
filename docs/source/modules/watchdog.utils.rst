@@ -5,12 +5,3 @@
 ================
 
 .. automodule:: watchdog.utils
-
-
-Classes
-=======
-.. autoclass:: DaemonThread
-   :members:
-   :show-inheritance:
-   :inherited-members:
-

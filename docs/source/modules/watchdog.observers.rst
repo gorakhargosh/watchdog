@@ -5,12 +5,3 @@
 ====================
 
 .. automodule:: watchdog.observers
-
-Classes
-=======
-.. autoclass:: Observer
-   :members:
-   :show-inheritance:
-   :inherited-members:
-
-

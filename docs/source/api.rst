@@ -2,18 +2,57 @@
 
 .. api_reference:
 
+=============
 API Reference
--------------
+=============
+
+`watchdog.events`
+=================
+
+.. automodule:: watchdog.events
+
+
+`watchdog.observers.api`
+========================
+
+.. automodule:: watchdog.observers.api
+
+
+`watchdog.observers.kqueue`
+===========================
+
+.. automodule:: watchdog.observers.kqueue
+
+
+`watchdog.observers.polling`
+============================
+
+.. automodule:: watchdog.observers.polling
+
+
+`watchdog.observers`
+====================
+
+.. automodule:: watchdog.observers
+
+
+`watchdog.utils`
+================
+
+.. automodule:: watchdog.utils
+
+
+`watchdog.utils.dirsnapshot`
+============================
+
+.. automodule:: watchdog.utils.dirsnapshot
+
+
+`watchdog.utils.collections`
+============================
+
+.. automodule:: watchdog.utils.collections
+
 
 .. toctree::
    :maxdepth: 2
-
-   modules/watchdog.events
-   modules/watchdog.observers
-   modules/watchdog.observers.api
-   modules/watchdog.observers.polling
-   modules/watchdog.observers.kqueue
-   modules/watchdog.utils
-   modules/watchdog.utils.dirsnapshot
-   modules/watchdog.utils.collections
-
