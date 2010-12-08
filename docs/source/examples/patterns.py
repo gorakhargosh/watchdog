@@ -1,19 +1,20 @@
 import sys
 import time
-import watchdog
-import watchdog.events
+
+from watchdog.observers import Observer
+from watchdog.events import PatternMatchingEventHandler
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-class MyEventHandler(watchdog.events.PatternMatchingEventHandler):
+class MyEventHandler(PatternMatchingEventHandler):
     def on_any_event(self, event):
         logging.debug(event)
 
 event_handler = MyEventHandler(patterns=['*.py', '*.pyc'],
                                 ignore_patterns=['version.py'],
                                 ignore_directories=True)
-observer = watchdog.observers.Observer()
+observer = Observer()
 observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
 observer.start()
 try:

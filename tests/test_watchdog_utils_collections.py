@@ -8,9 +8,9 @@ from nose.tools import \
     assert_false
 
 try:
-    import queue
+    import queue  # IGNORE:F0401
 except ImportError:
-    import Queue as queue
+    import Queue as queue # IGNORE:F0401
 
 from watchdog.events import DirModifiedEvent, FileModifiedEvent
 from watchdog.utils.collections import OrderedSetQueue

@@ -212,17 +212,17 @@ def log(args):
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories)
     if args.debug_force_polling:
-        from watchdog.observers.polling_observer import PollingObserver as Observer
+        from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
-        from watchdog.observers.kqueue_observer import KqueueObserver as Observer
+        from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_win32:
-        from watchdog.observers.win32_observer import Win32Observer as Observer
+        from watchdog.observers.win32_async import Win32AsyncObserver as Observer
     elif args.debug_force_win32ioc:
-        from watchdog.observers.win32ioc_observer import Win32IOCObserver as Observer
+        from watchdog.observers.win32_sync import Win32SyncObserver as Observer
     elif args.debug_force_inotify:
-        from watchdog.observers.inotify_observer import InotifyObserver as Observer
+        from watchdog.observers.inotify import InotifyObserver as Observer
     elif args.debug_force_fsevents:
-        from watchdog.observers.fsevents_observer import FSEventsObserver as Observer
+        from watchdog.observers.fsevents import FSEventsObserver as Observer
     else:
         from watchdog.observers import Observer
     observer = Observer()

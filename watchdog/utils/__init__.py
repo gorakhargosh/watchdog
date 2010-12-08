@@ -247,7 +247,7 @@ def get_walker(recursive=False):
             try:
                 yield next(os.walk(path))
             except NameError:
-                yield os.walk(path).next()
+                yield os.walk(path).next() #IGNORE:E1101
     return walk
 
 

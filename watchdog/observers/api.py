@@ -57,9 +57,9 @@ Classes
 from __future__ import with_statement
 import threading
 try:
-    import queue
+    import queue # IGNORE:F0401
 except ImportError:
-    import Queue as queue
+    import Queue as queue # IGNORE:F0401
 
 from watchdog.utils import DaemonThread, absolute_path
 from watchdog.utils.collections import OrderedSetQueue

@@ -25,7 +25,8 @@
 from watchdog.utils import platform
 
 if platform.is_windows():
-    from win32con import FILE_SHARE_READ, \
+    from win32con import \
+        FILE_SHARE_READ, \
         FILE_SHARE_WRITE, \
         FILE_SHARE_DELETE, \
         OPEN_EXISTING, \

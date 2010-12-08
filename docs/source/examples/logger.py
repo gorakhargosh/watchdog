@@ -1,10 +1,10 @@
 import sys
 import time
-import watchdog
-import watchdog.tricks
+from watchdog.tricks import LoggerTrick
+from watchdog.observers import Observer
 
-event_handler = watchdog.tricks.LoggerTrick()
-observer = watchdog.observers.Observer()
+event_handler = LoggerTrick()
+observer = Observer()
 observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
 observer.start()
 try:

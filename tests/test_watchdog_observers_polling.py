@@ -15,9 +15,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 try:
-    import queue
+    import queue  # IGNORE:F0401
 except ImportError:
-    import Queue as queue
+    import Queue as queue  # IGNORE:F0401
 
 from watchdog.utils import real_absolute_path
 from watchdog.events import *
