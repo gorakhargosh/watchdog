@@ -27,7 +27,7 @@
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 :platforms: Mac OS X and BSD with kqueue(2).
 
-.. NOTE:: About ``select.kqueue`` and Python versions.
+.. ADMONITION:: About ``select.kqueue`` and Python versions
 
     * Python 2.5 does not ship with ``select.kqueue``
     * Python 2.6 ships with a broken ``select.kqueue`` that cannot take
@@ -37,6 +37,22 @@
 
     I have backported the Python 2.7 implementation to Python 2.5 and 2.6
     in the ``select_backport`` package available on PyPI.
+
+.. ADMONITION:: About OS X performance guidelines
+
+    Quote from the `Mac OS X File System Performance Guidelines`_:
+
+        "When you only want to track changes on a file or directory, be sure to
+        open it using the ``O_EVTONLY`` flag. This flag prevents the file or
+        directory from being marked as open or in use. This is important
+        if you are tracking files on a removable volume and the user tries to
+        unmount the volume. With this flag in place, the system knows it can
+        dismiss the volume. If you had opened the files or directories without
+        this flag, the volume would be marked as busy and would not be
+        unmounted."
+
+    ``O_EVTONLY`` is defined as ``0x8000`` in the OS X header files.
+    More information here: http://www.mlsite.net/blog/?p=2312
 
 Classes
 -------
@@ -53,6 +69,8 @@ Collections and Utility Classes
 .. autoclass:: KeventDescriptorSet
    :members:
    :show-inheritance:
+
+.. _Mac OS X File System Performance Guidelines: http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
 
 """
 
@@ -97,20 +115,7 @@ if platform.is_bsd() or platform.is_darwin():
     # Maximum number of events to process.
     MAX_EVENTS = 4096
 
-    # Mac OS X file system performance guidelines:
-    # --------------------------------------------
-    # http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
-    # http://www.mlsite.net/blog/?p=2312
-    #
-    # Specifically:
-    # -------------
-    # When you only want to track changes on a file or directory, be sure to
-    # open it# using the O_EVTONLY flag. This flag prevents the file or
-    # directory from being marked as open or in use. This is important
-    # if you are tracking files on a removable volume and the user tries to
-    # unmount the volume. With this flag in place, the system knows it can
-    # dismiss the volume. If you had opened the files or directories without
-    # this flag, the volume would be marked as busy and would not be unmounted.
+    # O_EVTONLY value from the header files for OS X only.
     O_EVTONLY = 0x8000
 
     # Pre-calculated values for the kevent filter, flags, and fflags attributes.
@@ -384,7 +389,7 @@ if platform.is_bsd() or platform.is_darwin():
         """
         kqueue(2)-based event emitter.
 
-        .. NOTE:: About ``kqueue(2)`` and this implementation.
+        .. ADMONITION:: About ``kqueue(2)`` behavior and this implementation
 
                   ``kqueue(2)`` monitors file system events only for
                   open descriptors, which means, this emitter does a lot of
