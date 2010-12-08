@@ -59,8 +59,7 @@ Collections and Utility Classes
 
 from __future__ import with_statement
 
-from watchdog.utils import has_attribute, platform, absolute_path, \
-    real_absolute_path
+from watchdog.utils import has_attribute, platform, absolute_path
 
 if platform.is_bsd() or platform.is_darwin():
     import threading
