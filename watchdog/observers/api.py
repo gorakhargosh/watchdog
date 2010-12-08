@@ -62,7 +62,7 @@ try:
 except ImportError:
     import Queue as queue
 
-from watchdog.utils import DaemonThread, real_absolute_path
+from watchdog.utils import DaemonThread, absolute_path
 from watchdog.utils.collections import OrderedSetQueue
 
 
@@ -88,7 +88,7 @@ class ObservedWatch(object):
         ``True`` if watch is recursive; ``False`` otherwise.
     """
     def __init__(self, path, recursive):
-        self._path = real_absolute_path(path)
+        self._path = absolute_path(path)
         self._is_recursive = recursive
 
     @property

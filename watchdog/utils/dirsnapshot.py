@@ -60,7 +60,10 @@ import os.path
 import sys
 import stat
 
-from watchdog.utils import get_walker, real_absolute_path
+from watchdog.utils import get_walker, absolute_path
+
+if not sys.version < (2,6,0):
+    from watchdog.utils.collections import OrderedSet as set
 
 class DirectorySnapshotDiff(object):
     """
@@ -80,15 +83,15 @@ class DirectorySnapshotDiff(object):
     def __init__(self, ref_dirsnap, dirsnap):
         """
         """
-        self._files_deleted = set()
-        self._files_modified = set()
-        self._files_created = set()
-        self._files_moved = dict()
+        self._files_deleted = list()
+        self._files_modified = list()
+        self._files_created = list()
+        self._files_moved = list()
 
-        self._dirs_modified = set()
-        self._dirs_moved = dict()
-        self._dirs_deleted = set()
-        self._dirs_created = set()
+        self._dirs_modified = list()
+        self._dirs_moved = list()
+        self._dirs_deleted = list()
+        self._dirs_created = list()
 
         # Detect all the modifications.
         for path, stat_info in dirsnap.stat_snapshot.items():
@@ -96,12 +99,12 @@ class DirectorySnapshotDiff(object):
                 ref_stat_info = ref_dirsnap.stat_info(path)
                 if stat_info.st_ino == ref_stat_info.st_ino and stat_info.st_mtime != ref_stat_info.st_mtime:
                     if stat.S_ISDIR(stat_info.st_mode):
-                        self._dirs_modified.add(path)
+                        self._dirs_modified.append(path)
                     else:
-                        self._files_modified.add(path)
+                        self._files_modified.append(path)
 
-        paths_deleted = ref_dirsnap.paths_set - dirsnap.paths_set
-        paths_created = dirsnap.paths_set - ref_dirsnap.paths_set
+        paths_deleted = ref_dirsnap.paths - dirsnap.paths
+        paths_created = dirsnap.paths - ref_dirsnap.paths
 
         # Detect all the moves/renames.
         # Doesn't work on Windows, so exlude on Windows.
@@ -114,76 +117,80 @@ class DirectorySnapshotDiff(object):
                         paths_deleted.remove(deleted_path)
                         paths_created.remove(created_path)
                         if stat.S_ISDIR(created_stat_info.st_mode):
-                            self._dirs_moved[deleted_path] = created_path
+                            self._dirs_moved.append((deleted_path, created_path))
                         else:
-                            self._files_moved[deleted_path] = created_path
+                            self._files_moved.append((deleted_path, created_path))
 
         # Now that we have renames out of the way, enlist the deleted and
         # created files/directories.
         for path in paths_deleted:
             stat_info = ref_dirsnap.stat_info(path)
             if stat.S_ISDIR(stat_info.st_mode):
-                self._dirs_deleted.add(path)
+                self._dirs_deleted.append(path)
             else:
-                self._files_deleted.add(path)
+                self._files_deleted.append(path)
 
         for path in paths_created:
             stat_info = dirsnap.stat_info(path)
             if stat.S_ISDIR(stat_info.st_mode):
-                self._dirs_created.add(path)
+                self._dirs_created.append(path)
             else:
-                self._files_created.add(path)
+                self._files_created.append(path)
 
 
     @property
     def files_created(self):
-        """Set of files that were created."""
+        """List of files that were created."""
         return self._files_created
 
     @property
     def files_deleted(self):
-        """Set of files that were deleted."""
+        """List of files that were deleted."""
         return self._files_deleted
 
     @property
     def files_modified(self):
-        """Set of files that were modified."""
+        """List of files that were modified."""
         return self._files_modified
 
     @property
     def files_moved(self):
-        """Dictionary of files that were moved.
+        """
+        List of files that were moved.
 
-        Each key of the dictionary returned is the original file path
-        while each value stores the new file path.
+        Each event is a two-tuple the first item of which is the path
+        that has been renamed to the second item in the tuple.
         """
         return self._files_moved
 
     @property
     def dirs_modified(self):
         """
-        Set of directories that were modified.
+        List of directories that were modified.
         """
         return self._dirs_modified
 
     @property
     def dirs_moved(self):
         """
-        Dictionary of directories that were moved.
+        List of directories that were moved.
+
+        Each event is a two-tuple the first item of which is the path
+        that has been renamed to the second item in the tuple.
         """
         return self._dirs_moved
 
     @property
     def dirs_deleted(self):
         """
-        Set of directories that were deleted.
+        List of directories that were deleted.
         """
         return self._dirs_deleted
 
     @property
     def dirs_created(self):
         """
-        Set of directories that were created.
+        List of directories that were created.
         """
         return self._dirs_created
 
@@ -206,7 +213,7 @@ class DirectorySnapshot(object):
         which will be called for every entry in the directory tree.
     """
     def __init__(self, path, recursive=True, walker_callback=(lambda p, s: None)):
-        self._path = real_absolute_path(path)
+        self._path = absolute_path(path)
         self._stat_snapshot = {}
         self._inode_to_path = {}
         self.is_recursive = recursive
@@ -219,16 +226,6 @@ class DirectorySnapshot(object):
         walker_callback(self._path, stat_info)
 
         for root, directories, files in walk(self._path):
-            for file_name in files:
-                try:
-                    file_path = os.path.join(root, file_name)
-                    stat_info = os.stat(file_path)
-                    self._stat_snapshot[file_path] = stat_info
-                    self._inode_to_path[stat_info.st_ino] = file_path
-                    walker_callback(file_path, stat_info)
-                except OSError:
-                    continue
-
             for directory_name in directories:
                 try:
                     directory_path = os.path.join(root, directory_name)
@@ -236,6 +233,16 @@ class DirectorySnapshot(object):
                     self._stat_snapshot[directory_path] = stat_info
                     self._inode_to_path[stat_info.st_ino] = directory_path
                     walker_callback(directory_path, stat_info)
+                except OSError:
+                    continue
+
+            for file_name in files:
+                try:
+                    file_path = os.path.join(root, file_name)
+                    stat_info = os.stat(file_path)
+                    self._stat_snapshot[file_path] = stat_info
+                    self._inode_to_path[stat_info.st_ino] = file_path
+                    walker_callback(file_path, stat_info)
                 except OSError:
                     continue
 
@@ -291,9 +298,9 @@ class DirectorySnapshot(object):
 
 
     @property
-    def paths_set(self):
+    def paths(self):
         """
-        Set of file/directory paths in the snapshot.
+        List of file/directory paths in the snapshot.
         """
         return set(self._stat_snapshot)
 
