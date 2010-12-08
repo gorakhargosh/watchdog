@@ -62,7 +62,7 @@ import stat
 from watchdog.utils import get_walker, absolute_path
 
 if not sys.version < (2, 6, 0):
-    from watchdog.utils.collections import OrderedSet as set
+    from watchdog.utils.bricks import OrderedSet as set
 
 class DirectorySnapshotDiff(object):
     """
