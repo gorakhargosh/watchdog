@@ -60,6 +60,6 @@ class Observer(BaseObserver):
     Observer thread that schedules watching directories and dispatches
     calls to event handlers.
     """
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=Emitter, timeout=timeout)
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, emitter_class=Emitter):
+        BaseObserver.__init__(self, emitter_class=emitter_class, timeout=timeout)
 

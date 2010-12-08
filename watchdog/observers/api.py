@@ -56,7 +56,6 @@ Classes
 
 from __future__ import with_statement
 import threading
-import functools
 try:
     import queue
 except ImportError:
@@ -145,15 +144,21 @@ class EventEmitter(DaemonThread):
 
     @property
     def timeout(self):
+        """
+        Blocking timeout for reading events.
+        """
         return self._timeout
 
     @property
     def watch(self):
+        """
+        The watch associated with this emitter.
+        """
         return self._watch
 
     def queue_event(self, event):
         """
-        Handles queueing a single event object.
+        Queues a single event.
 
         :param event:
             Event to be queued.
@@ -175,14 +180,15 @@ class EventEmitter(DaemonThread):
         """
 
     def on_thread_exit(self):
-        """Override this method for cleaning up immediately before the daemon
-        thread stops completely."""
+        """
+        Override this method for cleaning up immediately before the daemon
+        thread stops completely.
+        """
 
     def run(self):
         while self.should_keep_running():
             self.queue_events(self.timeout)
         self.on_thread_exit()
-
 
 
 class EventDispatcher(DaemonThread):

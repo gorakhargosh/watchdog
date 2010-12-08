@@ -2,7 +2,10 @@
 
 import threading
 import time
-from nose.tools import *
+from nose.tools import \
+    assert_equal, \
+    assert_true, \
+    assert_false
 
 try:
     import queue

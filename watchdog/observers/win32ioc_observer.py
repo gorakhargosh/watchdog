@@ -38,7 +38,7 @@ if platform.is_windows():
     except ImportError:
         import Queue as queue
 
-    from watchdog.events import EventQueue
+    from watchdog.observers.api import EventQueue
     from watchdog.utils import DaemonThread, real_absolute_path, absolute_path
     from watchdog.observers.w32_api import *
 

@@ -45,7 +45,7 @@ if platform.is_windows():
     import os.path
     import threading
 
-    from watchdog.utils import DaemonThread
+    from watchdog.utils import DaemonThread, absolute_path
     from watchdog.observers.w32_api import *
     from watchdog.observers.polling_observer import PollingObserver
 

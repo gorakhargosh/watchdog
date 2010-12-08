@@ -133,7 +133,7 @@ def tricks_from(args):
         config = load_config(tricks_file)
 
         if CONFIG_KEY_TRICKS not in config:
-            raise KeyError("No `%s' key specified in %s." % (CONFIG_KEY_TRICKS, input_file))
+            raise KeyError("No `%s' key specified in %s." % (CONFIG_KEY_TRICKS, tricks_file))
         tricks = config[CONFIG_KEY_TRICKS]
 
         if CONFIG_KEY_PYTHON_PATH in config:

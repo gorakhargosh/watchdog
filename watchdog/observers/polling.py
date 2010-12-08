@@ -39,7 +39,7 @@ from __future__ import with_statement
 import time
 import threading
 
-from watchdog.utils.dirsnapshot import DirectorySnapshot
+from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
 from watchdog.observers.api import EventEmitter, DEFAULT_EMITTER_TIMEOUT
 from watchdog.events import \
     DirMovedEvent, \
@@ -65,22 +65,17 @@ class PollingEmitter(EventEmitter):
     def on_thread_exit(self):
         self._snapshot = None
 
-    def _read_events(self, path, recursive, timeout):
-        # We don't want to hit the disk continuously.
-        time.sleep(timeout)
-
-        # Get event diff between fresh snapshot and previous snapshot.
-        # Update snapshot.
-        new_snapshot = DirectorySnapshot(path, recursive)
-        events = new_snapshot - self._snapshot
-        self._snapshot = new_snapshot
-        return events
 
     def queue_events(self, timeout):
         with self._lock:
-            events = self._read_events(self.watch.path,
-                                       self.watch.is_recursive,
-                                       timeout)
+            # We don't want to hit the disk continuously.
+            time.sleep(timeout)
+
+            # Get event diff between fresh snapshot and previous snapshot.
+            # Update snapshot.
+            new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+            events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
+            self._snapshot = new_snapshot
 
             # Files.
             for src_path in events.files_deleted:

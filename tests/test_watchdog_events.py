@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 # test_watchdog_events.py: tests for the watchdog.events module.
 
-from nose.tools import *
+from nose.tools import \
+    assert_equal, \
+    assert_true, \
+    assert_false, \
+    assert_not_equal
 from nose import SkipTest
 
 from utils import assert_readonly_public_attributes
@@ -456,8 +460,8 @@ class TestPatternMatchingEventHandler:
     def test___init__(self):
         handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
         handler2 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, False)
-        assert_equals(handler1.patterns, g_allowed_patterns)
-        assert_equals(handler1.ignore_patterns, g_ignore_patterns)
+        assert_equal(handler1.patterns, g_allowed_patterns)
+        assert_equal(handler1.ignore_patterns, g_ignore_patterns)
         assert_true(handler1.ignore_directories)
         assert_false(handler2.ignore_directories)
 
@@ -469,11 +473,11 @@ class TestPatternMatchingEventHandler:
 
     def test_ignore_patterns(self):
         handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
-        assert_equals(handler1.ignore_patterns, g_ignore_patterns)
+        assert_equal(handler1.ignore_patterns, g_ignore_patterns)
 
     def test_patterns(self):
         handler1 = PatternMatchingEventHandler(g_allowed_patterns, g_ignore_patterns, True)
-        assert_equals(handler1.patterns, g_allowed_patterns)
+        assert_equal(handler1.patterns, g_allowed_patterns)
 
 
 class TestLoggingEventHandler:

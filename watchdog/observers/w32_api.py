@@ -54,8 +54,7 @@ if platform.is_windows():
         FileMovedEvent, \
         FileDeletedEvent, \
         FileCreatedEvent, \
-        FileModifiedEvent, \
-        get_moved_events_for
+        FileModifiedEvent
 
 
     # Windows API Constants.
@@ -119,7 +118,7 @@ if platform.is_windows():
 
     def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
         """Read changes to the directory using the specified directory handle.
-    
+
         http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
         """
         results = ReadDirectoryChangesW(handle,

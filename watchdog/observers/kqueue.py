@@ -64,10 +64,9 @@ from watchdog.utils import has_attribute, platform, absolute_path
 if platform.is_bsd() or platform.is_darwin():
     import threading
     import errno
-    import os
-    import os.path
     import sys
     import stat
+    import os
 
     import select
     if not has_attribute(select, 'kqueue') or sys.version < (2, 7, 0):
@@ -164,13 +163,17 @@ if platform.is_bsd() or platform.is_darwin():
 
         @property
         def kevents(self):
-            """List of kevents monitored."""
+            """
+            List of kevents monitored.
+            """
             with self._lock:
                 return list(self._kevents)
 
         @property
         def paths(self):
-            """List of paths for which kevents have been created."""
+            """
+            List of paths for which kevents have been created.
+            """
             with self._lock:
                 return self._descriptor_for_path.keys()
 
@@ -316,7 +319,6 @@ if platform.is_bsd() or platform.is_darwin():
         """
         def __init__(self, path, is_directory):
             self._path = absolute_path(path)
-            self._kev = kev
             self._is_directory = is_directory
             self._fd = os.open(path, WATCHDOG_OS_OPEN_FLAGS)
             self._kev = select.kevent(self._fd,
@@ -354,7 +356,7 @@ if platform.is_bsd() or platform.is_darwin():
             """
             try:
                 os.close(self.fd)
-            except OSError, e:
+            except OSError:
                 pass
 
         def _key(self):
@@ -494,7 +496,23 @@ if platform.is_bsd() or platform.is_darwin():
                                  dirs_modified,
                                  ref_snapshot,
                                  new_snapshot):
-            pass
+            """
+            Queues events for directory modifications by scanning the directory
+            for changes.
+
+            A scan is a comparison between two snapshots of the same directory
+            taken at two different times. This also determines whether files
+            or directories were created, which updated the modified timestamp
+            for the directory.
+            """
+            if dirs_modified:
+                for dir_modified in dirs_modified:
+                    self.queue_event(DirModifiedEvent(dir_modified))
+                diff_events = new_snapshot - ref_snapshot
+                for file_created in diff_events.files_created:
+                    self.queue_event(FileCreatedEvent(file_created))
+                for directory_created in diff_events.dirs_created:
+                    self.queue_event(DirCreatedEvent(directory_created))
 
 
         def _queue_events_except_renames_and_dir_modifications(self, event_list):
@@ -508,7 +526,8 @@ if platform.is_bsd() or platform.is_darwin():
                       directory rename, directory creation, etc. are
                       determined by comparing directory snapshots.
             """
-            paths_renamed = set()
+            files_renamed = set()
+            dirs_renamed = set()
             dirs_modified = set()
 
             for kev in event_list:
@@ -538,8 +557,11 @@ if platform.is_bsd() or platform.is_darwin():
                     # Kqueue does not specify the destination names for renames
                     # to, so we have to process these after taking a snapshot
                     # of the directory.
-                    paths_renamed.add(src_path)
-            return paths_renamed, dirs_modified
+                    if descriptor.is_directory:
+                        dirs_renamed.add(src_path)
+                    else:
+                        files_renamed.add(src_path)
+            return files_renamed, dirs_renamed, dirs_modified
 
 
         def _queue_renamed(self, src_path, is_directory, ref_snapshot, new_snapshot):
@@ -599,7 +621,7 @@ if platform.is_bsd() or platform.is_darwin():
             :type timeout:
                 ``float`` (seconds)
             """
-            return self._kq.control(self._descriptors.kevents(), max_events=MAX_EVENTS, timeout=timeout)
+            return self._kq.control(self._descriptors.kevents, max_events=MAX_EVENTS, timeout=timeout)
 
 
         def queue_events(self, timeout):
@@ -615,22 +637,24 @@ if platform.is_bsd() or platform.is_darwin():
             with self._lock:
                 try:
                     event_list = self._read_events(timeout=timeout)
-                    paths_renamed, dir_modified = \
+                    files_renamed, dirs_renamed, dirs_modified = \
                         self._queue_events_except_renames_and_dir_modifications(event_list)
 
                     # Take a fresh snapshot of the directory and update the
                     # saved snapshot.
-                    new_snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
+                    new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
                     ref_snapshot = self._snapshot
                     self._snapshot = new_snapshot
 
-                    if paths_renamed or dirs_modified:
-                        for src_path in paths_renamed:
-                            self._queue_renamed(src_path, is_directory, ref_snapshot, new_snapshot)
-                        self._queue_from_dirs_modified(ref_snapshot,
-                                                       new_snapshot,
-                                                       dirs_modified)
-                except OSerror, e:
+                    if files_renamed or dirs_renamed or dirs_modified:
+                        for src_path in files_renamed:
+                            self._queue_renamed(src_path, False, ref_snapshot, new_snapshot)
+                        for src_path in dirs_renamed:
+                            self._queue_renamed(src_path, True, ref_snapshot, new_snapshot)
+                        self._queue_dirs_modified(ref_snapshot,
+                                                  new_snapshot,
+                                                  dirs_modified)
+                except OSError, e:
                     if e.errno == errno.EBADF:
                         #logging.debug(e)
                         pass

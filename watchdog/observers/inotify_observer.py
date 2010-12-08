@@ -35,6 +35,7 @@ if sys.platform.startswith('linux'):
     from pyinotify import ALL_EVENTS, \
         ProcessEvent, WatchManager, ThreadedNotifier
 
+    from watchdog.observers.api import EventQueue
     from watchdog.utils import DaemonThread, absolute_path, real_absolute_path
     from watchdog.utils.collections import OrderedSetQueue
     from watchdog.events import \
