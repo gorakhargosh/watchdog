@@ -147,7 +147,7 @@ def match_patterns(pathname, patterns):
 #    return match_patterns(pathname, allowed_patterns) and not match_patterns(pathname, ignore_patterns)
 
 
-def filter_paths(pathnames, patterns=["*"], ignore_patterns=[]):
+def filter_paths(pathnames, patterns=None, ignore_patterns=None):
     """
     Filters from a set of paths based on acceptable patterns and
     ignorable patterns.
@@ -165,7 +165,7 @@ def filter_paths(pathnames, patterns=["*"], ignore_patterns=[]):
     """
     result = []
     if patterns is None:
-        patterns = []
+        patterns = ['*']
     if ignore_patterns is None:
         ignore_patterns = []
     for path in pathnames:

@@ -381,7 +381,7 @@ class FileSystemEventHandler(object):
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """Matches given patterns with file paths associated with occurring events."""
-    def __init__(self, patterns=['*'], ignore_patterns=[], ignore_directories=False):
+    def __init__(self, patterns=None, ignore_patterns=None, ignore_directories=False):
         super(PatternMatchingEventHandler, self).__init__()
 
         self._patterns = patterns
