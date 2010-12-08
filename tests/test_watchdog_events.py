@@ -480,6 +480,26 @@ class TestPatternMatchingEventHandler:
         assert_equal(handler1.patterns, g_allowed_patterns)
 
 
+class _TestableEventHandler(LoggingEventHandler):
+    def on_any_event(self, event):
+        assert True
+
+    def on_modified(self, event):
+        super(_TestableEventHandler, self).on_modified(event)
+        assert_event_type(event, EVENT_TYPE_MODIFIED)
+
+    def on_deleted(self, event):
+        super(_TestableEventHandler, self).on_deleted(event)
+        assert_event_type(event, EVENT_TYPE_DELETED)
+
+    def on_moved(self, event):
+        super(_TestableEventHandler, self).on_moved(event)
+        assert_event_type(event, EVENT_TYPE_MOVED)
+
+    def on_created(self, event):
+        super(_TestableEventHandler, self).on_created(event)
+        assert_event_type(event, EVENT_TYPE_CREATED)
+
 class TestLoggingEventHandler:
     def test__dispatch(self):
         # Utilities.
@@ -503,27 +523,8 @@ class TestLoggingEventHandler:
             file_mov_event,
         ]
 
-        class TestableEventHandler(LoggingEventHandler):
-            def on_any_event(self, event):
-                assert True
 
-            def on_modified(self, event):
-                super(TestableEventHandler, self).on_modified(event)
-                assert_event_type(event, EVENT_TYPE_MODIFIED)
-
-            def on_deleted(self, event):
-                super(TestableEventHandler, self).on_deleted(event)
-                assert_event_type(event, EVENT_TYPE_DELETED)
-
-            def on_moved(self, event):
-                super(TestableEventHandler, self).on_moved(event)
-                assert_event_type(event, EVENT_TYPE_MOVED)
-
-            def on_created(self, event):
-                super(TestableEventHandler, self).on_created(event)
-                assert_event_type(event, EVENT_TYPE_CREATED)
-
-        handler = TestableEventHandler()
+        handler = _TestableEventHandler()
 
         for event in all_events:
             handler._dispatch(event)

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from nose.tools import *
 from nose import SkipTest
 
 from watchdog.observers import Observer
