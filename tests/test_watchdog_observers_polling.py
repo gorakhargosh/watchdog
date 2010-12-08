@@ -1,7 +1,16 @@
 # -*- coding: utf-8 -*-
 
 from time import sleep
-from tests.shell import *
+from tests.shell import \
+    mkdir, \
+    ls, \
+    mkdtemp, \
+    touch, \
+    truncate, \
+    rm, \
+    mv, \
+    cd, \
+    pwd
 from nose import SkipTest
 from nose.tools import \
     assert_equal, \
