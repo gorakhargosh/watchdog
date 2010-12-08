@@ -56,10 +56,10 @@ Collections and Utility Classes
 
 """
 
-
 from __future__ import with_statement
-
-from watchdog.utils import has_attribute, platform, absolute_path
+from watchdog.utils import \
+    platform, \
+    absolute_path #, has_attribute
 
 if platform.is_bsd() or platform.is_darwin():
     import threading
@@ -68,12 +68,20 @@ if platform.is_bsd() or platform.is_darwin():
     import stat
     import os
 
-    import select
-    if not has_attribute(select, 'kqueue') or sys.version < (2, 7, 0):
+    # See the notes for this module in the documentation above ^.
+    #import select
+    #if not has_attribute(select, 'kqueue') or sys.version < (2, 7, 0):
+    if sys.version < (2, 7, 0):
         import select_backport as select
+    else:
+        import select
 
+    from watchdog.observers.api import \
+        BaseObserver, \
+        EventEmitter, \
+        DEFAULT_OBSERVER_TIMEOUT, \
+        DEFAULT_EMITTER_TIMEOUT
     from watchdog.utils.dirsnapshot import DirectorySnapshot
-    from watchdog.observers.api import EventEmitter, DEFAULT_EMITTER_TIMEOUT
     from watchdog.events import \
         DirMovedEvent, \
         DirDeletedEvent, \
@@ -564,7 +572,11 @@ if platform.is_bsd() or platform.is_darwin():
             return files_renamed, dirs_renamed, dirs_modified
 
 
-        def _queue_renamed(self, src_path, is_directory, ref_snapshot, new_snapshot):
+        def _queue_renamed(self,
+                           src_path,
+                           is_directory,
+                           ref_snapshot,
+                           new_snapshot):
             """
             Compares information from two directory snapshots (one taken before
             the rename operation and another taken right after) to determine the
@@ -621,7 +633,9 @@ if platform.is_bsd() or platform.is_darwin():
             :type timeout:
                 ``float`` (seconds)
             """
-            return self._kq.control(self._descriptors.kevents, max_events=MAX_EVENTS, timeout=timeout)
+            return self._kq.control(self._descriptors.kevents,
+                                    max_events=MAX_EVENTS,
+                                    timeout=timeout)
 
 
         def queue_events(self, timeout):
@@ -642,18 +656,25 @@ if platform.is_bsd() or platform.is_darwin():
 
                     # Take a fresh snapshot of the directory and update the
                     # saved snapshot.
-                    new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+                    new_snapshot = DirectorySnapshot(self.watch.path,
+                                                     self.watch.is_recursive)
                     ref_snapshot = self._snapshot
                     self._snapshot = new_snapshot
 
                     if files_renamed or dirs_renamed or dirs_modified:
                         for src_path in files_renamed:
-                            self._queue_renamed(src_path, False, ref_snapshot, new_snapshot)
+                            self._queue_renamed(src_path,
+                                                False,
+                                                ref_snapshot,
+                                                new_snapshot)
                         for src_path in dirs_renamed:
-                            self._queue_renamed(src_path, True, ref_snapshot, new_snapshot)
-                        self._queue_dirs_modified(ref_snapshot,
-                                                  new_snapshot,
-                                                  dirs_modified)
+                            self._queue_renamed(src_path,
+                                                True,
+                                                ref_snapshot,
+                                                new_snapshot)
+                        self._queue_dirs_modified(dirs_modified,
+                                                  ref_snapshot,
+                                                  new_snapshot)
                 except OSError, e:
                     if e.errno == errno.EBADF:
                         #logging.debug(e)
@@ -666,3 +687,16 @@ if platform.is_bsd() or platform.is_darwin():
             with self._lock:
                 self._descriptors.clear()
                 self._kq.close()
+
+
+
+
+class KqueueObserver(BaseObserver):
+    """
+    Observer thread that schedules watching directories and dispatches
+    calls to event handlers.
+    """
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+        BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout)
+
+

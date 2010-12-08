@@ -40,7 +40,11 @@ import time
 import threading
 
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
-from watchdog.observers.api import EventEmitter, DEFAULT_EMITTER_TIMEOUT
+from watchdog.observers.api import \
+    EventEmitter, \
+    BaseObserver, \
+    DEFAULT_OBSERVER_TIMEOUT, \
+    DEFAULT_EMITTER_TIMEOUT
 from watchdog.events import \
     DirMovedEvent, \
     DirDeletedEvent, \
@@ -96,4 +100,15 @@ class PollingEmitter(EventEmitter):
                 self.queue_event(DirCreatedEvent(src_path))
             for src_path, dest_path in events.dirs_moved:
                 self.queue_event(DirMovedEvent(src_path, dest_path))
+
+
+
+class PollingObserver(BaseObserver):
+    """
+    Observer thread that schedules watching directories and dispatches
+    calls to event handlers.
+    """
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+        BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
+
 
