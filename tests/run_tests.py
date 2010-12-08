@@ -59,6 +59,7 @@ if __name__ == "__main__":
     config_path = path_join(parent_dir_path, 'nose.cfg')
 
     argv = [__file__]
+    argv.append('--detailed-errors')
     argv.append('--with-coverage')
     # Coverage by itself generates more usable reports.
     #argv.append('--cover-erase')
