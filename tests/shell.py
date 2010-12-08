@@ -83,3 +83,7 @@ def mv(src_path, dest_path):
 
 def mkdtemp():
     return tempfile.mkdtemp()
+
+
+def ls(path='.'):
+    return os.listdir(path)
