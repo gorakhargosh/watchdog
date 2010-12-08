@@ -38,28 +38,25 @@ Classes
 from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_TIMEOUT
 
 try: # pragma: no cover
-    from watchdog.observers.inotify import InotifyEmitter as Emitter
+    from watchdog.observers.inotify import InotifyObserver as _Observer
 except ImportError: # pragma: no cover
     try: # pragma: no cover
-        from watchdog.observers.fsevents import FSEventsEmitter as Emitter
+        from watchdog.observers.fsevents import FSEventsObserver as _Observer
     except ImportError: # pragma: no cover
         try: # pragma: no cover
-            from watchdog.observers.kqueue import KqueueEmitter as Emitter
+            from watchdog.observers.kqueue import KqueueObserver as _Observer
         except ImportError: # pragma: no cover
             try: # pragma: no cover
-                from watchdog.observers.win32_async import AsyncWin32Emitter as Emitter
+                from watchdog.observers.win32_async import AsyncWin32Observer as _Observer
             except ImportError: # pragma: no cover
                 try: # pragma: no cover
-                    from watchdog.observers.win32 import Win32Emitter as Emitter
+                    from watchdog.observers.win32 import Win32Observer as _Observer
                 except ImportError: # pragma: no cover
-                    from watchdog.observers.polling import PollingEmitter as Emitter
+                    from watchdog.observers.polling import PollingObserver as _Observer
 
 
-class Observer(BaseObserver):
+class Observer(_Observer):
     """
     Observer thread that schedules watching directories and dispatches
     calls to event handlers.
     """
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, emitter_class=Emitter):
-        BaseObserver.__init__(self, emitter_class=emitter_class, timeout=timeout)
-
