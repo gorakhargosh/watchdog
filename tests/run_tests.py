@@ -25,7 +25,7 @@ cover_packages = [
     'watchdog.utils',
     #'watchdog.utils.echo',
     'watchdog.utils.dirsnapshot',
-    'watchdog.utils.collections',
+    'watchdog.utils.bricks',
     'watchdog.observers',
     'watchdog.observers.api',
     'watchdog.observers.polling_observer',

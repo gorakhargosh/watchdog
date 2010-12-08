@@ -48,10 +48,10 @@ API Reference
 .. automodule:: watchdog.utils.dirsnapshot
 
 
-`watchdog.utils.collections`
-============================
+`watchdog.utils.bricks`
+=======================
 
-.. automodule:: watchdog.utils.collections
+.. automodule:: watchdog.utils.bricks
 
 
 .. toctree::

@@ -13,7 +13,7 @@ except ImportError:
     import Queue as queue # IGNORE:F0401
 
 from watchdog.events import DirModifiedEvent, FileModifiedEvent
-from watchdog.utils.collections import OrderedSetQueue
+from watchdog.utils.bricks import OrderedSetQueue
 
 class TestOrderedSetQueue:
     def test_behavior_ordered_set(self):

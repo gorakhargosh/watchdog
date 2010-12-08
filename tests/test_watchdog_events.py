@@ -523,12 +523,9 @@ class TestLoggingEventHandler:
             file_mov_event,
         ]
 
-
         handler = _TestableEventHandler()
-
         for event in all_events:
             handler._dispatch(event)
-
 
 class TestGenerateSubMovedEventsFor:
     def test_generate_sub_moved_events_for(self):

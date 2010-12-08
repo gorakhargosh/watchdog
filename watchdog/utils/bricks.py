@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# collections: utility collections.
+# bricks.py: utility collections.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
@@ -23,9 +23,9 @@
 
 
 """
-Utility collections.
+Utility collections or "bricks".
 
-:module: watchdog.utils.collections
+:module: watchdog.utils.bricks
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 :author: Lukáš Lalinský <lalinsky@gmail.com>
 :author: Raymond Hettinger <python@rcn.com>
@@ -119,7 +119,7 @@ class OrderedSet(collections.MutableSet):
     regular sets including O(1) adds, removes, and lookups as well as
     O(n) iteration.
 
-    .. NOTE:: Implementation notes
+    .. ADMONITION:: Implementation notes
 
             Runs on Python 2.6 or later (and runs on Python 3.0 or later
             without any modifications).
