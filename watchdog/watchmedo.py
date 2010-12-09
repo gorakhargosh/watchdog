@@ -200,7 +200,7 @@ def tricks_generate_yaml(args):
 @arg('--debug-force-winapi-async', default=False, help='[debug flag] forces using the win32 IOC observer implementation.')
 @arg('--debug-force-fsevents', default=False, help='[debug flag] forces using the fsevents observer implementation.')
 @arg('--debug-force-inotify', default=False, help='[debug flag] forces using the inotify observer implementation.')
-@arg('--debug-timeout', default=1.0, help='[debug flag] uses this as the timeout/interval value')
+@arg('--interval', '--timeout', dest='timeout', default=1.0, help='use this as the polling interval/blocking timeout')
 def log(args):
     from watchdog.utils import echo
     from watchdog.tricks import LoggerTrick
@@ -226,7 +226,7 @@ def log(args):
         from watchdog.observers.fsevents import FSEventsObserver as Observer
     else:
         from watchdog.observers import Observer
-    observer = Observer(timeout=args.debug_timeout)
+    observer = Observer(timeout=args.timeout)
     observe_with(observer, event_handler, args.directories, args.recursive)
 
 
