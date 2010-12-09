@@ -112,7 +112,7 @@ setup(
     keywords="python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
     ext_modules=ext_modules.get(platform, []),
-    packages=['watchdog'],
+    packages=['watchdog', 'watchdog.observers', 'watchdog.tricks', 'watchdog.utils'],
     scripts=scripts,
     entry_points = {'console_scripts': ['watchmedo = watchdog.watchmedo:main']},
     install_requires=common_install_requires + install_requires.get(platform, []),
