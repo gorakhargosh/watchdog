@@ -109,7 +109,7 @@ setup(
     license="MIT License",
     url="http://github.com/gorakhargosh/watchdog",
     download_url="http://watchdog-python.googlecode.com/files/watchdog-%s.tar.gz" % version.VERSION_STRING,
-    keywords = "python filesystem monitoring monitor fsevents inotify",
+    keywords="python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
     ext_modules=ext_modules.get(platform, []),
     packages=['watchdog'],
