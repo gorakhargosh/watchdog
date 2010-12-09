@@ -88,8 +88,8 @@ if platform.is_bsd() or platform.is_darwin():
 
     # See the notes for this module in the documentation above ^.
     #import select
-    #if not has_attribute(select, 'kqueue') or sys.version < (2, 7, 0):
-    if sys.version < (2, 7, 0):
+    #if not has_attribute(select, 'kqueue') or sys.version_info < (2, 7, 0):
+    if sys.version_info < (2, 7, 0):
         import select_backport as select
     else:
         import select
