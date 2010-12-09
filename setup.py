@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Filip Noetzel <filip@j03.de>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +26,9 @@ import sys
 import imp
 
 from os.path import join as path_join, dirname
-from distutils.core import setup, Extension
+from setuptools import setup
+from setuptools.extension import Extension
+from setuptools.command.build_ext import build_ext
 from distutils.util import get_platform
 
 version = imp.load_source('version', path_join('watchdog', 'version.py'))
@@ -109,9 +112,12 @@ setup(
     download_url="http://watchdog-python.googlecode.com/files/watchdog-%s.tar.gz" % version.VERSION_STRING,
     keywords="python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
+    cmdclass=dict(build_ext=build_ext),
     ext_modules=ext_modules.get(platform, []),
     packages=['watchdog', 'watchdog.observers', 'watchdog.tricks', 'watchdog.utils'],
     scripts=scripts,
     entry_points = {'console_scripts': ['watchmedo = watchdog.watchmedo:main']},
     install_requires=common_install_requires + install_requires.get(platform, []),
+    zip_safe=False,
     )
+

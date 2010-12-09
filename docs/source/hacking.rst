@@ -41,6 +41,7 @@ Steps to setting up a clean environment:
 
     $ git clone git@github.com:hackeratti/watchdog.git
     $ cd watchdog
+    $ git submodule update --init --recursive
     $ python bootstrap.py --distribute
     $ bin/buildout
 
