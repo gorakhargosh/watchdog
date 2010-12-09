@@ -73,6 +73,7 @@ class PollingEmitter(EventEmitter):
     def queue_events(self, timeout):
         with self._lock:
             # We don't want to hit the disk continuously.
+            # timeout behaves like an interval for polling emitters.
             time.sleep(timeout)
 
             # Get event diff between fresh snapshot and previous snapshot.
