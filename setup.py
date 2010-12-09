@@ -103,7 +103,7 @@ setup(
     name="watchdog",
     version=version.VERSION_STRING,
     description="Filesystem events monitoring",
-    long_description=read_file('README.md'),
+    long_description=read_file('README'),
     author="Gora Khargosh",
     author_email="gora.khargosh@gmail.com",
     license="MIT License",
