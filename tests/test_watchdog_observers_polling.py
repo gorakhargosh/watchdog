@@ -76,6 +76,11 @@ class TestPollingEmitter:
         sleep(SLEEP_TIME)
         self.emitter.stop()
 
+        # What we need here for the tests to pass is a collection type
+        # that is:
+        #   * unordered
+        #   * non-unique
+        # A multiset! Python's collections.Counter class seems appropriate.
         expected = set([
             DirModifiedEvent(p()),
             DirCreatedEvent(p('project')),
