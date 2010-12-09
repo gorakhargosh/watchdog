@@ -99,9 +99,8 @@ install_requires = {
 }
 
 scripts = []
-
-if platform == PLATFORM_WINDOWS:
-    scripts.append(path_join('scripts', 'watchmedo.bat'))
+#if platform == PLATFORM_WINDOWS:
+#    scripts.append(path_join('scripts', 'watchmedo.bat'))
 
 setup(
     name="watchdog",
