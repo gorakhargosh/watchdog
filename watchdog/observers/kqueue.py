@@ -702,10 +702,10 @@ if platform.is_bsd() or platform.is_darwin():
                 self._kq.close()
 
 
-class KqueueObserver(BaseObserver):
-    """
-    Observer thread that schedules watching directories and dispatches
-    calls to event handlers.
-    """
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout)
+    class KqueueObserver(BaseObserver):
+        """
+        Observer thread that schedules watching directories and dispatches
+        calls to event handlers.
+        """
+        def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+            BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout)
