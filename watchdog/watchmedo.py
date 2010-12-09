@@ -86,16 +86,16 @@ def parse_patterns(patterns_spec, ignore_patterns_spec):
     return (patterns, ignore_patterns)
 
 
-def observe_with(observer, identifier, event_handler, paths, recursive):
+def observe_with(observer, event_handler, paths, recursive):
     """Single observer given an identifier, event handler, and directories
     to watch."""
-    observer.schedule(identifier, event_handler, paths, recursive)
+    for path in set(paths):
+        observer.schedule(event_handler, path, recursive)
     observer.start()
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        observer.unschedule(identifier)
         observer.stop()
     observer.join()
 
@@ -196,10 +196,11 @@ def tricks_generate_yaml(args):
 @arg('--trace', default=False, help='dumps complete dispatching trace')
 @arg('--debug-force-polling', default=False, help='[debug flag] forces using the polling observer implementation.')
 @arg('--debug-force-kqueue', default=False, help='[debug flag] forces using the kqueue observer implementation.')
-@arg('--debug-force-win32', default=False, help='[debug flag] forces using the win32 observer implementation.')
-@arg('--debug-force-win32ioc', default=False, help='[debug flag] forces using the win32 IOC observer implementation.')
+@arg('--debug-force-winapi', default=False, help='[debug flag] forces using the win32 observer implementation.')
+@arg('--debug-force-winapi-async', default=False, help='[debug flag] forces using the win32 IOC observer implementation.')
 @arg('--debug-force-fsevents', default=False, help='[debug flag] forces using the fsevents observer implementation.')
 @arg('--debug-force-inotify', default=False, help='[debug flag] forces using the inotify observer implementation.')
+@arg('--debug-timeout', default=1.0, help='[debug flag] uses this as the timeout/interval value')
 def log(args):
     from watchdog.utils import echo
     from watchdog.tricks import LoggerTrick
@@ -215,9 +216,9 @@ def log(args):
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif args.debug_force_win32:
+    elif args.debug_force_winapi_async:
         from watchdog.observers.winapi_async import WindowsApiAsyncObserver as Observer
-    elif args.debug_force_win32ioc:
+    elif args.debug_force_winapi:
         from watchdog.observers.winapi import WindowsApiObserver as Observer
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
@@ -225,8 +226,8 @@ def log(args):
         from watchdog.observers.fsevents import FSEventsObserver as Observer
     else:
         from watchdog.observers import Observer
-    observer = Observer()
-    observe_with(observer, 'logger', event_handler, args.directories, args.recursive)
+    observer = Observer(timeout=args.debug_timeout)
+    observe_with(observer, event_handler, args.directories, args.recursive)
 
 
 #@alias('shell-command')
@@ -264,7 +265,7 @@ def shell_command(args):
                                       patterns=patterns,
                                       ignore_patterns=ignore_patterns,
                                       ignore_directories=args.ignore_directories)
-    observe_with(Observer(), 'shell-command', event_handler, args.directories, args.recursive)
+    observe_with(Observer(), event_handler, args.directories, args.recursive)
 
 
 epilog = """Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>.
