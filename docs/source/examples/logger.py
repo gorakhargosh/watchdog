@@ -1,17 +1,20 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import sys
 import time
-from watchdog.tricks import LoggerTrick
+
 from watchdog.observers import Observer
+from watchdog.tricks import LoggerTrick
 
 event_handler = LoggerTrick()
 observer = Observer()
-observer.schedule('a-unique-name', event_handler, sys.argv[1:], recursive=True)
+observer.schedule(event_handler, sys.argv[1], recursive=True)
 observer.start()
 try:
     while True:
         time.sleep(1)
 except KeyboardInterrupt:
-    observer.unschedule('a-unique-name')
     observer.stop()
 observer.join()
 
