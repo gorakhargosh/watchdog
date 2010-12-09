@@ -3,7 +3,7 @@ include LICENSE
 include AUTHORS
 #include scripts/watchmedo
 include scripts/watchmedo.bat
-recursive-include watchdog/ *.py *.h *.c
+recursive-include watchdog *.py *.h *.c
 include docs/*.txt
 include docs/*.xml
 include docs/Makefile
