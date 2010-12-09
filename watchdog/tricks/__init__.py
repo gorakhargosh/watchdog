@@ -51,8 +51,23 @@ class Trick(PatternMatchingEventHandler):
 
 class LoggerTrick(Trick):
     """A simple trick that does only logs events."""
-    @echo.echo
     def on_any_event(self, event):
+        pass
+
+    @echo.echo
+    def on_modified(self, event):
+        pass
+
+    @echo.echo
+    def on_deleted(self, event):
+        pass
+
+    @echo.echo
+    def on_created(self, event):
+        pass
+
+    @echo.echo
+    def on_moved(self, event):
         pass
 
 
