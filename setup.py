@@ -56,6 +56,7 @@ trove_classifiers = (
     'Development Status :: 3 - Alpha',
     'Environment :: Console',
     'Intended Audience :: Developers',
+    'Intended Audience :: System Administrators',
     'License :: OSI Approved :: MIT License',
     'Natural Language :: English',
     'Operating System :: POSIX :: Linux',
@@ -67,6 +68,8 @@ trove_classifiers = (
     'Programming Language :: C',
     'Topic :: Software Development :: Libraries',
     'Topic :: System :: Monitoring',
+    'Topic :: System :: Filesystems',
+    'Topic :: Utilities',
 )
 
 ext_modules = {
@@ -116,7 +119,7 @@ setup(
     ext_modules=ext_modules.get(platform, []),
     packages=['watchdog', 'watchdog.observers', 'watchdog.tricks', 'watchdog.utils'],
     scripts=scripts,
-    entry_points = {'console_scripts': ['watchmedo = watchdog.watchmedo:main']},
+    entry_points={'console_scripts': ['watchmedo = watchdog.watchmedo:main']},
     install_requires=common_install_requires + install_requires.get(platform, []),
     zip_safe=False,
     )
