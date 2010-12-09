@@ -92,9 +92,7 @@ install_requires = {
     PLATFORM_WINDOWS: ['pywin32 >=214'],
 }
 
-scripts = [
-    path_join('scripts', 'watchmedo'),
-    ]
+scripts = []
 
 if platform == PLATFORM_WINDOWS:
     scripts.append(path_join('scripts', 'watchmedo.bat'))
