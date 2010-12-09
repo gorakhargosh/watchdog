@@ -78,23 +78,21 @@ ext_modules = {
     PLATFORM_WINDOWS: [],
 }
 
-common_install_requires = ['PyYAML (>=3.09)', 'argh (>=0.8.1)']
+common_install_requires = ['PyYAML >=3.09', 'argh >=0.8.1']
 if sys.version_info < (2, 7, 0) and \
         ('linux' in sys.platform or 'bsd' in sys.platform or 'darwin' in sys.platform):
     # Python 2.6 and below have the broken/non-existent kqueue implementations in the
     # select module. This backported patch adds it.
-    common_install_requires.append('select_backport (>=0.2)')
-    common_install_requires.append('argparse (>=1.1)')
+    common_install_requires.append('select_backport >=0.2')
+    common_install_requires.append('argparse >=1.1')
 
 install_requires = {
     PLATFORM_MACOSX: [],
-    PLATFORM_LINUX: ['pyinotify (>=0.9.1)'],
-    PLATFORM_WINDOWS: ['pywin32 (>=214)'],
+    PLATFORM_LINUX: ['pyinotify >=0.9.1'],
+    PLATFORM_WINDOWS: ['pywin32 >=214'],
 }
 
-scripts = [
-    path_join('scripts', 'watchmedo'),
-    ]
+scripts = []
 
 if platform == PLATFORM_WINDOWS:
     scripts.append(path_join('scripts', 'watchmedo.bat'))
@@ -112,7 +110,8 @@ setup(
     keywords="python filesystem monitoring monitor fsevents inotify",
     classifiers=trove_classifiers,
     ext_modules=ext_modules.get(platform, []),
-    packages=['watchdog'],
+    packages=['watchdog', 'watchdog.observers', 'watchdog.tricks', 'watchdog.utils'],
     scripts=scripts,
-    requires=common_install_requires + install_requires.get(platform, []),
+    entry_points = {'console_scripts': ['watchmedo = watchdog.watchmedo:main']},
+    install_requires=common_install_requires + install_requires.get(platform, []),
     )
