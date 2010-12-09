@@ -114,5 +114,5 @@ setup(
     ext_modules=ext_modules.get(platform, []),
     packages=['watchdog'],
     scripts=scripts,
-    requires=common_install_requires + install_requires.get(platform, []),
+    install_requires=common_install_requires + install_requires.get(platform, []),
     )
