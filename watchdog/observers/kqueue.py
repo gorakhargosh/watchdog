@@ -472,6 +472,7 @@ if platform.is_bsd() or platform.is_darwin():
                     # Locked files cause the python process to die with
                     # a bus error when we handle temporary files.
                     # eg. .git/index.lock when running tig operations.
+                    # I don't fully understand this at the moment.
                     pass
                 else:
                     # All other errors are propagated.
