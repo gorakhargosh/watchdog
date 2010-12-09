@@ -110,7 +110,8 @@ if platform.is_bsd() or platform.is_darwin():
         FileCreatedEvent, \
         FileModifiedEvent, \
         EVENT_TYPE_MOVED, \
-        EVENT_TYPE_DELETED
+        EVENT_TYPE_DELETED, \
+        EVENT_TYPE_CREATED
 
     # Maximum number of events to process.
     MAX_EVENTS = 4096
@@ -171,7 +172,7 @@ if platform.is_bsd() or platform.is_darwin():
             # List of kevent objects.
             self._kevents = list()
 
-            self._lock = threading.Lock()
+            self._lock = threading.RLock()
 
 
         @property
@@ -212,18 +213,21 @@ if platform.is_bsd() or platform.is_darwin():
             :param path:
                 Path for which the descriptor will be obtained.
             """
-            return self.__getitem__(path)
-
-        def __getitem__(self, path):
-            """
-            Obtains a :class:`KeventDescriptor` object for the specified path.
-
-            :param path:
-                Path for which the descriptor will be obtained.
-            """
+            #return self.__getitem__(path)
             with self._lock:
                 path = absolute_path(path)
                 return self._descriptor_for_path[path]
+
+        #def __getitem__(self, path):
+        #    """
+        #    Obtains a :class:`KeventDescriptor` object for the specified path.
+
+        #    :param path:
+        #        Path for which the descriptor will be obtained.
+        #    """
+        #    with self._lock:
+        #        path = absolute_path(path)
+        #        return self._descriptor_for_path[path]
 
         def __contains__(self, path):
             """
@@ -268,7 +272,8 @@ if platform.is_bsd() or platform.is_darwin():
             with self._lock:
                 path = absolute_path(path)
                 if self._has_path(path):
-                    self._remove_descriptor(self[path])
+                    descriptor = self.get(path)
+                    self._remove_descriptor(descriptor)
 
         def clear(self):
             """
@@ -384,6 +389,10 @@ if platform.is_bsd() or platform.is_darwin():
         def __hash__(self):
             return hash(self._key())
 
+        def __repr__(self):
+            return "<KeventDescriptor: path=%s, is_directory=%s>" \
+                % (self.path, self.is_directory)
+
 
     class KqueueEmitter(EventEmitter):
         """
@@ -474,6 +483,7 @@ if platform.is_bsd() or platform.is_darwin():
                     # All other errors are propagated.
                     raise
 
+
         def _unregister_kevent(self, path):
             """
             Convenience function to close the kevent descriptor for a
@@ -496,13 +506,14 @@ if platform.is_bsd() or platform.is_darwin():
             # We do not need to fire moved/deleted events for all subitems in
             # a directory tree here, because this function is called by kqueue
             # for all those events anyway.
-            with self._lock:
-                if event.event_type == EVENT_TYPE_MOVED:
-                    self._unregister_kevent(event.src_path)
-                    self._register_kevent(event.dest_path, event.is_directory)
-                elif event.event_type == EVENT_TYPE_DELETED:
-                    self._unregister_kevent(event.src_path)
-                EventEmitter.queue_event(self, event)
+            EventEmitter.queue_event(self, event)
+            if event.event_type == EVENT_TYPE_CREATED:
+                self._register_kevent(event.src_path, event.is_directory)
+            elif event.event_type == EVENT_TYPE_MOVED:
+                self._unregister_kevent(event.src_path)
+                self._register_kevent(event.dest_path, event.is_directory)
+            elif event.event_type == EVENT_TYPE_DELETED:
+                self._unregister_kevent(event.src_path)
 
 
         def _queue_dirs_modified(self,
@@ -548,6 +559,7 @@ if platform.is_bsd() or platform.is_darwin():
                 src_path = descriptor.path
 
                 if is_deleted(kev):
+                    print('deleted ' + src_path)
                     if descriptor.is_directory:
                         self.queue_event(DirDeletedEvent(src_path))
                     else:
@@ -612,12 +624,12 @@ if platform.is_bsd() or platform.is_darwin():
                     # inside the directory tree? Does kqueue does this
                     # all by itself? Check this and then enable this code
                     # only if it doesn't already.
-                    #if self.watch.is_recursive:
-                    #    for sub_event in event.sub_moved_events():
-                    #        self.queue_event(sub_event)
+                    if self.watch.is_recursive:
+                        for sub_event in event.sub_moved_events():
+                            self.queue_event(sub_event)
+                    self.queue_event(event)
                 else:
-                    event = FileMovedEvent(src_path, dest_path)
-                self.queue_event(event)
+                    self.queue_event(FileMovedEvent(src_path, dest_path))
             except KeyError:
                 # If the new snapshot does not have an inode for the
                 # old path, we haven't found the new name. Therefore,
@@ -639,8 +651,8 @@ if platform.is_bsd() or platform.is_darwin():
                 ``float`` (seconds)
             """
             return self._kq.control(self._descriptors.kevents,
-                                    max_events=MAX_EVENTS,
-                                    timeout=timeout)
+                                    MAX_EVENTS,
+                                    timeout)
 
 
         def queue_events(self, timeout):
@@ -655,7 +667,7 @@ if platform.is_bsd() or platform.is_darwin():
             """
             with self._lock:
                 try:
-                    event_list = self._read_events(timeout=timeout)
+                    event_list = self._read_events(timeout)
                     files_renamed, dirs_renamed, dirs_modified = \
                         self._queue_events_except_renames_and_dir_modifications(event_list)
 
@@ -703,5 +715,3 @@ class KqueueObserver(BaseObserver):
     """
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout)
-
-
