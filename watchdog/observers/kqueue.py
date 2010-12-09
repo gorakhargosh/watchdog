@@ -554,7 +554,6 @@ if platform.is_bsd() or platform.is_darwin():
                 src_path = descriptor.path
 
                 if is_deleted(kev):
-                    print('deleted ' + src_path)
                     if descriptor.is_directory:
                         self.queue_event(DirDeletedEvent(src_path))
                     else:
