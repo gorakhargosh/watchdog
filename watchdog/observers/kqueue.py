@@ -213,7 +213,6 @@ if platform.is_bsd() or platform.is_darwin():
             :param path:
                 Path for which the descriptor will be obtained.
             """
-            #return self.__getitem__(path)
             with self._lock:
                 path = absolute_path(path)
                 return self._descriptor_for_path[path]
