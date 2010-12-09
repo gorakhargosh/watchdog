@@ -216,9 +216,9 @@ def log(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_win32:
-        from watchdog.observers.win32_async import Win32AsyncObserver as Observer
+        from watchdog.observers.winapi_async import WindowsApiAsyncObserver as Observer
     elif args.debug_force_win32ioc:
-        from watchdog.observers.win32_sync import Win32SyncObserver as Observer
+        from watchdog.observers.winapi import WindowsApiObserver as Observer
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
     elif args.debug_force_fsevents:
