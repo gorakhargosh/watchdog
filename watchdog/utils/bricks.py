@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # bricks.py: utility collections.
 #
+# Copyright (C) 2009, 2010 Raymond Hettinger <python@rcn.com>
+# Copyright (C) 2010 Lukáš Lalinský <lalinsky@gmail.com>
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy

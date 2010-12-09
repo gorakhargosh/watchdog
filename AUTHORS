@@ -6,6 +6,7 @@ Luke McCarthy <luke@iogopro.co.uk>
 Thomas Guest <tag@wordaligned.org>
 Lukáš Lalinský <lalinsky@gmail.com>
 Armin Ronacher <armin.ronacher@active-4.com>
+Raymond Hettinger <python@rcn.com>
 Filip Noetzel <filip@j03.de>
 
 Watchdog also includes open source libraries or adapted code
@@ -20,4 +21,3 @@ from the following projects:
   http://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
 - Armin Ronacher's flask-sphinx-themes for the documentation:
   https://github.com/mitsuhiko/flask-sphinx-themes
-
