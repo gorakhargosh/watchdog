@@ -472,13 +472,16 @@ if platform.is_bsd() or platform.is_darwin():
                     # and then quickly deleted before we could open
                     # a descriptor for it. Therefore, simply queue a sequence
                     # of created and deleted events for the path.
-                    path = absolute_path(path)
-                    if is_directory:
-                        self.queue_event(DirCreatedEvent(path))
-                        self.queue_event(DirDeletedEvent(path))
-                    else:
-                        self.queue_event(FileCreatedEvent(path))
-                        self.queue_event(FileDeletedEvent(path))
+
+                    # TODO: We could simply ignore these files.
+                    pass
+                    #path = absolute_path(path)
+                    #if is_directory:
+                    #    self.queue_event(DirCreatedEvent(path))
+                    #    self.queue_event(DirDeletedEvent(path))
+                    #else:
+                    #    self.queue_event(FileCreatedEvent(path))
+                    #    self.queue_event(FileDeletedEvent(path))
                 else:
                     # All other errors are propagated.
                     raise
