@@ -169,7 +169,7 @@ if platform.is_bsd() or platform.is_darwin():
             self._descriptor_for_fd = dict()
 
             # List of kevent objects.
-            self._kevents = set()
+            self._kevents = list()
 
             self._lock = threading.Lock()
 
@@ -180,7 +180,7 @@ if platform.is_bsd() or platform.is_darwin():
             List of kevents monitored.
             """
             with self._lock:
-                return list(self._kevents)
+                return self._kevents
 
         @property
         def paths(self):
@@ -280,7 +280,7 @@ if platform.is_bsd() or platform.is_darwin():
                 self._descriptors.clear()
                 self._descriptor_for_fd.clear()
                 self._descriptor_for_path.clear()
-                self._kevents.clear()
+                self._kevents = []
 
         # Thread-unsafe methods. Locking is provided at a higher level.
         def _has_path(self, path):
@@ -296,7 +296,7 @@ if platform.is_bsd() or platform.is_darwin():
                 An instance of :class:`KeventDescriptor` to be added.
             """
             self._descriptors.add(descriptor)
-            self._kevents.add(descriptor.kevent)
+            self._kevents.append(descriptor.kevent)
             self._descriptor_for_path[descriptor.path] = descriptor
             self._descriptor_for_fd[descriptor.fd] = descriptor
 
