@@ -114,5 +114,6 @@ setup(
     ext_modules=ext_modules.get(platform, []),
     packages=['watchdog'],
     scripts=scripts,
+    entry_points = {'console_scripts': ['watchmedo = watchdog.watchmedo:main']},
     install_requires=common_install_requires + install_requires.get(platform, []),
     )
