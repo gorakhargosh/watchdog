@@ -218,17 +218,6 @@ if platform.is_bsd() or platform.is_darwin():
                 path = absolute_path(path)
                 return self._descriptor_for_path[path]
 
-        #def __getitem__(self, path):
-        #    """
-        #    Obtains a :class:`KeventDescriptor` object for the specified path.
-
-        #    :param path:
-        #        Path for which the descriptor will be obtained.
-        #    """
-        #    with self._lock:
-        #        path = absolute_path(path)
-        #        return self._descriptor_for_path[path]
-
         def __contains__(self, path):
             """
             Determines whether a :class:`KeventDescriptor has been registered
@@ -630,6 +619,7 @@ if platform.is_bsd() or platform.is_darwin():
                     # inside the directory tree? Does kqueue does this
                     # all by itself? Check this and then enable this code
                     # only if it doesn't already.
+                    # A: It doesn't. So I've enabled this block.
                     if self.watch.is_recursive:
                         for sub_event in event.sub_moved_events():
                             self.queue_event(sub_event)
@@ -710,8 +700,6 @@ if platform.is_bsd() or platform.is_darwin():
             with self._lock:
                 self._descriptors.clear()
                 self._kq.close()
-
-
 
 
 class KqueueObserver(BaseObserver):
