@@ -9,6 +9,7 @@ include docs/*.xml
 include docs/Makefile
 include docs/make.bat
 recursive-include docs/source *
+exclude README.md
 #global-exclude .DS_Store
 #global-exclude Thumbs.db
 #global-exclude Desktop.ini
