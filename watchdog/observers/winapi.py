@@ -38,8 +38,7 @@ if platform.is_windows():
         DIR_ACTION_EVENT_MAP, \
         FILE_ACTION_EVENT_MAP, \
         WATCHDOG_FILE_FLAGS, \
-        WATCHDOG_TRAVERSE_MOVED_DIR_DELAY
-    from watchdog.observers.winapi_common import \
+        WATCHDOG_TRAVERSE_MOVED_DIR_DELAY, \
         read_directory_changes, \
         get_directory_handle, \
         close_directory_handle
