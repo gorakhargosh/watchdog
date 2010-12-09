@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# w32_api.py: Common routines and constants for the Win32 API used.
+# winapi_common.py: Common routines and constants for the Win32 API used.
 #
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
@@ -89,7 +89,7 @@ if platform.is_windows():
         FILE_NOTIFY_CHANGE_CREATION
 
     # HACK:
-    WATCHDOG_DELAY_BEFORE_TRAVERSING_MOVED_DIRECTORY = 1   # seconds
+    WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1   # seconds
 
 
     # Moved event is handled explicitly in the emitter thread.
@@ -116,6 +116,9 @@ if platform.is_windows():
                             None)
         return handle
 
+
+    def close_directory_handle(handle):
+        CloseHandle(handle)
 
     def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
         """Read changes to the directory using the specified directory handle.
