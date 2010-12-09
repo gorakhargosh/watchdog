@@ -472,9 +472,6 @@ if platform.is_bsd() or platform.is_darwin():
                     # and then quickly deleted before we could open
                     # a descriptor for it. Therefore, simply queue a sequence
                     # of created and deleted events for the path.
-
-                    # TODO: We could simply ignore these files.
-                    pass
                     #path = absolute_path(path)
                     #if is_directory:
                     #    self.queue_event(DirCreatedEvent(path))
@@ -482,6 +479,12 @@ if platform.is_bsd() or platform.is_darwin():
                     #else:
                     #    self.queue_event(FileCreatedEvent(path))
                     #    self.queue_event(FileDeletedEvent(path))
+
+                    # TODO: We could simply ignore these files.
+                    # Locked files cause the python process to die with
+                    # a bus error when we handle temporary files.
+                    # eg. .git/index.lock when running tig operations.
+                    pass
                 else:
                     # All other errors are propagated.
                     raise
