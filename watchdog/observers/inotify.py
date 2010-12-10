@@ -94,7 +94,7 @@ if platform.is_linux():
     inotify_init = CFUNCTYPE(c_int, use_errno=True)(
         ("inotify_init", libc))
     inotify_add_watch = \
-        CFUNCTYPE(c_int, c_int, c_char_p, c_unit32, use_errno=True)(
+        CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
             ("inotify_add_watch", libc))
     inotify_rm_watch = CFUNCTYPE(c_int, c_int, c_int, use_errno=True)(
         ("inotify_rm_watch", libc))
