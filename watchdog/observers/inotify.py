@@ -25,10 +25,13 @@
 """
 :module: watchdog.observers.inotify
 :synopsis: ``inotify(7)`` based emitter implementation.
+:author: Luke McCarthy <luke@iogopro.co.uk>
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 :platforms: Linux 2.6.13+.
 
 .. ADMONITION:: About system requirements
+
+    Recommended minimum kernel version: 2.6.25.
 
     Quote from the inotify(7) man page:
 
@@ -62,3 +65,92 @@
     sub-directories if running in recursive mode.
 """
 
+from __future__ import with_statement
+from watchdog.utils import platform
+
+if platform.is_linux():
+    import os
+    import struct
+    import threading
+
+    from ctypes import \
+        CDLL, \
+        CFUNCTYPE, \
+        POINTER, \
+        c_int, \
+        c_char_p, \
+        c_uint32, \
+        get_errno
+    from watchdog.observers.api import \
+        EventEmitter, \
+        BaseObserver, \
+        DEFAULT_EMITTER_TIMEOUT, \
+        DEFAULT_OBSERVER_TIMEOUT
+
+    libc = CDLL('libc.so.6')
+
+    strerror = CFUNCTYPE(c_char_p, c_int)(
+        ("strerror", libc))
+    inotify_init = CFUNCTYPE(c_int, use_errno=True)(
+        ("inotify_init", libc))
+    inotify_add_watch = \
+        CFUNCTYPE(c_int, c_int, c_char_p, c_unit32, use_errno=True)(
+            ("inotify_add_watch", libc))
+    inotify_rm_watch = CFUNCTYPE(c_int, c_int, c_int, use_errno=True)(
+        ("inotify_rm_watch", libc))
+
+    # Supported events suitable for MASK parameter of ``inotify_add_watch``
+    IN_ACCESS        = 0x00000001     # File was accessed.
+    IN_MODIFY        = 0x00000002     # File was modified.
+    IN_ATTRIB        = 0x00000004     # Meta-data changed.
+    IN_CLOSE_WRITE   = 0x00000008     # Writable file was closed.
+    IN_CLOSE_NOWRITE = 0x00000010     # Unwritable file closed.
+    IN_CLOSE         = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
+    IN_OPEN          = 0x00000020     # File was opened.
+    IN_MOVED_FROM    = 0x00000040     # File was moved from X.
+    IN_MOVED_TO      = 0x00000080     # File was moved to Y.
+    IN_MOVE          = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
+    IN_CREATE        = 0x00000100     # Subfile was created.
+    IN_DELETE        = 0x00000200     # Subfile was deleted.
+    IN_DELETE_SELF   = 0x00000400     # Self was deleted.
+    IN_MOVE_SELF     = 0x00000800     # Self was moved.
+
+    # Events sent by the kernel.
+    IN_UNMOUNT       = 0x00002000     # Backing file system was unmounted.
+    IN_Q_OVERFLOW    = 0x00004000     # Event queued overflowed.
+    IN_IGNORED       = 0x00008000     # File was ignored.
+
+    # Special flags.
+    IN_ONLYDIR       = 0x01000000     # Only watch the path if it's a directory.
+    IN_DONT_FOLLOW   = 0x02000000     # Do not follow a symbolic link.
+    IN_MASK_ADD      = 0x20000000     # Add to the mask of an existing watch.
+    IN_ISDIR         = 0x40000000     # Event occurred against directory.
+    IN_ONESHOT       = 0x80000000     # Only send event once.
+
+
+    class InotifyEmitter(EventEmitter):
+        """
+        inotify(7)-based event emitter.
+
+        :param event_queue:
+            The event queue to fill with events.
+        :param watch:
+            A watch object representing the directory to monitor.
+        :type watch:
+            :class:`watchdog.observers.api.ObservedWatch`
+        :param timeout:
+            Read events blocking timeout (in seconds).
+        :type timeout:
+            ``float``
+        """
+        def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+            EventEmitter.__init__(self, event_queue, watch, timeout)
+
+
+    class InotifyObserver(BaseObserver):
+        """
+        Observer thread that schedules watching directories and dispatches
+        calls to event handlers.
+        """
+        def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+            BaseObserver.__init__(self, emitter_class=InotifyEmitter, timeout=timeout)
