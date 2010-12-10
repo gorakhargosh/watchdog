@@ -42,7 +42,7 @@
     Therefore, you must ensure the system is running at least these versions
     appropriate libraries and the kernel.
 
-.. ADMONITION:: About recursiveness, event order, and event coalescing.
+.. ADMONITION:: About recursiveness, event order, and event coalescing
 
     Quote from the inotify(7) man page:
 
