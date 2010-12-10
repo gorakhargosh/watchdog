@@ -39,9 +39,8 @@ Steps to setting up a clean environment:
 
 2. Clone your fork and setup your environment::
 
-    $ git clone git@github.com:hackeratti/watchdog.git
+    $ git clone --recursive git@github.com:hackeratti/watchdog.git
     $ cd watchdog
-    $ git submodule update --init --recursive
     $ python bootstrap.py --distribute
     $ bin/buildout
 
