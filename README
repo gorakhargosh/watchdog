@@ -161,3 +161,19 @@ Copyright (C) 2010 Gora Khargosh &lt;[gora.khargosh@gmail.com](mailto:gora.kharg
 Project source code at [Github](http://github.com/gorakhargosh/watchdog)
 
 Please report bugs at the [Github issue tracker](http://github.com/gorakhargosh/watchdog/issues).
+
+Why Watchdog?
+-------------
+Too many people tried to do the same thing and none did 
+what I needed Python to do:
+
+* [pnotify](http://mark.heily.com/pnotify/)
+* [unison fsmonitor](https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471)
+* [fsmonitor](http://github.com/shaurz/fsmonitor)
+* [guard](http://github.com/guard/guard)
+* [pyinotify](http://github.com/seb-m/pyinotify)
+* [inotify-tools](http://github.com/rvoicilas/inotify-tools)
+* [jnotify](http://jnotify.sourceforge.net/)
+* [treewalker](http://github.com/jbd/treewatcher)
+* [file.monitor](http://github.com/pke/file.monitor)
+
