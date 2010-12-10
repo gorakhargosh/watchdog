@@ -18,6 +18,12 @@ API Reference
 .. automodule:: watchdog.observers.api
 
 
+`watchdog.observers.inotify`
+============================
+
+.. automodule:: watchdog.observers.inotify
+
+
 `watchdog.observers.kqueue`
 ===========================
 
