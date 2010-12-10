@@ -214,6 +214,7 @@ if platform.is_bsd() or platform.is_darwin():
                 Path for which the descriptor will be obtained.
             """
             with self._lock:
+                path = absolute_path(path)
                 return self._get(path)
 
         def __contains__(self, path):
@@ -244,8 +245,7 @@ if platform.is_bsd() or platform.is_darwin():
             with self._lock:
                 path = absolute_path(path)
                 if not self._has_path(path):
-                    descriptor = KeventDescriptor(path, is_directory)
-                    self._add_descriptor(descriptor)
+                    self._add_descriptor(KeventDescriptor(path, is_directory))
 
         def remove(self, path):
             """
@@ -259,8 +259,7 @@ if platform.is_bsd() or platform.is_darwin():
             with self._lock:
                 path = absolute_path(path)
                 if self._has_path(path):
-                    descriptor = self._get(path)
-                    self._remove_descriptor(descriptor)
+                    self._remove_descriptor(self._get(path))
 
         def clear(self):
             """
@@ -277,7 +276,6 @@ if platform.is_bsd() or platform.is_darwin():
         # Thread-unsafe methods. Locking is provided at a higher level.
         def _get(self, path):
             """Returns a kevent descriptor for a given path."""
-            path = absolute_path(path)
             return self._descriptor_for_path[path]
 
 
