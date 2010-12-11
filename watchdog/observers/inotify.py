@@ -695,11 +695,17 @@ if platform.is_linux():
                     # directory.
                     try:
                         from_event = moved_from_events[event.cookie]
+                        to_event = event
                         src_path = from_event.src_path
-                        dest_path = event.src_path
+                        dest_path = to_event.src_path
 
-                        klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MOVED)]
-                        self.queue_event(klass(src_path, dest_path))
+                        klass = ACTION_EVENT_MAP[(to_event.is_directory, EVENT_TYPE_MOVED)]
+                        event = klass(src_path, dest_path)
+                        self.queue_event(event)
+                        # Generate sub events for the directory if recursive.
+                        if event.is_directory and self.watch.is_recursive:
+                            for sub_event in event.sub_moved_events():
+                                self.queue_event(sub_event)
                     except KeyError:
                         pass
                 elif event.is_attrib:
