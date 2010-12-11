@@ -99,6 +99,18 @@ if platform.is_linux():
         BaseObserver, \
         DEFAULT_EMITTER_TIMEOUT, \
         DEFAULT_OBSERVER_TIMEOUT
+    from watchdog.events import \
+        DirDeletedEvent, \
+        DirModifiedEvent, \
+        DirMovedEvent, \
+        DirCreatedEvent, \
+        FileDeletedEvent, \
+        FileModifiedEvent, \
+        FileMovedEvent, \
+        FileCreatedEvent, \
+        EVENT_TYPE_MODIFIED, \
+        EVENT_TYPE_CREATED, \
+        EVENT_TYPE_DELETED
 
 
     def find_libc():
@@ -225,14 +237,15 @@ if platform.is_linux():
             IN_ONESHOT,
         ])
 
-        WATCHDOG_EVENTS = reduce(lambda x, y: x | y, [
-            IN_CLOSE_WRITE,
-            IN_ATTRIB,
-            IN_MOVED_FROM,
-            IN_MOVED_TO,
-            IN_CREATE,
-            IN_DELETE,
-        ])
+    # Watchdog's API cares only about these events.
+    WATCHDOG_ALL_EVENTS = reduce(lambda x, y: x | y, [
+        InotifyConstants.IN_CLOSE_WRITE,
+        InotifyConstants.IN_ATTRIB,
+        InotifyConstants.IN_MOVED_FROM,
+        InotifyConstants.IN_MOVED_TO,
+        InotifyConstants.IN_CREATE,
+        InotifyConstants.IN_DELETE,
+    ])
 
 
     class InotifyEvent(object):
@@ -280,52 +293,52 @@ if platform.is_linux():
         # Test event types.
         @property
         def is_modify(self):
-            return self._mask & InotifyConstants.IN_MODIFY
+            return self._mask & InotifyConstants.IN_MODIFY > 0
 
         @property
         def is_close_write(self):
-            return self._mask & InotifyConstants.IN_CLOSE_WRITE
+            return self._mask & InotifyConstants.IN_CLOSE_WRITE > 0
 
         @property
         def is_close_nowrite(self):
-            return self._mask & InotifyConstants.IN_CLOSE_NOWRITE
+            return self._mask & InotifyConstants.IN_CLOSE_NOWRITE > 0
 
         @property
         def is_access(self):
-            return self._mask & InotifyConstants.IN_ACCESS
+            return self._mask & InotifyConstants.IN_ACCESS > 0
 
         @property
         def is_delete(self):
-            return self._mask & InotifyConstants.IN_DELETE
+            return self._mask & InotifyConstants.IN_DELETE > 0
 
         @property
         def is_create(self):
-            return self._mask & InotifyConstants.IN_CREATE
+            return self._mask & InotifyConstants.IN_CREATE > 0
 
         @property
         def is_moved_from(self):
-            return self._mask & InotifyConstants.IN_MOVED_FROM
+            return self._mask & InotifyConstants.IN_MOVED_FROM > 0
 
         @property
         def is_moved_to(self):
-            return self._mask & InotifyConstants.IN_MOVED_TO
+            return self._mask & InotifyConstants.IN_MOVED_TO > 0
 
         @property
         def is_move(self):
-            return self._mask & InotifyConstants.IN_MOVE
+            return self._mask & InotifyConstants.IN_MOVE > 0
 
         @property
         def is_attrib(self):
-            return self._mask & InotifyConstants.IN_ATTRIB
+            return self._mask & InotifyConstants.IN_ATTRIB > 0
 
         # Additional bit masks
         @property
         def is_ignored(self):
-            return self._mask & InotifyConstants.IN_IGNORED
+            return self._mask & InotifyConstants.IN_IGNORED > 0
 
         @property
         def is_directory(self):
-            return self._mask & InotifyConstants.IN_ISDIR
+            return self._mask & InotifyConstants.IN_ISDIR > 0
 
         # Python-specific functionality.
         @property
@@ -406,7 +419,7 @@ if platform.is_linux():
         def __init__(self,
                      path,
                      recursive=False,
-                     event_mask=InotifyConstants.WATCHDOG_EVENTS,
+                     event_mask=WATCHDOG_ALL_EVENTS,
                      non_blocking=False):
             # The file descriptor associated with the inotify instance.
             if non_blocking:
@@ -502,29 +515,39 @@ if platform.is_linux():
                         continue
 
                     event_list.append(inotify_event)
-                    if inotify_event.is_create: # and inotify_event.is_create:
+                    if inotify_event.is_create and inotify_event.is_directory:
                         # HACK: We need to traverse the directory path
                         # recursively and simulate events for newly
-                        # created subdirectories/files.
-                        new_wd = self._add_watch(src_path, self._event_mask)
-                        print('new directory created %s' % src_path)
+                        # created subdirectories/files. This will handle
+                        # mkdir -p foobar/blah/bar; touch foobar/afile
 
-                        #for root, dirnames, filenames in os.walk(src_path):
-                        #    for dirname in dirnames:
-                        #        full_path = absolute_path(os.path.join(root, dirname))
-                        #        self._add_watch(full_path, self._event_mask)
-                        #        event_list.append(InotifyEvent(wd,
-                        #                                       InotifyConstants.IN_CREATE |
-                        #                                       InotifyConstants.IN_ISDIR,
-                        #                                       0,
-                        #                                       dirname,
-                        #                                       full_path))
-                        #    for filename in filenames:
-                        #        event_list.append(InotifyEvent(wd,
-                        #                                       InotifyConstants.IN_CREATE,
-                        #                                       0,
-                        #                                       filename,
-                        #                                       full_path))
+                        # TODO: When a directory from another part of the file
+                        # system is moved into a watched directory, this
+                        # will not generate events for the directory tree.
+                        # We need to coalesce IN_MOVED_TO events and those
+                        # IN_MOVED_TO events which don't pair up with
+                        # IN_MOVED_FROM events should be marked IN_CREATE
+                        # instead relative to this directory.
+                        new_wd = self._add_watch(src_path, self._event_mask)
+
+                        for root, dirnames, filenames in os.walk(src_path):
+                            for dirname in dirnames:
+                                full_path = absolute_path(os.path.join(root, dirname))
+                                wd_dir = self._add_watch(full_path, self._event_mask)
+                                event_list.append(InotifyEvent(wd_dir,
+                                                               InotifyConstants.IN_CREATE |
+                                                               InotifyConstants.IN_ISDIR,
+                                                               0,
+                                                               dirname,
+                                                               full_path))
+                            for filename in filenames:
+                                full_path = absolute_path(os.path.join(root, filename))
+                                wd_parent_dir = self._wd_for_path[absolute_path(os.path.dirname(full_path))]
+                                event_list.append(InotifyEvent(wd_parent_dir,
+                                                               InotifyConstants.IN_CREATE,
+                                                               0,
+                                                               filename,
+                                                               full_path))
             return event_list
 
 
@@ -652,9 +675,46 @@ if platform.is_linux():
 
         def queue_events(self, timeout):
             inotify_events = self._inotify.read_events()
+            moved_from_events = dict()
             for inotify_event in inotify_events:
-                print(inotify_event)
+                if inotify_event.is_moved_from:
+                    print('>>>>>> %s' % inotify_event)
+                    moved_from_events[inotify_event.cookie] = inotify_event
+                elif inotify_event.is_moved_to:
+                    print('>>>>>> %s' % inotify_event)
+                    moved_from_event = moved_from_events[inotify_event.cookie]
+                    src_path = moved_from_event.src_path
+                    dest_path = inotify_event.src_path
+                    if inotify_event.is_directory:
+                        self.queue_event(DirMovedEvent(src_path, dest_path))
+                    else:
+                        self.queue_event(FileMovedEvent(src_path, dest_path))
+                elif inotify_event.is_attrib:
+                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+                                              EVENT_TYPE_MODIFIED)]
+                    self.queue_event(klass(inotify_event.src_path))
+                elif inotify_event.is_close_write:
+                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+                                              EVENT_TYPE_MODIFIED)]
+                    self.queue_event(klass(inotify_event.src_path))
+                elif inotify_event.is_delete:
+                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+                                              EVENT_TYPE_DELETED)]
+                    self.queue_event(klass(inotify_event.src_path))
+                elif inotify_event.is_create:
+                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+                                              EVENT_TYPE_CREATED)]
+                    self.queue_event(klass(inotify_event.src_path))
 
+
+    ACTION_EVENT_MAP = {
+        (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
+        (True, EVENT_TYPE_CREATED): DirCreatedEvent,
+        (True, EVENT_TYPE_DELETED): DirDeletedEvent,
+        (False, EVENT_TYPE_MODIFIED): FileModifiedEvent,
+        (False, EVENT_TYPE_CREATED): FileCreatedEvent,
+        (False, EVENT_TYPE_DELETED): FileDeletedEvent,
+    }
 
     class InotifyObserver(BaseObserver):
         """
