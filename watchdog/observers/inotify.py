@@ -111,7 +111,8 @@ if platform.is_linux():
         FileCreatedEvent, \
         EVENT_TYPE_MODIFIED, \
         EVENT_TYPE_CREATED, \
-        EVENT_TYPE_DELETED
+        EVENT_TYPE_DELETED, \
+        EVENT_TYPE_MOVED
 
 
     def find_libc():
@@ -504,6 +505,7 @@ if platform.is_linux():
             """
             event_buffer = os.read(self._inotify_fd, event_buffer_size)
             event_list = []
+            moved_from_events = dict()
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
                 with self._lock:
                     wd_path = self._path_for_wd[wd]
@@ -516,39 +518,41 @@ if platform.is_linux():
                         continue
 
                     event_list.append(inotify_event)
-                    if inotify_event.is_create and inotify_event.is_directory:
-                        # HACK: We need to traverse the directory path
-                        # recursively and simulate events for newly
-                        # created subdirectories/files. This will handle
-                        # mkdir -p foobar/blah/bar; touch foobar/afile
 
-                        # TODO: When a directory from another part of the file
-                        # system is moved into a watched directory, this
-                        # will not generate events for the directory tree.
-                        # We need to coalesce IN_MOVED_TO events and those
-                        # IN_MOVED_TO events which don't pair up with
-                        # IN_MOVED_FROM events should be marked IN_CREATE
-                        # instead relative to this directory.
-                        new_wd = self._add_watch(src_path, self._event_mask)
+                    if inotify_event.is_directory:
+                        if inotify_event.is_create:
+                            # HACK: We need to traverse the directory path
+                            # recursively and simulate events for newly
+                            # created subdirectories/files. This will handle
+                            # mkdir -p foobar/blah/bar; touch foobar/afile
 
-                        for root, dirnames, filenames in os.walk(src_path):
-                            for dirname in dirnames:
-                                full_path = absolute_path(os.path.join(root, dirname))
-                                wd_dir = self._add_watch(full_path, self._event_mask)
-                                event_list.append(InotifyEvent(wd_dir,
-                                                               InotifyConstants.IN_CREATE |
-                                                               InotifyConstants.IN_ISDIR,
-                                                               0,
-                                                               dirname,
-                                                               full_path))
-                            for filename in filenames:
-                                full_path = absolute_path(os.path.join(root, filename))
-                                wd_parent_dir = self._wd_for_path[absolute_path(os.path.dirname(full_path))]
-                                event_list.append(InotifyEvent(wd_parent_dir,
-                                                               InotifyConstants.IN_CREATE,
-                                                               0,
-                                                               filename,
-                                                               full_path))
+                            # TODO: When a directory from another part of the file
+                            # system is moved into a watched directory, this
+                            # will not generate events for the directory tree.
+                            # We need to coalesce IN_MOVED_TO events and those
+                            # IN_MOVED_TO events which don't pair up with
+                            # IN_MOVED_FROM events should be marked IN_CREATE
+                            # instead relative to this directory.
+                            new_wd = self._add_watch(src_path, self._event_mask)
+
+                            for root, dirnames, filenames in os.walk(src_path):
+                                for dirname in dirnames:
+                                    full_path = absolute_path(os.path.join(root, dirname))
+                                    wd_dir = self._add_watch(full_path, self._event_mask)
+                                    event_list.append(InotifyEvent(wd_dir,
+                                                                   InotifyConstants.IN_CREATE |
+                                                                   InotifyConstants.IN_ISDIR,
+                                                                   0,
+                                                                   dirname,
+                                                                   full_path))
+                                for filename in filenames:
+                                    full_path = absolute_path(os.path.join(root, filename))
+                                    wd_parent_dir = self._wd_for_path[absolute_path(os.path.dirname(full_path))]
+                                    event_list.append(InotifyEvent(wd_parent_dir,
+                                                                   InotifyConstants.IN_CREATE,
+                                                                   0,
+                                                                   filename,
+                                                                   full_path))
             return event_list
 
 
@@ -677,44 +681,54 @@ if platform.is_linux():
         def queue_events(self, timeout):
             inotify_events = self._inotify.read_events()
             moved_from_events = dict()
-            for inotify_event in inotify_events:
-                if inotify_event.is_moved_from:
-                    print('>>>>>> %s' % inotify_event)
-                    moved_from_events[inotify_event.cookie] = inotify_event
-                elif inotify_event.is_moved_to:
-                    print('>>>>>> %s' % inotify_event)
-                    moved_from_event = moved_from_events[inotify_event.cookie]
-                    src_path = moved_from_event.src_path
-                    dest_path = inotify_event.src_path
-                    if inotify_event.is_directory:
-                        self.queue_event(DirMovedEvent(src_path, dest_path))
-                    else:
-                        self.queue_event(FileMovedEvent(src_path, dest_path))
-                elif inotify_event.is_attrib:
-                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+            moved_to_events = dict()
+            for event in inotify_events:
+                if event.is_moved_from:
+                    moved_from_events[event.cookie] = event
+                elif event.is_moved_to:
+                    # TODO: Sometimes this line will bomb even when a previous
+                    # moved_from event with the same cookie has fired. I have
+                    # yet to figure out why this is the case, so we're
+                    # temporarily swallowing the exception and the move event.
+                    # This happens only during massively quick file movement
+                    # for example, when you execute `git gc` in a monitored
+                    # directory.
+                    try:
+                        from_event = moved_from_events[event.cookie]
+                        src_path = from_event.src_path
+                        dest_path = event.src_path
+
+                        klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MOVED)]
+                        self.queue_event(klass(src_path, dest_path))
+                    except KeyError:
+                        pass
+                elif event.is_attrib:
+                    klass = ACTION_EVENT_MAP[(event.is_directory,
                                               EVENT_TYPE_MODIFIED)]
-                    self.queue_event(klass(inotify_event.src_path))
-                elif inotify_event.is_close_write:
-                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+                    self.queue_event(klass(event.src_path))
+                elif event.is_close_write:
+                    klass = ACTION_EVENT_MAP[(event.is_directory,
                                               EVENT_TYPE_MODIFIED)]
-                    self.queue_event(klass(inotify_event.src_path))
-                elif inotify_event.is_delete:
-                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+                    self.queue_event(klass(event.src_path))
+                elif event.is_delete:
+                    klass = ACTION_EVENT_MAP[(event.is_directory,
                                               EVENT_TYPE_DELETED)]
-                    self.queue_event(klass(inotify_event.src_path))
-                elif inotify_event.is_create:
-                    klass = ACTION_EVENT_MAP[(inotify_event.is_directory,
+                    self.queue_event(klass(event.src_path))
+                elif event.is_create:
+                    klass = ACTION_EVENT_MAP[(event.is_directory,
                                               EVENT_TYPE_CREATED)]
-                    self.queue_event(klass(inotify_event.src_path))
+                    self.queue_event(klass(event.src_path))
 
 
     ACTION_EVENT_MAP = {
         (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
         (True, EVENT_TYPE_CREATED): DirCreatedEvent,
         (True, EVENT_TYPE_DELETED): DirDeletedEvent,
+        (True, EVENT_TYPE_MOVED): DirMovedEvent,
         (False, EVENT_TYPE_MODIFIED): FileModifiedEvent,
         (False, EVENT_TYPE_CREATED): FileCreatedEvent,
         (False, EVENT_TYPE_DELETED): FileDeletedEvent,
+        (False, EVENT_TYPE_MOVED): FileMovedEvent,
     }
 
     class InotifyObserver(BaseObserver):
