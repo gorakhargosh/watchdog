@@ -81,124 +81,298 @@ if platform.is_linux():
         c_char_p, \
         c_uint32, \
         get_errno
+    from watchdog.utils import absolute_path
     from watchdog.observers.api import \
         EventEmitter, \
         BaseObserver, \
         DEFAULT_EMITTER_TIMEOUT, \
         DEFAULT_OBSERVER_TIMEOUT
 
+
     libc = CDLL('libc.so.6')
 
+    # #include <sys/inotify.h>
+    # char *strerror(int errnum);
     strerror = CFUNCTYPE(c_char_p, c_int)(
         ("strerror", libc))
+
+    # #include <sys/inotify.h>
+    # int inotify_init(void);
     inotify_init = CFUNCTYPE(c_int, use_errno=True)(
         ("inotify_init", libc))
+
+    # #include <sys/inotify.h>
+    # int inotify_init1(int flags);
     inotify_init1 = CFUNCTYPE(c_int, c_int, use_errno=True)(
         ("inotify_init1", libc))
+
+    # #include <sys/inotify.h>
+    # int inotify_add_watch(int fd, const char *pathname, uint32_t mask);
     inotify_add_watch = \
         CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
             ("inotify_add_watch", libc))
-    inotify_rm_watch = CFUNCTYPE(c_int, c_int, c_int, use_errno=True)(
+
+    # #include <sys/inotify.h>
+    # int inotify_rm_watch(int fd, uint32_t wd);
+    inotify_rm_watch = CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
         ("inotify_rm_watch", libc))
 
-    # User-space events
-    IN_ACCESS        = 0x00000001     # File was accessed.
-    IN_MODIFY        = 0x00000002     # File was modified.
-    IN_ATTRIB        = 0x00000004     # Meta-data changed.
-    IN_CLOSE_WRITE   = 0x00000008     # Writable file was closed.
-    IN_CLOSE_NOWRITE = 0x00000010     # Unwritable file closed.
-    IN_OPEN          = 0x00000020     # File was opened.
-    IN_MOVED_FROM    = 0x00000040     # File was moved from X.
-    IN_MOVED_TO      = 0x00000080     # File was moved to Y.
-    IN_CREATE        = 0x00000100     # Subfile was created.
-    IN_DELETE        = 0x00000200     # Subfile was deleted.
-    IN_DELETE_SELF   = 0x00000400     # Self was deleted.
-    IN_MOVE_SELF     = 0x00000800     # Self was moved.
 
-    # Helper user-space events.
-    IN_CLOSE         = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
-    IN_MOVE          = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
-
-    # Events sent by the kernel to a watch.
-    IN_UNMOUNT       = 0x00002000     # Backing file system was unmounted.
-    IN_Q_OVERFLOW    = 0x00004000     # Event queued overflowed.
-    IN_IGNORED       = 0x00008000     # File was ignored.
-
-    # Special flags.
-    IN_ONLYDIR       = 0x01000000     # Only watch the path if it's a directory.
-    IN_DONT_FOLLOW   = 0x02000000     # Do not follow a symbolic link.
-    IN_EXCL_UNLINK   = 0x04000000     # Exclude events on unlinked objects
-    IN_MASK_ADD      = 0x20000000     # Add to the mask of an existing watch.
-    IN_ISDIR         = 0x40000000     # Event occurred against directory.
-    IN_ONESHOT       = 0x80000000     # Only send event once.
-
-    # All user-space events.
-    IN_ALL_EVENTS = reduce(lambda x, y: x | y, [
-        IN_ACCESS,
-        IN_MODIFY,
-        IN_ATTRIB,
-        IN_CLOSE_WRITE,
-        IN_CLOSE_NOWRITE,
-        IN_OPEN,
-        IN_MOVED_FROM,
-        IN_MOVED_TO,
-        IN_DELETE,
-        IN_CREATE,
-        IN_DELETE_SELF,
-        IN_MOVE_SELF,
-    ])
-
-    # Flags for inotify_init1
-    IN_CLOEXEC = 0x02000000
-    IN_NONBLOCK = 0x00004000
-
-    ALL_INOTIFY_BITS = reduce(lambda x, y: x | y, [
-        IN_ACCESS,
-        IN_MODIFY,
-        IN_ATTRIB,
-        IN_CLOSE_WRITE,
-        IN_CLOSE_NOWRITE,
-        IN_OPEN,
-        IN_MOVED_FROM,
-        IN_MOVED_TO,
-        IN_CREATE,
-        IN_DELETE,
-        IN_DELETE_SELF,
-        IN_MOVE_SELF,
-        IN_UNMOUNT,
-        IN_Q_OVERFLOW,
-        IN_IGNORED,
-        IN_ONLYDIR,
-        IN_DONT_FOLLOW,
-        IN_EXCL_UNLINK,
-        IN_MASK_ADD,
-        IN_ISDIR,
-        IN_ONESHOT,
-    ])
-
-
-    def parse_inotify_events(buffer):
+    class Inotify(object):
         """
-        Parses an event buffer of ``inotify_event`` structs returned by
-        inotify::
+        Linux inotify(7) API wrapper class.
 
-            struct inotify_event {
-                __s32 wd;            /* watch descriptor */
-                __u32 mask;          /* watch mask */
-                __u32 cookie;        /* cookie to synchronize two events */
-                __u32 len;           /* length (including nulls) of name */
-                char  name[0];       /* stub for possible name */
-            };
-
-        The ``cookie`` member of this struct is used to pair two related events,
-        for example, it pairs an IN_MOVED_FROM event with an IN_MOVED_TO event.
+        :param path:
+            The directory path for which we want an inotify object.
+        :param recursive:
+            ``True`` if subdirectories should be monitored; ``False`` otherwise.
+        :param non_blocking:
+            ``True`` to initialize inotify in non-blocking mode; ``False``
+            otherwise.
         """
-        i = 0
-        while i + 16 < len(buffer):
-            wd, mask, cookie, length = struct.unpack_from('iIII', buffer, i)
-            name = buffer[i + 16:i + 16 + length].rstrip('\0')
-            i += 16 + length
-            yield wd, mask, cookie, name
+        # User-space events
+        IN_ACCESS        = 0x00000001     # File was accessed.
+        IN_MODIFY        = 0x00000002     # File was modified.
+        IN_ATTRIB        = 0x00000004     # Meta-data changed.
+        IN_CLOSE_WRITE   = 0x00000008     # Writable file was closed.
+        IN_CLOSE_NOWRITE = 0x00000010     # Unwritable file closed.
+        IN_OPEN          = 0x00000020     # File was opened.
+        IN_MOVED_FROM    = 0x00000040     # File was moved from X.
+        IN_MOVED_TO      = 0x00000080     # File was moved to Y.
+        IN_CREATE        = 0x00000100     # Subfile was created.
+        IN_DELETE        = 0x00000200     # Subfile was deleted.
+        IN_DELETE_SELF   = 0x00000400     # Self was deleted.
+        IN_MOVE_SELF     = 0x00000800     # Self was moved.
+
+        # Helper user-space events.
+        IN_CLOSE         = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
+        IN_MOVE          = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
+
+        # Events sent by the kernel to a watch.
+        IN_UNMOUNT       = 0x00002000     # Backing file system was unmounted.
+        IN_Q_OVERFLOW    = 0x00004000     # Event queued overflowed.
+        IN_IGNORED       = 0x00008000     # File was ignored.
+
+        # Special flags.
+        IN_ONLYDIR       = 0x01000000     # Only watch the path if it's a directory.
+        IN_DONT_FOLLOW   = 0x02000000     # Do not follow a symbolic link.
+        IN_EXCL_UNLINK   = 0x04000000     # Exclude events on unlinked objects
+        IN_MASK_ADD      = 0x20000000     # Add to the mask of an existing watch.
+        IN_ISDIR         = 0x40000000     # Event occurred against directory.
+        IN_ONESHOT       = 0x80000000     # Only send event once.
+
+        # All user-space events.
+        IN_ALL_EVENTS = reduce(lambda x, y: x | y, [
+            IN_ACCESS,
+            IN_MODIFY,
+            IN_ATTRIB,
+            IN_CLOSE_WRITE,
+            IN_CLOSE_NOWRITE,
+            IN_OPEN,
+            IN_MOVED_FROM,
+            IN_MOVED_TO,
+            IN_DELETE,
+            IN_CREATE,
+            IN_DELETE_SELF,
+            IN_MOVE_SELF,
+        ])
+
+        # Flags for ``inotify_init1``
+        IN_CLOEXEC = 0x02000000
+        IN_NONBLOCK = 0x00004000
+
+        # All inotify bits.
+        ALL_INOTIFY_BITS = reduce(lambda x, y: x | y, [
+            IN_ACCESS,
+            IN_MODIFY,
+            IN_ATTRIB,
+            IN_CLOSE_WRITE,
+            IN_CLOSE_NOWRITE,
+            IN_OPEN,
+            IN_MOVED_FROM,
+            IN_MOVED_TO,
+            IN_CREATE,
+            IN_DELETE,
+            IN_DELETE_SELF,
+            IN_MOVE_SELF,
+            IN_UNMOUNT,
+            IN_Q_OVERFLOW,
+            IN_IGNORED,
+            IN_ONLYDIR,
+            IN_DONT_FOLLOW,
+            IN_EXCL_UNLINK,
+            IN_MASK_ADD,
+            IN_ISDIR,
+            IN_ONESHOT,
+        ])
+
+        def __init__(self,
+                     path,
+                     recursive=False,
+                     event_mask=Inotify.IN_ALL_EVENTS,
+                     non_blocking=False):
+            # The file descriptor associated with the inotify instance.
+            #if non_blocking:
+            #    inotify_fd = inotify_init1(Inotify.IN_NONBLOCK)
+            #else:
+            #    inotify_fd = inotify_init()
+            inotify_fd = inotify_init()
+            if inotify_fd == -1:
+                Inotify._raise_error()
+            self._inotify_fd = inotify_fd
+            self._lock = threading.Lock()
+
+            # Stores the watch descriptor for a given path.
+            self._wd_for_path = dict()
+
+            path = absolute_path(path)
+            self._path = path
+            self._event_mask = event_mask
+            self._is_recursive = recursive
+            self._is_non_blocking = non_blocking
+            self._add_dir_watch(path, recursive, event_mask)
+
+        @property
+        def event_mask(self):
+            """The event mask for this inotify instance."""
+            return self._event_mask
+
+        @property
+        def path(self):
+            """The path associated with the inotify instance."""
+            return self._path
+
+        @property
+        def is_recursive(self):
+            """Whether we are watching directories recursively."""
+            return self._is_recursive
+
+        @property
+        def fd(self):
+            """The file descriptor associated with the inotify instance."""
+            return self._inotify_fd
+
+        def add_watch(self, path):
+            """
+            Adds a watch for the given path.
+
+            :param path:
+                Path to begin monitoring.
+            """
+            with self._lock:
+                path = absolute_path(path)
+                self._add_watch(path, self._event_mask)
+
+        def remove_watch(self, path):
+            """
+            Removes a watch for the given path.
+
+            :param path:
+                Path string for which the watch will be removed.
+            """
+            with self._lock:
+                path = absolute_path(path)
+                self._remove_watch(path)
+
+        def close(self):
+            """
+            Closes the inotify instance and removes all associated watches.
+            """
+            with self._lock:
+                self._remove_all_watches()
+                os.close(self._inotify_fd)
+
+        # Non-synchronized methods.
+        def _add_dir_watch(self, path, recursive, mask):
+            """
+            Adds a watch (optionally recursively) for the given directory path
+            to monitor events specified by the mask.
+
+            :param path:
+                Path to monitor
+            :param recursive:
+                ``True`` to monitor recursively.
+            :param mask:
+                Event bit mask.
+            """
+            if not os.path.isdir(path):
+                raise OSError('Path is not a directory')
+            self._add_watch(path, mask)
+            if recursive:
+                for root, dirnames, filenames in os.walk(path):
+                    for dirname in dirnames:
+                        full_path = absolute_path(os.path.join(root, dirname))
+                        self._add_watch(full_path, mask)
+
+        def _add_watch(self, path, mask):
+            """
+            Adds a watch for the given path to monitor events specified by the
+            mask.
+
+            :param path:
+                Path to monitor
+            :param mask:
+                Event bit mask.
+            """
+            wd = inotify_add_watch(self._inotify_fd,
+                                            path,
+                                            mask)
+            if wd == -1:
+                Inotify._raise_error()
+            self._wd_for_path[path] = wd
+            #return wd
+
+        def _remove_all_watches(self):
+            """
+            Removes all watches.
+            """
+            for wd in self._wd_for_path.values():
+                if inotify_rm_watch(self._inotify_fd, wd) == -1:
+                    Inotify._raise_error()
+
+        def _remove_watch(self, path):
+            """
+            Removes a watch for the given path.
+
+            :param path:
+                Path to remove the watch for.
+            """
+            wd = self._wd_for_path.pop(path)
+            if inotify_rm_watch(self._inotify_fd, wd) == -1:
+                Inotify._raise_error()
+
+        @staticmethod
+        def _raise_error():
+            """
+            Raises errors for inotify failures.
+            """
+            _errnum = get_errno()
+            raise OSError(strerror(_errnum))
+
+        @staticmethod
+        def parse_event_buffer(buffer):
+            """
+            Parses an event buffer of ``inotify_event`` structs returned by
+            inotify::
+
+                struct inotify_event {
+                    __s32 wd;            /* watch descriptor */
+                    __u32 mask;          /* watch mask */
+                    __u32 cookie;        /* cookie to synchronize two events */
+                    __u32 len;           /* length (including nulls) of name */
+                    char  name[0];       /* stub for possible name */
+                };
+
+            The ``cookie`` member of this struct is used to pair two related events,
+            for example, it pairs an IN_MOVED_FROM event with an IN_MOVED_TO event.
+            """
+            i = 0
+            while i + 16 < len(buffer):
+                wd, mask, cookie, length = struct.unpack_from('iIII', buffer, i)
+                name = buffer[i + 16:i + 16 + length].rstrip('\0')
+                i += 16 + length
+                yield wd, mask, cookie, name
+
 
 
     class InotifyEmitter(EventEmitter):
@@ -218,11 +392,11 @@ if platform.is_linux():
         """
         def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
             EventEmitter.__init__(self, event_queue, watch, timeout)
-
+            self._lock = threading.Lock()
+            self._inotify = Inotify()
 
         def on_thread_exit(self):
-            pass
-
+            self._inotify.close()
 
         def queue_events(self, timeout):
             pass
