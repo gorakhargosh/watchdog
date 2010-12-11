@@ -27,6 +27,7 @@
 """
 :module: watchdog.observers.inotify
 :synopsis: ``inotify(7)`` based emitter implementation.
+:author: Sebastien Martini <seb@dbzteam.org>
 :author: Luke McCarthy <luke@iogopro.co.uk>
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 :platforms: Linux 2.6.13+.
