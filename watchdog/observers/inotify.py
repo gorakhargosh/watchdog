@@ -63,6 +63,12 @@
 
     This emitter implementation therefore automatically adds watches for
     sub-directories if running in recursive mode.
+
+Some extremely useful articles and documentation:
+
+.. _inotify FAQ: http://inotify.aiken.cz/?section=inotify&page=faq&lang=en
+.. _intro to inotify: http://www.linuxjournal.com/article/8478
+
 """
 
 from __future__ import with_statement
