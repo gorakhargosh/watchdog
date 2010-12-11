@@ -22,6 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+
 """
 :module: watchdog.observers.inotify
 :synopsis: ``inotify(7)`` based emitter implementation.
@@ -70,6 +71,7 @@ Some extremely useful articles and documentation:
 .. _intro to inotify: http://www.linuxjournal.com/article/8478
 
 """
+
 
 from __future__ import with_statement
 from watchdog.utils import platform
@@ -126,135 +128,9 @@ if platform.is_linux():
         ("inotify_rm_watch", libc))
 
 
-    class InotifyEvent(object):
+    class InotifyConstants(object):
         """
-        Inotify event struct wrapper.
-
-        :param wd:
-            Watch descriptor
-        :param mask:
-            Event mask
-        :param cookie:
-            Event cookie
-        :param name:
-            Event name.
-        """
-        def __init__(self, wd, mask, cookie, name):
-            self._wd = wd
-            self._mask = mask
-            self._cookie = cookie
-            self._name = name
-
-        @property
-        def wd(self):
-            return self._wd
-
-        @property
-        def mask(self):
-            return self._mask
-
-        @property
-        def cookie(self):
-            return self._cookie
-
-        @property
-        def name(self):
-            return self._name
-
-        # Test event types.
-        @property
-        def is_modify(self):
-            return self._mask & Inotify.IN_MODIFY
-
-        @property
-        def is_close_write(self):
-            return self._mask & Inotify.IN_CLOSE_WRITE
-
-        @property
-        def is_close_nowrite(self):
-            return self._mask & Inotify.IN_CLOSE_NOWRITE
-
-        @property
-        def is_access(self):
-            return self._mask & Inotify.IN_ACCESS
-
-        @property
-        def is_delete(self):
-            return self._mask & Inotify.IN_DELETE
-
-        @property
-        def is_create(self):
-            return self._mask & Inotify.IN_CREATE
-
-        @property
-        def is_moved_from(self):
-            return self._mask & Inotify.IN_MOVED_FROM
-
-        @property
-        def is_moved_to(self):
-            return self._mask & Inotify.IN_MOVED_TO
-
-        @property
-        def is_move(self):
-            return self._mask & Inotify.IN_MOVE
-
-        @property
-        def is_attrib(self):
-            return self._mask & Inotify.IN_ATTRIB
-
-        @property
-        def is_directory(self):
-            return self._mask & Inotify.IN_ISDIR
-
-        # Additional functionality.
-        @property
-        def key(self):
-            return (self._wd, self._mask, self._cookie, self._name)
-
-        def __eq__(self, inotify_event):
-            return self.key == inotify_event.key
-
-        def __ne__(self, inotify_event):
-            return self.key == inotify_event.key
-
-        def __hash__(self):
-            return hash(self.key)
-
-
-    class inotify_event_struct(Structure):
-        """
-        Structure representation of the inotify_event structure.
-        Used in buffer size calculations::
-
-            struct inotify_event {
-                __s32 wd;            /* watch descriptor */
-                __u32 mask;          /* watch mask */
-                __u32 cookie;        /* cookie to synchronize two events */
-                __u32 len;           /* length (including nulls) of name */
-                char  name[0];       /* stub for possible name */
-            };
-        """
-        _fields_ = [('wd',     c_int),
-                    ('mask',   c_uint32),
-                    ('cookie', c_uint32),
-                    ('len',    c_uint32),
-                    ('name',   c_char_p)]
-
-    EVENT_SIZE = sizeof(inotify_event_struct)
-    DEFAULT_EVENT_BUFFER_SIZE = 1024 * (EVENT_SIZE + 16)
-
-
-    class Inotify(object):
-        """
-        Linux inotify(7) API wrapper class.
-
-        :param path:
-            The directory path for which we want an inotify object.
-        :param recursive:
-            ``True`` if subdirectories should be monitored; ``False`` otherwise.
-        :param non_blocking:
-            ``True`` to initialize inotify in non-blocking mode; ``False``
-            otherwise.
+        Constants related to inotify.
         """
         # User-space events
         IN_ACCESS        = 0x00000001     # File was accessed.
@@ -332,14 +208,161 @@ if platform.is_linux():
             IN_ONESHOT,
         ])
 
+
+    class InotifyEvent(object):
+        """
+        Inotify event struct wrapper.
+
+        :param wd:
+            Watch descriptor
+        :param mask:
+            Event mask
+        :param cookie:
+            Event cookie
+        :param name:
+            Event name.
+        :param src_path:
+            Event source path
+        """
+        def __init__(self, wd, mask, cookie, name, src_path):
+            self._wd = wd
+            self._mask = mask
+            self._cookie = cookie
+            self._name = name
+            self._src_path = src_path
+
+        @property
+        def src_path(self):
+            return self._src_path
+
+        @property
+        def wd(self):
+            return self._wd
+
+        @property
+        def mask(self):
+            return self._mask
+
+        @property
+        def cookie(self):
+            return self._cookie
+
+        @property
+        def name(self):
+            return self._name
+
+        # Test event types.
+        @property
+        def is_modify(self):
+            return self._mask & InotifyConstants.IN_MODIFY
+
+        @property
+        def is_close_write(self):
+            return self._mask & InotifyConstants.IN_CLOSE_WRITE
+
+        @property
+        def is_close_nowrite(self):
+            return self._mask & InotifyConstants.IN_CLOSE_NOWRITE
+
+        @property
+        def is_access(self):
+            return self._mask & InotifyConstants.IN_ACCESS
+
+        @property
+        def is_delete(self):
+            return self._mask & InotifyConstants.IN_DELETE
+
+        @property
+        def is_create(self):
+            return self._mask & InotifyConstants.IN_CREATE
+
+        @property
+        def is_moved_from(self):
+            return self._mask & InotifyConstants.IN_MOVED_FROM
+
+        @property
+        def is_moved_to(self):
+            return self._mask & InotifyConstants.IN_MOVED_TO
+
+        @property
+        def is_move(self):
+            return self._mask & InotifyConstants.IN_MOVE
+
+        @property
+        def is_attrib(self):
+            return self._mask & InotifyConstants.IN_ATTRIB
+
+        @property
+        def is_directory(self):
+            return self._mask & InotifyConstants.IN_ISDIR
+
+        # Additional functionality.
+        @property
+        def key(self):
+            return (self._src_path,
+                    self._wd,
+                    self._mask,
+                    self._cookie,
+                    self._name)
+
+        def __eq__(self, inotify_event):
+            return self.key == inotify_event.key
+
+        def __ne__(self, inotify_event):
+            return self.key == inotify_event.key
+
+        def __hash__(self):
+            return hash(self.key)
+
+
+        _R = "<InotifyEvent: src_path=%s, wd=%d, mask=%d, cookie=%d, name=%s>"
+        def __repr__(self):
+            return InotifyEvent._R % self.key
+
+
+    class inotify_event_struct(Structure):
+        """
+        Structure representation of the inotify_event structure
+        (used in buffer size calculations)::
+
+            struct inotify_event {
+                __s32 wd;            /* watch descriptor */
+                __u32 mask;          /* watch mask */
+                __u32 cookie;        /* cookie to synchronize two events */
+                __u32 len;           /* length (including nulls) of name */
+                char  name[0];       /* stub for possible name */
+            };
+        """
+        _fields_ = [('wd',     c_int),
+                    ('mask',   c_uint32),
+                    ('cookie', c_uint32),
+                    ('len',    c_uint32),
+                    ('name',   c_char_p)]
+
+    EVENT_SIZE = sizeof(inotify_event_struct)
+    DEFAULT_EVENT_BUFFER_SIZE = 1024 * (EVENT_SIZE + 16)
+
+
+    class Inotify(object):
+        """
+        Linux inotify(7) API wrapper class.
+
+        :param path:
+            The directory path for which we want an inotify object.
+        :param recursive:
+            ``True`` if subdirectories should be monitored; ``False`` otherwise.
+        :param non_blocking:
+            ``True`` to initialize inotify in non-blocking mode; ``False``
+            otherwise.
+        """
         def __init__(self,
                      path,
                      recursive=False,
-                     event_mask=Inotify.IN_ALL_EVENTS,
+                     event_mask=InotifyConstants.IN_ALL_EVENTS,
                      non_blocking=False):
             # The file descriptor associated with the inotify instance.
             if non_blocking:
-                inotify_fd = inotify_init1(Inotify.IN_NONBLOCK)
+                inotify_fd = inotify_init1(InotifyConstants.IN_NONBLOCK)
             else:
                 inotify_fd = inotify_init()
             if inotify_fd == -1:
@@ -349,6 +372,7 @@ if platform.is_linux():
 
             # Stores the watch descriptor for a given path.
             self._wd_for_path = dict()
+            self._path_for_wd = dict()
 
             path = absolute_path(path)
             self._path = path
@@ -418,7 +442,9 @@ if platform.is_linux():
             """
             event_buffer = os.read(self._inotify_fd, event_buffer_size)
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
-                yield InotifyEvent(wd, mask, cookie, name)
+                wd_path = self._path_for_wd[wd]
+                src_path = os.path.join(wd_path, name)
+                yield InotifyEvent(wd, mask, cookie, name, src_path)
 
         # Non-synchronized methods.
         def _add_dir_watch(self, path, recursive, mask):
@@ -458,6 +484,7 @@ if platform.is_linux():
             if wd == -1:
                 Inotify._raise_error()
             self._wd_for_path[path] = wd
+            self._path_for_wd[wd] = path
             #return wd
 
         def _remove_all_watches(self):
@@ -465,6 +492,7 @@ if platform.is_linux():
             Removes all watches.
             """
             for wd in self._wd_for_path.values():
+                del self._path_for_wd[wd]
                 if inotify_rm_watch(self._inotify_fd, wd) == -1:
                     Inotify._raise_error()
 
@@ -476,6 +504,7 @@ if platform.is_linux():
                 Path to remove the watch for.
             """
             wd = self._wd_for_path.pop(path)
+            del self._path_for_wd[wd]
             if inotify_rm_watch(self._inotify_fd, wd) == -1:
                 Inotify._raise_error()
 
@@ -512,7 +541,6 @@ if platform.is_linux():
                 yield wd, mask, cookie, name
 
 
-
     class InotifyEmitter(EventEmitter):
         """
         inotify(7)-based event emitter.
@@ -537,7 +565,9 @@ if platform.is_linux():
             self._inotify.close()
 
         def queue_events(self, timeout):
-            inotify_events = self._inotify.read_events(event_buffer_size)
+            inotify_events = self._inotify.read_events()
+            for inotify_event in inotify_events:
+                print(inotify_event)
 
 
     class InotifyObserver(BaseObserver):
