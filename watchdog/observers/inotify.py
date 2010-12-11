@@ -82,6 +82,7 @@ if platform.is_linux():
     import struct
     import threading
 
+    import ctypes
     from ctypes import \
         CDLL, \
         CFUNCTYPE, \
@@ -92,7 +93,7 @@ if platform.is_linux():
         get_errno, \
         sizeof, \
         Structure
-    from watchdog.utils import absolute_path
+    from watchdog.utils import has_attribute, absolute_path
     from watchdog.observers.api import \
         EventEmitter, \
         BaseObserver, \
@@ -100,12 +101,27 @@ if platform.is_linux():
         DEFAULT_OBSERVER_TIMEOUT
 
 
-    libc = CDLL('libc.so.6')
+    def find_libc():
+        """Finds the libc library."""
+        libc = None
+        try:
+            libc = ctypes.util.find_library("c")
+        except (OSError, IOError):
+            libc = "libc.so.6"
+        return libc
+
+    libc_string = find_libc()
+    libc = ctypes.CDLL(libc_string, use_errno=True)
+
+    if (not has_attribute(libc, 'inotify_init') or
+        not has_attribute(libc, 'inotify_add_watch') or
+        not has_attribute(libc, 'inotify_rm_watch')):
+        raise ImportError("Unsupported libc version found: %s" % libc_string)
 
     # #include <sys/inotify.h>
     # char *strerror(int errnum);
-    strerror = CFUNCTYPE(c_char_p, c_int)(
-        ("strerror", libc))
+    #strerror = CFUNCTYPE(c_char_p, c_int)(
+    #    ("strerror", libc))
 
     # #include <sys/inotify.h>
     # int inotify_init(void);
@@ -207,6 +223,15 @@ if platform.is_linux():
             IN_MASK_ADD,
             IN_ISDIR,
             IN_ONESHOT,
+        ])
+
+        WATCHDOG_EVENTS = reduce(lambda x, y: x | y, [
+            IN_CLOSE_WRITE,
+            IN_ATTRIB,
+            IN_MOVED_FROM,
+            IN_MOVED_TO,
+            IN_CREATE,
+            IN_DELETE,
         ])
 
 
@@ -321,9 +346,25 @@ if platform.is_linux():
             return hash(self.key)
 
 
-        _R = "<InotifyEvent: src_path=%s, wd=%d, mask=%d, cookie=%d, name=%s>"
+        def _get_mask_string(self, mask):
+            masks = []
+            for c in dir(InotifyConstants):
+                if c.startswith('IN_') and c not in ['IN_ALL_EVENTS', 'IN_CLOSE', 'IN_MOVE']:
+                    c_val = getattr(InotifyConstants, c)
+                    if mask & c_val:
+                        masks.append(c)
+            mask_string = '|'.join(masks)
+            return mask_string
+
+
+        _R = "<InotifyEvent: src_path=%s, wd=%d, mask=%s, cookie=%d, name=%s>"
         def __repr__(self):
-            return InotifyEvent._R % self.key
+            mask_string = self._get_mask_string(self.mask)
+            return InotifyEvent._R % (self.src_path,
+                                      self.wd,
+                                      mask_string,
+                                      self.cookie,
+                                      self.name)
 
 
     class inotify_event_struct(Structure):
@@ -365,7 +406,7 @@ if platform.is_linux():
         def __init__(self,
                      path,
                      recursive=False,
-                     event_mask=InotifyConstants.IN_ALL_EVENTS,
+                     event_mask=InotifyConstants.WATCHDOG_EVENTS,
                      non_blocking=False):
             # The file descriptor associated with the inotify instance.
             if non_blocking:
@@ -448,6 +489,7 @@ if platform.is_linux():
             Reads events from inotify and yields them.
             """
             event_buffer = os.read(self._inotify_fd, event_buffer_size)
+            event_list = []
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
                 with self._lock:
                     wd_path = self._path_for_wd[wd]
@@ -459,14 +501,32 @@ if platform.is_linux():
                         self._remove_watch_bookkeeping(src_path)
                         continue
 
-                    if inotify_event.is_directory:
-                        if inotify_event.is_create:
-                            self._add_dir_watch(src_path,
-                                                False,
-                                                # We don't need to traverse the
-                                                # directory # self._is_recursive,
-                                                self._event_mask)
-                    yield inotify_event
+                    event_list.append(inotify_event)
+                    if inotify_event.is_create: # and inotify_event.is_create:
+                        # HACK: We need to traverse the directory path
+                        # recursively and simulate events for newly
+                        # created subdirectories/files.
+                        new_wd = self._add_watch(src_path, self._event_mask)
+                        print('new directory created %s' % src_path)
+
+                        #for root, dirnames, filenames in os.walk(src_path):
+                        #    for dirname in dirnames:
+                        #        full_path = absolute_path(os.path.join(root, dirname))
+                        #        self._add_watch(full_path, self._event_mask)
+                        #        event_list.append(InotifyEvent(wd,
+                        #                                       InotifyConstants.IN_CREATE |
+                        #                                       InotifyConstants.IN_ISDIR,
+                        #                                       0,
+                        #                                       dirname,
+                        #                                       full_path))
+                        #    for filename in filenames:
+                        #        event_list.append(InotifyEvent(wd,
+                        #                                       InotifyConstants.IN_CREATE,
+                        #                                       0,
+                        #                                       filename,
+                        #                                       full_path))
+            return event_list
+
 
         # Non-synchronized methods.
         def _add_dir_watch(self, path, recursive, mask):
@@ -507,7 +567,7 @@ if platform.is_linux():
                 Inotify._raise_error()
             self._wd_for_path[path] = wd
             self._path_for_wd[wd] = path
-            #return wd
+            return wd
 
         def _remove_all_watches(self):
             """
@@ -540,7 +600,7 @@ if platform.is_linux():
             Raises errors for inotify failures.
             """
             _errnum = get_errno()
-            raise OSError(strerror(_errnum))
+            raise OSError(os.strerror(_errnum))
 
         @staticmethod
         def _parse_event_buffer(buffer):
