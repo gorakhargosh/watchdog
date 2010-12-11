@@ -144,11 +144,10 @@ Dependencies:
 -------------
 1. Python 2.5 or above.
 2. [pywin32](http://sourceforge.net/projects/pywin32/) (only on Windows)
-3. [pyinotify](http://github.com/seb-m/pyinotify) (only on Linux)
-4. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
-5. [PyYAML](http://www.pyyaml.org/)
-6. [argh](http://pypi.python.org/pypi/argh)
-7. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
+3. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
+4. [PyYAML](http://www.pyyaml.org/)
+5. [argh](http://pypi.python.org/pypi/argh)
+6. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
 
 
 Licensing:
