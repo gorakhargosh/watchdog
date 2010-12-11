@@ -340,7 +340,8 @@ if platform.is_linux():
                     ('name',   c_char_p)]
 
     EVENT_SIZE = sizeof(inotify_event_struct)
-    DEFAULT_EVENT_BUFFER_SIZE = 1024 * (EVENT_SIZE + 16)
+    DEFAULT_NUM_EVENTS = 2048
+    DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 
 
     class Inotify(object):
@@ -443,8 +444,15 @@ if platform.is_linux():
             event_buffer = os.read(self._inotify_fd, event_buffer_size)
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
                 wd_path = self._path_for_wd[wd]
-                src_path = os.path.join(wd_path, name)
-                yield InotifyEvent(wd, mask, cookie, name, src_path)
+                src_path = absolute_path(os.path.join(wd_path, name))
+                inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
+
+                if inotify_event.is_directory:
+                    if inotify_event.is_create:
+                        self._add_dir_watch(src_path, self._is_recursive, self._event_mask)
+                    #elif inotify_event.is_delete:
+                    #    self._remove_watch(src_path)
+                yield inotify_event
 
         # Non-synchronized methods.
         def _add_dir_watch(self, path, recursive, mask):
