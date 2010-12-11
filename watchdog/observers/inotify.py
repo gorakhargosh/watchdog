@@ -531,7 +531,7 @@ if platform.is_linux():
         def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
             EventEmitter.__init__(self, event_queue, watch, timeout)
             self._lock = threading.Lock()
-            self._inotify = Inotify()
+            self._inotify = Inotify(watch.path, watch.is_recursive)
 
         def on_thread_exit(self):
             self._inotify.close()
