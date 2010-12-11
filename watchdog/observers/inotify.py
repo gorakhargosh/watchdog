@@ -93,29 +93,33 @@ if platform.is_linux():
         ("strerror", libc))
     inotify_init = CFUNCTYPE(c_int, use_errno=True)(
         ("inotify_init", libc))
+    inotify_init1 = CFUNCTYPE(c_int, c_int, use_errno=True)(
+        ("inotify_init1", libc))
     inotify_add_watch = \
         CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
             ("inotify_add_watch", libc))
     inotify_rm_watch = CFUNCTYPE(c_int, c_int, c_int, use_errno=True)(
         ("inotify_rm_watch", libc))
 
-    # Supported events suitable for MASK parameter of ``inotify_add_watch``
+    # User-space events
     IN_ACCESS        = 0x00000001     # File was accessed.
     IN_MODIFY        = 0x00000002     # File was modified.
     IN_ATTRIB        = 0x00000004     # Meta-data changed.
     IN_CLOSE_WRITE   = 0x00000008     # Writable file was closed.
     IN_CLOSE_NOWRITE = 0x00000010     # Unwritable file closed.
-    IN_CLOSE         = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
     IN_OPEN          = 0x00000020     # File was opened.
     IN_MOVED_FROM    = 0x00000040     # File was moved from X.
     IN_MOVED_TO      = 0x00000080     # File was moved to Y.
-    IN_MOVE          = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
     IN_CREATE        = 0x00000100     # Subfile was created.
     IN_DELETE        = 0x00000200     # Subfile was deleted.
     IN_DELETE_SELF   = 0x00000400     # Self was deleted.
     IN_MOVE_SELF     = 0x00000800     # Self was moved.
 
-    # Events sent by the kernel.
+    # Helper user-space events.
+    IN_CLOSE         = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
+    IN_MOVE          = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
+
+    # Events sent by the kernel to a watch.
     IN_UNMOUNT       = 0x00002000     # Backing file system was unmounted.
     IN_Q_OVERFLOW    = 0x00004000     # Event queued overflowed.
     IN_IGNORED       = 0x00008000     # File was ignored.
@@ -123,11 +127,32 @@ if platform.is_linux():
     # Special flags.
     IN_ONLYDIR       = 0x01000000     # Only watch the path if it's a directory.
     IN_DONT_FOLLOW   = 0x02000000     # Do not follow a symbolic link.
+    IN_EXCL_UNLINK   = 0x04000000     # Exclude events on unlinked objects
     IN_MASK_ADD      = 0x20000000     # Add to the mask of an existing watch.
     IN_ISDIR         = 0x40000000     # Event occurred against directory.
     IN_ONESHOT       = 0x80000000     # Only send event once.
 
-    MASK_MONITORING_EVENTS = reduce(lambda x, y: x | y, [
+    # All user-space events.
+    IN_ALL_EVENTS = reduce(lambda x, y: x | y, [
+        IN_ACCESS,
+        IN_MODIFY,
+        IN_ATTRIB,
+        IN_CLOSE_WRITE,
+        IN_CLOSE_NOWRITE,
+        IN_OPEN,
+        IN_MOVED_FROM,
+        IN_MOVED_TO,
+        IN_DELETE,
+        IN_CREATE,
+        IN_DELETE_SELF,
+        IN_MOVE_SELF,
+    ])
+
+    # Flags for inotify_init1
+    IN_CLOEXEC = 0x02000000
+    IN_NONBLOCK = 0x00004000
+
+    ALL_INOTIFY_BITS = reduce(lambda x, y: x | y, [
         IN_ACCESS,
         IN_MODIFY,
         IN_ATTRIB,
@@ -140,8 +165,40 @@ if platform.is_linux():
         IN_DELETE,
         IN_DELETE_SELF,
         IN_MOVE_SELF,
+        IN_UNMOUNT,
+        IN_Q_OVERFLOW,
+        IN_IGNORED,
+        IN_ONLYDIR,
+        IN_DONT_FOLLOW,
+        IN_EXCL_UNLINK,
+        IN_MASK_ADD,
+        IN_ISDIR,
+        IN_ONESHOT,
     ])
-    print(MASK_MONITORING_EVENTS)
+
+
+    def parse_inotify_events(buffer):
+        """
+        Parses an event buffer of ``inotify_event`` structs returned by
+        inotify::
+
+            struct inotify_event {
+                __s32 wd;            /* watch descriptor */
+                __u32 mask;          /* watch mask */
+                __u32 cookie;        /* cookie to synchronize two events */
+                __u32 len;           /* length (including nulls) of name */
+                char  name[0];       /* stub for possible name */
+            };
+
+        The ``cookie`` member of this struct is used to pair two related events,
+        for example, it pairs an IN_MOVED_FROM event with an IN_MOVED_TO event.
+        """
+        i = 0
+        while i + 16 < len(buffer):
+            wd, mask, cookie, length = struct.unpack_from('iIII', buffer, i)
+            name = buffer[i + 16:i + 16 + length].rstrip('\0')
+            i += 16 + length
+            yield wd, mask, cookie, name
 
 
     class InotifyEmitter(EventEmitter):
@@ -165,19 +222,6 @@ if platform.is_linux():
 
         def on_thread_exit(self):
             pass
-
-
-        def _parse_events(self, buffer):
-            """
-            Parses and event buffer of ``inotify_event`` structs returned by
-            reading for events using inotify.
-            """
-            i = 0
-            while i + 16 < len(buffer):
-                wd, mask, cookie, length = struct.unpack_from('iIII', buffer, i)
-                name = buffer[i + 16:i + 16 + length].rstrip('\0')
-                i += 16 + length
-                yield wd, mask, cookie, name
 
 
         def queue_events(self, timeout):
