@@ -127,6 +127,22 @@ if platform.is_linux():
     IN_ISDIR         = 0x40000000     # Event occurred against directory.
     IN_ONESHOT       = 0x80000000     # Only send event once.
 
+    MASK_MONITORING_EVENTS = reduce(lambda x, y: x | y, [
+        IN_ACCESS,
+        IN_MODIFY,
+        IN_ATTRIB,
+        IN_CLOSE_WRITE,
+        IN_CLOSE_NOWRITE,
+        IN_OPEN,
+        IN_MOVED_FROM,
+        IN_MOVED_TO,
+        IN_CREATE,
+        IN_DELETE,
+        IN_DELETE_SELF,
+        IN_MOVE_SELF,
+    ])
+    print(MASK_MONITORING_EVENTS)
+
 
     class InotifyEmitter(EventEmitter):
         """
@@ -145,6 +161,27 @@ if platform.is_linux():
         """
         def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
             EventEmitter.__init__(self, event_queue, watch, timeout)
+
+
+        def on_thread_exit(self):
+            pass
+
+
+        def _parse_events(self, buffer):
+            """
+            Parses and event buffer of ``inotify_event`` structs returned by
+            reading for events using inotify.
+            """
+            i = 0
+            while i + 16 < len(buffer):
+                wd, mask, cookie, length = struct.unpack_from('iIII', buffer, i)
+                name = buffer[i + 16:i + 16 + length].rstrip('\0')
+                i += 16 + length
+                yield wd, mask, cookie, name
+
+
+        def queue_events(self, timeout):
+            pass
 
 
     class InotifyObserver(BaseObserver):
