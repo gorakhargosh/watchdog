@@ -292,11 +292,16 @@ if platform.is_linux():
         def is_attrib(self):
             return self._mask & InotifyConstants.IN_ATTRIB
 
+        # Additional bit masks
+        @property
+        def is_ignored(self):
+            return self._mask & InotifyConstants.IN_IGNORED
+
         @property
         def is_directory(self):
             return self._mask & InotifyConstants.IN_ISDIR
 
-        # Additional functionality.
+        # Python-specific functionality.
         @property
         def key(self):
             return (self._src_path,
@@ -443,16 +448,24 @@ if platform.is_linux():
             """
             event_buffer = os.read(self._inotify_fd, event_buffer_size)
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
-                wd_path = self._path_for_wd[wd]
-                src_path = absolute_path(os.path.join(wd_path, name))
-                inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
+                with self._lock:
+                    wd_path = self._path_for_wd[wd]
+                    src_path = absolute_path(os.path.join(wd_path, name))
+                    inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
-                if inotify_event.is_directory:
-                    if inotify_event.is_create:
-                        self._add_dir_watch(src_path, self._is_recursive, self._event_mask)
-                    #elif inotify_event.is_delete:
-                    #    self._remove_watch(src_path)
-                yield inotify_event
+                    if inotify_event.is_ignored:
+                        # Clean up book-keeping for deleted watches.
+                        self._remove_watch_bookkeeping(src_path)
+                        continue
+
+                    if inotify_event.is_directory:
+                        if inotify_event.is_create:
+                            self._add_dir_watch(src_path,
+                                                False,
+                                                # We don't need to traverse the
+                                                # directory # self._is_recursive,
+                                                self._event_mask)
+                    yield inotify_event
 
         # Non-synchronized methods.
         def _add_dir_watch(self, path, recursive, mask):
@@ -504,6 +517,11 @@ if platform.is_linux():
                 if inotify_rm_watch(self._inotify_fd, wd) == -1:
                     Inotify._raise_error()
 
+        def _remove_watch_bookkeeping(self, path):
+            wd = self._wd_for_path.pop(path)
+            del self._path_for_wd[wd]
+            return wd
+
         def _remove_watch(self, path):
             """
             Removes a watch for the given path.
@@ -511,8 +529,7 @@ if platform.is_linux():
             :param path:
                 Path to remove the watch for.
             """
-            wd = self._wd_for_path.pop(path)
-            del self._path_for_wd[wd]
+            wd = self._remove_watch_bookkeeping(path)
             if inotify_rm_watch(self._inotify_fd, wd) == -1:
                 Inotify._raise_error()
 
