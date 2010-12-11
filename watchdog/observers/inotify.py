@@ -120,7 +120,7 @@ if platform.is_linux():
         libc = None
         try:
             libc = ctypes.util.find_library("c")
-        except (OSError, IOError):
+        except (OSError, IOError, AttributeError):
             libc = "libc.so.6"
         return libc
 
@@ -655,6 +655,17 @@ if platform.is_linux():
                 yield wd, mask, cookie, name
 
 
+    ACTION_EVENT_MAP = {
+        (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
+        (True, EVENT_TYPE_CREATED): DirCreatedEvent,
+        (True, EVENT_TYPE_DELETED): DirDeletedEvent,
+        (True, EVENT_TYPE_MOVED): DirMovedEvent,
+        (False, EVENT_TYPE_MODIFIED): FileModifiedEvent,
+        (False, EVENT_TYPE_CREATED): FileCreatedEvent,
+        (False, EVENT_TYPE_DELETED): FileDeletedEvent,
+        (False, EVENT_TYPE_MOVED): FileMovedEvent,
+    }
+
     class InotifyEmitter(EventEmitter):
         """
         inotify(7)-based event emitter.
@@ -679,63 +690,53 @@ if platform.is_linux():
             self._inotify.close()
 
         def queue_events(self, timeout):
-            inotify_events = self._inotify.read_events()
-            moved_from_events = dict()
-            moved_to_events = dict()
-            for event in inotify_events:
-                if event.is_moved_from:
-                    moved_from_events[event.cookie] = event
-                elif event.is_moved_to:
-                    # TODO: Sometimes this line will bomb even when a previous
-                    # moved_from event with the same cookie has fired. I have
-                    # yet to figure out why this is the case, so we're
-                    # temporarily swallowing the exception and the move event.
-                    # This happens only during massively quick file movement
-                    # for example, when you execute `git gc` in a monitored
-                    # directory.
-                    try:
-                        from_event = moved_from_events[event.cookie]
-                        to_event = event
-                        src_path = from_event.src_path
-                        dest_path = to_event.src_path
+            with self._lock:
+                inotify_events = self._inotify.read_events()
+                moved_from_events = dict()
+                moved_to_events = dict()
+                for event in inotify_events:
+                    if event.is_moved_from:
+                        moved_from_events[event.cookie] = event
+                    elif event.is_moved_to:
+                        # TODO: Sometimes this line will bomb even when a previous
+                        # moved_from event with the same cookie has fired. I have
+                        # yet to figure out why this is the case, so we're
+                        # temporarily swallowing the exception and the move event.
+                        # This happens only during massively quick file movement
+                        # for example, when you execute `git gc` in a monitored
+                        # directory.
+                        try:
+                            from_event = moved_from_events[event.cookie]
+                            to_event = event
+                            src_path = from_event.src_path
+                            dest_path = to_event.src_path
 
-                        klass = ACTION_EVENT_MAP[(to_event.is_directory, EVENT_TYPE_MOVED)]
-                        event = klass(src_path, dest_path)
-                        self.queue_event(event)
-                        # Generate sub events for the directory if recursive.
-                        if event.is_directory and self.watch.is_recursive:
-                            for sub_event in event.sub_moved_events():
-                                self.queue_event(sub_event)
-                    except KeyError:
-                        pass
-                elif event.is_attrib:
-                    klass = ACTION_EVENT_MAP[(event.is_directory,
-                                              EVENT_TYPE_MODIFIED)]
-                    self.queue_event(klass(event.src_path))
-                elif event.is_close_write:
-                    klass = ACTION_EVENT_MAP[(event.is_directory,
-                                              EVENT_TYPE_MODIFIED)]
-                    self.queue_event(klass(event.src_path))
-                elif event.is_delete:
-                    klass = ACTION_EVENT_MAP[(event.is_directory,
-                                              EVENT_TYPE_DELETED)]
-                    self.queue_event(klass(event.src_path))
-                elif event.is_create:
-                    klass = ACTION_EVENT_MAP[(event.is_directory,
-                                              EVENT_TYPE_CREATED)]
-                    self.queue_event(klass(event.src_path))
+                            klass = ACTION_EVENT_MAP[(to_event.is_directory, EVENT_TYPE_MOVED)]
+                            event = klass(src_path, dest_path)
+                            self.queue_event(event)
+                            # Generate sub events for the directory if recursive.
+                            if event.is_directory and self.watch.is_recursive:
+                                for sub_event in event.sub_moved_events():
+                                    self.queue_event(sub_event)
+                        except KeyError:
+                            pass
+                    elif event.is_attrib:
+                        klass = ACTION_EVENT_MAP[(event.is_directory,
+                                                  EVENT_TYPE_MODIFIED)]
+                        self.queue_event(klass(event.src_path))
+                    elif event.is_close_write:
+                        klass = ACTION_EVENT_MAP[(event.is_directory,
+                                                  EVENT_TYPE_MODIFIED)]
+                        self.queue_event(klass(event.src_path))
+                    elif event.is_delete:
+                        klass = ACTION_EVENT_MAP[(event.is_directory,
+                                                  EVENT_TYPE_DELETED)]
+                        self.queue_event(klass(event.src_path))
+                    elif event.is_create:
+                        klass = ACTION_EVENT_MAP[(event.is_directory,
+                                                  EVENT_TYPE_CREATED)]
+                        self.queue_event(klass(event.src_path))
 
-
-    ACTION_EVENT_MAP = {
-        (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
-        (True, EVENT_TYPE_CREATED): DirCreatedEvent,
-        (True, EVENT_TYPE_DELETED): DirDeletedEvent,
-        (True, EVENT_TYPE_MOVED): DirMovedEvent,
-        (False, EVENT_TYPE_MODIFIED): FileModifiedEvent,
-        (False, EVENT_TYPE_CREATED): FileCreatedEvent,
-        (False, EVENT_TYPE_DELETED): FileDeletedEvent,
-        (False, EVENT_TYPE_MOVED): FileMovedEvent,
-    }
 
     class InotifyObserver(BaseObserver):
         """
