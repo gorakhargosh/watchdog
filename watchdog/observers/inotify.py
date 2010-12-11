@@ -218,11 +218,10 @@ if platform.is_linux():
                      event_mask=Inotify.IN_ALL_EVENTS,
                      non_blocking=False):
             # The file descriptor associated with the inotify instance.
-            #if non_blocking:
-            #    inotify_fd = inotify_init1(Inotify.IN_NONBLOCK)
-            #else:
-            #    inotify_fd = inotify_init()
-            inotify_fd = inotify_init()
+            if non_blocking:
+                inotify_fd = inotify_init1(Inotify.IN_NONBLOCK)
+            else:
+                inotify_fd = inotify_init()
             if inotify_fd == -1:
                 Inotify._raise_error()
             self._inotify_fd = inotify_fd
@@ -252,6 +251,11 @@ if platform.is_linux():
         def is_recursive(self):
             """Whether we are watching directories recursively."""
             return self._is_recursive
+
+        @property
+        def is_non_blocking(self):
+            """Determines whether this instance of inotify is non-blocking."""
+            return self._is_non_blocking
 
         @property
         def fd(self):
