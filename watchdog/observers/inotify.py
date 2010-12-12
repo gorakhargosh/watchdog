@@ -164,35 +164,35 @@ if platform.is_linux():
         Constants related to inotify.
         """
         # User-space events
-        IN_ACCESS        = 0x00000001     # File was accessed.
-        IN_MODIFY        = 0x00000002     # File was modified.
-        IN_ATTRIB        = 0x00000004     # Meta-data changed.
-        IN_CLOSE_WRITE   = 0x00000008     # Writable file was closed.
+        IN_ACCESS = 0x00000001     # File was accessed.
+        IN_MODIFY = 0x00000002     # File was modified.
+        IN_ATTRIB = 0x00000004     # Meta-data changed.
+        IN_CLOSE_WRITE = 0x00000008     # Writable file was closed.
         IN_CLOSE_NOWRITE = 0x00000010     # Unwritable file closed.
-        IN_OPEN          = 0x00000020     # File was opened.
-        IN_MOVED_FROM    = 0x00000040     # File was moved from X.
-        IN_MOVED_TO      = 0x00000080     # File was moved to Y.
-        IN_CREATE        = 0x00000100     # Subfile was created.
-        IN_DELETE        = 0x00000200     # Subfile was deleted.
-        IN_DELETE_SELF   = 0x00000400     # Self was deleted.
-        IN_MOVE_SELF     = 0x00000800     # Self was moved.
+        IN_OPEN = 0x00000020     # File was opened.
+        IN_MOVED_FROM = 0x00000040     # File was moved from X.
+        IN_MOVED_TO = 0x00000080     # File was moved to Y.
+        IN_CREATE = 0x00000100     # Subfile was created.
+        IN_DELETE = 0x00000200     # Subfile was deleted.
+        IN_DELETE_SELF = 0x00000400     # Self was deleted.
+        IN_MOVE_SELF = 0x00000800     # Self was moved.
 
         # Helper user-space events.
-        IN_CLOSE         = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
-        IN_MOVE          = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
+        IN_CLOSE = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
+        IN_MOVE = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
 
         # Events sent by the kernel to a watch.
-        IN_UNMOUNT       = 0x00002000     # Backing file system was unmounted.
-        IN_Q_OVERFLOW    = 0x00004000     # Event queued overflowed.
-        IN_IGNORED       = 0x00008000     # File was ignored.
+        IN_UNMOUNT = 0x00002000     # Backing file system was unmounted.
+        IN_Q_OVERFLOW = 0x00004000     # Event queued overflowed.
+        IN_IGNORED = 0x00008000     # File was ignored.
 
         # Special flags.
-        IN_ONLYDIR       = 0x01000000     # Only watch the path if it's a directory.
-        IN_DONT_FOLLOW   = 0x02000000     # Do not follow a symbolic link.
-        IN_EXCL_UNLINK   = 0x04000000     # Exclude events on unlinked objects
-        IN_MASK_ADD      = 0x20000000     # Add to the mask of an existing watch.
-        IN_ISDIR         = 0x40000000     # Event occurred against directory.
-        IN_ONESHOT       = 0x80000000     # Only send event once.
+        IN_ONLYDIR = 0x01000000     # Only watch the path if it's a directory.
+        IN_DONT_FOLLOW = 0x02000000     # Do not follow a symbolic link.
+        IN_EXCL_UNLINK = 0x04000000     # Exclude events on unlinked objects
+        IN_MASK_ADD = 0x20000000     # Add to the mask of an existing watch.
+        IN_ISDIR = 0x40000000     # Event occurred against directory.
+        IN_ONESHOT = 0x80000000     # Only send event once.
 
         # All user-space events.
         IN_ALL_EVENTS = reduce(lambda x, y: x | y, [
@@ -395,11 +395,11 @@ if platform.is_linux():
                 char  name[0];       /* stub for possible name */
             };
         """
-        _fields_ = [('wd',     c_int),
-                    ('mask',   c_uint32),
+        _fields_ = [('wd', c_int),
+                    ('mask', c_uint32),
                     ('cookie', c_uint32),
-                    ('len',    c_uint32),
-                    ('name',   c_char_p)]
+                    ('len', c_uint32),
+                    ('name', c_char_p)]
 
     EVENT_SIZE = sizeof(inotify_event_struct)
     DEFAULT_NUM_EVENTS = 2048
@@ -503,11 +503,11 @@ if platform.is_linux():
             """
             Reads events from inotify and yields them.
             """
-            event_buffer = os.read(self._inotify_fd, event_buffer_size)
-            event_list = []
-            moved_from_events = dict()
-            for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
-                with self._lock:
+            with self._lock:
+                event_buffer = os.read(self._inotify_fd, event_buffer_size)
+                event_list = []
+                moved_from_events = dict()
+                for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
                     wd_path = self._path_for_wd[wd]
                     src_path = absolute_path(os.path.join(wd_path, name))
                     inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
