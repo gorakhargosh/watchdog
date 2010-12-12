@@ -27,6 +27,7 @@ from __future__ import with_statement
 from watchdog.utils import platform
 
 if platform.is_windows():
+    import ctypes
     import threading
     import os.path
     import time
@@ -39,11 +40,12 @@ if platform.is_windows():
         WATCHDOG_TRAVERSE_MOVED_DIR_DELAY, \
         read_directory_changes, \
         get_directory_handle, \
-        close_directory_handle
+        close_directory_handle, \
+        BUFFER_SIZE
     from watchdog.observers.winapi import \
         FILE_ACTION_RENAMED_OLD_NAME, \
         FILE_ACTION_RENAMED_NEW_NAME, \
-        FILE_NOTIFY_INFORMATION
+        get_FILE_NOTIFY_INFORMATION
     from watchdog.observers.api import \
         EventEmitter, \
         BaseObserver, \
@@ -65,7 +67,7 @@ if platform.is_windows():
 
             self._directory_handle = get_directory_handle(watch.path,
                                                           WATCHDOG_FILE_FLAGS)
-
+            self._buffer = ctypes.create_string_buffer(BUFFER_SIZE)
 
         def on_thread_exit(self):
             close_directory_handle(self._directory_handle)
@@ -73,11 +75,11 @@ if platform.is_windows():
 
         def queue_events(self, timeout):
             with self._lock:
-                dir_changes = read_directory_changes(self._directory_handle,
-                                                     self.watch.is_recursive)
-
+                dir_changes, bytes = read_directory_changes(self._directory_handle,
+                                                            self._buffer,
+                                                            self.watch.is_recursive)
                 last_renamed_src_path = ""
-                for action, src_path in FILE_NOTIFY_INFORMATION(dir_changes):
+                for action, src_path in get_FILE_NOTIFY_INFORMATION(dir_changes, bytes):
                     src_path = absolute_path(os.path.join(self.watch.path,
                                                           src_path))
 

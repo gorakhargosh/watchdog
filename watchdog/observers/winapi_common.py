@@ -113,22 +113,21 @@ if platform.is_windows():
     def close_directory_handle(handle):
         CloseHandle(handle)
 
-    def read_directory_changes(handle, recursive, buffer_size=BUFFER_SIZE):
+    def read_directory_changes(handle, buffer, recursive):
         """Read changes to the directory using the specified directory handle.
 
         http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
         """
-        buffer = ctypes.create_string_buffer(buffer_size)
+        bytes = ctypes.wintypes.DWORD()
         rc = ReadDirectoryChangesW(handle,
-                                   buffer,
-                                   buffer_size,
+                                   ctypes.byref(buffer),
+                                   len(buffer),
                                    recursive,
                                    WATCHDOG_FILE_NOTIFY_FLAGS,
-                                   None,
+                                   ctypes.byref(bytes),
                                    None,
                                    None)
-        return buffer
-
+        return buffer, bytes
 
     def create_io_completion_port():
         """

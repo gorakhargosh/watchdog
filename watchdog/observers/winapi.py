@@ -208,15 +208,24 @@ if platform.is_windows():
         ctypes.POINTER(OVERLAPPED), # lpOverlapped
     )
 
-    def FILE_NOTIFY_INFORMATION(buffer):
-       """Extract the information out of a FILE_NOTIFY_INFORMATION structure."""
-       pos = 0
-       while pos < len(buffer):
-           jump, action, namelen = struct.unpack("iii", buffer[pos:pos + 12])
-           # TODO: this may return a shortname or a longname, with no way
-           # to tell which.  Normalise them somehow?
-           name = buffer[pos + 12:pos + 12 + namelen].decode("utf16")
-           yield (name, action)
-           if not jump:
-               break
-           pos += jump
+    class FILE_NOTIFY_INFORMATION(ctypes.Structure):
+        _fields_ = [("NextEntryOffset", ctypes.wintypes.DWORD),
+                    ("Action", ctypes.wintypes.DWORD),
+                    ("FileNameLength", ctypes.wintypes.DWORD),
+                    ("FileName", (ctypes.wintypes.WCHAR * 1))]
+
+    LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
+
+    def get_FILE_NOTIFY_INFORMATION(readBuffer, nBytes):
+        results = []
+        while nBytes > 0:
+            fni = ctypes.cast(readBuffer, LPFNI)[0]
+            ptr = ctypes.addressof(fni) + FILE_NOTIFY_INFORMATION.FileName.offset
+            filename = ctypes.wstring_at(ptr, fni.FileNameLength)
+            results.append((fni.Action, filename))
+            numToSkip = fni.NextEntryOffset
+            if numToSkip <= 0:
+                break
+            readBuffer = readBuffer[numToSkip:]
+            nBytes -= numToSkip
+        return results
