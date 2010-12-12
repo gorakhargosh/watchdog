@@ -25,72 +25,63 @@
 from watchdog.utils import platform
 
 if platform.is_windows():
-    from win32con import \
+    from watchdog.observers.winapi import \
+        FILE_FLAG_BACKUP_SEMANTICS, \
+        FILE_FLAG_OVERLAPPED, \
         FILE_SHARE_READ, \
         FILE_SHARE_WRITE, \
         FILE_SHARE_DELETE, \
-        OPEN_EXISTING, \
-        FILE_FLAG_BACKUP_SEMANTICS, \
-        FILE_FLAG_OVERLAPPED, \
         FILE_NOTIFY_CHANGE_FILE_NAME, \
         FILE_NOTIFY_CHANGE_DIR_NAME, \
         FILE_NOTIFY_CHANGE_ATTRIBUTES, \
         FILE_NOTIFY_CHANGE_SIZE, \
         FILE_NOTIFY_CHANGE_LAST_WRITE, \
-        FILE_NOTIFY_CHANGE_SECURITY
-
-    from win32file import ReadDirectoryChangesW, \
-        CreateFile, \
-        CloseHandle, \
-        CancelIo, \
+        FILE_NOTIFY_CHANGE_SECURITY, \
+        FILE_NOTIFY_CHANGE_LAST_ACCESS, \
+        FILE_NOTIFY_CHANGE_CREATION, \
+        FILE_ACTION_CREATED, \
+        FILE_ACTION_DELETED, \
+        FILE_ACTION_MODIFIED, \
+        FILE_LIST_DIRECTORY, \
+        OPEN_EXISTING, \
+        INVALID_HANDLE_VALUE, \
+        CreateFileW, \
+        ReadDirectoryChangesW, \
         CreateIoCompletionPort, \
-        GetQueuedCompletionStatus, \
-        FILE_NOTIFY_INFORMATION
-
+        CloseHandle
     from watchdog.events import \
-        DirMovedEvent, \
         DirDeletedEvent, \
         DirCreatedEvent, \
         DirModifiedEvent, \
-        FileMovedEvent, \
         FileDeletedEvent, \
         FileCreatedEvent, \
         FileModifiedEvent
-
-
-    # Windows API Constants.
-    FILE_LIST_DIRECTORY = 0x0001            # CreateFile
-    INVALID_HANDLE_VALUE = -1               # CreateIoCompletionPort to create an unassociated i/o completion port.
-    FILE_NOTIFY_CHANGE_LAST_ACCESS = 0x20   # ReadDirectoryChangesW
-    FILE_NOTIFY_CHANGE_CREATION = 0x40      # ReadDirectoryChangesW
-
-    # Event buffer size.
-    BUFFER_SIZE = 1024
-
-    # File action constants defined by the Windows API.
-    FILE_ACTION_CREATED = 1
-    FILE_ACTION_DELETED = 2
-    FILE_ACTION_MODIFIED = 3
-    FILE_ACTION_RENAMED_OLD_NAME = 4
-    FILE_ACTION_RENAMED_NEW_NAME = 5
 
     # We don't need to recalculate these flags every time a call is made to
     # the win32 API functions.
     WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
     WATCHDOG_FILE_FLAGS_ASYNC = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED
-    WATCHDOG_FILE_SHARE_FLAGS = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
-    WATCHDOG_FILE_NOTIFY_FLAGS = FILE_NOTIFY_CHANGE_FILE_NAME | \
-        FILE_NOTIFY_CHANGE_DIR_NAME | \
-        FILE_NOTIFY_CHANGE_ATTRIBUTES | \
-        FILE_NOTIFY_CHANGE_SIZE | \
-        FILE_NOTIFY_CHANGE_LAST_WRITE | \
-        FILE_NOTIFY_CHANGE_SECURITY | \
-        FILE_NOTIFY_CHANGE_LAST_ACCESS | \
-        FILE_NOTIFY_CHANGE_CREATION
+    WATCHDOG_FILE_SHARE_FLAGS = reduce(lambda x, y: x | y, [
+        FILE_SHARE_READ,
+        FILE_SHARE_WRITE,
+        FILE_SHARE_DELETE,
+    ])
+    WATCHDOG_FILE_NOTIFY_FLAGS = reduce(lambda x, y: x | y, [
+        FILE_NOTIFY_CHANGE_FILE_NAME,
+        FILE_NOTIFY_CHANGE_DIR_NAME,
+        FILE_NOTIFY_CHANGE_ATTRIBUTES,
+        FILE_NOTIFY_CHANGE_SIZE,
+        FILE_NOTIFY_CHANGE_LAST_WRITE,
+        FILE_NOTIFY_CHANGE_SECURITY,
+        FILE_NOTIFY_CHANGE_LAST_ACCESS,
+        FILE_NOTIFY_CHANGE_CREATION,
+    ])
+
 
     # HACK:
     WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1   # seconds
 
+    BUFFER_SIZE = 1024
 
     # Moved event is handled explicitly in the emitter thread.
     DIR_ACTION_EVENT_MAP = {
@@ -107,13 +98,13 @@ if platform.is_windows():
 
     def get_directory_handle(path, file_flags):
         """Returns a Windows handle to the specified directory path."""
-        handle = CreateFile(path,
-                            FILE_LIST_DIRECTORY,
-                            WATCHDOG_FILE_SHARE_FLAGS,
-                            None,
-                            OPEN_EXISTING,
-                            file_flags,
-                            None)
+        handle = CreateFileW(path,
+                             FILE_LIST_DIRECTORY,
+                             WATCHDOG_FILE_SHARE_FLAGS,
+                             None,
+                             OPEN_EXISTING,
+                             file_flags,
+                             None)
         return handle
 
 

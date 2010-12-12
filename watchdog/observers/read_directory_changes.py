@@ -33,8 +33,6 @@ if platform.is_windows():
 
     from watchdog.utils import absolute_path
     from watchdog.observers.winapi_common import \
-        FILE_ACTION_RENAMED_OLD_NAME, \
-        FILE_ACTION_RENAMED_NEW_NAME, \
         DIR_ACTION_EVENT_MAP, \
         FILE_ACTION_EVENT_MAP, \
         WATCHDOG_FILE_FLAGS, \
@@ -42,6 +40,9 @@ if platform.is_windows():
         read_directory_changes, \
         get_directory_handle, \
         close_directory_handle
+    from watchdog.observers.winapi import \
+        FILE_ACTION_RENAMED_OLD_NAME, \
+        FILE_ACTION_RENAMED_NEW_NAME
     from watchdog.observers.api import \
         EventEmitter, \
         BaseObserver, \
