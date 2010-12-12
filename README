@@ -143,11 +143,10 @@ Supported Platforms:
 Dependencies:
 -------------
 1. Python 2.5 or above.
-2. [pywin32](http://sourceforge.net/projects/pywin32/) (only on Windows)
-3. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
-4. [PyYAML](http://www.pyyaml.org/)
-5. [argh](http://pypi.python.org/pypi/argh)
-6. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
+2. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
+3. [PyYAML](http://www.pyyaml.org/)
+4. [argh](http://pypi.python.org/pypi/argh)
+5. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
 
 
 Licensing:
@@ -163,7 +162,7 @@ Please report bugs at the [Github issue tracker](http://github.com/gorakhargosh/
 
 Why Watchdog?
 -------------
-Too many people tried to do the same thing and none did 
+Too many people tried to do the same thing and none did
 what I needed Python to do:
 
 * [pnotify](http://mark.heily.com/pnotify/)
@@ -175,4 +174,5 @@ what I needed Python to do:
 * [jnotify](http://jnotify.sourceforge.net/)
 * [treewalker](http://github.com/jbd/treewatcher)
 * [file.monitor](http://github.com/pke/file.monitor)
+* [pyfilesystem](http://code.google.com/p/pyfilesystem)
 
