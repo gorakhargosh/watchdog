@@ -25,6 +25,8 @@
 from watchdog.utils import platform
 
 if platform.is_windows():
+    import ctypes
+
     from watchdog.observers.winapi import \
         FILE_FLAG_BACKUP_SEMANTICS, \
         FILE_FLAG_OVERLAPPED, \
@@ -116,13 +118,16 @@ if platform.is_windows():
 
         http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
         """
-        results = ReadDirectoryChangesW(handle,
-                                        buffer_size,
-                                        recursive,
-                                        WATCHDOG_FILE_NOTIFY_FLAGS,
-                                        None,
-                                        None)
-        return results
+        buffer = ctypes.create_string_buffer(buffer_size)
+        rc = ReadDirectoryChangesW(handle,
+                                   buffer,
+                                   buffer_size,
+                                   recursive,
+                                   WATCHDOG_FILE_NOTIFY_FLAGS,
+                                   None,
+                                   None,
+                                   None)
+        return buffer
 
 
     def create_io_completion_port():

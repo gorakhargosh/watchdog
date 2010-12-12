@@ -42,7 +42,8 @@ if platform.is_windows():
         close_directory_handle
     from watchdog.observers.winapi import \
         FILE_ACTION_RENAMED_OLD_NAME, \
-        FILE_ACTION_RENAMED_NEW_NAME
+        FILE_ACTION_RENAMED_NEW_NAME, \
+        FILE_NOTIFY_INFORMATION
     from watchdog.observers.api import \
         EventEmitter, \
         BaseObserver, \
@@ -76,7 +77,7 @@ if platform.is_windows():
                                                      self.watch.is_recursive)
 
                 last_renamed_src_path = ""
-                for action, src_path in dir_changes:
+                for action, src_path in FILE_NOTIFY_INFORMATION(dir_changes):
                     src_path = absolute_path(os.path.join(self.watch.path,
                                                           src_path))
 
