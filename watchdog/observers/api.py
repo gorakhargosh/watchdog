@@ -186,9 +186,11 @@ class EventEmitter(DaemonThread):
         """
 
     def run(self):
-        while self.should_keep_running():
-            self.queue_events(self.timeout)
-        self.on_thread_exit()
+        try:
+            while self.should_keep_running():
+                self.queue_events(self.timeout)
+        finally:
+            self.on_thread_exit()
 
 
 class EventDispatcher(DaemonThread):
@@ -258,12 +260,14 @@ class EventDispatcher(DaemonThread):
         thread stops completely."""
 
     def run(self):
-        while self.should_keep_running():
-            try:
-                self._dispatch_events(self.event_queue, self.timeout)
-            except queue.Empty:
-                continue
-        self.on_thread_exit()
+        try:
+            while self.should_keep_running():
+                try:
+                    self._dispatch_events(self.event_queue, self.timeout)
+                except queue.Empty:
+                    continue
+        finally:
+            self.on_thread_exit()
 
 
 class BaseObserver(EventDispatcher):
