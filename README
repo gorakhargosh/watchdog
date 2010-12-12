@@ -134,7 +134,7 @@ Supported Platforms:
 --------------------
 
 * Linux 2.6 (inotify)
-* Mac OS X (FSEevnts, kqueue)
+* Mac OS X (FSEvents, kqueue)
 * FreeBSD/BSD (kqueue)
 * Windows (ReadDirectoryChangesW with I/O completion ports; ReadDirectoryChangesW worker threads)
 * OS-independent (polling the disk for directory snapshots and comparing them periodically; slow and not recommended)
