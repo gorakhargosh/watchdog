@@ -26,3 +26,4 @@ from the following projects:
 - Armin Ronacher's flask-sphinx-themes for the documentation:
   https://github.com/mitsuhiko/flask-sphinx-themes
 - pyfilesystem - http://code.google.com/p/pyfilesystem
+- get_FILE_NOTIFY_INFORMATION - http://blog.gmane.org/gmane.comp.python.ctypes/month=20070901
