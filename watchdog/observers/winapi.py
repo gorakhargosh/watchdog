@@ -228,5 +228,5 @@ if platform.is_windows():
             if numToSkip <= 0:
                 break
             readBuffer = readBuffer[numToSkip:]
-            nBytes -= numToSkip
+            nBytes -= numToSkip # numToSkip is long. nBytes should be long too.
         return results

@@ -83,7 +83,7 @@ if platform.is_windows():
     # HACK:
     WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1   # seconds
 
-    BUFFER_SIZE = 1024
+    BUFFER_SIZE = 2048
 
     # Moved event is handled explicitly in the emitter thread.
     DIR_ACTION_EVENT_MAP = {
@@ -127,7 +127,8 @@ if platform.is_windows():
                                    ctypes.byref(bytes),
                                    None,
                                    None)
-        return buffer, bytes
+        # get_FILE_NOTIFY_INFORMATION expects nBytes to be long.
+        return buffer, long(bytes.value)
 
     def create_io_completion_port():
         """
