@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # winapi.py: Windows API-Python interface (removes dependency on pywin32)
 #
+# Copyright (C0 2007 Thomas Heller <theller@ctypes.org>
 # Copyright (C) 2010 Will McGugan <will@willmcgugan.com>
 # Copyright (C) 2010 Ryan Kelly <ryan@rfk.id.au>
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
