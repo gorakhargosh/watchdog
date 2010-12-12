@@ -213,8 +213,8 @@ if platform.is_windows():
         _fields_ = [("NextEntryOffset", ctypes.wintypes.DWORD),
                     ("Action", ctypes.wintypes.DWORD),
                     ("FileNameLength", ctypes.wintypes.DWORD),
-                    ("FileName", (ctypes.wintypes.WCHAR * 1))]
-
+                    #("FileName", (ctypes.wintypes.WCHAR * 1))]
+                    ("FileName", (ctypes.c_char * 1))]
     LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
 
     def get_FILE_NOTIFY_INFORMATION(readBuffer, nBytes):
@@ -222,8 +222,9 @@ if platform.is_windows():
         while nBytes > 0:
             fni = ctypes.cast(readBuffer, LPFNI)[0]
             ptr = ctypes.addressof(fni) + FILE_NOTIFY_INFORMATION.FileName.offset
-            filename = ctypes.wstring_at(ptr, fni.FileNameLength)
-            results.append((fni.Action, filename))
+            #filename = ctypes.wstring_at(ptr, fni.FileNameLength)
+            filename = ctypes.string_at(ptr, fni.FileNameLength)
+            results.append((fni.Action, filename.decode('utf-16')))
             numToSkip = fni.NextEntryOffset
             if numToSkip <= 0:
                 break
