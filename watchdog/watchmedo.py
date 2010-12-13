@@ -155,9 +155,7 @@ def tricks_from(args):
         o.join()
 
 
-
-
-@alias('generate-yaml')
+@alias('generate-tricks-yaml')
 @arg('trick_paths', nargs='*', help='Dotted paths for all the tricks you want to generate')
 @arg('--python-path', default='.', help='string of paths separated by %s to add to the python path' % os.path.sep)
 @arg('--append-to-file', default=None, help='appends the generated tricks YAML to a file; if not specified, prints to standard output')
