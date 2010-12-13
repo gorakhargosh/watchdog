@@ -84,6 +84,7 @@ if platform.is_linux():
     import threading
 
     import ctypes
+    import ctypes.util
     from ctypes import \
         CDLL, \
         CFUNCTYPE, \
@@ -115,16 +116,16 @@ if platform.is_linux():
         EVENT_TYPE_MOVED
 
 
-    def find_libc():
+    def find_libc_path():
         """Finds the libc library."""
-        libc = None
+        module_path = None
         try:
-            libc = ctypes.util.find_library("c")
+            module_path = ctypes.util.find_library("c")
         except (OSError, IOError, AttributeError):
-            libc = "libc.so.6"
-        return libc
+            module_path = "libc.so.6"
+        return module_path
 
-    libc_string = find_libc()
+    libc_string = find_libc_path()
     libc = ctypes.CDLL(libc_string, use_errno=True)
 
     if (not has_attribute(libc, 'inotify_init') or
