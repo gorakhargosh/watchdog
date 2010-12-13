@@ -121,11 +121,12 @@ def schedule_tricks(observer, tricks, watch_path):
 @alias('tricks')
 @arg('files', nargs='*', help='perform tricks from given file')
 @arg('--python-path', default='.', help='string of paths separated by %s to add to the python path' % os.path.sep)
+@arg('--interval', '--timeout', dest='timeout', default=1.0, help='use this as the polling interval/blocking timeout')
 def tricks_from(args):
     add_to_sys_path(path_split(args.python_path))
     observers = []
     for tricks_file in args.files:
-        observer = Observer()
+        observer = Observer(timeout=args.timeout)
 
         if not os.path.exists(tricks_file):
             raise IOError("cannot find tricks file: %s" % tricks_file)
@@ -228,7 +229,6 @@ def log(args):
     observe_with(observer, event_handler, args.directories, args.recursive)
 
 
-#@alias('shell-command')
 @arg('directories', nargs='*', default='.', help='directories to watch')
 @arg('-c', '--command', dest='command', default=None, help='''shell command executed in response
 to matching events. These interpolation variables are available to your
@@ -251,6 +251,7 @@ Example option usage:
 @arg('-i', '--ignore-pattern', '--ignore-patterns', dest='ignore_patterns', default='', help='ignores event paths with these patterns (separated by ;).')
 @arg('-D', '--ignore-directories', dest='ignore_directories', default=False, help='ignores events for directories')
 @arg('-R', '--recursive', dest='recursive', default=False, help='monitors the directories recursively')
+@arg('--interval', '--timeout', dest='timeout', default=1.0, help='use this as the polling interval/blocking timeout')
 def shell_command(args):
     from watchdog.tricks import ShellCommandTrick
 
@@ -263,7 +264,8 @@ def shell_command(args):
                                       patterns=patterns,
                                       ignore_patterns=ignore_patterns,
                                       ignore_directories=args.ignore_directories)
-    observe_with(Observer(), event_handler, args.directories, args.recursive)
+    observer = Observer(timeout=args.timeout)
+    observe_with(observer, event_handler, args.directories, args.recursive)
 
 
 epilog = """Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>.
