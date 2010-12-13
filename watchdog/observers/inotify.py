@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # inotify.py: inotify-based event emitter for Linux 2.6.13+.
 #
-# Copyright (c) 2010 Sebastien Martini <seb@dbzteam.org>
+# Copyright (C) 2010 Sebastien Martini <seb@dbzteam.org>
 # Copyright (C) 2010 Luke McCarthy <luke@iogopro.co.uk>
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
 #
