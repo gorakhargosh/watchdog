@@ -128,7 +128,8 @@ if platform.is_windows():
                                    None,
                                    None)
         # get_FILE_NOTIFY_INFORMATION expects nBytes to be long.
-        return buffer, long(bytes.value)
+        return buffer.raw, long(bytes.value)
+
 
     def create_io_completion_port():
         """

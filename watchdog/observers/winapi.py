@@ -231,3 +231,17 @@ if platform.is_windows():
             readBuffer = readBuffer[numToSkip:]
             nBytes -= numToSkip # numToSkip is long. nBytes should be long too.
         return results
+
+    def get_FILE_NOTIFY_INFORMATION_alt(buffer, nBytes):
+       """Extract the information out of a FILE_NOTIFY_INFORMATION structure."""
+       pos = 0
+       buffer = buffer[:nBytes]
+       while pos < len(buffer):
+           jump, action, namelen = struct.unpack("iii",buffer[pos:pos+12])
+           # TODO: this may return a shortname or a longname, with no way
+           # to tell which.  Normalise them somehow?
+           name = buffer[pos+12:pos+12+namelen].decode("utf16")
+           yield (name,action)
+           if not jump:
+               break
+           pos += jump
