@@ -75,11 +75,11 @@ if platform.is_windows():
 
         def queue_events(self, timeout):
             with self._lock:
-                dir_changes, bytes = read_directory_changes(self._directory_handle,
+                dir_changes, nbytes = read_directory_changes(self._directory_handle,
                                                             self._buffer,
                                                             self.watch.is_recursive)
                 last_renamed_src_path = ""
-                for action, src_path in get_FILE_NOTIFY_INFORMATION(dir_changes, bytes):
+                for action, src_path in get_FILE_NOTIFY_INFORMATION(dir_changes, nbytes):
                     src_path = absolute_path(os.path.join(self.watch.path,
                                                           src_path))
 

@@ -37,7 +37,6 @@ except ImportError:
 
 from argh import arg, alias, ArghParser
 
-from watchdog.observers import Observer
 from watchdog.version import VERSION_STRING
 from watchdog.utils import read_text_file, load_class, absolute_path, get_parent_dir_path
 
@@ -123,6 +122,8 @@ def schedule_tricks(observer, tricks, watch_path):
 @arg('--python-path', default='.', help='string of paths separated by %s to add to the python path' % os.path.sep)
 @arg('--interval', '--timeout', dest='timeout', default=1.0, help='use this as the polling interval/blocking timeout')
 def tricks_from(args):
+    from watchdog.observers import Observer
+
     add_to_sys_path(path_split(args.python_path))
     observers = []
     for tricks_file in args.files:
@@ -253,6 +254,7 @@ Example option usage:
 @arg('-R', '--recursive', dest='recursive', default=False, help='monitors the directories recursively')
 @arg('--interval', '--timeout', dest='timeout', default=1.0, help='use this as the polling interval/blocking timeout')
 def shell_command(args):
+    from watchdog.observers import Observer
     from watchdog.tricks import ShellCommandTrick
 
     if not args.command:

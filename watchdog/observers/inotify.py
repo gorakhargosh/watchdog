@@ -501,7 +501,7 @@ if platform.is_linux():
             with self._lock:
                 event_buffer = os.read(self._inotify_fd, event_buffer_size)
                 event_list = []
-                moved_from_events = dict()
+                #moved_from_events = dict()
                 for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
                     wd_path = self._path_for_wd[wd]
                     src_path = absolute_path(os.path.join(wd_path, name))
@@ -528,7 +528,7 @@ if platform.is_linux():
                             # IN_MOVED_TO events which don't pair up with
                             # IN_MOVED_FROM events should be marked IN_CREATE
                             # instead relative to this directory.
-                            new_wd = self._add_watch(src_path, self._event_mask)
+                            self._add_watch(src_path, self._event_mask)
 
                             for root, dirnames, filenames in os.walk(src_path):
                                 for dirname in dirnames:
@@ -568,7 +568,7 @@ if platform.is_linux():
                 raise OSError('Path is not a directory')
             self._add_watch(path, mask)
             if recursive:
-                for root, dirnames, filenames in os.walk(path):
+                for root, dirnames, _ in os.walk(path):
                     for dirname in dirnames:
                         full_path = absolute_path(os.path.join(root, dirname))
                         self._add_watch(full_path, mask)
@@ -626,7 +626,7 @@ if platform.is_linux():
             raise OSError(os.strerror(_errnum))
 
         @staticmethod
-        def _parse_event_buffer(buffer):
+        def _parse_event_buffer(event_buffer):
             """
             Parses an event buffer of ``inotify_event`` structs returned by
             inotify::
@@ -639,13 +639,15 @@ if platform.is_linux():
                     char  name[0];       /* stub for possible name */
                 };
 
-            The ``cookie`` member of this struct is used to pair two related events,
-            for example, it pairs an IN_MOVED_FROM event with an IN_MOVED_TO event.
+            The ``cookie`` member of this struct is used to pair two related
+            events, for example, it pairs an IN_MOVED_FROM event with an
+            IN_MOVED_TO event.
             """
             i = 0
-            while i + 16 < len(buffer):
-                wd, mask, cookie, length = struct.unpack_from('iIII', buffer, i)
-                name = buffer[i + 16:i + 16 + length].rstrip('\0')
+            while i + 16 < len(event_buffer):
+                wd, mask, cookie, length = \
+                    struct.unpack_from('iIII', event_buffer, i)
+                name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
                 i += 16 + length
                 yield wd, mask, cookie, name
 
@@ -688,7 +690,6 @@ if platform.is_linux():
             with self._lock:
                 inotify_events = self._inotify.read_events()
                 moved_from_events = dict()
-                moved_to_events = dict()
                 for event in inotify_events:
                     if event.is_moved_from:
                         moved_from_events[event.cookie] = event
