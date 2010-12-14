@@ -27,6 +27,14 @@
 :author: Gora Khargosh <gora.khargosh@gmail.com>
 :platforms: Mac OS X and BSD with kqueue(2).
 
+.. WARNING:: kqueue is a very heavyweight way to monitor file systems.
+             Each kqueue-detected directory modification triggers
+             a full directory scan. Traversing the entire directory tree
+             and opening file descriptors for all files will create
+             performance problems. We need to find a way to re-scan
+             only those directories which report changes and do a diff
+             between two sub-DirectorySnapshots perhaps.
+
 .. ADMONITION:: About ``select.kqueue`` and Python versions
 
     * Python 2.5 does not ship with ``select.kqueue``
