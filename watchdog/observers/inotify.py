@@ -82,19 +82,13 @@ if platform.is_linux():
     import os
     import struct
     import threading
-
     import ctypes
     import ctypes.util
     from ctypes import \
-        CDLL, \
-        CFUNCTYPE, \
-        POINTER, \
         c_int, \
         c_char_p, \
-        c_uint32, \
-        get_errno, \
-        sizeof, \
-        Structure
+        c_uint32
+
     from watchdog.utils import has_attribute, absolute_path
     from watchdog.observers.api import \
         EventEmitter, \
@@ -135,28 +129,28 @@ if platform.is_linux():
 
     # #include <sys/inotify.h>
     # char *strerror(int errnum);
-    #strerror = CFUNCTYPE(c_char_p, c_int)(
+    #strerror = ctypes.CFUNCTYPE(c_char_p, c_int)(
     #    ("strerror", libc))
 
     # #include <sys/inotify.h>
     # int inotify_init(void);
-    inotify_init = CFUNCTYPE(c_int, use_errno=True)(
+    inotify_init = ctypes.CFUNCTYPE(c_int, use_errno=True)(
         ("inotify_init", libc))
 
     # #include <sys/inotify.h>
     # int inotify_init1(int flags);
-    inotify_init1 = CFUNCTYPE(c_int, c_int, use_errno=True)(
+    inotify_init1 = ctypes.CFUNCTYPE(c_int, c_int, use_errno=True)(
         ("inotify_init1", libc))
 
     # #include <sys/inotify.h>
     # int inotify_add_watch(int fd, const char *pathname, uint32_t mask);
     inotify_add_watch = \
-        CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
+        ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
             ("inotify_add_watch", libc))
 
     # #include <sys/inotify.h>
     # int inotify_rm_watch(int fd, uint32_t wd);
-    inotify_rm_watch = CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
+    inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
         ("inotify_rm_watch", libc))
 
 
@@ -383,7 +377,7 @@ if platform.is_linux():
                                       self.name)
 
 
-    class inotify_event_struct(Structure):
+    class inotify_event_struct(ctypes.Structure):
         """
         Structure representation of the inotify_event structure
         (used in buffer size calculations)::
@@ -402,7 +396,7 @@ if platform.is_linux():
                     ('len', c_uint32),
                     ('name', c_char_p)]
 
-    EVENT_SIZE = sizeof(inotify_event_struct)
+    EVENT_SIZE = ctypes.sizeof(inotify_event_struct)
     DEFAULT_NUM_EVENTS = 2048
     DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 
@@ -628,7 +622,7 @@ if platform.is_linux():
             """
             Raises errors for inotify failures.
             """
-            _errnum = get_errno()
+            _errnum = ctypes.get_errno()
             raise OSError(os.strerror(_errnum))
 
         @staticmethod
