@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
+import os.path
 import sys
-from os.path import dirname, abspath, normpath, join as path_join
 
 import nose
 
 def absolute_path(path):
-    return abspath(normpath(path))
+    return os.path.abspath(os.path.normpath(path))
 
-dir_path = absolute_path(dirname(__file__))
-parent_dir_path = dirname(dir_path)
+dir_path = absolute_path(os.path.dirname(__file__))
+parent_dir_path = os.path.dirname(dir_path)
 sys.path[0:0] = [parent_dir_path]
 
 from watchdog.utils import platform
@@ -56,7 +55,7 @@ elif platform.is_linux():
 
 
 if __name__ == "__main__":
-    config_path = path_join(parent_dir_path, 'nose.cfg')
+    config_path = os.path.join(parent_dir_path, 'nose.cfg')
 
     argv = [__file__]
     argv.append('--detailed-errors')

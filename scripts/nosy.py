@@ -28,7 +28,6 @@
 :platform: OS-independent
 """
 
-import os
 import os.path
 import sys
 import stat

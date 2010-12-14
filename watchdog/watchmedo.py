@@ -23,7 +23,6 @@
 # THE SOFTWARE.
 
 
-import os
 import os.path
 import sys
 import yaml

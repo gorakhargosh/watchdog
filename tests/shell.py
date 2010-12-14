@@ -6,9 +6,6 @@
     :author: Gora Khargosh <gora.khargosh@gmail.com>
 """
 
-import sys
-import os
-import time
 import os.path
 import tempfile
 import shutil

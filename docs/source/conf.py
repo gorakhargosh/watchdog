@@ -12,7 +12,6 @@
 # serve to show the default.
 
 import sys
-import os
 import os.path
 
 # If extensions (or modules to document with autodoc) are in another directory,
