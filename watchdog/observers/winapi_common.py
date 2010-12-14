@@ -113,22 +113,22 @@ if platform.is_windows():
     def close_directory_handle(handle):
         CloseHandle(handle)
 
-    def read_directory_changes(handle, buffer, recursive):
+    def read_directory_changes(handle, event_buffer, recursive):
         """Read changes to the directory using the specified directory handle.
 
         http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
         """
-        bytes = ctypes.wintypes.DWORD()
-        rc = ReadDirectoryChangesW(handle,
-                                   ctypes.byref(buffer),
-                                   len(buffer),
-                                   recursive,
-                                   WATCHDOG_FILE_NOTIFY_FLAGS,
-                                   ctypes.byref(bytes),
-                                   None,
-                                   None)
+        nbytes = ctypes.wintypes.DWORD()
+        ReadDirectoryChangesW(handle,
+                              ctypes.byref(event_buffer),
+                              len(event_buffer),
+                              recursive,
+                              WATCHDOG_FILE_NOTIFY_FLAGS,
+                              ctypes.byref(nbytes),
+                              None,
+                              None)
         # get_FILE_NOTIFY_INFORMATION expects nBytes to be long.
-        return buffer.raw, long(bytes.value)
+        return event_buffer.raw, long(nbytes.value)
 
 
     def create_io_completion_port():
