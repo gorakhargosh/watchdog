@@ -86,12 +86,11 @@ Event Handler Classes
 
 """
 
-import os
 import os.path
 import logging
 
 from watchdog.utils import filter_paths, \
-    has_attribute, get_walker, absolute_path
+    has_attribute, absolute_path
 
 
 EVENT_TYPE_MOVED = 'moved'
@@ -141,19 +140,20 @@ src_path=%(src_path)s, is_directory=%(is_directory)s>" % \
                      is_directory=self.is_directory)
 
     # Used for comparison of events.
-    def _key(self):
+    @property
+    def key(self):
         return (self.event_type,
                 self.src_path,
                 self.is_directory)
 
     def __eq__(self, event):
-        return self._key() == event._key()
+        return self.key == event.key
 
     def __ne__(self, event):
-        return self._key() != event._key()
+        return self.key != event.key
 
     def __hash__(self):
-        return hash(self._key())
+        return hash(self.key)
 
 
 class FileSystemMovedEvent(FileSystemEvent):

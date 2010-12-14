@@ -100,17 +100,18 @@ class ObservedWatch(object):
         """Determines whether subdirectories are watched for the path."""
         return self._is_recursive
 
-    def _key(self):
+    @property
+    def key(self):
         return (self.path, self.is_recursive)
 
     def __eq__(self, watch):
-        return self._key() == watch._key()
+        return self.key == watch.key
 
     def __ne__(self, watch):
-        return self._key() != watch._key()
+        return self.key != watch.key
 
     def __hash__(self):
-        return hash(self._key())
+        return hash(self.key)
 
     def __repr__(self):
         return "<ObservedWatch: path=%s, is_recursive=%s>" % (self.path, self.is_recursive)

@@ -1,36 +1,26 @@
 # -*- coding: utf-8 -*-
 
+import os
 from time import sleep
 from tests.shell import \
     mkdir, \
-    ls, \
     mkdtemp, \
     touch, \
-    truncate, \
     rm, \
-    mv, \
-    cd, \
-    pwd
+    mv
 from nose import SkipTest
-from nose.tools import \
-    assert_equal, \
-    assert_sequence_equal, \
-    assert_true, \
-    assert_false
-from os.path import join as path_join
+from nose.tools import assert_equal
 
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
+from watchdog.events import DirModifiedEvent, DirCreatedEvent, FileCreatedEvent, \
+    FileMovedEvent, FileModifiedEvent, DirMovedEvent, FileDeletedEvent, \
+    DirDeletedEvent
 
 try:
     import queue  # IGNORE:F0401
 except ImportError:
     import Queue as queue  # IGNORE:F0401
 
-from watchdog.utils import real_absolute_path
-from watchdog.events import *
-from watchdog.observers.api import EventQueue, ObservedWatch
+from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
 
 
@@ -115,12 +105,12 @@ class TestPollingEmitter:
 
         while True:
             try:
-                event, watch = self.event_queue.get_nowait()
+                event, _ = self.event_queue.get_nowait()
                 got.add(event)
             except queue.Empty:
                 break
 
-        assert_sequence_equal(expected, got)
+        assert_equal(expected, got)
 
 
     def test_on_thread_exit(self):

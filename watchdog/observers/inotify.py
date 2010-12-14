@@ -82,7 +82,6 @@ if platform.is_linux():
     import os
     import struct
     import threading
-    import ctypes
     import ctypes.util
     from ctypes import \
         c_int, \

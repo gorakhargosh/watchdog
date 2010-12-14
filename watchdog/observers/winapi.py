@@ -38,7 +38,6 @@ from __future__ import with_statement
 from watchdog.utils import platform
 
 if platform.is_windows():
-    import ctypes
     import ctypes.wintypes
     import struct
 
@@ -232,16 +231,16 @@ if platform.is_windows():
             nBytes -= numToSkip # numToSkip is long. nBytes should be long too.
         return results
 
-    def get_FILE_NOTIFY_INFORMATION_alt(buffer, nBytes):
-       """Extract the information out of a FILE_NOTIFY_INFORMATION structure."""
-       pos = 0
-       buffer = buffer[:nBytes]
-       while pos < len(buffer):
-           jump, action, namelen = struct.unpack("iii",buffer[pos:pos+12])
-           # TODO: this may return a shortname or a longname, with no way
-           # to tell which.  Normalise them somehow?
-           name = buffer[pos+12:pos+12+namelen].decode("utf16")
-           yield (name,action)
-           if not jump:
-               break
-           pos += jump
+    def get_FILE_NOTIFY_INFORMATION_alt(event_buffer, nBytes):
+        """Extract the information out of a FILE_NOTIFY_INFORMATION structure."""
+        pos = 0
+        event_buffer = event_buffer[:nBytes]
+        while pos < len(event_buffer):
+            jump, action, namelen = struct.unpack("iii", event_buffer[pos:pos + 12])
+            # TODO: this may return a shortname or a longname, with no way
+            # to tell which.  Normalise them somehow?
+            name = event_buffer[pos + 12:pos + 12 + namelen].decode("utf-16")
+            yield (name, action)
+            if not jump:
+                break
+            pos += jump

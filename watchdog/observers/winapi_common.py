@@ -113,6 +113,7 @@ if platform.is_windows():
     def close_directory_handle(handle):
         CloseHandle(handle)
 
+
     def read_directory_changes(handle, event_buffer, recursive):
         """Read changes to the directory using the specified directory handle.
 

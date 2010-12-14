@@ -103,6 +103,6 @@ class ShellCommandTrick(Trick):
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
-        p = subprocess.Popen(command, shell=True)
+        subprocess.Popen(command, shell=True)
 
 

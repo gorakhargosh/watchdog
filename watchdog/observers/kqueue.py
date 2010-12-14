@@ -377,17 +377,18 @@ if platform.is_bsd() or platform.is_darwin():
             except OSError:
                 pass
 
-        def _key(self):
+        @property
+        def key(self):
             return (self.path, self.is_directory)
 
         def __eq__(self, descriptor):
-            return self._key() == descriptor._key()
+            return self.key == descriptor.key
 
         def __ne__(self, descriptor):
-            return self._key() != descriptor._key()
+            return self.key != descriptor.key
 
         def __hash__(self):
-            return hash(self._key())
+            return hash(self.key)
 
         def __repr__(self):
             return "<KeventDescriptor: path=%s, is_directory=%s>" \

@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import threading
-import time
 from nose.tools import \
     assert_equal, \
-    assert_true, \
-    assert_false
+    assert_true
 
 try:
     import queue  # IGNORE:F0401

@@ -183,7 +183,7 @@ def load_module(module_name):
     return sys.modules[module_name]
 
 
-def load_class(dotted_path, *args, **kwargs):
+def load_class(dotted_path):
     """Loads and returns a class definition provided a dotted path
     specification the last part of the dotted path is the class name
     and there is at least one module name preceding the class name.

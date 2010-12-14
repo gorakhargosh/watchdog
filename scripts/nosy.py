@@ -45,12 +45,12 @@ def match_patterns(pathname, patterns):
     return False
 
 
-def filter_paths(pathnames, patterns=["*"], ignore_patterns=[]):
+def filter_paths(pathnames, patterns=None, ignore_patterns=None):
     """Filters from a set of paths based on acceptable patterns and
     ignorable patterns."""
     result = []
     if patterns is None:
-        patterns = []
+        patterns = ['*']
     if ignore_patterns is None:
         ignore_patterns = []
     for path in pathnames:
@@ -63,8 +63,8 @@ def absolute_walker(path, recursive):
     if recursive:
         walk = os.walk
     else:
-        def walk(path):
-            return os.walk(path).next()
+        def walk(_path):
+            return os.walk(_path).next()
     for root, directories, filenames in walk(path):
         yield root
         for directory in directories:
@@ -73,9 +73,9 @@ def absolute_walker(path, recursive):
             yield os.path.abspath(os.path.join(root, filename))
 
 
-def glob_recursive(path, patterns=["*"], ignore_patterns=[]):
+def glob_recursive(path, patterns=None, ignore_patterns=None):
     full_paths = []
-    for root, directories, filenames in os.walk(path):
+    for root, _, filenames in os.walk(path):
         for filename in filenames:
             full_path = os.path.abspath(os.path.join(root, filename))
             full_paths.append(full_path)
@@ -83,12 +83,12 @@ def glob_recursive(path, patterns=["*"], ignore_patterns=[]):
     return filepaths
 
 
-def check_sum(path='.', patterns=["*"], ignore_patterns=[]):
-    sum = 0
+def check_sum(path='.', patterns=None, ignore_patterns=None):
+    checksum = 0
     for f in glob_recursive(path, patterns, ignore_patterns):
         stats = os.stat(f)
-        sum += stats[stat.ST_SIZE] + stats[stat.ST_MTIME]
-    return sum
+        checksum += stats[stat.ST_SIZE] + stats[stat.ST_MTIME]
+    return checksum
 
 
 if __name__ == "__main__":

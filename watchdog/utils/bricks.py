@@ -150,9 +150,9 @@ if not sys.version < (2, 6, 0):
 
         def discard(self, key):
             if key in self.map:
-                key, prev, next = self.map.pop(key)
-                prev[NEXT] = next
-                next[PREV] = prev
+                key, prev, _next = self.map.pop(key)
+                prev[NEXT] = _next
+                _next[PREV] = prev
 
         def __iter__(self):
             end = self.end
