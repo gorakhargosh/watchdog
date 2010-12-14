@@ -45,8 +45,7 @@ if platform.is_windows():
     from watchdog.observers.winapi import \
         FILE_ACTION_RENAMED_OLD_NAME, \
         FILE_ACTION_RENAMED_NEW_NAME, \
-        get_FILE_NOTIFY_INFORMATION, \
-        get_FILE_NOTIFY_INFORMATION_alt
+        get_FILE_NOTIFY_INFORMATION
     from watchdog.observers.api import \
         EventEmitter, \
         BaseObserver, \
