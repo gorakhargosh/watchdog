@@ -82,13 +82,16 @@ if platform.is_linux():
     import os
     import struct
     import threading
-    import ctypes.util
+    import ctypes
     from ctypes import \
         c_int, \
         c_char_p, \
         c_uint32
 
-    from watchdog.utils import has_attribute, absolute_path
+    from watchdog.utils import \
+        has_attribute, \
+        absolute_path, \
+        ctypes_find_library
     from watchdog.observers.api import \
         EventEmitter, \
         BaseObserver, \
@@ -108,17 +111,7 @@ if platform.is_linux():
         EVENT_TYPE_DELETED, \
         EVENT_TYPE_MOVED
 
-
-    def find_libc_path():
-        """Finds the libc library."""
-        module_path = None
-        try:
-            module_path = ctypes.util.find_library("c")
-        except (OSError, IOError, AttributeError):
-            module_path = "libc.so.6"
-        return module_path
-
-    libc_string = find_libc_path()
+    libc_string = ctypes_find_library('c', 'libc.so.6')
     libc = ctypes.CDLL(libc_string, use_errno=True)
 
     if (not has_attribute(libc, 'inotify_init') or

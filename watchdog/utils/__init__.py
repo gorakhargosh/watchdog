@@ -63,8 +63,20 @@ import os
 import os.path
 import sys
 import threading
+import ctypes.util
 
 from fnmatch import fnmatch
+
+
+def ctypes_find_library(name, default):
+    """Finds a dynamic library."""
+    module_path = None
+    try:
+        module_path = ctypes.util.find_library(name)
+    except (OSError, IOError):
+        module_path = default
+    return module_path
+
 
 def has_attribute(ob, attribute):
     """
