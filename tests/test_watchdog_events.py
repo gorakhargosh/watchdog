@@ -6,7 +6,6 @@ from nose.tools import \
     assert_true, \
     assert_false, \
     assert_not_equal
-from nose import SkipTest
 
 from utils import assert_readonly_public_attributes
 from watchdog.utils import has_attribute, filter_paths
@@ -302,7 +301,7 @@ class TestDirMovedEvent:
 
 
 class TestFileSystemEventHandler:
-    def test__dispatch(self):
+    def test_dispatch(self):
         # Utilities.
 
         dir_del_event = DirDeletedEvent('/path/blah.py')
@@ -344,17 +343,17 @@ class TestFileSystemEventHandler:
         handler = TestableEventHandler()
 
         for event in all_events:
-            handler._dispatch(event)
+            handler.dispatch(event)
 
 g_allowed_patterns = ["*.py", "*.txt"]
 g_ignore_patterns = ["*.foo"]
 
 class TestPatternMatchingEventHandler:
-    def test__dispatch(self):
+    def test_dispatch(self):
         # Utilities.
         patterns = ['*.py', '*.txt']
         ignore_patterns = ["*.pyc"]
-        def assert_patterns(event, patterns=patterns, ignore_patterns=ignore_patterns):
+        def assert_patterns(event):
             if has_attribute(event, 'dest_path'):
                 paths = [event.src_path, event.dest_path]
             else:
@@ -452,9 +451,9 @@ class TestPatternMatchingEventHandler:
                                        ignore_directories=False)
 
         for event in all_events:
-            no_dirs_handler._dispatch(event)
+            no_dirs_handler.dispatch(event)
         for event in all_events:
-            handler._dispatch(event)
+            handler.dispatch(event)
 
 
     def test___init__(self):
@@ -501,7 +500,7 @@ class _TestableEventHandler(LoggingEventHandler):
         assert_event_type(event, EVENT_TYPE_CREATED)
 
 class TestLoggingEventHandler:
-    def test__dispatch(self):
+    def test_dispatch(self):
         # Utilities.
         dir_del_event = DirDeletedEvent('/path/blah.py')
         file_del_event = FileDeletedEvent('/path/blah.txt')
@@ -525,7 +524,7 @@ class TestLoggingEventHandler:
 
         handler = _TestableEventHandler()
         for event in all_events:
-            handler._dispatch(event)
+            handler.dispatch(event)
 
 class TestGenerateSubMovedEventsFor:
     def test_generate_sub_moved_events_for(self):

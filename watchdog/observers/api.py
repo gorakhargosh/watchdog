@@ -428,4 +428,4 @@ class BaseObserver(EventDispatcher):
     def dispatch_event(self, event, watch):
         with self._lock:
             for handler in self._get_handlers_for_watch(watch):
-                handler._dispatch(event)
+                handler.dispatch(event)

@@ -314,7 +314,7 @@ class FileSystemEventHandler(object):
     """Base file system event handler that you can override methods from.
     """
 
-    def _dispatch(self, event):
+    def dispatch(self, event):
         """Dispatches events to the appropriate methods.
 
         :param event:
@@ -404,10 +404,13 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         return self._ignore_directories
 
 
-    def _dispatch(self, event):
+    def dispatch(self, event):
         """Dispatches events to the appropriate methods.
 
-        - event: The event object representing the file system event.
+        :param event:
+            The event object representing the file system event.
+        :type event:
+            :class:`FileSystemEvent`
         """
         if self.ignore_directories and event.is_directory:
             return
