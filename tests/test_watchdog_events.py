@@ -43,6 +43,9 @@ def assert_check_directory(handler, event):
     #    assert False, "Event %s should have been ignored by event.ignore_directories=True" % event
 
 class TestFileSystemEvent:
+    def __init__(self):
+        pass
+
     def test___eq__(self):
         event1 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
         event2 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
@@ -100,6 +103,9 @@ class TestFileSystemEvent:
 
 
 class TestFileSystemMovedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = FileSystemMovedEvent(path_1, path_2, True)
         assert_equal(event.src_path, path_1)
@@ -123,6 +129,9 @@ class TestFileSystemMovedEvent:
 
 
 class TestFileDeletedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = FileDeletedEvent(path_1)
         assert_equal(path_1, event.src_path)
@@ -146,6 +155,9 @@ class TestFileDeletedEvent:
 
 
 class TestFileModifiedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = FileModifiedEvent(path_1)
         assert_equal(path_1, event.src_path)
@@ -168,6 +180,9 @@ class TestFileModifiedEvent:
 
 
 class TestFileCreatedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = FileCreatedEvent(path_1)
         assert_equal(path_1, event.src_path)
@@ -184,6 +199,9 @@ class TestFileCreatedEvent:
 
 
 class TestFileMovedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = FileMovedEvent(path_1, path_2)
         assert_equal(path_1, event.src_path)
@@ -201,6 +219,9 @@ class TestFileMovedEvent:
 
 
 class TestDirDeletedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = DirDeletedEvent(path_1)
         assert_equal(path_1, event.src_path)
@@ -217,6 +238,9 @@ class TestDirDeletedEvent:
 
 
 class TestDirModifiedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = DirModifiedEvent(path_1)
         assert_equal(path_1, event.src_path)
@@ -233,6 +257,9 @@ class TestDirModifiedEvent:
 
 
 class TestDirCreatedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = DirCreatedEvent(path_1)
         assert_equal(path_1, event.src_path)
@@ -249,6 +276,9 @@ class TestDirCreatedEvent:
 
 
 class TestDirMovedEvent:
+    def __init__(self):
+        pass
+
     def test___init__(self):
         event = DirMovedEvent(path_1, path_2)
         assert_equal(path_1, event.src_path)
@@ -301,9 +331,10 @@ class TestDirMovedEvent:
 
 
 class TestFileSystemEventHandler:
-    def test_dispatch(self):
-        # Utilities.
+    def __init__(self):
+        pass
 
+    def test_dispatch(self):
         dir_del_event = DirDeletedEvent('/path/blah.py')
         file_del_event = FileDeletedEvent('/path/blah.txt')
         dir_cre_event = DirCreatedEvent('/path/blah.py')
@@ -349,6 +380,9 @@ g_allowed_patterns = ["*.py", "*.txt"]
 g_ignore_patterns = ["*.foo"]
 
 class TestPatternMatchingEventHandler:
+    def __init__(self):
+        pass
+
     def test_dispatch(self):
         # Utilities.
         patterns = ['*.py', '*.txt']
@@ -500,6 +534,9 @@ class _TestableEventHandler(LoggingEventHandler):
         assert_event_type(event, EVENT_TYPE_CREATED)
 
 class TestLoggingEventHandler:
+    def __init__(self):
+        pass
+
     def test_dispatch(self):
         # Utilities.
         dir_del_event = DirDeletedEvent('/path/blah.py')
@@ -527,6 +564,9 @@ class TestLoggingEventHandler:
             handler.dispatch(event)
 
 class TestGenerateSubMovedEventsFor:
+    def __init__(self):
+        pass
+
     def test_generate_sub_moved_events_for(self):
         mock_walker_path = [
             ('/path',
