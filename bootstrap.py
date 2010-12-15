@@ -92,7 +92,7 @@ else:
     def quote (c):
         return c
 
-ws  = pkg_resources.working_set
+ws = pkg_resources.working_set
 
 if USE_DISTRIBUTE:
     requirement = 'distribute'
