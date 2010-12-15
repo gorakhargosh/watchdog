@@ -52,19 +52,22 @@ def filter_paths(pathnames, patterns=None, ignore_patterns=None):
         patterns = ['*']
     if ignore_patterns is None:
         ignore_patterns = []
-    for path in pathnames:
-        if match_patterns(path, patterns) and not match_patterns(path, ignore_patterns):
-            result.append(path)
+    for pathname in pathnames:
+        if match_patterns(pathname, patterns) and not match_patterns(pathname, ignore_patterns):
+            result.append(pathname)
     return result
 
 
-def absolute_walker(path, recursive):
+def absolute_walker(pathname, recursive):
     if recursive:
         walk = os.walk
     else:
         def walk(_path):
-            return os.walk(_path).next()
-    for root, directories, filenames in walk(path):
+            try:
+                return next(os.walk(_path))
+            except NameError:
+                return os.walk(_path).next()
+    for root, directories, filenames in walk(pathname):
         yield root
         for directory in directories:
             yield os.path.abspath(os.path.join(root, directory))
@@ -72,9 +75,9 @@ def absolute_walker(path, recursive):
             yield os.path.abspath(os.path.join(root, filename))
 
 
-def glob_recursive(path, patterns=None, ignore_patterns=None):
+def glob_recursive(pathname, patterns=None, ignore_patterns=None):
     full_paths = []
-    for root, _, filenames in os.walk(path):
+    for root, _, filenames in os.walk(pathname):
         for filename in filenames:
             full_path = os.path.abspath(os.path.join(root, filename))
             full_paths.append(full_path)
@@ -82,9 +85,9 @@ def glob_recursive(path, patterns=None, ignore_patterns=None):
     return filepaths
 
 
-def check_sum(path='.', patterns=None, ignore_patterns=None):
+def check_sum(pathname='.', patterns=None, ignore_patterns=None):
     checksum = 0
-    for f in glob_recursive(path, patterns, ignore_patterns):
+    for f in glob_recursive(pathname, patterns, ignore_patterns):
         stats = os.stat(f)
         checksum += stats[stat.ST_SIZE] + stats[stat.ST_MTIME]
     return checksum

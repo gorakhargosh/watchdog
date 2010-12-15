@@ -104,5 +104,3 @@ class ShellCommandTrick(Trick):
 
         command = Template(command).safe_substitute(**context)
         subprocess.Popen(command, shell=True)
-
-
