@@ -139,12 +139,11 @@ PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
 :param thread:\n\
    The thread in which to run the event loop.\n");
 static PyObject *
-watchdog_fsevents_loop(PyObject *self, PyObject *args)
+watchdog_fsevents_loop(PyObject *self, PyObject *thread)
 {
-    PyObject *thread = NULL;
     PyObject *value = NULL;
 
-    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &thread));
+    //RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &thread));
 
     PyEval_InitThreads();
 
