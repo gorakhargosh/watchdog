@@ -135,28 +135,31 @@ event_stream_handler(FSEventStreamRef stream,
 }
 
 PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
-        "Runs an event loop in a thread.\n\n\
-:param thread:\n\
-   The thread in which to run the event loop.\n");
+        "Runs an event loop associated with an observer thread.\n\n\
+:param observer_thread:\n\
+   The observer_thread for which the event loop will be run.\n");
 static PyObject *
 watchdog_fsevents_loop(PyObject *self, PyObject *args)
 {
-    PyObject *thread = NULL;
-    PyObject *value = NULL;
+    /* Arguments */
+    PyObject *observer_thread = NULL;
 
-    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &thread));
+    /* Locals */
+    PyObject *observer_runloop = NULL;
+
+    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &observer_thread));
 
     PyEval_InitThreads();
 
-    /* Allocate info object and store thread state. */
-    value = PyDict_GetItem(g__pydict_loops, thread);
-    if (NULL == value)
+    /* Obtain or create a reference to the runloop. */
+    observer_runloop = PyDict_GetItem(g__pydict_loops, observer_thread);
+    if (NULL == observer_runloop)
         {
             CFRunLoopRef loop = CFRunLoopGetCurrent();
-            value = PyCObject_FromVoidPtr(loop, PyMem_Free);
-            PyDict_SetItem(g__pydict_loops, thread, value);
-            Py_INCREF(thread);
-            Py_INCREF(value);
+            observer_runloop = PyCObject_FromVoidPtr(loop, PyMem_Free);
+            PyDict_SetItem(g__pydict_loops, observer_thread, observer_runloop);
+            Py_INCREF(observer_thread);
+            Py_INCREF(observer_runloop);
         }
 
     /* No timeout, block until events. */
@@ -165,10 +168,10 @@ watchdog_fsevents_loop(PyObject *self, PyObject *args)
     Py_END_ALLOW_THREADS;
 
     /* Clean up state information data. */
-    if (0 == PyDict_DelItem(g__pydict_loops, thread))
+    if (0 == PyDict_DelItem(g__pydict_loops, observer_thread))
         {
-            Py_DECREF(thread);
-            Py_INCREF(value);
+            Py_DECREF(observer_thread);
+            Py_DECREF(observer_runloop);
         }
 
     RETURN_NULL_IF(PyErr_Occurred());
