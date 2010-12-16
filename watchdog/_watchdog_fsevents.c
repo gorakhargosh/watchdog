@@ -152,7 +152,7 @@ watchdog_fsevents_loop(PyObject *self, PyObject *thread)
     if (NULL == value)
         {
             CFRunLoopRef loop = CFRunLoopGetCurrent();
-            value = PyCObject_FromVoidPtr((void *) loop, PyMem_Free);
+            value = PyCObject_FromVoidPtr(loop, PyMem_Free);
             PyDict_SetItem(g__pydict_loops, thread, value);
             Py_INCREF(thread);
             Py_INCREF(value);
