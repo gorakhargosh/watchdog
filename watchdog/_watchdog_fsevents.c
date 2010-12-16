@@ -54,19 +54,26 @@ PyObject *g__pydict_streams = NULL;
 /**
  * Handles streamed events and calls the callback defined in Python code.
  *
- * @param stream       The stream of events.
- * @param info         Meta information about the stream of events.
- * @param num_events   Number of events.
- * @param event_paths  The paths on which events occurred.
- * @param event_masks  The masks for each of the paths in `event_paths'.
- * @param event_ids    Event identifiers.
- *
- * @synchronized()
+ * :param stream:
+ *      The stream of events.
+ * :param info:
+ *      Meta information about the stream of events.
+ * :param num_events:
+ *      Number of events.
+ * :param event_paths:
+ *      The paths on which events occurred.
+ * :param event_masks:
+ *      The masks for each of the paths in `event_paths'.
+ * :param event_ids:
+ *      Event identifiers.
  */
 static void
-event_stream_handler(FSEventStreamRef stream, FSEventStreamInfo *stream_info,
-        const int num_events, const char * const event_paths[],
-        const FSEventStreamEventFlags *event_masks, const uint64_t *event_ids)
+event_stream_handler(FSEventStreamRef stream,
+                     FSEventStreamInfo *stream_info,
+                     const int num_events,
+                     const char * const event_paths[],
+                     const FSEventStreamEventFlags *event_masks,
+                     const uint64_t *event_ids)
 {
     PyThreadState *saved_thread_state = NULL;
     PyObject *event_path = NULL;
@@ -105,7 +112,9 @@ event_stream_handler(FSEventStreamRef stream, FSEventStreamInfo *stream_info,
      * stop this instance of the runloop.
      */
     if (NULL == PyObject_CallFunction(stream_info->callback_event_handler,
-            "OO", event_path_list, event_mask_list))
+                                      "OO",
+                                      event_path_list,
+                                      event_mask_list))
         {
             /* An exception may have occurred. */
             if (!PyErr_Occurred())
@@ -125,16 +134,10 @@ event_stream_handler(FSEventStreamRef stream, FSEventStreamInfo *stream_info,
     PyEval_ReleaseLock();
 }
 
-/**
- * Runs an event loop in a thread.
- *
- * @param self Python 'self'.
- * @param args Arguments tuple.
- *
- * @return None
- */
 PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
-        "Runs an event loop in a thread.");
+        "Runs an event loop in a thread.\n\n\
+:param thread:\n\
+   The thread in which to run the event loop.\n");
 static PyObject *
 watchdog_fsevents_loop(PyObject *self, PyObject *args)
 {
@@ -195,8 +198,9 @@ _convert_pystring_list_to_cf_string_array(PyObject *pystring_list)
 
     string_list_size = PyList_Size(pystring_list);
 
-    cf_array_strings = CFArrayCreateMutable(kCFAllocatorDefault, 1,
-            &kCFTypeArrayCallBacks);
+    cf_array_strings = CFArrayCreateMutable(kCFAllocatorDefault,
+                                            1,
+                                            &kCFTypeArrayCallBacks);
 
     RETURN_NULL_IF_NULL(cf_array_strings);
 
@@ -204,7 +208,8 @@ _convert_pystring_list_to_cf_string_array(PyObject *pystring_list)
         {
             c_string = PyString_AS_STRING(PyList_GetItem(pystring_list, i));
             cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
-                    c_string, kCFStringEncodingUTF8);
+                                                  c_string,
+                                                  kCFStringEncodingUTF8);
             CFArraySetValueAtIndex(cf_array_strings, i, cf_string);
             CFRelease(cf_string);
         }
@@ -223,8 +228,9 @@ _convert_pystring_list_to_cf_string_array(PyObject *pystring_list)
  *      A callback that the FSEvents API will call.
  */
 static FSEventStreamRef
-_create_fs_stream(FSEventStreamInfo *stream_info, PyObject *paths,
-        FSEventStreamCallback callback)
+_create_fs_stream(FSEventStreamInfo *stream_info,
+                  PyObject *paths,
+                  FSEventStreamCallback callback)
 {
     CFMutableArrayRef cf_array_paths = NULL;
     FSEventStreamRef fs_stream = NULL;
@@ -235,11 +241,14 @@ _create_fs_stream(FSEventStreamInfo *stream_info, PyObject *paths,
 
     /* Create event stream. */
     FSEventStreamContext fs_stream_context =
-        { 0, stream_info, NULL, NULL, NULL };
-    fs_stream = FSEventStreamCreate(kCFAllocatorDefault, callback,
-            &fs_stream_context, cf_array_paths, kFSEventStreamEventIdSinceNow,
-            0.01, // latency
-            kFSEventStreamCreateFlagNoDefer);
+            { 0, stream_info, NULL, NULL, NULL };
+    fs_stream = FSEventStreamCreate(kCFAllocatorDefault,
+                                    callback,
+                                    &fs_stream_context,
+                                    cf_array_paths,
+                                    kFSEventStreamEventIdSinceNow,
+                                    0.01, // latency
+                                    kFSEventStreamCreateFlagNoDefer);
     CFRelease(cf_array_paths);
     return fs_stream;
 }
@@ -271,18 +280,16 @@ _get_runloop_for_thread_or_current(PyObject *loops, PyObject *thread)
     return loop;
 }
 
-/**
- * Schedules a stream.
- *
- * @param self
- *     Python 'self'.
- * @param args
- *     Arguments tuple.
- *
- * @return None
- */
 PyDoc_STRVAR(watchdog_fsevents_schedule__doc__,
-        "Schedules a stream.");
+        "Schedules a stream.\n\n\
+:param thread:\n\
+    The runloop thread in which the stream will be scheduled.\n\
+:param stream:\n\
+    The stream to schedule.\n\
+:param callback:\n\
+    The callback function to call when an event occurs.\n\
+:param paths:\n\
+    A list of paths to monitor.\n");
 static PyObject *
 watchdog_fsevents_schedule(PyObject *self, PyObject *args)
 {
@@ -298,8 +305,12 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
     CFRunLoopRef loop = NULL;
     PyObject *value = NULL;
 
-    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "OOOO:schedule", &thread,
-            &stream, &callback, &paths));
+    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args,
+                                        "OOOO:schedule",
+                                        &thread,
+                                        &stream,
+                                        &callback,
+                                        &paths));
 
     /* Stream must not already be scheduled. */
     RETURN_NULL_IF(1 == PyDict_Contains(g__pydict_streams, stream));
@@ -341,18 +352,10 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
     return Py_None;
 }
 
-/**
- * Unschedules a stream.
- *
- * @param self
- *     Python 'self'.
- * @param stream
- *     Stream to unschedule
- *
- * @return None
- */
 PyDoc_STRVAR(watchdog_fsevents_unschedule__doc__,
-        "Unschedules a stream.");
+        "Unschedules a stream.\n\n\
+:param stream:\n\
+    The stream to unschedule.\n");
 static PyObject *
 watchdog_fsevents_unschedule(PyObject *self, PyObject *stream)
 {
@@ -369,18 +372,10 @@ watchdog_fsevents_unschedule(PyObject *self, PyObject *stream)
     return Py_None;
 }
 
-/**
- * Stops running the event loop in the specified thread.
- *
- * @param self
- *     Python 'self'.
- * @param thread
- *     Thread running the event runloop.
- *
- * @return None
- */
 PyDoc_STRVAR(watchdog_fsevents_stop__doc__,
-        "Stops running the event loop in the specified thread.");
+        "Stops running the event loop from the specified thread.\n\n\
+:param thread:\n\
+    The thread for which the event loop will be stopped.\n");
 static PyObject *
 watchdog_fsevents_stop(PyObject *self, PyObject *thread)
 {
@@ -401,17 +396,23 @@ watchdog_fsevents_stop(PyObject *self, PyObject *thread)
  * Module public API.
  */
 static PyMethodDef _watchdog_fseventsmethods[] =
-    {
-        { "loop", watchdog_fsevents_loop, METH_VARARGS,
-                watchdog_fsevents_loop__doc__ },
-        { "stop", watchdog_fsevents_stop, METH_O,
-                watchdog_fsevents_stop__doc__ },
-        { "schedule", watchdog_fsevents_schedule, METH_VARARGS,
-                watchdog_fsevents_schedule__doc__ },
-        { "unschedule", watchdog_fsevents_unschedule, METH_O,
-                watchdog_fsevents_unschedule__doc__ },
-        { NULL, NULL, 0, NULL }
-    };
+        { { "loop",
+             watchdog_fsevents_loop,
+             METH_VARARGS,
+             watchdog_fsevents_loop__doc__ },
+           { "stop",
+             watchdog_fsevents_stop,
+             METH_O,
+             watchdog_fsevents_stop__doc__ },
+           { "schedule",
+             watchdog_fsevents_schedule,
+             METH_VARARGS,
+             watchdog_fsevents_schedule__doc__ },
+           { "unschedule",
+             watchdog_fsevents_unschedule,
+             METH_O,
+             watchdog_fsevents_unschedule__doc__ },
+           { NULL, NULL, 0, NULL } };
 
 /**
  * Initialize the _fsevents module.
@@ -421,11 +422,14 @@ void
 init_watchdog_fsevents(void)
 {
     PyObject *module = Py_InitModule3(module__name__,
-            _watchdog_fseventsmethods, watchdog_fsevents_module__doc__);
-    PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLIN,
-            kCFFileDescriptorReadCallBack);
-    PyModule_AddIntConstant(module, MODULE_CONSTANT_NAME_POLLOUT,
-            kCFFileDescriptorWriteCallBack);
+                                      _watchdog_fseventsmethods,
+                                      watchdog_fsevents_module__doc__);
+    PyModule_AddIntConstant(module,
+                            MODULE_CONSTANT_NAME_POLLIN,
+                            kCFFileDescriptorReadCallBack);
+    PyModule_AddIntConstant(module,
+                            MODULE_CONSTANT_NAME_POLLOUT,
+                            kCFFileDescriptorWriteCallBack);
 
     g__pydict_loops = PyDict_New();
     g__pydict_streams = PyDict_New();
