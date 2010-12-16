@@ -39,7 +39,7 @@ static const char CALLBACK_ERROR_MESSAGE[] = "Cannot call callback function.";
  * Module documentation.
  */
 PyDoc_STRVAR(watchdog_fsevents_module__doc__,
-        "Low-level FSEvents interface.");
+        "Low-level FSEvents Python/C API.");
 
 /**
  * Dictionary of all the event loops.
@@ -139,11 +139,12 @@ PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
 :param thread:\n\
    The thread in which to run the event loop.\n");
 static PyObject *
-watchdog_fsevents_loop(PyObject *self, PyObject *thread)
+watchdog_fsevents_loop(PyObject *self, PyObject *args)
 {
+    PyObject *thread = NULL;
     PyObject *value = NULL;
 
-    //RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &thread));
+    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &thread));
 
     PyEval_InitThreads();
 
