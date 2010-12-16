@@ -107,5 +107,27 @@ typedef struct FSEventStreamInfo
     while(0)
 
 
+/**
+ * Macro that forces returning if given argument is true.
+ */
+#define RETURN_IF(c)                            \
+    do                                          \
+        {                                       \
+            if ((c)) { return; }                \
+        }                                       \
+    while(0)
+
+
+/**
+ * Macro that forces returning if given argument is false.
+ */
+#define RETURN_IF_NOT(c)                        \
+    do                                          \
+        {                                       \
+            if (!(c)) { return; }               \
+        }                                       \
+    while(0)
+
+
 #endif /* _WATCHDOG_FSEVENTS_H_ */
 
