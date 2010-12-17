@@ -52,7 +52,7 @@ watchdog_fsevents_loop(PyObject *self, PyObject *emitter_thread)
         {
             runloop = CFRunLoopGetCurrent();
             RETURN_NULL_IF_NULL(CFRunLoopForEmitter_SetItem(emitter_thread,
-                                                             runloop));
+                                                            runloop));
         }
 
     /* A runloop must exist before we can run it.
