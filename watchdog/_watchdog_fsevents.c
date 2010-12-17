@@ -32,26 +32,26 @@ PyDoc_STRVAR(watchdog_fsevents_module__doc__,
         "Low-level FSEvents Python/C API.");
 
 PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
-        MODULE_NAME ".loop(observer_thread) -> None\n\
-Blocking function that runs an event loop associated with an observer thread.\n\n\
-:param observer_thread:\n\
-   The observer thread for which the event loop will be run.\n");
+        MODULE_NAME ".loop(emitter_thread) -> None\n\
+Blocking function that runs an event loop associated with an emitter thread.\n\n\
+:param emitter_thread:\n\
+   The emitter thread for which the event loop will be run.\n");
 static PyObject *
-watchdog_fsevents_loop(PyObject *self, PyObject *observer_thread)
+watchdog_fsevents_loop(PyObject *self, PyObject *emitter_thread)
 {
     /* Locals */
     CFRunLoopRef runloop = NULL;
 
-    RETURN_NULL_IF_NULL(observer_thread);
+    RETURN_NULL_IF_NULL(emitter_thread);
 
     PyEval_InitThreads();
 
-    /* Map the runloop to this observer thread if the
+    /* Map the runloop to this emitter thread if the
      * mapping doesn't already exist. */
-    if (0 == CFRunLoopForObserver_Contains(observer_thread))
+    if (0 == CFRunLoopForEmitter_Contains(emitter_thread))
         {
             runloop = CFRunLoopGetCurrent();
-            RETURN_NULL_IF_NULL(CFRunLoopForObserver_SetItem(observer_thread,
+            RETURN_NULL_IF_NULL(CFRunLoopForEmitter_SetItem(emitter_thread,
                                                              runloop));
         }
 
@@ -61,7 +61,7 @@ watchdog_fsevents_loop(PyObject *self, PyObject *observer_thread)
     CFRunLoopRun();
     Py_END_ALLOW_THREADS;
 
-    CFRunLoopForObserver_DelItem(observer_thread);
+    CFRunLoopForEmitter_DelItem(emitter_thread);
 
     RETURN_NULL_IF(PyErr_Occurred());
 
@@ -70,10 +70,10 @@ watchdog_fsevents_loop(PyObject *self, PyObject *observer_thread)
 }
 
 PyDoc_STRVAR(watchdog_fsevents_schedule__doc__,
-        MODULE_NAME ".schedule(observer_thread, watch, callback, paths) -> None\n\
-Schedules a watch into the event loop for the given observer thread.\n\n\
-:param observer_thread:\n\
-    The observer thread.\n\
+        MODULE_NAME ".schedule(emitter_thread, watch, callback, paths) -> None\n\
+Schedules a watch into the event loop for the given emitter thread.\n\n\
+:param emitter_thread:\n\
+    The emitter thread.\n\
 :param watch:\n\
     The watch to schedule.\n\
 :param callback:\n\
@@ -88,7 +88,7 @@ static PyObject *
 watchdog_fsevents_schedule(PyObject *self, PyObject *args)
 {
     /* Arguments */
-    PyObject *observer_thread = NULL;
+    PyObject *emitter_thread = NULL;
     PyObject *watch = NULL;
     PyObject *paths = NULL;
     PyObject *callback = NULL;
@@ -101,7 +101,7 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
     RETURN_NULL_IF_NULL(args);
     RETURN_NULL_IF_NOT(PyArg_ParseTuple(args,
                                         "OOOO:schedule",
-                                        &observer_thread,
+                                        &emitter_thread,
                                         &watch,
                                         &callback,
                                         &paths));
@@ -116,7 +116,7 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
     RETURN_NULL_IF_NULL(stream);
     RETURN_NULL_IF_NULL(StreamForWatch_SetItem(watch, stream));
 
-    runloop = CFRunLoopForObserver_GetItemOrDefault(observer_thread);
+    runloop = CFRunLoopForEmitter_GetItemOrDefault(emitter_thread);
     FSEventStreamScheduleWithRunLoop(stream, runloop, kCFRunLoopDefaultMode);
 
     /* Set stream info for callback. */
@@ -161,16 +161,16 @@ watchdog_fsevents_unschedule(PyObject *self, PyObject *watch)
 }
 
 PyDoc_STRVAR(watchdog_fsevents_stop__doc__,
-        MODULE_NAME ".stop(observer_thread) -> None\n\
+        MODULE_NAME ".stop(emitter_thread) -> None\n\
 Stops running the event loop from the specified thread.\n\n\
 :param thread:\n\
     The thread for which the event loop will be stopped.\n");
 static PyObject *
-watchdog_fsevents_stop(PyObject *self, PyObject *observer_thread)
+watchdog_fsevents_stop(PyObject *self, PyObject *emitter_thread)
 {
     CFRunLoopRef runloop = NULL;
 
-    runloop = CFRunLoopForObserver_GetItem(observer_thread);
+    runloop = CFRunLoopForEmitter_GetItem(emitter_thread);
 
     /* Stop runloop */
     if (runloop)
@@ -221,7 +221,7 @@ init_watchdog_fsevents(void)
                             MODULE_CONSTANT_NAME_POLLOUT,
                             kCFFileDescriptorWriteCallBack);
 
-    g__runloop_for_observer = PyDict_New();
+    g__runloop_for_emitter = PyDict_New();
     g__stream_for_watch = PyDict_New();
 }
 #else /* PY_MAJOR_VERSION >= 3 */
@@ -244,7 +244,7 @@ PyInit__watchdog_fsevents(void)
                 MODULE_CONSTANT_NAME_POLLOUT,
                 kCFFileDescriptorWriteCallBack);
 
-        g__runloop_for_observer = PyDict_New();
+        g__runloop_for_emitter = PyDict_New();
         g__stream_for_watch = PyDict_New();
 
         return module;

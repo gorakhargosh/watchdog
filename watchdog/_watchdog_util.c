@@ -26,9 +26,9 @@
 #include "_watchdog_fsevents.h"
 
 /**
- * Dictionary that maps an observer thread to a CFRunLoop.
+ * Dictionary that maps an emitter thread to a CFRunLoop.
  */
-PyObject *g__runloop_for_observer = NULL;
+PyObject *g__runloop_for_emitter = NULL;
 
 /**
  * Dictionary that maps an ObservedWatch to a FSEvent stream.
@@ -36,53 +36,53 @@ PyObject *g__runloop_for_observer = NULL;
 PyObject *g__stream_for_watch = NULL;
 
 /**
- * Obtains the CFRunLoopRef for a given observer thread.
+ * Obtains the CFRunLoopRef for a given emitter thread.
  */
 CFRunLoopRef
-CFRunLoopForObserver_GetItem(PyObject *observer_thread)
+CFRunLoopForEmitter_GetItem(PyObject *emitter_thread)
 {
-    PyObject *py_runloop = PyDict_GetItem(g__runloop_for_observer,
-                                          observer_thread);
+    PyObject *py_runloop = PyDict_GetItem(g__runloop_for_emitter,
+                                          emitter_thread);
     CFRunLoopRef runloop = PyCObject_AsVoidPtr(py_runloop);
     return runloop;
 }
 
 PyObject *
-CFRunLoopForObserver_SetItem(PyObject *observer_thread, CFRunLoopRef runloop)
+CFRunLoopForEmitter_SetItem(PyObject *emitter_thread, CFRunLoopRef runloop)
 {
-    PyObject *observer_runloop = PyCObject_FromVoidPtr(runloop, PyMem_Free);
-    if (0 > PyDict_SetItem(g__runloop_for_observer,
-                           observer_thread,
-                           observer_runloop))
+    PyObject *emitter_runloop = PyCObject_FromVoidPtr(runloop, PyMem_Free);
+    if (0 > PyDict_SetItem(g__runloop_for_emitter,
+                           emitter_thread,
+                           emitter_runloop))
         {
-            Py_DECREF(observer_runloop);
+            Py_DECREF(emitter_runloop);
             return NULL;
         }
 
-    return observer_runloop;
-    //Py_INCREF(observer_thread);
-    //Py_INCREF(observer_runloop);
+    return emitter_runloop;
+    //Py_INCREF(emitter_thread);
+    //Py_INCREF(emitter_runloop);
 }
 
 int
-CFRunLoopForObserver_DelItem(PyObject *observer_thread)
+CFRunLoopForEmitter_DelItem(PyObject *emitter_thread)
 {
-    return PyDict_DelItem(g__runloop_for_observer, observer_thread);
-    /*if (0 == PyDict_DelItem(g__runloop_for_observer, observer_thread))
+    return PyDict_DelItem(g__runloop_for_emitter, emitter_thread);
+    /*if (0 == PyDict_DelItem(g__runloop_for_emitter, emitter_thread))
      {
-     Py_DECREF(observer_thread);
-     Py_DECREF(observer_runloop);
+     Py_DECREF(emitter_thread);
+     Py_DECREF(emitter_runloop);
      }*/
 }
 
 int
-CFRunLoopForObserver_Contains(PyObject *observer_thread)
+CFRunLoopForEmitter_Contains(PyObject *emitter_thread)
 {
-    return PyDict_Contains(g__runloop_for_observer, observer_thread);
+    return PyDict_Contains(g__runloop_for_emitter, emitter_thread);
 }
 
 /**
- * Get runloop reference from observer info data or current runloop.
+ * Get runloop reference from emitter info data or current runloop.
  *
  * @param loops
  *      The dictionary of loops from which to obtain the loop
@@ -90,12 +90,12 @@ CFRunLoopForObserver_Contains(PyObject *observer_thread)
  * @return A pointer CFRunLookRef to a runloop.
  */
 CFRunLoopRef
-CFRunLoopForObserver_GetItemOrDefault(PyObject *observer_thread)
+CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread)
 {
     PyObject *py_runloop = NULL;
     CFRunLoopRef runloop = NULL;
 
-    py_runloop = PyDict_GetItem(g__runloop_for_observer, observer_thread);
+    py_runloop = PyDict_GetItem(g__runloop_for_emitter, emitter_thread);
     if (NULL == py_runloop)
         {
             runloop = CFRunLoopGetCurrent();

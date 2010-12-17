@@ -43,10 +43,10 @@ typedef int Py_ssize_t;
 #endif /* PY_VERSION_HEX && !PY_SSIZE_T_MIN */
 
 /**
- * Dictionary that maps an observer thread to a CFRunLoop.
+ * Dictionary that maps an emitter thread to a CFRunLoop.
  * Defined in ``_watchdog_data.c``
  */
-extern PyObject *g__runloop_for_observer;
+extern PyObject *g__runloop_for_emitter;
 
 /**
  * Dictionary that maps an ObservedWatch to a FSEvent stream.
@@ -142,17 +142,17 @@ typedef struct _FSEventStreamInfo
 
 #define FS_EVENT_STREAM_LATENCY (0.01)
 
-/* CFRunLoopForObserver functions. */
+/* CFRunLoopForEmitter functions. */
 CFRunLoopRef
-CFRunLoopForObserver_GetItem(PyObject *observer_thread);
+CFRunLoopForEmitter_GetItem(PyObject *emitter_thread);
 CFRunLoopRef
-CFRunLoopForObserver_GetItemOrDefault(PyObject *observer_thread);
+CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread);
 PyObject *
-CFRunLoopForObserver_SetItem(PyObject *observer_thread, CFRunLoopRef runloop);
+CFRunLoopForEmitter_SetItem(PyObject *emitter_thread, CFRunLoopRef runloop);
 int
-CFRunLoopForObserver_DelItem(PyObject *observer_thread);
+CFRunLoopForEmitter_DelItem(PyObject *emitter_thread);
 int
-CFRunLoopForObserver_Contains(PyObject *observer_thread);
+CFRunLoopForEmitter_Contains(PyObject *emitter_thread);
 
 /* StreamForWatch functions. */
 PyObject *
