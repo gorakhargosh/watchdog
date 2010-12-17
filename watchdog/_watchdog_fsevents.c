@@ -32,16 +32,17 @@ PyDoc_STRVAR(watchdog_fsevents_module__doc__,
         "Low-level FSEvents Python/C API.");
 
 PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
-        "Runs an event loop associated with an observer thread.\n\n\
+        MODULE_NAME ".loop(observer_thread) -> None\n\
+Blocking function that runs an event loop associated with an observer thread.\n\n\
 :param observer_thread:\n\
-   The observer_thread for which the event loop will be run.\n");
+   The observer thread for which the event loop will be run.\n");
 static PyObject *
-watchdog_fsevents_loop(PyObject *self, PyObject *args)
+watchdog_fsevents_loop(PyObject *self, PyObject *observer_thread)
 {
-    /* Arguments */
-    PyObject *observer_thread = NULL;
+    /* Locals */
+    CFRunLoopRef runloop = NULL;
 
-    RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &observer_thread));
+    RETURN_NULL_IF_NULL(observer_thread);
 
     PyEval_InitThreads();
 
@@ -49,7 +50,7 @@ watchdog_fsevents_loop(PyObject *self, PyObject *args)
      * mapping doesn't already exist. */
     if (0 == CFRunLoopForObserver_Contains(observer_thread))
         {
-            CFRunLoopRef runloop = CFRunLoopGetCurrent();
+            runloop = CFRunLoopGetCurrent();
             RETURN_NULL_IF_NULL(CFRunLoopForObserver_SetItem(observer_thread,
                                                              runloop));
         }
@@ -69,13 +70,18 @@ watchdog_fsevents_loop(PyObject *self, PyObject *args)
 }
 
 PyDoc_STRVAR(watchdog_fsevents_schedule__doc__,
-        "Schedules a watch.\n\n\
-:param thread:\n\
+        MODULE_NAME ".schedule(observer_thread, watch, callback, paths) -> None\n\
+Schedules a watch into the event loop for the given observer thread.\n\n\
+:param observer_thread:\n\
     The observer thread.\n\
 :param watch:\n\
     The watch to schedule.\n\
 :param callback:\n\
     The callback function to call when an event occurs.\n\
+    Example:\n\
+        def callback(paths, mask):\n\
+            for path, mask in zip(paths, mask):\n\
+                print(\"%s=%d\" % (path, mask))\n\
 :param paths:\n\
     A list of paths to monitor.\n");
 static PyObject *
@@ -87,11 +93,12 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
     PyObject *paths = NULL;
     PyObject *callback = NULL;
 
-    /* Other locals */
+    /* Locals */
     FSEventStreamInfo *stream_info = NULL;
     FSEventStreamRef stream = NULL;
     CFRunLoopRef runloop = NULL;
 
+    RETURN_NULL_IF_NULL(args);
     RETURN_NULL_IF_NOT(PyArg_ParseTuple(args,
                                         "OOOO:schedule",
                                         &observer_thread,
@@ -132,14 +139,17 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
 }
 
 PyDoc_STRVAR(watchdog_fsevents_unschedule__doc__,
-        "Unschedules a watch.\n\n\
+        MODULE_NAME ".unschedule(watch) -> None\n\
+Unschedules a watch from the event loop.\n\n\
 :param watch:\n\
     The watch to unschedule.\n");
 static PyObject *
 watchdog_fsevents_unschedule(PyObject *self, PyObject *watch)
 {
-    FSEventStreamRef stream = StreamForWatch_PopItem(watch);
+    FSEventStreamRef stream = NULL;
 
+    RETURN_NULL_IF_NULL(watch);
+    stream = StreamForWatch_PopItem(watch);
     RETURN_NULL_IF_NULL(stream);
 
     FSEventStreamStop(stream);
@@ -151,13 +161,16 @@ watchdog_fsevents_unschedule(PyObject *self, PyObject *watch)
 }
 
 PyDoc_STRVAR(watchdog_fsevents_stop__doc__,
-        "Stops running the event loop from the specified thread.\n\n\
+        MODULE_NAME ".stop(observer_thread) -> None\n\
+Stops running the event loop from the specified thread.\n\n\
 :param thread:\n\
     The thread for which the event loop will be stopped.\n");
 static PyObject *
 watchdog_fsevents_stop(PyObject *self, PyObject *observer_thread)
 {
-    CFRunLoopRef runloop = CFRunLoopForObserver_GetItem(observer_thread);
+    CFRunLoopRef runloop = NULL;
+
+    runloop = CFRunLoopForObserver_GetItem(observer_thread);
 
     /* Stop runloop */
     if (runloop)
@@ -175,7 +188,7 @@ watchdog_fsevents_stop(PyObject *self, PyObject *observer_thread)
 static PyMethodDef _watchdog_fseventsmethods[] =
         { { "loop",
              watchdog_fsevents_loop,
-             METH_VARARGS,
+             METH_O,
              watchdog_fsevents_loop__doc__ },
            { "stop",
              watchdog_fsevents_stop,
