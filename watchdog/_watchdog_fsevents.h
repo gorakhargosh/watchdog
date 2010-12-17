@@ -43,18 +43,6 @@ typedef int Py_ssize_t;
 #endif /* PY_VERSION_HEX && !PY_SSIZE_T_MIN */
 
 /**
- * Dictionary that maps an emitter thread to a CFRunLoop.
- * Defined in ``_watchdog_data.c``
- */
-extern PyObject *g__runloop_for_emitter;
-
-/**
- * Dictionary that maps an ObservedWatch to a FSEvent stream.
- * Defined in ``_watchdog_data.c``
- */
-extern PyObject *g__stream_for_watch;
-
-/**
  * Error messages.
  */
 #define ERROR_MESSAGE_CANNOT_CALL_CALLBACK "Cannot call callback function."
@@ -141,6 +129,11 @@ typedef struct _FSEventStreamInfo
     while(0)
 
 #define FS_EVENT_STREAM_LATENCY (0.01)
+
+/* Initialization. */
+void
+WatchdogFSEvents_Init(void);
+
 
 /* CFRunLoopForEmitter functions. */
 CFRunLoopRef

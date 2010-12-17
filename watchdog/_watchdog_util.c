@@ -28,12 +28,20 @@
 /**
  * Dictionary that maps an emitter thread to a CFRunLoop.
  */
-PyObject *g__runloop_for_emitter = NULL;
+static PyObject *g__runloop_for_emitter = NULL;
 
 /**
  * Dictionary that maps an ObservedWatch to a FSEvent stream.
  */
-PyObject *g__stream_for_watch = NULL;
+static PyObject *g__stream_for_watch = NULL;
+
+
+void
+WatchdogFSEvents_Init(void)
+{
+    g__runloop_for_emitter = PyDict_New();
+    g__stream_for_watch = PyDict_New();
+}
 
 /**
  * Obtains the CFRunLoopRef for a given emitter thread.

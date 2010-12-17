@@ -221,8 +221,7 @@ init_watchdog_fsevents(void)
                             MODULE_CONSTANT_NAME_POLLOUT,
                             kCFFileDescriptorWriteCallBack);
 
-    g__runloop_for_emitter = PyDict_New();
-    g__stream_for_watch = PyDict_New();
+    WatchdogFSEvents_Init();
 }
 #else /* PY_MAJOR_VERSION >= 3 */
 static struct PyModuleDef _watchdog_fseventsmodule =
@@ -244,8 +243,7 @@ PyInit__watchdog_fsevents(void)
                 MODULE_CONSTANT_NAME_POLLOUT,
                 kCFFileDescriptorWriteCallBack);
 
-        g__runloop_for_emitter = PyDict_New();
-        g__stream_for_watch = PyDict_New();
+        WatchdogFSEvents_Init();
 
         return module;
     }
