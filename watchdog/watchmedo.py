@@ -32,7 +32,6 @@ import os.path
 import sys
 import yaml
 import time
-import uuid
 import logging
 
 try:
@@ -59,13 +58,19 @@ CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
 
 
-def path_split(path_spec, separator=os.path.sep):
-    """Splits a path specification separated by an OS-dependent separator
-    (: on Unix and ; on Windows, for examples)."""
-    return list(path_spec.split(separator))
+def path_split(pathname_spec, separator=os.path.sep):
+    """
+    Splits a pathname specification separated by an OS-dependent separator.
+
+    :param pathname_spec:
+        The pathname specification.
+    :param separator:
+        (OS Dependent) `:` on Unix and `;` on Windows or user-specified.
+    """
+    return list(pathname_spec.split(separator))
 
 
-def add_to_sys_path(paths, index=0):
+def add_to_sys_path(pathnames, index=0):
     """
     Adds specified paths at specified index into the sys.path list.
 
@@ -75,11 +80,11 @@ def add_to_sys_path(paths, index=0):
         (Default 0) The index in the sys.path list where the paths will be
         added.
     """
-    for path in paths[::-1]:
-        sys.path.insert(index, path)
+    for pathname in pathnames[::-1]:
+        sys.path.insert(index, pathname)
 
 
-def load_config(tricks_file_path):
+def load_config(tricks_file_pathname):
     """
     Loads the YAML configuration from the specified file.
 
@@ -88,15 +93,9 @@ def load_config(tricks_file_path):
     :returns:
         A dictionary of configuration information.
     """
-    content = read_text_file(tricks_file_path)
+    content = read_text_file(tricks_file_pathname)
     config = yaml.load(content)
     return config
-
-
-def check_trick_has_key(trick_name, trick, key):
-    if key not in trick:
-        logging.warn("Key `%s' not found for trick `%s'. Typo or missing?", key,
-                     trick_name)
 
 
 def parse_patterns(patterns_spec, ignore_patterns_spec, separator=';'):
@@ -111,11 +110,21 @@ def parse_patterns(patterns_spec, ignore_patterns_spec, separator=';'):
     return (patterns, ignore_patterns)
 
 
-def observe_with(observer, event_handler, paths, recursive):
-    """Single observer given an identifier, event handler, and directories
-    to watch."""
-    for path in set(paths):
-        observer.schedule(event_handler, path, recursive)
+def observe_with(observer, event_handler, pathnames, recursive):
+    """
+    Single observer thread with a scheduled path and event handler.
+
+    :param observer:
+        The observer thread.
+    :param event_handler:
+        Event handler which will be called in response to file system events.
+    :param pathnames:
+        A list of pathnames to monitor.
+    :param recursive:
+        ``True`` if recursive; ``False`` otherwise.
+    """
+    for pathname in set(pathnames):
+        observer.schedule(event_handler, pathname, recursive)
     observer.start()
     try:
         while True:
@@ -125,9 +134,27 @@ def observe_with(observer, event_handler, paths, recursive):
     observer.join()
 
 
-def schedule_tricks(observer, tricks, watch_path):
-    """Schedules tricks with the specified observer and for the given watch
-    path."""
+def schedule_tricks(observer, tricks, pathname, recursive):
+    """
+    Schedules tricks with the specified observer and for the given watch
+    path.
+
+    :param observer:
+        The observer thread into which to schedule the trick and watch.
+    :param tricks:
+        A list of tricks.
+    :param pathname:
+        A path name which should be watched.
+    :param recursive:
+        ``True`` if recursive; ``False`` otherwise.
+    """
+
+    def check_trick_has_key(trick_name, trick, key):
+        if key not in trick:
+            logging.warn("Key `%s' not found for trick `%s'. Typo or missing?",
+                         key,
+                         trick_name)
+
     for trick in tricks:
         for trick_name, trick_value in trick.items():
             check_trick_has_key(trick_name, trick_value, 'kwargs')
@@ -137,11 +164,9 @@ def schedule_tricks(observer, tricks, watch_path):
             trick_args = trick_value.get('args', ())
 
             TrickClass = load_class(trick_name)
-            trick_event_handler = TrickClass(*trick_args, **trick_kwargs)
+            handler = TrickClass(*trick_args, **trick_kwargs)
 
-            unique_identifier = uuid.uuid1().hex
-            observer.schedule(unique_identifier, trick_event_handler,
-                              [watch_path], recursive=True)
+            observer.schedule(handler, pathname, recursive)
 
 
 @alias('tricks')
@@ -156,7 +181,16 @@ def schedule_tricks(observer, tricks, watch_path):
      dest='timeout',
      default=1.0,
      help='use this as the polling interval/blocking timeout')
+@arg('--recursive',
+     default=True,
+     help='recursively monitor paths')
 def tricks_from(args):
+    """
+    `Subcommand to execute tricks from a tricks configuration file.
+
+    :param args:
+        Command line argument options.
+    """
     from watchdog.observers import Observer
 
     add_to_sys_path(path_split(args.python_path))
@@ -169,16 +203,17 @@ def tricks_from(args):
 
         config = load_config(tricks_file)
 
-        if CONFIG_KEY_TRICKS not in config:
+        try:
+            tricks = config[CONFIG_KEY_TRICKS]
+        except KeyError:
             raise KeyError("No `%s' key specified in %s." % (
-            CONFIG_KEY_TRICKS, tricks_file))
-        tricks = config[CONFIG_KEY_TRICKS]
+                            CONFIG_KEY_TRICKS, tricks_file))
 
         if CONFIG_KEY_PYTHON_PATH in config:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
 
         dir_path = get_parent_dir_path(tricks_file)
-        schedule_tricks(observer, tricks, dir_path)
+        schedule_tricks(observer, tricks, dir_path, args.recursive)
         observer.start()
         observers.append(observer)
 
@@ -211,6 +246,13 @@ if not specified, prints to standard output')
      help='if --append-to-file is not specified, produces output for \
 appending instead of a complete tricks yaml file.')
 def tricks_generate_yaml(args):
+    """
+    Subcommand to generate Yaml configuration for tricks named on the command
+    line.
+
+    :param args:
+        Command line argument options.
+    """
     python_paths = path_split(args.python_path)
     add_to_sys_path(python_paths)
     output = StringIO()
@@ -225,7 +267,7 @@ def tricks_generate_yaml(args):
     header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths})
     header += "%s:\n" % CONFIG_KEY_TRICKS
     if args.append_to_file is None:
-    # Output to standard output.
+        # Output to standard output.
         if not args.append_only:
             content = header + content
         sys.stdout.write(content)
@@ -263,32 +305,39 @@ def tricks_generate_yaml(args):
      dest='recursive',
      default=False,
      help='monitors the directories recursively')
-@arg('--trace',
-     default=False,
-     help='dumps complete dispatching trace')
-@arg('--debug-force-polling',
-     default=False,
-     help='[debug flag] forces using the polling observer implementation')
-@arg('--debug-force-kqueue',
-     default=False,
-     help='[debug flag] forces BSD kqueue(2)')
-@arg('--debug-force-winapi',
-     default=False, help='[debug flag] forces Windows API')
-@arg('--debug-force-winapi-async',
-     default=False,
-     help='[debug flag] forces Windows API + I/O completion')
-@arg('--debug-force-fsevents',
-     default=False,
-     help='[debug flag] forces Mac OS X FSEvents')
-@arg('--debug-force-inotify',
-     default=False,
-     help='[debug flag] forces Linux inotify(7)')
 @arg('--interval',
      '--timeout',
      dest='timeout',
      default=1.0,
      help='use this as the polling interval/blocking timeout')
+@arg('--trace',
+     default=False,
+     help='dumps complete dispatching trace')
+@arg('--debug-force-polling',
+     default=False,
+     help='[debug] forces polling')
+@arg('--debug-force-kqueue',
+     default=False,
+     help='[debug] forces BSD kqueue(2)')
+@arg('--debug-force-winapi',
+     default=False,
+     help='[debug] forces Windows API')
+@arg('--debug-force-winapi-async',
+     default=False,
+     help='[debug] forces Windows API + I/O completion')
+@arg('--debug-force-fsevents',
+     default=False,
+     help='[debug] forces Mac OS X FSEvents')
+@arg('--debug-force-inotify',
+     default=False,
+     help='[debug] forces Linux inotify(7)')
 def log(args):
+    """
+    Subcommand to log file system events to the console.
+
+    :param args:
+        Command line argument options.
+    """
     from watchdog.utils import echo
     from watchdog.tricks import LoggerTrick
 
@@ -297,9 +346,9 @@ def log(args):
 
     patterns, ignore_patterns =\
     parse_patterns(args.patterns, args.ignore_patterns)
-    event_handler = LoggerTrick(patterns=patterns,
-                                ignore_patterns=ignore_patterns,
-                                ignore_directories=args.ignore_directories)
+    handler = LoggerTrick(patterns=patterns,
+                          ignore_patterns=ignore_patterns,
+                          ignore_directories=args.ignore_directories)
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
@@ -319,7 +368,7 @@ def log(args):
     # on which it is running.
         from watchdog.observers import Observer
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, event_handler, args.directories, args.recursive)
+    observe_with(observer, handler, args.directories, args.recursive)
 
 
 @arg('directories', nargs='*', default='.', help='directories to watch')
@@ -372,6 +421,12 @@ Example option usage:
      default=1.0,
      help='use this as the polling interval/blocking timeout')
 def shell_command(args):
+    """
+    Subcommand to execute shell commands in response to file system events.
+
+    :param args:
+        Command line argument options.
+    """
     from watchdog.observers import Observer
     from watchdog.tricks import ShellCommandTrick
 
@@ -380,12 +435,12 @@ def shell_command(args):
 
     patterns, ignore_patterns = parse_patterns(args.patterns,
                                                args.ignore_patterns)
-    event_handler = ShellCommandTrick(shell_command=args.command,
-                                      patterns=patterns,
-                                      ignore_patterns=ignore_patterns,
-                                      ignore_directories=args.ignore_directories)
+    handler = ShellCommandTrick(shell_command=args.command,
+                                patterns=patterns,
+                                ignore_patterns=ignore_patterns,
+                                ignore_directories=args.ignore_directories)
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, event_handler, args.directories, args.recursive)
+    observe_with(observer, handler, args.directories, args.recursive)
 
 
 epilog = """Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>.
