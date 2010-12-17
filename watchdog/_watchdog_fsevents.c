@@ -1,5 +1,5 @@
 /**
- * _watchdog_fsevents.c: Low-level FSEvents Python API.
+ * _watchdog_fsevents.c: Low-level FSEvents Python/C API.
  *
  * Copyright (C) 2009, 2010 Malthe Borch <mborch@gmail.com>
  * Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
