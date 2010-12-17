@@ -23,10 +23,8 @@
  * THE SOFTWARE.
  */
 
-
 #ifndef _WATCHDOG_FSEVENTS_H_
 #define _WATCHDOG_FSEVENTS_H_ 1
-
 
 #include "Python.h"
 #include <stdlib.h>
@@ -34,7 +32,6 @@
 #include <limits.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
-
 
 /**
  * Py_ssize_t type for Python versions that don't define it.
@@ -45,11 +42,31 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif /* PY_VERSION_HEX && !PY_SSIZE_T_MIN */
 
+/**
+ * Dictionary that maps an observer thread to a CFRunLoop.
+ * Defined in ``_watchdog_data.c``
+ */
+extern PyObject *g__runloop_for_observer;
+
+/**
+ * Dictionary that maps an ObservedWatch to a FSEvent stream.
+ * Defined in ``_watchdog_data.c``
+ */
+extern PyObject *g__stream_for_watch;
+
+/**
+ * Error messages.
+ */
+#define ERROR_MESSAGE_CANNOT_CALL_CALLBACK ("Cannot call callback function.")
+
+#define MODULE_NAME ("_watchdog_fsevents")
+#define MODULE_CONSTANT_NAME_POLLIN ("POLLIN")
+#define MODULE_CONSTANT_NAME_POLLOUT ("POLLOUT")
 
 /**
  * File system event stream meta information structure.
  */
-typedef struct FSEventStreamInfo
+typedef struct _FSEventStreamInfo
 {
     /**
      * Callback called when an event is triggered with the event paths and masks
@@ -73,7 +90,6 @@ typedef struct FSEventStreamInfo
     PyThreadState *thread_state;
 } FSEventStreamInfo;
 
-
 /**
  * Macro that forces returning NULL if given argument is NULL.
  */
@@ -83,7 +99,6 @@ typedef struct FSEventStreamInfo
             if (NULL == (o)) { return NULL; }   \
         }                                       \
     while(0)
-
 
 /**
  * Macro that forces returning NULL if given argument is true.
@@ -95,7 +110,6 @@ typedef struct FSEventStreamInfo
         }                                       \
     while(0)
 
-
 /**
  * Macro that forces returning NULL if given argument is false.
  */
@@ -105,7 +119,6 @@ typedef struct FSEventStreamInfo
             if (!(c)) { return NULL; }          \
         }                                       \
     while(0)
-
 
 /**
  * Macro that forces returning if given argument is true.
@@ -117,7 +130,6 @@ typedef struct FSEventStreamInfo
         }                                       \
     while(0)
 
-
 /**
  * Macro that forces returning if given argument is false.
  */
@@ -128,6 +140,43 @@ typedef struct FSEventStreamInfo
         }                                       \
     while(0)
 
+#define FS_EVENT_STREAM_LATENCY (0.01)
+
+/* CFRunLoopForObserver functions. */
+CFRunLoopRef
+CFRunLoopForObserver_GetItem(PyObject *observer_thread);
+CFRunLoopRef
+CFRunLoopForObserver_GetItemOrDefault(PyObject *observer_thread);
+PyObject *
+CFRunLoopForObserver_SetItem(PyObject *observer_thread, CFRunLoopRef runloop);
+int
+CFRunLoopForObserver_DelItem(PyObject *observer_thread);
+int
+CFRunLoopForObserver_Contains(PyObject *observer_thread);
+
+/* StreamForWatch functions. */
+PyObject *
+StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream);
+FSEventStreamRef
+StreamForWatch_GetItem(PyObject *watch);
+FSEventStreamRef
+StreamForWatch_PopItem(PyObject *watch);
+int
+StreamForWatch_Contains(PyObject *watch);
+
+/* Miscellaneous. */
+CFMutableArrayRef
+CFMutableArray_FromStringList(PyObject *py_string_list);
+FSEventStreamRef
+FSEventStream_Create(FSEventStreamInfo *stream_info, PyObject *py_path_list);
+
+void
+event_stream_handler(FSEventStreamRef stream,
+                     FSEventStreamInfo *stream_info,
+                     const int num_events,
+                     const char * const event_paths[],
+                     const FSEventStreamEventFlags *event_masks,
+                     const uint64_t *event_ids);
 
 #endif /* _WATCHDOG_FSEVENTS_H_ */
 
