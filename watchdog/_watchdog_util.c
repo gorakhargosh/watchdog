@@ -110,7 +110,7 @@ CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread)
         }
     else
         {
-            runloop = /*(CFRunLoopRef)*/PyCObject_AsVoidPtr(py_runloop);
+            runloop = PyCObject_AsVoidPtr(py_runloop);
         }
 
     return runloop;
