@@ -31,13 +31,13 @@
 PyDoc_STRVAR(watchdog_fsevents_module__doc__,
         "Low-level FSEvents Python/C API.");
 
-PyDoc_STRVAR(watchdog_fsevents_loop__doc__,
-        MODULE_NAME ".loop(emitter_thread) -> None\n\
+PyDoc_STRVAR(watchdog_fsevents_read_events__doc__,
+        MODULE_NAME ".read_events(emitter_thread) -> None\n\
 Blocking function that runs an event loop associated with an emitter thread.\n\n\
 :param emitter_thread:\n\
    The emitter thread for which the event loop will be run.\n");
 static PyObject *
-watchdog_fsevents_loop(PyObject *self, PyObject *emitter_thread)
+watchdog_fsevents_read_events(PyObject *self, PyObject *emitter_thread)
 {
     /* Locals */
     CFRunLoopRef runloop = NULL;
@@ -69,13 +69,13 @@ watchdog_fsevents_loop(PyObject *self, PyObject *emitter_thread)
     return Py_None;
 }
 
-PyDoc_STRVAR(watchdog_fsevents_schedule__doc__,
-        MODULE_NAME ".schedule(emitter_thread, watch, callback, paths) -> None\n\
-Schedules a watch into the event loop for the given emitter thread.\n\n\
+PyDoc_STRVAR(watchdog_fsevents_add_watch__doc__,
+        MODULE_NAME ".add_watch(emitter_thread, watch, callback, paths) -> None\
+\nAdds a watch into the event loop for the given emitter thread.\n\n\
 :param emitter_thread:\n\
     The emitter thread.\n\
 :param watch:\n\
-    The watch to schedule.\n\
+    The watch to add.\n\
 :param callback:\n\
     The callback function to call when an event occurs.\n\
     Example:\n\
@@ -85,7 +85,7 @@ Schedules a watch into the event loop for the given emitter thread.\n\n\
 :param paths:\n\
     A list of paths to monitor.\n");
 static PyObject *
-watchdog_fsevents_schedule(PyObject *self, PyObject *args)
+watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
 {
     /* Arguments */
     PyObject *emitter_thread = NULL;
@@ -106,7 +106,7 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
                                         &callback,
                                         &paths));
 
-    /* Stream must not already be scheduled. */
+    /* Watch must not already be scheduled. */
     RETURN_NULL_IF(1 == StreamForWatch_Contains(watch));
 
     /* Create the event stream. */
@@ -138,13 +138,13 @@ watchdog_fsevents_schedule(PyObject *self, PyObject *args)
     return Py_None;
 }
 
-PyDoc_STRVAR(watchdog_fsevents_unschedule__doc__,
-        MODULE_NAME ".unschedule(watch) -> None\n\
-Unschedules a watch from the event loop.\n\n\
+PyDoc_STRVAR(watchdog_fsevents_remove_watch__doc__,
+        MODULE_NAME ".remove_watch(watch) -> None\n\
+Removes a watch from the event loop.\n\n\
 :param watch:\n\
-    The watch to unschedule.\n");
+    The watch to remove.\n");
 static PyObject *
-watchdog_fsevents_unschedule(PyObject *self, PyObject *watch)
+watchdog_fsevents_remove_watch(PyObject *self, PyObject *watch)
 {
     FSEventStreamRef stream = NULL;
 
@@ -163,7 +163,7 @@ watchdog_fsevents_unschedule(PyObject *self, PyObject *watch)
 PyDoc_STRVAR(watchdog_fsevents_stop__doc__,
         MODULE_NAME ".stop(emitter_thread) -> None\n\
 Stops running the event loop from the specified thread.\n\n\
-:param thread:\n\
+:param emitter_thread:\n\
     The thread for which the event loop will be stopped.\n");
 static PyObject *
 watchdog_fsevents_stop(PyObject *self, PyObject *emitter_thread)
@@ -186,22 +186,22 @@ watchdog_fsevents_stop(PyObject *self, PyObject *emitter_thread)
  * Module public API.
  */
 static PyMethodDef _watchdog_fseventsmethods[] =
-        { { "loop",
-             watchdog_fsevents_loop,
+        { { "read_events",
+             watchdog_fsevents_read_events,
              METH_O,
-             watchdog_fsevents_loop__doc__ },
+             watchdog_fsevents_read_events__doc__ },
            { "stop",
              watchdog_fsevents_stop,
              METH_O,
              watchdog_fsevents_stop__doc__ },
-           { "schedule",
-             watchdog_fsevents_schedule,
+           { "add_watch",
+             watchdog_fsevents_add_watch,
              METH_VARARGS,
-             watchdog_fsevents_schedule__doc__ },
-           { "unschedule",
-             watchdog_fsevents_unschedule,
+             watchdog_fsevents_add_watch__doc__ },
+           { "remove_watch",
+             watchdog_fsevents_remove_watch,
              METH_O,
-             watchdog_fsevents_unschedule__doc__ },
+             watchdog_fsevents_remove_watch__doc__ },
            { NULL, NULL, 0, NULL } };
 
 /**
