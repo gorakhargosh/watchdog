@@ -186,7 +186,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
      help='recursively monitor paths')
 def tricks_from(args):
     """
-    `Subcommand to execute tricks from a tricks configuration file.
+    Subcommand to execute tricks from a tricks configuration file.
 
     :param args:
         Command line argument options.
@@ -453,7 +453,8 @@ parser.add_commands([tricks_from,
                      tricks_generate_yaml,
                      log,
                      shell_command])
-parser.add_argument('--version', action='version',
+parser.add_argument('--version',
+                    action='version',
                     version='%(prog)s ' + VERSION_STRING)
 
 
