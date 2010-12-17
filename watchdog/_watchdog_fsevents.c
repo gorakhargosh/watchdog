@@ -120,9 +120,9 @@ watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
     FSEventStreamScheduleWithRunLoop(stream, runloop, kCFRunLoopDefaultMode);
 
     /* Set stream info for callback. */
-    stream_info->callback_event_handler = callback;
+    stream_info->callback = callback;
     stream_info->stream = stream;
-    stream_info->loop = runloop;
+    stream_info->runloop = runloop;
     stream_info->thread_state = PyThreadState_Get();
     Py_INCREF(callback);
 

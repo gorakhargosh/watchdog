@@ -293,7 +293,7 @@ event_stream_handler(FSEventStreamRef stream,
      * and paths as arguments. On failure check whether an error occurred and
      * stop this instance of the runloop.
      */
-    if (NULL == PyObject_CallFunction(stream_info->callback_event_handler,
+    if (NULL == PyObject_CallFunction(stream_info->callback,
                                       "OO",
                                       event_path_list,
                                       event_mask_list))
@@ -309,7 +309,7 @@ event_stream_handler(FSEventStreamRef stream,
                 }
 
             /* Stop listening for events. */
-            CFRunLoopStop(stream_info->loop);
+            CFRunLoopStop(stream_info->runloop);
         }
 
     /* Restore original thread state and release lock. */

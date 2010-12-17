@@ -60,7 +60,7 @@ typedef struct _FSEventStreamInfo
      * Callback called when an event is triggered with the event paths and masks
      * as arguments.
      */
-    PyObject *callback_event_handler;
+    PyObject *callback;
 
     /**
      * Event stream.
@@ -68,9 +68,9 @@ typedef struct _FSEventStreamInfo
     FSEventStreamRef stream;
 
     /**
-     * Loop associated with the event stream.
+     * CFRunLoop associated with the event stream.
      */
-    CFRunLoopRef loop;
+    CFRunLoopRef runloop;
 
     /**
      * Python thread state.
