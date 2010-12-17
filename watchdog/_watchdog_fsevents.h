@@ -57,11 +57,11 @@ extern PyObject *g__stream_for_watch;
 /**
  * Error messages.
  */
-#define ERROR_MESSAGE_CANNOT_CALL_CALLBACK ("Cannot call callback function.")
+#define ERROR_MESSAGE_CANNOT_CALL_CALLBACK "Cannot call callback function."
 
-#define MODULE_NAME ("_watchdog_fsevents")
-#define MODULE_CONSTANT_NAME_POLLIN ("POLLIN")
-#define MODULE_CONSTANT_NAME_POLLOUT ("POLLOUT")
+#define MODULE_NAME "_watchdog_fsevents"
+#define MODULE_CONSTANT_NAME_POLLIN "POLLIN"
+#define MODULE_CONSTANT_NAME_POLLOUT "POLLOUT"
 
 /**
  * File system event stream meta information structure.
