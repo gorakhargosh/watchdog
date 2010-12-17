@@ -89,7 +89,7 @@ Event Handler Classes
 import os.path
 import logging
 
-from watchdog.utils import filter_paths, \
+from watchdog.utils import filter_paths,\
     has_attribute, absolute_path
 
 
@@ -97,8 +97,6 @@ EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
-
-
 
 class FileSystemEvent(object):
     """
@@ -108,6 +106,7 @@ class FileSystemEvent(object):
     All FileSystemEvent objects are required to be immutable and hence
     can be used as keys in dictionaries or be added to sets.
     """
+
     def __init__(self, event_type, src_path, is_directory=False):
         self._src_path = src_path
         self._is_directory = is_directory
@@ -133,11 +132,11 @@ class FileSystemEvent(object):
 
     def __repr__(self):
         return "<%(class_name)s: event_type=%(event_type)s, \
-src_path=%(src_path)s, is_directory=%(is_directory)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     event_type=self.event_type,
-                     src_path=self.src_path,
-                     is_directory=self.is_directory)
+src_path=%(src_path)s, is_directory=%(is_directory)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    event_type=self.event_type,
+                    src_path=self.src_path,
+                    is_directory=self.is_directory)
 
     # Used for comparison of events.
     @property
@@ -160,6 +159,7 @@ class FileSystemMovedEvent(FileSystemEvent):
     """
     File system event representing any kind of file system movement.
     """
+
     def __init__(self, src_path, dest_path, is_directory):
         super(FileSystemMovedEvent, self).__init__(event_type=EVENT_TYPE_MOVED,
                                                    src_path=src_path,
@@ -181,51 +181,56 @@ class FileSystemMovedEvent(FileSystemEvent):
 
     def __repr__(self):
         return "<%(class_name)s: src_path=%(src_path)s, dest_path=%(dest_path)s, \
-is_directory=%(is_directory)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path,
-                     dest_path=self.dest_path,
-                     is_directory=self.is_directory)
+is_directory=%(is_directory)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path,
+                    dest_path=self.dest_path,
+                    is_directory=self.is_directory)
 
 
-# File events.
+    # File events.
+
 class FileDeletedEvent(FileSystemEvent):
     """File system event representing file deletion on the file system."""
+
     def __init__(self, src_path):
         super(FileDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED,
                                                src_path=src_path)
 
     def __repr__(self):
-        return "<%(class_name)s: src_path=%(src_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path)
+        return "<%(class_name)s: src_path=%(src_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path)
 
 class FileModifiedEvent(FileSystemEvent):
     """File system event representing file modification on the file system."""
+
     def __init__(self, src_path):
         super(FileModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED,
                                                 src_path=src_path)
 
     def __repr__(self):
-        return "<%(class_name)s: src_path=%(src_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path)
+        return "<%(class_name)s: src_path=%(src_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path)
 
 
 class FileCreatedEvent(FileSystemEvent):
     """File system event representing file creation on the file system."""
+
     def __init__(self, src_path):
         super(FileCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED,
                                                src_path=src_path)
 
     def __repr__(self):
-        return "<%(class_name)s: src_path=%(src_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path)
+        return "<%(class_name)s: src_path=%(src_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path)
 
 
 class FileMovedEvent(FileSystemMovedEvent):
     """File system event representing file movement on the file system."""
+
     def __init__(self, src_path, dest_path):
         super(FileMovedEvent, self).__init__(src_path=src_path,
                                              dest_path=dest_path,
@@ -233,54 +238,61 @@ class FileMovedEvent(FileSystemMovedEvent):
 
     def __repr__(self):
         return "<%(class_name)s: src_path=%(src_path)s, \
-dest_path=%(dest_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path,
-                     dest_path=self.dest_path)
+dest_path=%(dest_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path,
+                    dest_path=self.dest_path)
 
 
-# Directory events.
+    # Directory events.
+
 class DirDeletedEvent(FileSystemEvent):
     """File system event representing directory deletion on the file system."""
+
     def __init__(self, src_path):
         super(DirDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED,
                                               src_path=src_path,
                                               is_directory=True)
 
     def __repr__(self):
-        return "<%(class_name)s: src_path=%(src_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path)
+        return "<%(class_name)s: src_path=%(src_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path)
 
 
 class DirModifiedEvent(FileSystemEvent):
-    """File system event representing directory modification on the file system."""
+    """
+    File system event representing directory modification on the file system.
+    """
+
     def __init__(self, src_path):
         super(DirModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED,
                                                src_path=src_path,
                                                is_directory=True)
 
     def __repr__(self):
-        return "<%(class_name)s: src_path=%(src_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path)
+        return "<%(class_name)s: src_path=%(src_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path)
 
 
 class DirCreatedEvent(FileSystemEvent):
     """File system event representing directory creation on the file system."""
+
     def __init__(self, src_path):
         super(DirCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED,
                                               src_path=src_path,
                                               is_directory=True)
 
     def __repr__(self):
-        return "<%(class_name)s: src_path=%(src_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path)
+        return "<%(class_name)s: src_path=%(src_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path)
 
 
 class DirMovedEvent(FileSystemMovedEvent):
     """File system event representing directory movement on the file system."""
+
     def __init__(self, src_path, dest_path):
         super(DirMovedEvent, self).__init__(src_path=src_path,
                                             dest_path=dest_path,
@@ -288,26 +300,27 @@ class DirMovedEvent(FileSystemMovedEvent):
 
     def __repr__(self):
         return "<%(class_name)s: src_path=%(src_path)s, \
-dest_path=%(dest_path)s>" % \
-                dict(class_name=self.__class__.__name__,
-                     src_path=self.src_path,
-                     dest_path=self.dest_path)
+dest_path=%(dest_path)s>" %\
+               dict(class_name=self.__class__.__name__,
+                    src_path=self.src_path,
+                    dest_path=self.dest_path)
 
 
     def sub_moved_events(self, _walker=os.walk):
-        """Generates moved events for file sytem objects within the moved directory.
-
+        """Generates moved events for file sytem objects within the
+        moved directory.
 
         :param _walker:
-            Walker used to walk directory trees :func:`os.walk` style. Sanity tests
-            use this parameter to inject a mock walker that behaves like
+            Walker used to walk directory trees :func:`os.walk` style. Sanity
+            tests use this parameter to inject a mock walker that behaves like
             :func:`os.walk`.
         :returns:
             iterable of event objects of type :class:`FileMovedEvent` and
             :class:`DirMovedEvent`.
         """
-        return list(_generate_sub_moved_events_for(self.src_path, self.dest_path, _walker=_walker))
-
+        return list(
+                _generate_sub_moved_events_for(self.src_path, self.dest_path,
+                                               _walker=_walker))
 
 
 class FileSystemEventHandler(object):
@@ -328,7 +341,7 @@ class FileSystemEventHandler(object):
             EVENT_TYPE_MOVED: self.on_moved,
             EVENT_TYPE_CREATED: self.on_created,
             EVENT_TYPE_DELETED: self.on_deleted,
-            }
+        }
         event_type = event.event_type
         _method_map[event_type](event)
 
@@ -380,8 +393,12 @@ class FileSystemEventHandler(object):
 
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
-    """Matches given patterns with file paths associated with occurring events."""
-    def __init__(self, patterns=None, ignore_patterns=None, ignore_directories=False):
+    """
+    Matches given patterns with file paths associated with occurring events.
+    """
+
+    def __init__(self, patterns=None, ignore_patterns=None,
+                 ignore_directories=False):
         super(PatternMatchingEventHandler, self).__init__()
 
         self._patterns = patterns
@@ -390,17 +407,26 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 
     @property
     def patterns(self):
-        """(Read-only) Patterns to allow matching event paths."""
+        """
+        (Read-only)
+        Patterns to allow matching event paths.
+        """
         return self._patterns
 
     @property
     def ignore_patterns(self):
-        """(Read-only) Patterns to ignore matching event paths."""
+        """
+        (Read-only)
+        Patterns to ignore matching event paths.
+        """
         return self._ignore_patterns
 
     @property
     def ignore_directories(self):
-        """(Read-only) True if directories should be ignored; False otherwise."""
+        """
+        (Read-only)
+        ``True`` if directories should be ignored; ``False`` otherwise.
+        """
         return self._ignore_directories
 
 
@@ -427,18 +453,20 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
                 EVENT_TYPE_MOVED: self.on_moved,
                 EVENT_TYPE_CREATED: self.on_created,
                 EVENT_TYPE_DELETED: self.on_deleted,
-                }
+            }
             event_type = event.event_type
             _method_map[event_type](event)
 
 
 class LoggingEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
+
     def on_moved(self, event):
         super(LoggingEventHandler, self).on_moved(event)
 
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Moved %s: from %s to %s", what, event.src_path, event.dest_path)
+        logging.info("Moved %s: from %s to %s", what, event.src_path,
+                     event.dest_path)
 
     def on_created(self, event):
         super(LoggingEventHandler, self).on_created(event)
@@ -463,7 +491,8 @@ class LoggingFileSystemEventHandler(LoggingEventHandler):
     """For backwards-compatibility. Please use :class:`LoggingEventHandler` instead."""
 
 
-def _generate_sub_moved_events_for(src_dir_path, dest_dir_path, _walker=os.walk):
+def _generate_sub_moved_events_for(src_dir_path, dest_dir_path,
+                                   _walker=os.walk):
     """Generates an event list of :class:`DirMovedEvent` and :class:`FileMovedEvent`
     objects for all the files and directories within the given moved directory
     that were moved along with the directory.
