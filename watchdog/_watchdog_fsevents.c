@@ -100,7 +100,7 @@ watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
 
     RETURN_NULL_IF_NULL(args);
     RETURN_NULL_IF_NOT(PyArg_ParseTuple(args,
-                                        "OOOO:schedule",
+                                        "OOOO:add_watch",
                                         &emitter_thread,
                                         &watch,
                                         &callback,
