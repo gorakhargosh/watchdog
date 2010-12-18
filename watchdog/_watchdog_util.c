@@ -220,15 +220,13 @@ FSEventStream_Create(FSEventStreamInfo *stream_info, PyObject *py_path_list)
     /* Create event stream. */
     FSEventStreamContext fs_stream_context =
             { 0, stream_info, NULL, NULL, NULL };
-    stream
-            = FSEventStreamCreate(kCFAllocatorDefault,
-                                  (FSEventStreamCallback)
-                                          & event_stream_handler,
-                                  &fs_stream_context,
-                                  cf_array_paths,
-                                  kFSEventStreamEventIdSinceNow,
-                                  FS_EVENT_STREAM_LATENCY,
-                                  kFSEventStreamCreateFlagNoDefer);
+    stream = FSEventStreamCreate(kCFAllocatorDefault,
+                                 (FSEventStreamCallback) &event_stream_handler,
+                                 &fs_stream_context,
+                                 cf_array_paths,
+                                 kFSEventStreamEventIdSinceNow,
+                                 FS_EVENT_STREAM_LATENCY,
+                                 kFSEventStreamCreateFlagNoDefer);
     CFRelease(cf_array_paths);
     return stream;
 }

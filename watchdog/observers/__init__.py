@@ -37,6 +37,9 @@ Classes
 
 from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_TIMEOUT
 
+# Ensure FSEvents is checked *before* kqueue here. Mac OS X supports
+# both FSEvents and kqueue, and FSEvents is the preferred way of monitoring
+# file system events on this OS.
 try: # pragma: no cover
     from watchdog.observers.inotify import InotifyObserver as _Observer
 except ImportError: # pragma: no cover

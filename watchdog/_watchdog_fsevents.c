@@ -77,8 +77,8 @@ PyDoc_STRVAR(watchdog_fsevents_add_watch__doc__,
 :param watch:\n\
     The watch to add.\n\
 :param callback:\n\
-    The callback function to call when an event occurs.\n\
-    Example:\n\
+    The callback function to call when an event occurs.\n\n\
+    Example::\n\n\
         def callback(paths, mask):\n\
             for path, mask in zip(paths, mask):\n\
                 print(\"%s=%d\" % (path, mask))\n\
