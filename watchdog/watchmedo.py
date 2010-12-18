@@ -371,7 +371,10 @@ def log(args):
     observe_with(observer, handler, args.directories, args.recursive)
 
 
-@arg('directories', nargs='*', default='.', help='directories to watch')
+@arg('directories',
+     nargs='*',
+     default='.',
+     help='directories to watch')
 @arg('-c',
      '--command',
      dest='command',
