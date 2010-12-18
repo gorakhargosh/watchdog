@@ -379,22 +379,23 @@ def log(args):
      '--command',
      dest='command',
      default=None,
-     help='''shell command executed in response
-to matching events. These interpolation variables are available to your
-command string:
+     help='''shell command executed in response to matching events.
+These interpolation variables are available to your command string::
 
-${watch_src_path}    - event source path;
-${watch_dest_path}   - event destination path (for moved events);
-${watch_event_type}  - event type;
-${watch_object}      - `file` or `directory`.
+    ${watch_src_path}    - event source path;
+    ${watch_dest_path}   - event destination path (for moved events);
+    ${watch_event_type}  - event type;
+    ${watch_object}      - ``file`` or ``directory``
 
-Note:
-Please ensure you do not use double quotes (") to quote your command
-string. That will force your shell to interpolate before the command is
-processed by this subcommand.
+Note::
+    Please ensure you do not use double quotes (") to quote
+    your command string. That will force your shell to
+    interpolate before the command is processed by this
+    subcommand.
 
-Example option usage:
---command='echo "${watch_src_path}"'
+Example option usage::
+
+    --command='echo "${watch_src_path}"'
 ''')
 @arg('-p',
      '--pattern',
