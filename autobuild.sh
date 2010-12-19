@@ -5,7 +5,7 @@
 # Public domain.
 #
 
-bin/python src/scripts/nosy.py .
+bin/python scripts/nosy.py .
 
 
 
