@@ -48,11 +48,12 @@ watchdog_fsevents_read_events(PyObject *self, PyObject *emitter_thread)
 
     /* Map the runloop to this emitter thread if the
      * mapping doesn't already exist. */
-    if (0 == CFRunLoopForEmitter_Contains(emitter_thread))
+    if (0 == Watchdog_CFRunLoopForEmitter_Contains(emitter_thread))
         {
             runloop = CFRunLoopGetCurrent();
-            RETURN_NULL_IF_NULL(CFRunLoopForEmitter_SetItem(emitter_thread,
-                                                            runloop));
+            RETURN_NULL_IF_NULL(
+                Watchdog_CFRunLoopForEmitter_SetItem(emitter_thread,
+                                                     runloop));
         }
 
     /* A runloop must exist before we can run it.
@@ -61,7 +62,7 @@ watchdog_fsevents_read_events(PyObject *self, PyObject *emitter_thread)
     CFRunLoopRun();
     Py_END_ALLOW_THREADS;
 
-    CFRunLoopForEmitter_DelItem(emitter_thread);
+    Watchdog_CFRunLoopForEmitter_DelItem(emitter_thread);
 
     RETURN_NULL_IF(PyErr_Occurred());
 
@@ -79,9 +80,9 @@ PyDoc_STRVAR(watchdog_fsevents_add_watch__doc__,
 :param callback:\n\
     The callback function to call when an event occurs.\n\n\
     Example::\n\n\
-        def callback(paths, mask):\n\
-            for path, mask in zip(paths, mask):\n\
-                print(\"%s=%d\" % (path, mask))\n\
+        def callback(paths, flags):\n\
+            for path, flag in zip(paths, flags):\n\
+                print(\"%s=%ul\" % (path, flag))\n\
 :param paths:\n\
     A list of paths to monitor.\n");
 static PyObject *
@@ -94,7 +95,7 @@ watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
     PyObject *callback = NULL;
 
     /* Locals */
-    FSEventStreamInfo *stream_info = NULL;
+    StreamCallbackInfo *stream_callback_info = NULL;
     FSEventStreamRef stream = NULL;
     CFRunLoopRef runloop = NULL;
 
@@ -107,23 +108,23 @@ watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
                                         &paths));
 
     /* Watch must not already be scheduled. */
-    RETURN_NULL_IF(1 == StreamForWatch_Contains(watch));
+    RETURN_NULL_IF(1 == Watchdog_StreamForWatch_Contains(watch));
 
     /* Create the event stream. */
-    stream_info = PyMem_New(FSEventStreamInfo, 1);
-    stream = FSEventStream_Create(stream_info, paths);
+    stream_callback_info = PyMem_New(StreamCallbackInfo, 1);
+    stream = Watchdog_FSEventStream_Create(stream_callback_info, paths);
 
     RETURN_NULL_IF_NULL(stream);
-    RETURN_NULL_IF_NULL(StreamForWatch_SetItem(watch, stream));
+    RETURN_NULL_IF_NULL(Watchdog_StreamForWatch_SetItem(watch, stream));
 
-    runloop = CFRunLoopForEmitter_GetItemOrDefault(emitter_thread);
+    runloop = Watchdog_CFRunLoopForEmitter_GetItemOrDefault(emitter_thread);
     FSEventStreamScheduleWithRunLoop(stream, runloop, kCFRunLoopDefaultMode);
 
     /* Set stream info for callback. */
-    stream_info->callback = callback;
-    stream_info->stream = stream;
-    stream_info->runloop = runloop;
-    stream_info->thread_state = PyThreadState_Get();
+    stream_callback_info->callback = callback;
+    stream_callback_info->stream = stream;
+    stream_callback_info->runloop = runloop;
+    stream_callback_info->thread_state = PyThreadState_Get();
     Py_INCREF(callback);
 
     /* Start event streams. */
@@ -149,7 +150,7 @@ watchdog_fsevents_remove_watch(PyObject *self, PyObject *watch)
     FSEventStreamRef stream = NULL;
 
     RETURN_NULL_IF_NULL(watch);
-    stream = StreamForWatch_PopItem(watch);
+    stream = Watchdog_StreamForWatch_PopItem(watch);
     RETURN_NULL_IF_NULL(stream);
 
     FSEventStreamStop(stream);
@@ -170,7 +171,7 @@ watchdog_fsevents_stop(PyObject *self, PyObject *emitter_thread)
 {
     CFRunLoopRef runloop = NULL;
 
-    runloop = CFRunLoopForEmitter_GetItem(emitter_thread);
+    runloop = Watchdog_CFRunLoopForEmitter_GetItem(emitter_thread);
 
     /* Stop runloop */
     if (runloop)
@@ -221,7 +222,7 @@ init_watchdog_fsevents(void)
                             MODULE_CONSTANT_NAME_POLLOUT,
                             kCFFileDescriptorWriteCallBack);
 
-    WatchdogFSEvents_Init();
+    Watchdog_FSEvents_Init();
 }
 #else /* PY_MAJOR_VERSION >= 3 */
 static struct PyModuleDef _watchdog_fseventsmodule =
@@ -243,7 +244,7 @@ PyInit__watchdog_fsevents(void)
                 MODULE_CONSTANT_NAME_POLLOUT,
                 kCFFileDescriptorWriteCallBack);
 
-        WatchdogFSEvents_Init();
+        Watchdog_FSEvents_Init();
 
         return module;
     }

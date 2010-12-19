@@ -52,13 +52,14 @@ typedef int Py_ssize_t;
 #define MODULE_CONSTANT_NAME_POLLOUT "POLLOUT"
 
 /**
- * File system event stream meta information structure.
+ * An information structure that is passed to the callback function registered
+ * with FSEventsStreamCreate.
  */
-typedef struct _FSEventStreamInfo
+typedef struct _StreamCallbackInfo
 {
     /**
-     * Callback called when an event is triggered with the event paths and masks
-     * as arguments.
+     * Python callback called when an event is triggered with the event paths
+     * and flags as arguments.
      */
     PyObject *callback;
 
@@ -76,7 +77,7 @@ typedef struct _FSEventStreamInfo
      * Python thread state.
      */
     PyThreadState *thread_state;
-} FSEventStreamInfo;
+} StreamCallbackInfo;
 
 /**
  * Macro that forces returning NULL if given argument is NULL.
@@ -132,44 +133,36 @@ typedef struct _FSEventStreamInfo
 
 /* Initialization. */
 void
-WatchdogFSEvents_Init(void);
+Watchdog_FSEvents_Init(void);
 
 
-/* CFRunLoopForEmitter functions. */
+/* CFRunLoopForEmitter global dict functions. */
 CFRunLoopRef
-CFRunLoopForEmitter_GetItem(PyObject *emitter_thread);
+Watchdog_CFRunLoopForEmitter_GetItem(PyObject *emitter_thread);
 CFRunLoopRef
-CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread);
+Watchdog_CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread);
 PyObject *
-CFRunLoopForEmitter_SetItem(PyObject *emitter_thread, CFRunLoopRef runloop);
+Watchdog_CFRunLoopForEmitter_SetItem(PyObject *emitter_thread,
+                                     CFRunLoopRef runloop);
 int
-CFRunLoopForEmitter_DelItem(PyObject *emitter_thread);
+Watchdog_CFRunLoopForEmitter_DelItem(PyObject *emitter_thread);
 int
-CFRunLoopForEmitter_Contains(PyObject *emitter_thread);
+Watchdog_CFRunLoopForEmitter_Contains(PyObject *emitter_thread);
 
-/* StreamForWatch functions. */
+/* StreamForWatch global dict functions. */
 PyObject *
-StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream);
+Watchdog_StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream);
 FSEventStreamRef
-StreamForWatch_GetItem(PyObject *watch);
+Watchdog_StreamForWatch_GetItem(PyObject *watch);
 FSEventStreamRef
-StreamForWatch_PopItem(PyObject *watch);
+Watchdog_StreamForWatch_PopItem(PyObject *watch);
 int
-StreamForWatch_Contains(PyObject *watch);
+Watchdog_StreamForWatch_Contains(PyObject *watch);
 
 /* Miscellaneous. */
-CFMutableArrayRef
-CFMutableArray_FromStringList(PyObject *py_string_list);
 FSEventStreamRef
-FSEventStream_Create(FSEventStreamInfo *stream_info, PyObject *py_path_list);
-
-void
-event_stream_handler(FSEventStreamRef stream,
-                     FSEventStreamInfo *stream_info,
-                     const int num_events,
-                     const char * const event_paths[],
-                     const FSEventStreamEventFlags *event_masks,
-                     const uint64_t *event_ids);
+Watchdog_FSEventStream_Create(StreamCallbackInfo *stream_callback_info,
+                              PyObject *py_path_list);
 
 #endif /* _WATCHDOG_FSEVENTS_H_ */
 

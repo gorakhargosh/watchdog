@@ -25,6 +25,18 @@
 
 #include "_watchdog_fsevents.h"
 
+static void
+Watchdog_FSEventStream_Callback(ConstFSEventStreamRef stream,
+                                StreamCallbackInfo *stream_callback_info,
+                                const size_t num_events,
+                                const char * const event_paths[],
+                                const FSEventStreamEventFlags event_flags[],
+                                const FSEventStreamEventId event_ids[]);
+
+static CFMutableArrayRef
+Watchdog_CFMutableArray_FromStringList(PyObject *py_string_list);
+
+
 /**
  * Dictionary that maps an emitter thread to a CFRunLoop.
  */
@@ -37,7 +49,7 @@ static PyObject *g__stream_for_watch = NULL;
 
 
 void
-WatchdogFSEvents_Init(void)
+Watchdog_FSEvents_Init(void)
 {
     g__runloop_for_emitter = PyDict_New();
     g__stream_for_watch = PyDict_New();
@@ -47,7 +59,7 @@ WatchdogFSEvents_Init(void)
  * Obtains the CFRunLoopRef for a given emitter thread.
  */
 CFRunLoopRef
-CFRunLoopForEmitter_GetItem(PyObject *emitter_thread)
+Watchdog_CFRunLoopForEmitter_GetItem(PyObject *emitter_thread)
 {
     PyObject *py_runloop = PyDict_GetItem(g__runloop_for_emitter,
                                           emitter_thread);
@@ -56,7 +68,8 @@ CFRunLoopForEmitter_GetItem(PyObject *emitter_thread)
 }
 
 PyObject *
-CFRunLoopForEmitter_SetItem(PyObject *emitter_thread, CFRunLoopRef runloop)
+Watchdog_CFRunLoopForEmitter_SetItem(PyObject *emitter_thread,
+                                     CFRunLoopRef runloop)
 {
     PyObject *emitter_runloop = PyCObject_FromVoidPtr(runloop, PyMem_Free);
     if (0 > PyDict_SetItem(g__runloop_for_emitter,
@@ -73,7 +86,7 @@ CFRunLoopForEmitter_SetItem(PyObject *emitter_thread, CFRunLoopRef runloop)
 }
 
 int
-CFRunLoopForEmitter_DelItem(PyObject *emitter_thread)
+Watchdog_CFRunLoopForEmitter_DelItem(PyObject *emitter_thread)
 {
     return PyDict_DelItem(g__runloop_for_emitter, emitter_thread);
     /*if (0 == PyDict_DelItem(g__runloop_for_emitter, emitter_thread))
@@ -84,7 +97,7 @@ CFRunLoopForEmitter_DelItem(PyObject *emitter_thread)
 }
 
 int
-CFRunLoopForEmitter_Contains(PyObject *emitter_thread)
+Watchdog_CFRunLoopForEmitter_Contains(PyObject *emitter_thread)
 {
     return PyDict_Contains(g__runloop_for_emitter, emitter_thread);
 }
@@ -98,7 +111,7 @@ CFRunLoopForEmitter_Contains(PyObject *emitter_thread)
  * @return A pointer CFRunLookRef to a runloop.
  */
 CFRunLoopRef
-CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread)
+Watchdog_CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread)
 {
     PyObject *py_runloop = NULL;
     CFRunLoopRef runloop = NULL;
@@ -117,7 +130,7 @@ CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread)
 }
 
 PyObject *
-StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream)
+Watchdog_StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream)
 {
     PyObject *py_stream = PyCObject_FromVoidPtr(stream, PyMem_Free);
     if (0 > PyDict_SetItem(g__stream_for_watch, watch, py_stream))
@@ -129,7 +142,7 @@ StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream)
 }
 
 FSEventStreamRef
-StreamForWatch_GetItem(PyObject *watch)
+Watchdog_StreamForWatch_GetItem(PyObject *watch)
 {
     PyObject *py_stream = PyDict_GetItem(g__stream_for_watch, watch);
     FSEventStreamRef stream = PyCObject_AsVoidPtr(py_stream);
@@ -137,177 +150,189 @@ StreamForWatch_GetItem(PyObject *watch)
 }
 
 int
-StreamForWatch_DelItem(PyObject *watch)
+Watchdog_StreamForWatch_DelItem(PyObject *watch)
 {
     return PyDict_DelItem(g__stream_for_watch, watch);
 }
 
 FSEventStreamRef
-StreamForWatch_PopItem(PyObject *watch)
+Watchdog_StreamForWatch_PopItem(PyObject *watch)
 {
-    FSEventStreamRef stream = StreamForWatch_GetItem(watch);
+    FSEventStreamRef stream = Watchdog_StreamForWatch_GetItem(watch);
     if (stream)
         {
-            StreamForWatch_DelItem(watch);
+            Watchdog_StreamForWatch_DelItem(watch);
         }
     return stream;
 }
 
 int
-StreamForWatch_Contains(PyObject *watch)
+Watchdog_StreamForWatch_Contains(PyObject *watch)
 {
     return PyDict_Contains(g__stream_for_watch, watch);
 }
 
 /**
- * Converts a Python string list to a CFMutableArray of CFStrings
- * and returns a reference to the array.
+ * Converts a Python string list to a ``CFMutableArray`` of UTF-8 encoded
+ * ``CFString`` and returns a reference to the array.
  *
- * @param py_string_list
- *      Pointer to a Python list of Python strings.
- * @return
- *      A pointer of type CFMutableArrayRef to a mutable array of CFString
- *      instances.
+ * :param py_string_list:
+ *     Pointer to a Python list of Python strings.
+ * :returns:
+ *     A ``CFMutableArrayRef`` (pointer to a mutable array) of UTF-8 encoded
+ *     ``CFString``.
  */
-CFMutableArrayRef
-CFMutableArray_FromStringList(PyObject *py_string_list)
+static CFMutableArrayRef
+Watchdog_CFMutableArray_From_PyStringList(PyObject *py_string_list)
 {
-    CFMutableArrayRef cf_array_strings = NULL;
-    const char *c_string = NULL;
+    CFMutableArrayRef array_of_cf_string = NULL;
     CFStringRef cf_string = NULL;
+    PyObject *py_string = NULL;
+    const char *c_string = NULL;
     Py_ssize_t i = 0;
     Py_ssize_t string_list_size = 0;
 
+    RETURN_NULL_IF_NULL(py_string_list);
     string_list_size = PyList_Size(py_string_list);
 
-    cf_array_strings = CFArrayCreateMutable(kCFAllocatorDefault,
-                                            1,
-                                            &kCFTypeArrayCallBacks);
+    /* Allocate a CFMutableArray */
+    array_of_cf_string = CFArrayCreateMutable(kCFAllocatorDefault,
+                                              1,
+                                              &kCFTypeArrayCallBacks);
+    RETURN_NULL_IF_NULL(array_of_cf_string);
 
-    RETURN_NULL_IF_NULL(cf_array_strings);
-
+    /* Loop through the Python string list and copy strings to the
+     * CFString array list. */
     for (i = 0; i < string_list_size; ++i)
         {
-            c_string = PyString_AS_STRING(PyList_GetItem(py_string_list, i));
+            py_string = PyList_GetItem(py_string_list, i);
+            c_string = PyString_AS_STRING(py_string);
             cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
                                                   c_string,
                                                   kCFStringEncodingUTF8);
-            CFArraySetValueAtIndex(cf_array_strings, i, cf_string);
+            CFArraySetValueAtIndex(array_of_cf_string, i, cf_string);
             CFRelease(cf_string);
         }
 
-    return cf_array_strings;
+    return array_of_cf_string;
 }
 
 /**
- * Creates an FSEventStream object and returns a reference to it.
+ * Creates an ``FSEventStream`` event stream and returns a reference to it.
  *
- * @param stream_info
- *      Pointer to an FSEventStreamInfo object.
- * @param py_path_list
+ * :param stream_callback_info:
+ *      Pointer to a ``StreamCallbackInfo`` struct.
+ * :param py_pathnames:
  *      Python list of Python string paths.
+ * :returns:
+ *      A pointer to an ``FSEventStream`` representing the event stream.
  */
 FSEventStreamRef
-FSEventStream_Create(FSEventStreamInfo *stream_info, PyObject *py_path_list)
+Watchdog_FSEventStream_Create(StreamCallbackInfo *stream_callback_info,
+                              PyObject *py_pathnames)
 {
-    CFMutableArrayRef cf_array_paths = NULL;
+    CFMutableArrayRef pathnames = NULL;
     FSEventStreamRef stream = NULL;
+    CFAbsoluteTime stream_latency = FS_EVENT_STREAM_LATENCY;
 
     /* Convert the path list to an array for OS X Api. */
-    cf_array_paths = CFMutableArray_FromStringList(py_path_list);
-    RETURN_NULL_IF_NULL(cf_array_paths);
+    RETURN_NULL_IF_NULL(py_pathnames);
+    pathnames = Watchdog_CFMutableArray_From_PyStringList(py_pathnames);
+    RETURN_NULL_IF_NULL(pathnames);
 
     /* Create event stream. */
-    FSEventStreamContext fs_stream_context =
-            { 0, stream_info, NULL, NULL, NULL };
+    FSEventStreamContext stream_context =
+        { 0, stream_callback_info, NULL, NULL, NULL };
     stream = FSEventStreamCreate(kCFAllocatorDefault,
-                                 (FSEventStreamCallback) &event_stream_handler,
-                                 &fs_stream_context,
-                                 cf_array_paths,
+                                 (FSEventStreamCallback)
+                                    &Watchdog_FSEventStream_Callback,
+                                 &stream_context,
+                                 pathnames,
                                  kFSEventStreamEventIdSinceNow,
-                                 FS_EVENT_STREAM_LATENCY,
+                                 stream_latency,
                                  kFSEventStreamCreateFlagNoDefer);
-    CFRelease(cf_array_paths);
+    CFRelease(pathnames);
     return stream;
 }
 
+
 /**
- * Handles streamed events and calls the callback defined in Python code.
+ * FSEvents event stream callback.
  *
  * :param stream:
- *      The stream of events.
- * :param info:
- *      Meta information about the stream of events.
+ *     A pointer to an ``FSEventStream``
+ * :param stream_callback_info
+ *     A pointer to a ``StreamCallbackInfo`` struct. This information is passed
+ *     to this callback function by the stream run loop.
  * :param num_events:
- *      Number of events.
+ *     The number of events reported by the FSEvents stream.
  * :param event_paths:
- *      The paths on which events occurred.
- * :param event_masks:
- *      The masks for each of the paths in `event_paths'.
+ *     C strings of event source paths.
+ * :param event_flags:
+ *     An array of ``uint32_t`` event flags.
  * :param event_ids:
- *      Event identifiers.
+ *     An array of ``uint64_t`` event ids.
  */
-void
-event_stream_handler(FSEventStreamRef stream,
-                     FSEventStreamInfo *stream_info,
-                     const int num_events,
-                     const char * const event_paths[],
-                     const FSEventStreamEventFlags *event_masks,
-                     const uint64_t *event_ids)
+static void
+Watchdog_FSEventStream_Callback(ConstFSEventStreamRef stream,
+                                StreamCallbackInfo *stream_callback_info,
+                                const size_t num_events,
+                                const char * const event_paths[],
+                                const FSEventStreamEventFlags event_flags[],
+                                const FSEventStreamEventId event_ids[])
 {
     PyThreadState *saved_thread_state = NULL;
     PyObject *event_path = NULL;
-    PyObject *event_mask = NULL;
+    PyObject *event_flag = NULL;
     PyObject *event_path_list = NULL;
-    PyObject *event_mask_list = NULL;
+    PyObject *event_flag_list = NULL;
     int i = 0;
 
     /* Acquire lock and save thread state. */
     PyEval_AcquireLock();
-    saved_thread_state = PyThreadState_Swap(stream_info->thread_state);
+    saved_thread_state = PyThreadState_Swap(stream_callback_info->thread_state);
 
-    /* Create Python lists that will contain event paths and masks. */
+    /* Create Python lists that will contain event paths and flags. */
     event_path_list = PyList_New(num_events);
-    event_mask_list = PyList_New(num_events);
+    event_flag_list = PyList_New(num_events);
 
-    RETURN_IF_NOT(event_path_list && event_mask_list);
+    RETURN_IF_NOT(event_path_list && event_flag_list);
 
-    /* Enumerate event paths and masks into Python lists. */
+    /* Enumerate event paths and flags into Python lists. */
     for (i = 0; i < num_events; ++i)
         {
             event_path = PyString_FromString(event_paths[i]);
-            event_mask = PyInt_FromLong(event_masks[i]);
-            if (!(event_mask && event_path))
+            event_flag = PyInt_FromLong(event_flags[i]);
+            if (!(event_flag && event_path))
                 {
                     Py_DECREF(event_path_list);
-                    Py_DECREF(event_mask_list);
+                    Py_DECREF(event_flag_list);
                     return;
                 }
             PyList_SET_ITEM(event_path_list, i, event_path);
-            PyList_SET_ITEM(event_mask_list, i, event_mask);
+            PyList_SET_ITEM(event_flag_list, i, event_flag);
         }
 
-    /* Call the callback event handler function with the enlisted event masks
+    /* Call the callback event handler function with the enlisted event flags
      * and paths as arguments. On failure check whether an error occurred and
      * stop this instance of the runloop.
      */
-    if (NULL == PyObject_CallFunction(stream_info->callback,
+    if (NULL == PyObject_CallFunction(stream_callback_info->callback,
                                       "OO",
                                       event_path_list,
-                                      event_mask_list))
+                                      event_flag_list))
         {
             /* An exception may have occurred. */
             if (!PyErr_Occurred())
                 {
                     /* If one didn't occur, raise an exception informing that
-                     * we could not execute the
-                     * callback function. */
+                     * we could not execute the callback function. */
                     PyErr_SetString(PyExc_ValueError,
                                     ERROR_MESSAGE_CANNOT_CALL_CALLBACK);
                 }
 
             /* Stop listening for events. */
-            CFRunLoopStop(stream_info->runloop);
+            CFRunLoopStop(stream_callback_info->runloop);
         }
 
     /* Restore original thread state and release lock. */
