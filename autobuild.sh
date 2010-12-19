@@ -5,7 +5,7 @@
 # Public domain.
 #
 
-bin/python scripts/nosy.py .
+bin/python src/scripts/nosy.py .
 
 
 
@@ -19,5 +19,5 @@ bin/python scripts/nosy.py .
 #    --ignore-directories \
 #    --recursive \
 #    --command='make -C docs html' \
-#    watchdog/ docs/source/
+#    src/ docs/source/
 
