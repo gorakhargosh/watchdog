@@ -213,39 +213,44 @@ class DirectorySnapshot(object):
         A function with the signature ``walker_callback(path, stat_info)``
         which will be called for every entry in the directory tree.
     """
-    def __init__(self, path, recursive=True, walker_callback=(lambda p, s: None)):
+    def __init__(self,
+                 path,
+                 recursive=True,
+                 walker_callback=(lambda p, s: None),
+                 _copying=False):
         self._path = absolute_path(path)
         self._stat_snapshot = {}
         self._inode_to_path = {}
         self.is_recursive = recursive
 
-        walk = get_walker(recursive)
+        if not _copying:
+            walk = get_walker(recursive)
 
-        stat_info = os.stat(self._path)
-        self._stat_snapshot[self._path] = stat_info
-        self._inode_to_path[stat_info.st_ino] = self._path
-        walker_callback(self._path, stat_info)
+            stat_info = os.stat(self._path)
+            self._stat_snapshot[self._path] = stat_info
+            self._inode_to_path[stat_info.st_ino] = self._path
+            walker_callback(self._path, stat_info)
 
-        for root, directories, files in walk(self._path):
-            for directory_name in directories:
-                try:
-                    directory_path = os.path.join(root, directory_name)
-                    stat_info = os.stat(directory_path)
-                    self._stat_snapshot[directory_path] = stat_info
-                    self._inode_to_path[stat_info.st_ino] = directory_path
-                    walker_callback(directory_path, stat_info)
-                except OSError:
-                    continue
+            for root, directories, files in walk(self._path):
+                for directory_name in directories:
+                    try:
+                        directory_path = os.path.join(root, directory_name)
+                        stat_info = os.stat(directory_path)
+                        self._stat_snapshot[directory_path] = stat_info
+                        self._inode_to_path[stat_info.st_ino] = directory_path
+                        walker_callback(directory_path, stat_info)
+                    except OSError:
+                        continue
 
-            for file_name in files:
-                try:
-                    file_path = os.path.join(root, file_name)
-                    stat_info = os.stat(file_path)
-                    self._stat_snapshot[file_path] = stat_info
-                    self._inode_to_path[stat_info.st_ino] = file_path
-                    walker_callback(file_path, stat_info)
-                except OSError:
-                    continue
+                for file_name in files:
+                    try:
+                        file_path = os.path.join(root, file_name)
+                        stat_info = os.stat(file_path)
+                        self._stat_snapshot[file_path] = stat_info
+                        self._inode_to_path[stat_info.st_ino] = file_path
+                        walker_callback(file_path, stat_info)
+                    except OSError:
+                        continue
 
 
     def __sub__(self, previous_dirsnap):
@@ -256,6 +261,19 @@ class DirectorySnapshot(object):
             A :class:`DirectorySnapshotDiff` object.
         """
         return DirectorySnapshotDiff(previous_dirsnap, self)
+
+    #def __add__(self, new_dirsnap):
+    #    self._stat_snapshot.update(new_dirsnap._stat_snapshot)
+
+    def copy(self, from_pathname=None):
+        snapshot = DirectorySnapshot(path=from_pathname,
+                                     recursive=self.is_recursive,
+                                     _copying=True)
+        for pathname, stat_info in self._stat_snapshot.items():
+            if pathname.starts_with(from_pathname):
+                snapshot._stat_snapshot[pathname] = stat_info
+                snapshot._inode_to_path[stat_info.st_ino] = pathname
+        return snapshot
 
 
     @property

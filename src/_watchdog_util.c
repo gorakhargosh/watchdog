@@ -67,33 +67,57 @@ Watchdog_CFRunLoopForEmitter_GetItem(PyObject *emitter_thread)
     return runloop;
 }
 
-PyObject *
+
+int
 Watchdog_CFRunLoopForEmitter_SetItem(PyObject *emitter_thread,
                                      CFRunLoopRef runloop)
 {
     PyObject *emitter_runloop = PyCObject_FromVoidPtr(runloop, PyMem_Free);
-    if (0 > PyDict_SetItem(g__runloop_for_emitter,
-                           emitter_thread,
-                           emitter_runloop))
-        {
-            Py_DECREF(emitter_runloop);
-            return NULL;
-        }
+    // refcount(emitter_runloop) = 1
+    // refcount(emitter_thread) = 1
 
-    return emitter_runloop;
-    //Py_INCREF(emitter_thread);
-    //Py_INCREF(emitter_runloop);
+    int retval = PyDict_SetItem(g__runloop_for_emitter,
+                                emitter_thread,
+                                emitter_runloop);
+    if (0 > retval)
+        {
+            // refcount(emitter_thread) = 1
+            // Don't decref the emitter thread that belongs to Python land.
+            // refcount(emitter_runloop) = 1
+            Py_DECREF(emitter_runloop);
+            // refcount(emitter_runloop) = 0
+            return retval;
+        }
+    // else success!
+    //      refcount(emitter_runloop) = 2
+    //      and refcount(emitter_thread) = 2
+
+    return retval;
 }
 
 int
 Watchdog_CFRunLoopForEmitter_DelItem(PyObject *emitter_thread)
 {
-    return PyDict_DelItem(g__runloop_for_emitter, emitter_thread);
-    /*if (0 == PyDict_DelItem(g__runloop_for_emitter, emitter_thread))
-     {
-     Py_DECREF(emitter_thread);
-     Py_DECREF(emitter_runloop);
-     }*/
+    CFRunLoopRef emitter_runloop = NULL;
+    int return_value = 0;
+    // refcount(emitter_thread) = 2
+    // refcount(emitter_runloop) = 2
+    // from previous successful addition to the dict.
+    emitter_runloop = PyDict_GetItem(g__runloop_for_emitter, emitter_thread);
+    RETURN_IF(NULL == emitter_runloop);
+
+    return_value = PyDict_DelItem(g__runloop_for_emitter, emitter_thread);
+    if (0 == return_value)
+        {
+            // Success!
+            // refcount(emitter_thread) = 1
+            // refcount(emitter_runloop) = 1
+            Py_DECREF(emitter_runloop);
+            // refcount(emitter_runloop) = 0
+            // refcount(emitter_thread) = 1
+            // back to python land.
+        }
+    return return_value;
 }
 
 int
@@ -129,16 +153,19 @@ Watchdog_CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread)
     return runloop;
 }
 
-PyObject *
+int
 Watchdog_StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream)
 {
+    int retval = 0;
     PyObject *py_stream = PyCObject_FromVoidPtr(stream, PyMem_Free);
-    if (0 > PyDict_SetItem(g__stream_for_watch, watch, py_stream))
+
+    retval = PyDict_SetItem(g__stream_for_watch, watch, py_stream);
+    if (0 > retval)
         {
             Py_DECREF(py_stream);
-            return NULL;
+            return retval;
         }
-    return py_stream;
+    return retval;
 }
 
 FSEventStreamRef

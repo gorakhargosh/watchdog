@@ -51,9 +51,9 @@ watchdog_fsevents_read_events(PyObject *self, PyObject *emitter_thread)
     if (0 == Watchdog_CFRunLoopForEmitter_Contains(emitter_thread))
         {
             runloop = CFRunLoopGetCurrent();
-            RETURN_NULL_IF_NULL(
-                Watchdog_CFRunLoopForEmitter_SetItem(emitter_thread,
-                                                     runloop));
+            RETURN_NULL_IF(
+                0 > Watchdog_CFRunLoopForEmitter_SetItem(emitter_thread,
+                                                         runloop));
         }
 
     /* A runloop must exist before we can run it.
@@ -115,7 +115,7 @@ watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
     stream = Watchdog_FSEventStream_Create(stream_callback_info, paths);
 
     RETURN_NULL_IF_NULL(stream);
-    RETURN_NULL_IF_NULL(Watchdog_StreamForWatch_SetItem(watch, stream));
+    RETURN_NULL_IF(0 > Watchdog_StreamForWatch_SetItem(watch, stream));
 
     runloop = Watchdog_CFRunLoopForEmitter_GetItemOrDefault(emitter_thread);
     FSEventStreamScheduleWithRunLoop(stream, runloop, kCFRunLoopDefaultMode);

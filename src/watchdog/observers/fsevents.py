@@ -29,34 +29,31 @@
 """
 
 from __future__ import with_statement
-from watchdog.utils import platform, absolute_path
+from watchdog.utils import platform
 
 if platform.is_darwin():
     import threading
     import os.path
     import _watchdog_fsevents as _fsevents
 
+    from watchdog.events import\
+        FileDeletedEvent,\
+        FileModifiedEvent,\
+        FileCreatedEvent,\
+        FileMovedEvent,\
+        DirDeletedEvent,\
+        DirModifiedEvent,\
+        DirCreatedEvent,\
+        DirMovedEvent,\
+        DirMovedEvent
+    from watchdog.utils import absolute_path
+    from watchdog.utils.dirsnapshot import DirectorySnapshot
     from watchdog.observers.api import\
         BaseObserver,\
         EventEmitter,\
         DEFAULT_EMITTER_TIMEOUT,\
         DEFAULT_OBSERVER_TIMEOUT
 
-    #import ctypes
-    #from watchdog.observers.macapi import Constants
-    #from watchdog.utils import ctypes_find_library
-
-    #DEFAULT_CORE_FOUNDATION_PATH = \
-    # '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'
-    #DEFAULT_CORE_SERVICES_PATH = \
-    # '/System/Library/Frameworks/CoreServices.framework/CoreServices'
-
-    #core_foundation = \
-    #    ctypes.CDLL(ctypes_find_library('CoreFoundation',
-    #                                    DEFAULT_CORE_FOUNDATION_PATH))
-    #core_services = \
-    #    ctypes.CDLL(ctypes_find_library('CoreServices',
-    #                                    DEFAULT_CORE_SERVICES_PATH))
 
     class FSEventsEmitter(EventEmitter):
         """
@@ -77,16 +74,59 @@ if platform.is_darwin():
         def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
             EventEmitter.__init__(self, event_queue, watch, timeout)
             self._lock = threading.Lock()
+            self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
 
         def on_thread_exit(self):
             _fsevents.remove_watch(self.watch)
             _fsevents.stop(self)
 
+        def queue_events(self, timeout):
+            with self._lock:
+                if not self.watch.is_recursive\
+                and self.watch.path not in pathnames:
+                    return
+                new_snapshot = DirectorySnapshot(self.watch.path,
+                                                 self.watch.is_recursive)
+                events = new_snapshot - self.snapshot
+                self.snapshot = new_snapshot
+
+                # Files.
+                for src_path in events.files_deleted:
+                    self.queue_event(FileDeletedEvent(src_path))
+                for src_path in events.files_modified:
+                    self.queue_event(FileModifiedEvent(src_path))
+                for src_path in events.files_created:
+                    self.queue_event(FileCreatedEvent(src_path))
+                for src_path, dest_path in events.files_moved:
+                    self.queue_event(FileMovedEvent(src_path, dest_path))
+
+                # Directories.
+                for src_path in events.dirs_deleted:
+                    self.queue_event(DirDeletedEvent(src_path))
+                for src_path in events.dirs_modified:
+                    self.queue_event(DirModifiedEvent(src_path))
+                for src_path in events.dirs_created:
+                    self.queue_event(DirCreatedEvent(src_path))
+                for src_path, dest_path in events.dirs_moved:
+                    self.queue_event(DirMovedEvent(src_path, dest_path))
+
+
         def run(self):
             try:
-                def callback(paths, masks):
-                    for path, mask in zip(paths, masks):
-                        print(path, mask)
+                def callback(pathnames, flags, emitter=self):
+                    emitter.queue_events(emitter.timeout)
+
+                #for pathname, flag in zip(pathnames, flags):
+                #if emitter.watch.is_recursive: # and pathname != emitter.watch.path:
+                #    new_sub_snapshot = DirectorySnapshot(pathname, True)
+                #    old_sub_snapshot = self.snapshot.copy(pathname)
+                #    diff = new_sub_snapshot - old_sub_snapshot
+                #    self.snapshot += new_subsnapshot
+                #else:
+                #    new_snapshot = DirectorySnapshot(emitter.watch.path, False)
+                #    diff = new_snapshot - emitter.snapshot
+                #    emitter.snapshot = new_snapshot
+
 
                 # INFO: FSEvents reports directory notifications recursively
                 # by default, so we do not need to add subdirectory paths.
@@ -112,4 +152,3 @@ if platform.is_darwin():
         def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
             BaseObserver.__init__(self, emitter_class=FSEventsEmitter,
                                   timeout=timeout)
-            print('foobar')

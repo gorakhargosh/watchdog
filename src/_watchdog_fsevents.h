@@ -142,7 +142,7 @@ CFRunLoopRef
 Watchdog_CFRunLoopForEmitter_GetItem(PyObject *emitter_thread);
 CFRunLoopRef
 Watchdog_CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread);
-PyObject *
+int
 Watchdog_CFRunLoopForEmitter_SetItem(PyObject *emitter_thread,
                                      CFRunLoopRef runloop);
 int
@@ -151,7 +151,7 @@ int
 Watchdog_CFRunLoopForEmitter_Contains(PyObject *emitter_thread);
 
 /* StreamForWatch global dict functions. */
-PyObject *
+int
 Watchdog_StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream);
 FSEventStreamRef
 Watchdog_StreamForWatch_GetItem(PyObject *watch);
