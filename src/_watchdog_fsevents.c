@@ -132,6 +132,9 @@ watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
         {
             FSEventStreamInvalidate(stream);
             FSEventStreamRelease(stream);
+            /* We couldn't start the stream, so raise an exception. */
+            PyErr_SetString(PyExc_ValueError,
+                            ERROR_MESSAGE_CANNOT_START_EVENT_STREAM);
             return NULL;
         }
 

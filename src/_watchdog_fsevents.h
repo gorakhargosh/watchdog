@@ -46,6 +46,7 @@ typedef int Py_ssize_t;
  * Error messages.
  */
 #define ERROR_MESSAGE_CANNOT_CALL_CALLBACK "Cannot call callback function."
+#define ERROR_MESSAGE_CANNOT_START_EVENT_STREAM "Cannot start event stream."
 
 #define MODULE_NAME "_watchdog_fsevents"
 #define MODULE_CONSTANT_NAME_POLLIN "POLLIN"
