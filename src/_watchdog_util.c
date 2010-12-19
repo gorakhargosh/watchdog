@@ -286,7 +286,7 @@ Watchdog_FSEventStream_Callback(ConstFSEventStreamRef stream,
     PyObject *event_flag = NULL;
     PyObject *event_path_list = NULL;
     PyObject *event_flag_list = NULL;
-    int i = 0;
+    size_t i = 0;
 
     /* Acquire lock and save thread state. */
     PyEval_AcquireLock();
