@@ -22,6 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+raise ImportError("Not implemented yet.")
+
 from __future__ import with_statement
 from watchdog.utils import platform
 from watchdog.events import FileDeletedEvent, FileModifiedEvent,\
