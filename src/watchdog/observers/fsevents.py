@@ -88,18 +88,21 @@ if platform.is_darwin():
                     for path, mask in zip(paths, masks):
                         print(path, mask)
 
-                pathnames = set([self.watch.path])
-                if self.watch.is_recursive:
-                    for root, directory_names, _ in os.walk(self.watch.path):
-                        for directory_name in directory_names:
-                            full_path = absolute_path(
-                                            os.path.join(root, directory_name))
-                            pathnames.add(full_path)
+                # INFO: FSEvents reports directory notifications recursively
+                # by default, so we do not need to add subdirectory paths.
+                #pathnames = set([self.watch.path])
+                #if self.watch.is_recursive:
+                #    for root, directory_names, _ in os.walk(self.watch.path):
+                #        for directory_name in directory_names:
+                #            full_path = absolute_path(
+                #                            os.path.join(root, directory_name))
+                #            pathnames.add(full_path)
 
+                pathnames = [self.watch.path]
                 _fsevents.add_watch(self,
                                     self.watch,
                                     callback,
-                                    list(pathnames))
+                                    pathnames)
                 _fsevents.read_events(self)
             finally:
                 self.on_thread_exit()
