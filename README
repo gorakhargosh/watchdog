@@ -2,6 +2,7 @@ Watchdog
 ========
 Python API and shell utilities to monitor file system events.
 
+
 Example API Usage
 -----------------
 A simple program that uses watchdog to monitor directories specified
@@ -31,18 +32,18 @@ as command-line arguments and logs events generated::
 	    def on_modified(self, event):
 	        self.catch_all_handler(event)
 
-    path = sys.argv[1]
-
-	event_handler = MyEventHandler()
-	observer = Observer()
-	observer.schedule(event_handler, path, recursive=True)
-	observer.start()
-	try:
-	    while True:
-	        time.sleep(1)
-	except KeyboardInterrupt:
-	    observer.stop()
-	observer.join()
+    if __name__ == "__main__":
+        path = sys.argv[1]
+        event_handler = MyEventHandler()
+        observer = Observer()
+        observer.schedule(event_handler, path, recursive=True)
+        observer.start()
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
 
 
 Shell Utilities
@@ -53,7 +54,7 @@ know more about this tool.
 
 Here is how you can log the current directory recursively
 for events related only to ``*.py`` and ``*.txt`` files while
-ignoring all directory events:
+ignoring all directory events::
 
     watchmedo log \
         --patterns="*.py;*.txt" \
@@ -114,9 +115,9 @@ arguments and events are fed to an instance of this class as they arrive.
 Tricks will be included in the 0.5.0 release. I need community input about them.
 Please file enhancement requests at the `issue tracker`_.
 
-Installation:
--------------
 
+Installation
+------------
 Installing from PyPI using ``pip``::
 
     pip install watchdog
@@ -132,7 +133,7 @@ Installing from source::
 
 Installation Caveats
 ~~~~~~~~~~~~~~~~~~~~
-The ``watchmedo`` scripts depends on PyYAML which links with ``libyaml``.
+The ``watchmedo`` scripts depends on PyYAML_ which links with ``libyaml``.
 On Mac OS X, you can use homebrew_ to install libyaml::
 
     brew install libyaml
@@ -144,6 +145,7 @@ do it on Ubuntu::
 
 On Windows, please install PyYAML using the binaries they provide.
 
+
 Supported Platforms
 -------------------
 * Linux 2.6 (inotify)
@@ -154,6 +156,7 @@ Supported Platforms
 * OS-independent (polling the disk for directory snapshots and comparing them
   periodically; slow and not recommended)
 
+
 Dependencies
 ------------
 1. Python 2.5 or above.
@@ -162,19 +165,43 @@ Dependencies
 4. argh_
 5. select_backport_ (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
 
+
 Licensing
 ---------
 Watchdog is licensed under the terms of the `MIT License`_.
 
-Copyright (C) 2010 Gora Khargosh and the Watchdog authors.
+Copyright (C) 2010 `Gora Khargosh`_ and the Watchdog authors.
 
 Project source code at `source code`_. Please report bugs and file enhancement
 requests at the `issue tracker`_.
 
 Why Watchdog?
 -------------
-Too many people tried to do the same thing and none did
-what I needed Python to do:
+Too many people tried to do the same thing and none did what I needed Python
+to do:
+
+* pnotify_
+* `unison fsmonitor`_
+* fsmonitor_
+* guard_
+* pyinotify_
+* `inotify-tools`_
+* jnotify_
+* treewalker_
+* `file.monitor`_
+* pyfilesystem_
+
+.. links:
+.. _Gora Khargosh: gora.khargosh@gmail.com
+.. _source code: http://github.com/gorakhargosh/watchdog
+.. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
+.. _MIT License: http://www.opensource.org/licenses/mit-license.php
+
+.. _homebrew: http://mxcl.github.com/homebrew/
+.. _select_backport: http://pypi.python.org/pypi/select_backport
+.. _argh: http://pypi.python.org/pypi/argh
+.. _PyYAML: http://www.pyyaml.org/
+.. _Xcode: http://developer.apple.com/technologies/tools/xcode.html
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
@@ -187,11 +214,3 @@ what I needed Python to do:
 .. _file.monitor: http://github.com/pke/file.monitor
 .. _pyfilesystem: http://code.google.com/p/pyfilesystem
 
-
-.. links:
-.. _select_backport: http://pypi.python.org/pypi/select_backport
-.. _argh: http://pypi.python.org/pypi/argh
-.. _PyYAML: http://www.pyyaml.org/
-.. _Xcode: http://developer.apple.com/technologies/tools/xcode.html
-.. _source code: http://github.com/gorakhargosh/watchdog
-.. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
