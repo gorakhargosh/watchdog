@@ -5,7 +5,7 @@ tricks:
     patterns: ['*.js']
     hash_names: true
     mappings_format: json                  # json|yaml|python
-    mappings_module: app/javascript_mappings.json
+    mappings_module: app/javascript_mappings
     suffix: .min.js
     compilation_level: advanced            # simple|advanced
     source_directory: app/static/js/
