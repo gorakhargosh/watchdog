@@ -11,30 +11,14 @@ as command-line arguments and logs events generated::
 	import sys
 	import time
 	from watchdog.observers import Observer
-	from watchdog.events import FileSystemEventHandler
+	from watchdog.events import LoggingEventHandler
+
 	import logging
-
 	logging.basicConfig(level=logging.DEBUG)
-
-	class MyEventHandler(FileSystemEventHandler):
-	    def catch_all_handler(self, event):
-	        logging.debug(event)
-
-	    def on_moved(self, event):
-	        self.catch_all_handler(event)
-
-	    def on_created(self, event):
-	        self.catch_all_handler(event)
-
-	    def on_deleted(self, event):
-	        self.catch_all_handler(event)
-
-	    def on_modified(self, event):
-	        self.catch_all_handler(event)
 
     if __name__ == "__main__":
         path = sys.argv[1]
-        event_handler = MyEventHandler()
+        event_handler = LoggingEventHandler()
         observer = Observer()
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
