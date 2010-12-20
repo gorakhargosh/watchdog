@@ -80,7 +80,7 @@ About ``watchmedo`` Tricks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 ``watchmedo`` can read ``tricks.yaml`` files and execute tricks within them in
 response to file system events. Tricks are actually event handlers that
-subclasses ``watchdog.tricks.Trick`` that plugin authors can write. Trick
+subclass ``watchdog.tricks.Trick`` and are written by plugin authors. Trick
 classes are augmented with a few additional features that regular event handlers
 don't need.
 
