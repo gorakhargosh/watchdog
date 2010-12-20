@@ -79,10 +79,10 @@ Please see the help information for these commands by typing::
 About ``watchmedo`` Tricks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 ``watchmedo`` can read ``tricks.yaml`` files and execute tricks within them in
-response to file system events. Tricks are actually ``FileSystemEventHandler``.
-More specifically, they are subclasses of ``watchdog.tricks.Trick`` that plugin
-authors can write. Trick classes are augmented with a few additional features
-that regular event handlers don't need.
+response to file system events. Tricks are actually event handlers that
+subclasses ``watchdog.tricks.Trick`` that plugin authors can write. Trick
+classes are augmented with a few additional features that regular event handlers
+don't need.
 
 An example ``tricks.yaml`` file::
 
@@ -133,7 +133,7 @@ Installing from source::
 
 Installation Caveats
 ~~~~~~~~~~~~~~~~~~~~
-The ``watchmedo`` scripts depends on PyYAML_ which links with ``libyaml``.
+The ``watchmedo`` script depends on PyYAML_ which links with libyaml_.
 On Mac OS X, you can use homebrew_ to install libyaml::
 
     brew install libyaml
@@ -202,6 +202,7 @@ to do:
 .. _argh: http://pypi.python.org/pypi/argh
 .. _PyYAML: http://www.pyyaml.org/
 .. _Xcode: http://developer.apple.com/technologies/tools/xcode.html
+.. _libyaml: http://pyyaml.org/wiki/LibYAML
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
