@@ -148,24 +148,10 @@ def schedule_tricks(observer, tricks, pathname, recursive):
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
     """
-
-    def check_trick_has_key(trick_name, trick, key):
-        if key not in trick:
-            logging.warn("Key `%s' not found for trick `%s'. Typo or missing?",
-                         key,
-                         trick_name)
-
     for trick in tricks:
-        for trick_name, trick_value in trick.items():
-            check_trick_has_key(trick_name, trick_value, 'kwargs')
-            check_trick_has_key(trick_name, trick_value, 'args')
-
-            trick_kwargs = trick_value.get('kwargs', {})
-            trick_args = trick_value.get('args', ())
-
-            TrickClass = load_class(trick_name)
-            handler = TrickClass(*trick_args, **trick_kwargs)
-
+        for name, value in trick.items():
+            TrickClass = load_class(name)
+            handler = TrickClass(**value)
             observer.schedule(handler, pathname, recursive)
 
 

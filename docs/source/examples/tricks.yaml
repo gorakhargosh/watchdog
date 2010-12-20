@@ -1,3 +1,4 @@
+tricks:
 - watchdog.tricks.LoggerTrick:
     patterns: ["*.py", "*.js"]
 - watchmedo_webtricks.GoogleClosureTrick:
