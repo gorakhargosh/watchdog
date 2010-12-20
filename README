@@ -2,11 +2,10 @@ Watchdog
 ========
 Python API and shell utilities to monitor file system events.
 
-Example API Usage:
-------------------
-
+Example API Usage
+-----------------
 A simple program that uses watchdog to monitor directories specified
-as command-line arguments and logs events generated.
+as command-line arguments and logs events generated::
 
 	import sys
 	import time
@@ -46,37 +45,45 @@ as command-line arguments and logs events generated.
 	observer.join()
 
 
-Shell Utilities:
-----------------
-Watchdog comes with a utility script called `watchmedo`.
-Please type `watchmedo --help` at the shell prompt to
+Shell Utilities
+---------------
+Watchdog comes with a utility script called ``watchmedo``.
+Please type ``watchmedo --help`` at the shell prompt to
 know more about this tool.
 
 Here is how you can log the current directory recursively
-for events related only to `*.py` and `*.txt` files while
+for events related only to ``*.py`` and ``*.txt`` files while
 ignoring all directory events:
 
-    watchmedo log --patterns="*.py;*.txt" --ignore-directories --recursive .
+    watchmedo log \
+        --patterns="*.py;*.txt" \
+        --ignore-directories \
+        --recursive \
+        .
 
 If you'd like to execute shell commands in response to
-events you can use the `shell-command` subcommand like this:
+events you can use the ``shell-command`` subcommand like this::
 
-    watchmedo shell-command --patterns="*.py;*.txt" --recursive --command='echo "${watch_src_path}"' .
+    watchmedo shell-command \
+        --patterns="*.py;*.txt" \
+        --recursive \
+        --command='echo "${watch_src_path}"' \
+        .
 
-Please see the help information for these commands by typing:
+Please see the help information for these commands by typing::
 
     watchmedo [command] --help
 
-### About `watchmedo` Tricks:
 
-Watchmedo can read "tricks.yaml" files and execute tricks
-within them in response to file system events. Tricks are
-basically FileSystemEventHandler and subclasses of
-`watchdog.tricks.Trick` that plugin authors can
-write. Trick classes are augmented with a few additional
-features that regular event handlers don't need.
+About ``watchmedo`` Tricks
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+``watchmedo`` can read ``tricks.yaml`` files and execute tricks within them in
+response to file system events. Tricks are actually ``FileSystemEventHandler``.
+More specifically, they are subclasses of ``watchdog.tricks.Trick`` that plugin
+authors can write. Trick classes are augmented with a few additional features
+that regular event handlers don't need.
 
-An example `tricks.yaml` file:
+An example ``tricks.yaml`` file::
 
     tricks:
     - watchdog.tricks.LoggerTrick:
@@ -100,75 +107,91 @@ An example `tricks.yaml` file:
           - app/static/js/base.js
           - app/static/js/about-page.js
 
-The directory containing the `tricks.yaml` file will be monitored
-recursively. Each trick class is initialized with the given keys as
-arguments and events are fed to an instance of this class as they
-arrive.
+The directory containing the ``tricks.yaml`` file will be monitored. Each trick
+class is initialized with its corresponding keys in the ``tricks.yaml`` file as
+arguments and events are fed to an instance of this class as they arrive.
 
-Tricks will be included in the 0.5.0 release. I need community
-input about them. Please file enhancement requests at the
-[issue tracker](http://github.com/gorakhargosh/watchdog/issues').
-
+Tricks will be included in the 0.5.0 release. I need community input about them.
+Please file enhancement requests at the `issue tracker`_.
 
 Installation:
 -------------
 
-Installing from PyPI using pip:
+Installing from PyPI using ``pip``::
 
     pip install watchdog
 
-Installing from PyPI using easy_install:
+Installing from PyPI using ``easy_install``::
 
     easy_install watchdog
 
-Installing from source:
+Installing from source::
 
     python setup.py install
 
 
-Supported Platforms:
---------------------
+Installation Caveats
+~~~~~~~~~~~~~~~~~~~~
+The ``watchmedo`` scripts depends on PyYAML which links with ``libyaml``.
+On Mac OS X, you can use homebrew_ to install libyaml::
 
+    brew install libyaml
+
+On Linux use your favorite package manager to install libyaml. Here's how you
+do it on Ubuntu::
+
+    sudo aptitude install libyaml-dev
+
+On Windows, please install PyYAML using the binaries they provide.
+
+Supported Platforms
+-------------------
 * Linux 2.6 (inotify)
 * Mac OS X (FSEvents, kqueue)
 * FreeBSD/BSD (kqueue)
-* Windows (ReadDirectoryChangesW with I/O completion ports; ReadDirectoryChangesW worker threads)
-* OS-independent (polling the disk for directory snapshots and comparing them periodically; slow and not recommended)
+* Windows (ReadDirectoryChangesW with I/O completion ports;
+  ReadDirectoryChangesW worker threads)
+* OS-independent (polling the disk for directory snapshots and comparing them
+  periodically; slow and not recommended)
 
-
-Dependencies:
--------------
+Dependencies
+------------
 1. Python 2.5 or above.
-2. [XCode](http://developer.apple.com/technologies/tools/xcode.html) or gcc (only on Mac OS X)
-3. [PyYAML](http://www.pyyaml.org/)
-4. [argh](http://pypi.python.org/pypi/argh)
-5. [select_backport](http://pypi.python.org/pypi/select_backport/) (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
+2. XCode_ (only on Mac OS X)
+3. PyYAML_
+4. argh_
+5. select_backport_ (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
 
+Licensing
+---------
+Watchdog is licensed under the terms of the `MIT License`_.
 
-Licensing:
-----------
-Watchdog is licensed under the terms of the
-[MIT License](http://www.opensource.org/licenses/mit-license.html)
+Copyright (C) 2010 Gora Khargosh and the Watchdog authors.
 
-Copyright (C) 2010 Gora Khargosh &lt;[gora.khargosh@gmail.com](mailto:gora.khargosh@gmail.com)&gt; and the Watchdog authors.
-
-Project source code at [Github](http://github.com/gorakhargosh/watchdog)
-
-Please report bugs at the [Github issue tracker](http://github.com/gorakhargosh/watchdog/issues).
+Project source code at `source code`_. Please report bugs and file enhancement
+requests at the `issue tracker`_.
 
 Why Watchdog?
 -------------
 Too many people tried to do the same thing and none did
 what I needed Python to do:
 
-* [pnotify](http://mark.heily.com/pnotify/)
-* [unison fsmonitor](https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471)
-* [fsmonitor](http://github.com/shaurz/fsmonitor)
-* [guard](http://github.com/guard/guard)
-* [pyinotify](http://github.com/seb-m/pyinotify)
-* [inotify-tools](http://github.com/rvoicilas/inotify-tools)
-* [jnotify](http://jnotify.sourceforge.net/)
-* [treewalker](http://github.com/jbd/treewatcher)
-* [file.monitor](http://github.com/pke/file.monitor)
-* [pyfilesystem](http://code.google.com/p/pyfilesystem)
+.. _pnotify: http://mark.heily.com/pnotify
+.. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
+.. _fsmonitor: http://github.com/shaurz/fsmonitor
+.. _guard: http://github.com/guard/guard
+.. _pyinotify: http://github.com/seb-m/pyinotify
+.. _inotify-tools: http://github.com/rvoicilas/inotify-tools
+.. _jnotify: http://jnotify.sourceforge.net/
+.. _treewalker: http://github.com/jbd/treewatcher
+.. _file.monitor: http://github.com/pke/file.monitor
+.. _pyfilesystem: http://code.google.com/p/pyfilesystem
 
+
+.. links:
+.. _select_backport: http://pypi.python.org/pypi/select_backport
+.. _argh: http://pypi.python.org/pypi/argh
+.. _PyYAML: http://www.pyyaml.org/
+.. _Xcode: http://developer.apple.com/technologies/tools/xcode.html
+.. _source code: http://github.com/gorakhargosh/watchdog
+.. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
