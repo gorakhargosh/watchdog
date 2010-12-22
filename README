@@ -117,17 +117,17 @@ Installing from source::
 
 Installation Caveats
 ~~~~~~~~~~~~~~~~~~~~
-The ``watchmedo`` script depends on PyYAML_ which links with libyaml_.
-On Mac OS X, you can use homebrew_ to install libyaml::
+The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_.
+On Mac OS X, you can use homebrew_ to install LibYAML::
 
     brew install libyaml
 
-On Linux use your favorite package manager to install libyaml. Here's how you
+On Linux, use your favorite package manager to install LibYAML. Here's how you
 do it on Ubuntu::
 
     sudo aptitude install libyaml-dev
 
-On Windows, please install PyYAML using the binaries they provide.
+On Windows, please install PyYAML_ using the binaries they provide.
 
 
 Supported Platforms
@@ -156,8 +156,8 @@ Watchdog is licensed under the terms of the `MIT License`_.
 
 Copyright (C) 2010 `Gora Khargosh`_ and the Watchdog authors.
 
-Project source code at `source code`_. Please report bugs and file enhancement
-requests at the `issue tracker`_.
+Project `source code`_ is available at Github. Please report bugs and file
+enhancement requests at the `issue tracker`_.
 
 Why Watchdog?
 -------------
@@ -185,8 +185,8 @@ to do:
 .. _select_backport: http://pypi.python.org/pypi/select_backport
 .. _argh: http://pypi.python.org/pypi/argh
 .. _PyYAML: http://www.pyyaml.org/
-.. _Xcode: http://developer.apple.com/technologies/tools/xcode.html
-.. _libyaml: http://pyyaml.org/wiki/LibYAML
+.. _XCode: http://developer.apple.com/technologies/tools/xcode.html
+.. _LibYAML: http://pyyaml.org/wiki/LibYAML
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471

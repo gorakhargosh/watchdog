@@ -21,7 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-
+# When updating this version number, please update the
+# ``docs/source/global.rst.inc`` file as well.
 VERSION_MAJOR = 0
 VERSION_MINOR = 4
 VERSION_BUILD = 0

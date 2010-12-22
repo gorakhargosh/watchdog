@@ -21,7 +21,7 @@ beginning to hack:
 1. Python_
 2. git_
 3. ssh
-4. Xcode_ (on Mac OS X)
+4. XCode_ (on Mac OS X)
 5. select_backport_ (on BSD/Mac OS X if you're using Python 2.5/2.6)
 
 Setting up the Work Environment

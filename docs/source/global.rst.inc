@@ -10,8 +10,6 @@
 .. _code repository: http://github.com/gorakhargosh/watchdog
 .. _mailing list: http://groups.google.com/group/watchdog-python
 
-
-.. _PyInotify: http://github.com/seb-m/pyinotify
 .. _kqueue: http://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
 .. _FSEvents: http://developer.apple.com/library/mac/#documentation/Darwin/Conceptual/FSEvents_ProgGuide/Introduction/Introduction.html
 .. _inotify: http://linux.die.net/man/7/inotify
@@ -19,19 +17,30 @@
 .. _ReadDirectoryChangesW: http://msdn.microsoft.com/en-us/library/aa365465(VS.85).aspx
 .. _GetQueuedCompletionStatus: http://msdn.microsoft.com/en-us/library/aa364986(v=VS.85).aspx
 .. _CreateIoCompletionPort: http://msdn.microsoft.com/en-us/library/aa363862(v=VS.85).aspx
-.. _pip: http://pypi.python.org/pypi/pip
-.. _github: http://github.com/
-.. _git: http://git-scm.org/
-.. _coverage: http://nedbatchelder.com/code/coverage/
-.. _nose: http://somethingaboutorange.com/mrl/projects/nose/0.11.2/
-.. _zc.buildout: http://www.buildout.org/
-.. _sphinx: http://sphinx.pocoo.org/
-.. _Python: http://python.org
 
-.. _pyinotify: http://github.com/seb-m/pyinotify
-.. _pywin32: http://sourceforge.net/projects/pywin32/
-.. _xcode: http://developer.apple.com/technologies/tools/xcode.html
-.. _pyyaml: http://www.pyyaml.org/
 .. _argh: http://pypi.python.org/pypi/argh
 .. _argparse: http://pypi.python.org/pypi/argparse
+.. _coverage: http://nedbatchelder.com/code/coverage/
+.. _file.monitor: http://github.com/pke/file.monitor
+.. _fsmonitor: http://github.com/shaurz/fsmonitor
+.. _git: http://git-scm.org/
+.. _github: http://github.com/
+.. _guard: http://github.com/guard/guard
+.. _homebrew: http://mxcl.github.com/homebrew/
+.. _inotify-tools: http://github.com/rvoicilas/inotify-tools
+.. _jnotify: http://jnotify.sourceforge.net/
+.. _LibYAML: http://pyyaml.org/wiki/LibYAML
+.. _nose: http://somethingaboutorange.com/mrl/projects/nose/0.11.2/
+.. _pip: http://pypi.python.org/pypi/pip
+.. _pnotify: http://mark.heily.com/pnotify
+.. _pyfilesystem: http://code.google.com/p/pyfilesystem
+.. _pyinotify: http://github.com/seb-m/pyinotify
+.. _Python: http://python.org
+.. _pywin32: http://sourceforge.net/projects/pywin32/
+.. _PyYAML: http://www.pyyaml.org/
 .. _select_backport: http://pypi.python.org/pypi/select_backport/
+.. _sphinx: http://sphinx.pocoo.org/
+.. _treewalker: http://github.com/jbd/treewatcher
+.. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
+.. _XCode: http://developer.apple.com/technologies/tools/xcode.html
+.. _zc.buildout: http://www.buildout.org/
