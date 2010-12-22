@@ -13,9 +13,6 @@ as command-line arguments and logs events generated::
     from watchdog.observers import Observer
     from watchdog.events import LoggingEventHandler
 
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-
     if __name__ == "__main__":
         path = sys.argv[1]
         event_handler = LoggingEventHandler()
