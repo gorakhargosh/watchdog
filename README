@@ -43,8 +43,8 @@ ignoring all directory events::
         --recursive \
         .
 
-If you'd like to execute shell commands in response to
-events you can use the ``shell-command`` subcommand like this::
+You can use the ``shell-command`` subcommand to execute shell commands in
+response to events::
 
     watchmedo shell-command \
         --patterns="*.py;*.txt" \
@@ -81,13 +81,13 @@ An example ``tricks.yaml`` file::
         destination_directory: app/public/js/
         files:
           index-page:
-          - app/static/js/vendor/jquery.js
+          - app/static/js/vendor/jquery*.js
           - app/static/js/base.js
           - app/static/js/index-page.js
           about-page:
-          - app/static/js/vendor/jquery.js
+          - app/static/js/vendor/jquery*.js
           - app/static/js/base.js
-          - app/static/js/about-page.js
+          - app/static/js/about-page/**/*.js
 
 The directory containing the ``tricks.yaml`` file will be monitored. Each trick
 class is initialized with its corresponding keys in the ``tricks.yaml`` file as
