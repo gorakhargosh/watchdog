@@ -63,11 +63,11 @@ Watchdog_FSEvents_Init(void)
 
 
 /**
- * Obtains the CFRunLoopRef for a given emitter thread from the
+ * Obtains the run loop for a given emitter thread from the
  * runloop-for-emitter dictionary.
  *
  * :param emitter_thread:
- *     The emitter thread for which to obtain the runloop.
+ *     The emitter thread for which to obtain the run loop.
  * :type emitter_thread:
  *     A pointer to a Python object representing the emitter thread.
  * :returns:
@@ -84,7 +84,7 @@ Watchdog_CFRunLoopForEmitter_GetItem(PyObject *emitter_thread)
 
 
 /**
- * Associates an emitter thread with a CFRunLoop.
+ * Associates an emitter thread with a run loop.
  *
  * :param emitter_thread:
  *     The emitter thread which will be used as key.
@@ -179,7 +179,7 @@ Watchdog_CFRunLoopForEmitter_Contains(PyObject *emitter_thread)
 
 
 /**
- * Get runloop reference from emitter info data or current runloop.
+ * Get run loop reference from emitter info data or current run loop.
  *
  * :param emitter_thread:
  *     The thread for which to obtain the runloop.
@@ -491,7 +491,7 @@ Watchdog_FSEventStream_Callback(ConstFSEventStreamRef stream,
 
     /* Call the callback event handler function with the enlisted event flags
      * and paths as arguments. On failure check whether an error occurred and
-     * stop this instance of the runloop.
+     * stop this instance of the run loop.
      */
     if (NULL == PyObject_CallFunction(stream_callback_info->callback,
                                       "OO",
