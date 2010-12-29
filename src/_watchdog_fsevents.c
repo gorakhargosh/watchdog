@@ -34,8 +34,8 @@ PyDoc_STRVAR(watchdog_fsevents_module__doc__,
 
 PyDoc_STRVAR(watchdog_fsevents_read_events__doc__,
         MODULE_NAME ".read_events(emitter_thread) -> None\n\
-Blocking function that runs an event loop associated with an emitter thread.\n\n\
-:param emitter_thread:\n\
+Blocking function that runs an event loop associated with an emitter thread.\n\
+\n:param emitter_thread:\n\
    The emitter thread for which the event loop will be run.\n");
 static PyObject *
 watchdog_fsevents_read_events(PyObject *self, PyObject *emitter_thread)
