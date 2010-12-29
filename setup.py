@@ -56,15 +56,31 @@ elif platform.startswith('win'):
 else:
     platform = None
 
+_watchdog_fsevents_sources = [
+    os.path.join(SRC_DIR, '_watchdog_fsevents.c'),
+    os.path.join(SRC_DIR, '_watchdog_util.c'),
+]
+
 ext_modules = {
     PLATFORM_MACOSX: [
         Extension(name='_watchdog_fsevents',
-                  sources=[os.path.join(SRC_DIR,
-                                        '_watchdog_fsevents.c'),
-                           os.path.join(SRC_DIR,
-                                        '_watchdog_util.c')],
+                  sources=_watchdog_fsevents_sources,
+                  libraries=['m'],
+                  define_macros=[
+                      ('WATCHDOG_VERSION_STRING', version.VERSION_STRING),
+                      ('WATCHDOG_VERSION_MAJOR', version.VERSION_MAJOR),
+                      ('WATCHDOG_VERSION_MINOR', version.VERSION_MINOR),
+                      ('WATCHDOG_VERSION_BUILD', version.VERSION_BUILD),
+                  ],
                   extra_link_args=['-framework', 'CoreFoundation',
-                                   '-framework', 'CoreServices']
+                                   '-framework', 'CoreServices'],
+                  extra_compile_args=[
+                      '-std=c99',
+                      '-pedantic',
+                      '-Wall',
+                      '-Wextra',
+                      '-fPIC',
+                      ]
                   ),
     ],
 }
