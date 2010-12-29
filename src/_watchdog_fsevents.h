@@ -58,6 +58,8 @@ typedef int Py_ssize_t;
 #define MODULE_CONSTANT_NAME_POLLIN "POLLIN"
 #define MODULE_CONSTANT_NAME_POLLOUT "POLLOUT"
 #define MODULE_ATTRIBUTE_NAME_VERSION "__version__"
+#define MODULE_ATTRIBUTE_NAME_VERSION_INFO "VERSION_INFO"
+#define MODULE_ATTRIBUTE_NAME_VERSION_STRING "VERSION_STRING"
 
 /**
  * An information structure that is passed to the callback function registered
