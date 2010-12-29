@@ -216,6 +216,11 @@ static PyMethodDef _watchdog_fseventsmethods[] =
 
 /**
  * Adds all the module attributes.
+ *
+ * :param module:
+ *     The module to which attributes will be added.
+ * :type module:
+ *     A pointer to a Python object representing a module.
  */
 static void
 Watchdog_AddModuleAttributes(PyObject *module)
