@@ -31,6 +31,7 @@
 PyDoc_STRVAR(watchdog_fsevents_module__doc__,
         "Low-level FSEvents Python/C API.");
 
+
 PyDoc_STRVAR(watchdog_fsevents_read_events__doc__,
         MODULE_NAME ".read_events(emitter_thread) -> None\n\
 Blocking function that runs an event loop associated with an emitter thread.\n\n\
@@ -69,6 +70,7 @@ watchdog_fsevents_read_events(PyObject *self, PyObject *emitter_thread)
     Py_INCREF(Py_None);
     return Py_None;
 }
+
 
 PyDoc_STRVAR(watchdog_fsevents_add_watch__doc__,
         MODULE_NAME ".add_watch(emitter_thread, watch, callback, paths) -> None\
@@ -142,6 +144,7 @@ watchdog_fsevents_add_watch(PyObject *self, PyObject *args)
     return Py_None;
 }
 
+
 PyDoc_STRVAR(watchdog_fsevents_remove_watch__doc__,
         MODULE_NAME ".remove_watch(watch) -> None\n\
 Removes a watch from the event loop.\n\n\
@@ -164,6 +167,7 @@ watchdog_fsevents_remove_watch(PyObject *self, PyObject *watch)
     return Py_None;
 }
 
+
 PyDoc_STRVAR(watchdog_fsevents_stop__doc__,
         MODULE_NAME ".stop(emitter_thread) -> None\n\
 Stops running the event loop from the specified thread.\n\n\
@@ -185,6 +189,7 @@ watchdog_fsevents_stop(PyObject *self, PyObject *emitter_thread)
     Py_INCREF(Py_None);
     return Py_None;
 }
+
 
 /**
  * Module public API.

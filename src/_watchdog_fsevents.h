@@ -33,6 +33,12 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+
 /**
  * Py_ssize_t type for Python versions that don't define it.
  */
@@ -164,6 +170,12 @@ Watchdog_StreamForWatch_Contains(PyObject *watch);
 FSEventStreamRef
 Watchdog_FSEventStream_Create(StreamCallbackInfo *stream_callback_info,
                               PyObject *py_path_list);
+
+
+#ifdef __cplusplus
+} /* extern "C" { */
+#endif /* __cplusplus */
+
 
 #endif /* _WATCHDOG_FSEVENTS_H_ */
 
