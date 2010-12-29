@@ -8,6 +8,7 @@
 .DS_Store
 .\#*
 ._*
+*.o
 *.so
 Desktop.ini
 Thumbs.db
