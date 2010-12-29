@@ -57,6 +57,7 @@ typedef int Py_ssize_t;
 #define MODULE_NAME "_watchdog_fsevents"
 #define MODULE_CONSTANT_NAME_POLLIN "POLLIN"
 #define MODULE_CONSTANT_NAME_POLLOUT "POLLOUT"
+#define MODULE_ATTRIBUTE_NAME_VERSION "__version__"
 
 /**
  * An information structure that is passed to the callback function registered
