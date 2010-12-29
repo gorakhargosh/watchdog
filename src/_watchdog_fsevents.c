@@ -229,6 +229,12 @@ init_watchdog_fsevents(void)
     PyModule_AddIntConstant(module,
                             MODULE_CONSTANT_NAME_POLLOUT,
                             kCFFileDescriptorWriteCallBack);
+    PyModule_AddObject(module,
+                       "__version__",
+                       Py_BuildValue("(iii)",
+                                     WATCHDOG_VERSION_MAJOR,
+                                     WATCHDOG_VERSION_MINOR,
+                                     WATCHDOG_VERSION_BUILD));
 
     Watchdog_FSEvents_Init();
 }
@@ -251,6 +257,12 @@ PyInit__watchdog_fsevents(void)
         PyModule_AddIntConstant(module,
                 MODULE_CONSTANT_NAME_POLLOUT,
                 kCFFileDescriptorWriteCallBack);
+        PyModule_AddObject(module,
+                           "__version__",
+                           Py_BuildValue("(iii)",
+                                         WATCHDOG_VERSION_MAJOR,
+                                         WATCHDOG_VERSION_MINOR,
+                                         WATCHDOG_VERSION_BUILD));
 
         Watchdog_FSEvents_Init();
 
