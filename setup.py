@@ -67,13 +67,16 @@ ext_modules = {
                   sources=_watchdog_fsevents_sources,
                   libraries=['m'],
                   define_macros=[
-                      ('WATCHDOG_VERSION_STRING', '"' + version.VERSION_STRING + '"'),
+                      ('WATCHDOG_VERSION_STRING',
+                       '"' + version.VERSION_STRING + '"'),
                       ('WATCHDOG_VERSION_MAJOR', version.VERSION_MAJOR),
                       ('WATCHDOG_VERSION_MINOR', version.VERSION_MINOR),
                       ('WATCHDOG_VERSION_BUILD', version.VERSION_BUILD),
-                  ],
-                  extra_link_args=['-framework', 'CoreFoundation',
-                                   '-framework', 'CoreServices'],
+                      ],
+                  extra_link_args=[
+                      '-framework', 'CoreFoundation',
+                      '-framework', 'CoreServices',
+                      ],
                   extra_compile_args=[
                       '-std=c99',
                       '-pedantic',
