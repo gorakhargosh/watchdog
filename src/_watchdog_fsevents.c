@@ -223,10 +223,13 @@ static PyMethodDef _watchdog_fseventsmethods[] =
  * :type module:
  *     A pointer to a Python object representing a module.
  *
- * Attributes added:
- *     __version__: tuple denoting the version number of the module.
- *     VERSION_INFO: tuple denoting the version number of the module.
- *     VERSION_STRING: string denoting the version number of the module.
+ * Attributes:
+ * * __version__: tuple denoting the version number of the module.
+ * * VERSION_INFO: tuple denoting the version number of the module.
+ * * VERSION_STRING: string denoting the version number of the module.
+ * * VERSION_MAJOR: major version
+ * * VERSION_MINOR: minor version
+ * * VERSION_BUILD: build version
  */
 static void
 Watchdog_AddModuleAttributes(PyObject *module)
