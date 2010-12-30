@@ -215,12 +215,18 @@ static PyMethodDef _watchdog_fseventsmethods[] =
 
 
 /**
- * Adds all the module attributes.
+ * Adds all the _watchdog_fsevents module attributes and is meant only to be
+ * called within the module initialization function.
  *
  * :param module:
  *     The module to which attributes will be added.
  * :type module:
  *     A pointer to a Python object representing a module.
+ *
+ * Attributes added:
+ *     __version__: tuple denoting the version number of the module.
+ *     VERSION_INFO: tuple denoting the version number of the module.
+ *     VERSION_STRING: string denoting the version number of the module.
  */
 static void
 Watchdog_AddModuleAttributes(PyObject *module)
@@ -236,16 +242,30 @@ Watchdog_AddModuleAttributes(PyObject *module)
     PyModule_AddIntConstant(module,
                             MODULE_CONSTANT_NAME_POLLOUT,
                             kCFFileDescriptorWriteCallBack);
+    /* Version tuple */
     PyModule_AddObject(module,
                        MODULE_ATTRIBUTE_NAME_VERSION,
                        version_tuple);
     PyModule_AddObject(module,
                        MODULE_ATTRIBUTE_NAME_VERSION_INFO,
                        version_tuple);
+    /* Version string */
     PyModule_AddObject(module,
                        MODULE_ATTRIBUTE_NAME_VERSION_STRING,
                        Py_BuildValue("s",
                                      WATCHDOG_VERSION_STRING));
+    /* major version */
+    PyModule_AddIntConstant(module,
+                            MODULE_CONSTANT_NAME_VERSION_MAJOR,
+                            WATCHDOG_VERSION_MAJOR);
+    /* minor version */
+    PyModule_AddIntConstant(module,
+                            MODULE_CONSTANT_NAME_VERSION_MINOR,
+                            WATCHDOG_VERSION_MINOR);
+    /* build version */
+    PyModule_AddIntConstant(module,
+                            MODULE_CONSTANT_NAME_VERSION_BUILD,
+                            WATCHDOG_VERSION_BUILD);
 }
 
 

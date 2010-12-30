@@ -57,6 +57,9 @@ typedef int Py_ssize_t;
 #define MODULE_NAME "_watchdog_fsevents"
 #define MODULE_CONSTANT_NAME_POLLIN "POLLIN"
 #define MODULE_CONSTANT_NAME_POLLOUT "POLLOUT"
+#define MODULE_CONSTANT_NAME_VERSION_MAJOR "VERSION_MAJOR"
+#define MODULE_CONSTANT_NAME_VERSION_MINOR "VERSION_MINOR"
+#define MODULE_CONSTANT_NAME_VERSION_BUILD "VERSION_BUILD"
 #define MODULE_ATTRIBUTE_NAME_VERSION "__version__"
 #define MODULE_ATTRIBUTE_NAME_VERSION_INFO "VERSION_INFO"
 #define MODULE_ATTRIBUTE_NAME_VERSION_STRING "VERSION_STRING"
@@ -90,7 +93,8 @@ typedef struct _StreamCallbackInfo
 } StreamCallbackInfo;
 
 /**
- * Macro that forces returning NULL if given argument is NULL.
+ * Macro that forces returning NULL from the caller function if given argument
+ * is NULL.
  */
 #define RETURN_NULL_IF_NULL(o)                  \
     do                                          \
@@ -100,7 +104,8 @@ typedef struct _StreamCallbackInfo
     while(0)
 
 /**
- * Macro that forces returning NULL if given argument is true.
+ * Macro that forces returning NULL from the caller function if given argument
+ * is truthy.
  */
 #define RETURN_NULL_IF(c)                       \
     do                                          \
@@ -110,7 +115,8 @@ typedef struct _StreamCallbackInfo
     while(0)
 
 /**
- * Macro that forces returning NULL if given argument is false.
+ * Macro that forces returning NULL from the caller function if given argument
+ * is falsy.
  */
 #define RETURN_NULL_IF_NOT(c)                   \
     do                                          \
@@ -120,7 +126,8 @@ typedef struct _StreamCallbackInfo
     while(0)
 
 /**
- * Macro that forces returning if given argument is true.
+ * Macro that forces returning from the caller function if given argument is
+ * truthy.
  */
 #define RETURN_IF(c)                            \
     do                                          \
@@ -130,7 +137,8 @@ typedef struct _StreamCallbackInfo
     while(0)
 
 /**
- * Macro that forces returning if given argument is false.
+ * Macro that forces returning from the caller function if given argument is
+ * falsy.
  */
 #define RETURN_IF_NOT(c)                        \
     do                                          \
@@ -139,12 +147,14 @@ typedef struct _StreamCallbackInfo
         }                                       \
     while(0)
 
+/**
+ * Latency (float) for the event streams registered with the FSEvents API.
+ */
 #define FS_EVENT_STREAM_LATENCY (0.01)
 
-/* Initialization. */
+/* Initializes internal data structures when the module is initialized. */
 void
 Watchdog_FSEvents_Init(void);
-
 
 /* CFRunLoopForEmitter global dict functions. */
 CFRunLoopRef
