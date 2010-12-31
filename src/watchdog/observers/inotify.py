@@ -87,9 +87,10 @@ if platform.is_linux():
         c_char_p,\
         c_uint32
 
+    from pathtools.path import absolute_path
+
     from watchdog.utils import\
         has_attribute,\
-        absolute_path,\
         ctypes_find_library
     from watchdog.observers.api import\
         EventEmitter,\

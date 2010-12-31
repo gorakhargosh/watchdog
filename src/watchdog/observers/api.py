@@ -61,9 +61,9 @@ try:
 except ImportError:
     import Queue as queue # IGNORE:F0401
 
-from watchdog.utils import DaemonThread, absolute_path
+from pathtools.path import absolute_path
+from watchdog.utils import DaemonThread
 from watchdog.utils.bricks import OrderedSetQueue
-
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.

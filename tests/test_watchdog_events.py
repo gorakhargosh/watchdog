@@ -8,7 +8,8 @@ from nose.tools import \
     assert_not_equal
 
 from utils import assert_readonly_public_attributes
-from watchdog.utils import has_attribute, filter_paths
+from watchdog.utils import has_attribute
+from pathtools.patterns import filter_paths
 from watchdog.events import \
     FileSystemEvent, \
     FileSystemMovedEvent, \
@@ -392,7 +393,10 @@ class TestPatternMatchingEventHandler:
                 paths = [event.src_path, event.dest_path]
             else:
                 paths = [event.src_path]
-            filtered_paths = filter_paths(paths, patterns, ignore_patterns)
+            filtered_paths = filter_paths(paths,
+                                          included_patterns=patterns,
+                                          excluded_patterns=ignore_patterns,
+                                          case_sensitive=False)
             assert_true(filtered_paths)
 
         dir_del_event_match = DirDeletedEvent('/path/blah.py')

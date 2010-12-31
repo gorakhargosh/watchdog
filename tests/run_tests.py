@@ -27,21 +27,21 @@ cover_packages = [
     'watchdog.utils.bricks',
     'watchdog.observers',
     'watchdog.observers.api',
-    'watchdog.observers.polling_observer',
+    'watchdog.observers.polling',
 ]
 cover_packages_windows = [
-    'watchdog.observers.win32_observer',
-    'watchdog.observers.win32ioc_observer',
+    'watchdog.observers.read_directory_changes',
+    'watchdog.observers.read_directory_changes_async',
 ]
 cover_packages_bsd = [
-    'watchdog.observers.kqueue_observer',
+    'watchdog.observers.kqueue',
 ]
 cover_packages_darwin = [
-    'watchdog.observers.fsevents_observer',
-    'watchdog.observers.kqueue_observer',
+    'watchdog.observers.fsevents',
+    'watchdog.observers.kqueue',
 ]
 cover_packages_linux = [
-    'watchdog.observers.inotify_observer',
+    'watchdog.observers.inotify',
 ]
 
 if platform.is_windows():

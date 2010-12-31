@@ -84,8 +84,7 @@ Collections and Utility Classes
 
 from __future__ import with_statement
 from watchdog.utils import \
-    platform, \
-    absolute_path #, has_attribute
+    platform #, has_attribute
 
 if platform.is_bsd() or platform.is_darwin():
     import threading
@@ -101,6 +100,8 @@ if platform.is_bsd() or platform.is_darwin():
         import select_backport as select
     else:
         import select
+
+    from pathtools.path import absolute_path
 
     from watchdog.observers.api import \
         BaseObserver, \

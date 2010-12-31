@@ -36,6 +36,7 @@ if platform.is_darwin():
     import os.path
     import _watchdog_fsevents as _fsevents
 
+    from pathtools.path import absolute_path
     from watchdog.events import\
         FileDeletedEvent,\
         FileModifiedEvent,\
@@ -46,7 +47,6 @@ if platform.is_darwin():
         DirCreatedEvent,\
         DirMovedEvent,\
         DirMovedEvent
-    from watchdog.utils import absolute_path
     from watchdog.utils.dirsnapshot import DirectorySnapshot
     from watchdog.observers.api import\
         BaseObserver,\

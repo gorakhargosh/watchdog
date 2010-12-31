@@ -23,7 +23,7 @@
 
 import subprocess
 
-from watchdog.utils import echo, filter_paths, has_attribute
+from watchdog.utils import echo, has_attribute
 from watchdog.events import PatternMatchingEventHandler
 
 

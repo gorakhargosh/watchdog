@@ -125,50 +125,6 @@ if not has_attribute(DaemonThread, 'is_alive'):
     DaemonThread.is_alive = DaemonThread.isAlive
 
 
-def match_patterns(pathname, patterns):
-    """
-    Returns True if the pathname matches any of the given patterns.
-
-    :param pathname:
-        A path name that will be matched against a wildcard pattern.
-    :param patterns:
-        A list of wildcard patterns to match the filename against.
-    :returns:
-        ``True`` if the pattern matches; ``False`` otherwise.
-    """
-    for pattern in patterns:
-        if fnmatch(pathname, pattern):
-            return True
-    return False
-
-
-def filter_paths(pathnames, patterns=None, ignore_patterns=None):
-    """
-    Filters from a set of paths based on acceptable patterns and
-    ignorable patterns.
-
-    :param pathnames:
-        A list of path names that will be filtered based on matching and
-        ignored patterns.
-    :param patterns:
-        Allow filenames matching wildcard patterns specified in this list.
-    :param ignore_patterns:
-        Ignores filenames matching wildcard patterns specified in this list.
-    :returns:
-        A list of pathnames that matched the allowable patterns and passed
-        through the ignored patterns.
-    """
-    result = []
-    if patterns is None:
-        patterns = ['*']
-    if ignore_patterns is None:
-        ignore_patterns = []
-    for path in pathnames:
-        if match_patterns(path, patterns) and not match_patterns(path, ignore_patterns):
-            result.append(path)
-    return result
-
-
 def load_module(module_name):
     """Imports a module given its name and returns a handle to it."""
     try:
@@ -223,16 +179,4 @@ def read_text_file(file_path, mode='rb'):
         Mode string.
     """
     return open(file_path, mode).read()
-
-
-def absolute_path(path):
-    """
-    Returns the absolute path for the given path and normalizes the path as well.
-
-    :param path:
-        Path for which the absolute normalized path will be found.
-    :returns:
-        Absolute normalized path.
-    """
-    return os.path.abspath(os.path.normpath(path))
 

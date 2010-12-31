@@ -89,8 +89,9 @@ Event Handler Classes
 import os.path
 import logging
 
-from watchdog.utils import filter_paths,\
-    has_attribute, absolute_path
+from pathtools.path import absolute_path
+from pathtools.patterns import filter_paths
+from watchdog.utils import has_attribute
 
 
 EVENT_TYPE_MOVED = 'moved'
@@ -398,12 +399,13 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     """
 
     def __init__(self, patterns=None, ignore_patterns=None,
-                 ignore_directories=False):
+                 ignore_directories=False, case_sensitive=False):
         super(PatternMatchingEventHandler, self).__init__()
 
         self._patterns = patterns
         self._ignore_patterns = ignore_patterns
         self._ignore_directories = ignore_directories
+        self._case_sensitive = case_sensitive
 
     @property
     def patterns(self):
@@ -429,6 +431,14 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         """
         return self._ignore_directories
 
+    @property
+    def case_sensitive(self):
+        """
+        (Read-only)
+        ``True`` if path names should be matched sensitive to case; ``False``
+        otherwise.
+        """
+        return self._case_sensitive
 
     def dispatch(self, event):
         """Dispatches events to the appropriate methods.
@@ -446,7 +456,10 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         else:
             paths = [event.src_path]
 
-        if filter_paths(paths, self.patterns, self.ignore_patterns):
+        if filter_paths(paths,
+                        included_patterns=self.patterns,
+                        excluded_patterns=self.ignore_patterns,
+                        case_sensitive=self.case_sensitive):
             self.on_any_event(event)
             _method_map = {
                 EVENT_TYPE_MODIFIED: self.on_modified,
