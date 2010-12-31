@@ -44,9 +44,8 @@ from argh import arg, alias, ArghParser
 from watchdog.version import VERSION_STRING
 from watchdog.utils import\
     read_text_file,\
-    load_class,\
-    absolute_path,\
-    get_parent_dir_path
+    load_class
+from pathtools.path import absolute_path, parent_dir_path
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -198,7 +197,7 @@ def tricks_from(args):
         if CONFIG_KEY_PYTHON_PATH in config:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
 
-        dir_path = get_parent_dir_path(tricks_file)
+        dir_path = parent_dir_path(tricks_file)
         schedule_tricks(observer, tricks, dir_path, args.recursive)
         observer.start()
         observers.append(observer)

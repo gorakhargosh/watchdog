@@ -29,26 +29,13 @@
 Functions
 ---------
 
-.. autofunction:: absolute_path
-
-.. autofunction:: filter_paths
-
-.. autofunction:: get_parent_dir_path
-
-.. autofunction:: get_walker
-
 .. autofunction:: has_attribute
 
 .. autofunction:: load_class
 
 .. autofunction:: load_module
 
-.. autofunction:: match_patterns
-
 .. autofunction:: read_text_file
-
-.. autofunction:: real_absolute_path
-
 
 Classes
 -------
@@ -155,10 +142,6 @@ def match_patterns(pathname, patterns):
     return False
 
 
-#def match_allowed_and_ignored_patterns(pathname, allowed_patterns, ignore_patterns):
-#    return match_patterns(pathname, allowed_patterns) and not match_patterns(pathname, ignore_patterns)
-
-
 def filter_paths(pathnames, patterns=None, ignore_patterns=None):
     """
     Filters from a set of paths based on acceptable patterns and
@@ -242,27 +225,6 @@ def read_text_file(file_path, mode='rb'):
     return open(file_path, mode).read()
 
 
-def get_walker(recursive=False):
-    """
-    Returns a recursive or a non-recursive directory walker.
-
-    :param recursive:
-        ``True`` produces a recursive walker; ``False`` produces a non-recursive
-        walker
-    :returns:
-        A walker function.
-    """
-    if recursive:
-        walk = os.walk
-    else:
-        def walk(path):
-            try:
-                yield next(os.walk(path))
-            except NameError:
-                yield os.walk(path).next() #IGNORE:E1101
-    return walk
-
-
 def absolute_path(path):
     """
     Returns the absolute path for the given path and normalizes the path as well.
@@ -273,28 +235,4 @@ def absolute_path(path):
         Absolute normalized path.
     """
     return os.path.abspath(os.path.normpath(path))
-
-
-def real_absolute_path(path):
-    """
-    Returns the real absolute normalized path for the given path.
-
-    :param path:
-        Path for which the real absolute normalized path will be found.
-    :returns:
-        Real absolute normalized path.
-    """
-    return os.path.realpath(absolute_path(path))
-
-
-def get_parent_dir_path(path):
-    """
-    Returns the parent directory path.
-
-    :param path:
-        Path for which the parent directory will be obtained.
-    :returns:
-        Parent directory path.
-    """
-    return absolute_path(os.path.dirname(path))
 

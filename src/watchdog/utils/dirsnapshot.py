@@ -61,7 +61,7 @@ import os
 import sys
 import stat
 
-from watchdog.utils import get_walker, absolute_path
+from pathtools.path import walk as path_walk, absolute_path
 
 if not sys.version < (2, 6, 0):
     from watchdog.utils.bricks import OrderedSet as set
@@ -224,14 +224,12 @@ class DirectorySnapshot(object):
         self.is_recursive = recursive
 
         if not _copying:
-            walk = get_walker(recursive)
-
             stat_info = os.stat(self._path)
             self._stat_snapshot[self._path] = stat_info
             self._inode_to_path[stat_info.st_ino] = self._path
             walker_callback(self._path, stat_info)
 
-            for root, directories, files in walk(self._path):
+            for root, directories, files in path_walk(self._path, recursive):
                 for directory_name in directories:
                     try:
                         directory_path = os.path.join(root, directory_name)
