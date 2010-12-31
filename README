@@ -145,7 +145,7 @@ Dependencies
 3. PyYAML_
 4. argh_
 5. select_backport_ (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
-
+6. pathtools_
 
 Licensing
 ---------
@@ -184,6 +184,7 @@ to do:
 .. _PyYAML: http://www.pyyaml.org/
 .. _XCode: http://developer.apple.com/technologies/tools/xcode.html
 .. _LibYAML: http://pyyaml.org/wiki/LibYAML
+.. _pathtools: http://github.com/gorakhargosh/pathtools
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
