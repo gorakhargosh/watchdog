@@ -123,7 +123,6 @@ setup(name="watchdog",
       author_email="gora.khargosh@gmail.com",
       license="MIT License",
       url="http://github.com/gorakhargosh/watchdog",
-      download_url=DOWNLOAD_URL,
       keywords=' '.join([
                             'python',
                             'filesystem',
