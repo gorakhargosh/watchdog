@@ -126,6 +126,9 @@ do it on Ubuntu::
 
 On Windows, please install PyYAML_ using the binaries they provide.
 
+Documentation
+-------------
+You can browse the latest release documentation_ online.
 
 Supported Platforms
 -------------------
@@ -177,6 +180,7 @@ to do:
 .. _source code: http://github.com/gorakhargosh/watchdog
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _MIT License: http://www.opensource.org/licenses/mit-license.php
+.. _documentation: http://packages.python.org/watchdog/
 
 .. _homebrew: http://mxcl.github.com/homebrew/
 .. _select_backport: http://pypi.python.org/pypi/select_backport
