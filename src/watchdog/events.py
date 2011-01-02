@@ -90,7 +90,7 @@ import os.path
 import logging
 
 from pathtools.path import absolute_path
-from pathtools.patterns import filter_paths
+from pathtools.patterns import match_any_paths
 from watchdog.utils import has_attribute
 
 
@@ -456,10 +456,10 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         else:
             paths = [event.src_path]
 
-        if filter_paths(paths,
-                        included_patterns=self.patterns,
-                        excluded_patterns=self.ignore_patterns,
-                        case_sensitive=self.case_sensitive):
+        if match_any_paths(paths,
+                           included_patterns=self.patterns,
+                           excluded_patterns=self.ignore_patterns,
+                           case_sensitive=self.case_sensitive):
             self.on_any_event(event)
             _method_map = {
                 EVENT_TYPE_MODIFIED: self.on_modified,
