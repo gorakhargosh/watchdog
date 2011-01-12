@@ -4,6 +4,7 @@
 # Copyright (C) 2010 Sebastien Martini <seb@dbzteam.org>
 # Copyright (C) 2010 Luke McCarthy <luke@iogopro.co.uk>
 # Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Tim Cuthbertson <tim+github@gfxmonk.net>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
