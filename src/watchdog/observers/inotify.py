@@ -31,6 +31,7 @@
 :author: Sebastien Martini <seb@dbzteam.org>
 :author: Luke McCarthy <luke@iogopro.co.uk>
 :author: Gora Khargosh <gora.khargosh@gmail.com>
+:author: Tim Cuthbertson <tim+github@gfxmonk.net>
 :platforms: Linux 2.6.13+.
 
 .. ADMONITION:: About system requirements
