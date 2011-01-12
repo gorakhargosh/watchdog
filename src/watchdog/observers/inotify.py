@@ -517,17 +517,17 @@ if platform.is_linux():
 
 
                     if inotify_event.is_moved_from:
-                      self.remember_move_from_event(inotify_event)
+                        self.remember_move_from_event(inotify_event)
                     elif inotify_event.is_moved_to:
-                      move_src_path = self.source_for_move(inotify_event)
-                      if move_src_path in self._wd_for_path:
-                        # update old path -> new path
-                        moved_wd = self._wd_for_path[move_src_path]
-                        del self._wd_for_path[move_src_path]
-                        self._wd_for_path[inotify_event.src_path] = moved_wd
-                        self._path_for_wd[moved_wd] = inotify_event.src_path
-                      src_path = absolute_path(os.path.join(wd_path, name))
-                      inotify_event = InotifyEvent(wd, mask, cookie, name,
+                        move_src_path = self.source_for_move(inotify_event)
+                        if move_src_path in self._wd_for_path:
+                            # update old path -> new path
+                            moved_wd = self._wd_for_path[move_src_path]
+                            del self._wd_for_path[move_src_path]
+                            self._wd_for_path[inotify_event.src_path] = moved_wd
+                            self._path_for_wd[moved_wd] = inotify_event.src_path
+                        src_path = absolute_path(os.path.join(wd_path, name))
+                        inotify_event = InotifyEvent(wd, mask, cookie, name,
                                                   src_path)
 
                     if inotify_event.is_ignored:
@@ -723,7 +723,7 @@ if platform.is_linux():
             with self._lock:
                 inotify_events = self._inotify.read_events()
                 if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
-                  self._inotify.clear_move_records()
+                    self._inotify.clear_move_records()
                 for event in inotify_events:
                     if event.is_moved_to:
                     # TODO: Sometimes this line will bomb even when a previous
