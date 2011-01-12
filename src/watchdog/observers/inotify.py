@@ -432,6 +432,7 @@ if platform.is_linux():
             self._is_recursive = recursive
             self._is_non_blocking = non_blocking
             self._add_dir_watch(path, recursive, event_mask)
+            self._moved_from_events = dict()
 
         @property
         def event_mask(self):
@@ -457,6 +458,18 @@ if platform.is_linux():
         def fd(self):
             """The file descriptor associated with the inotify instance."""
             return self._inotify_fd
+
+        def clear_move_records(self):
+            """Clear cached records of MOVED_FROM events"""
+            self._moved_from_events = dict()
+
+        def source_for_move(self, destination_event):
+            """The source path corresponding to the given MOVED_TO event"""
+            return self._moved_from_events[destination_event.cookie].src_path
+
+        def remember_move_from_event(self, event):
+            """Save this event as the source event for future MOVED_TO events to reference"""
+            self._moved_from_events[event.cookie] = event
 
         def add_watch(self, path):
             """
@@ -495,13 +508,27 @@ if platform.is_linux():
             with self._lock:
                 event_buffer = os.read(self._inotify_fd, event_buffer_size)
                 event_list = []
-                #moved_from_events = dict()
                 for wd, mask, cookie, name in Inotify._parse_event_buffer(
                         event_buffer):
                     wd_path = self._path_for_wd[wd]
                     src_path = absolute_path(os.path.join(wd_path, name))
                     inotify_event = InotifyEvent(wd, mask, cookie, name,
                                                  src_path)
+
+
+                    if inotify_event.is_moved_from:
+                      self.remember_move_from_event(inotify_event)
+                    elif inotify_event.is_moved_to:
+                      move_src_path = self.source_for_move(inotify_event)
+                      if move_src_path in self._wd_for_path:
+                        # update old path -> new path
+                        moved_wd = self._wd_for_path[move_src_path]
+                        del self._wd_for_path[move_src_path]
+                        self._wd_for_path[inotify_event.src_path] = moved_wd
+                        self._path_for_wd[moved_wd] = inotify_event.src_path
+                      src_path = absolute_path(os.path.join(wd_path, name))
+                      inotify_event = InotifyEvent(wd, mask, cookie, name,
+                                                  src_path)
 
                     if inotify_event.is_ignored:
                     # Clean up book-keeping for deleted watches.
@@ -695,11 +722,10 @@ if platform.is_linux():
         def queue_events(self, timeout):
             with self._lock:
                 inotify_events = self._inotify.read_events()
-                moved_from_events = dict()
+                if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
+                  self._inotify.clear_move_records()
                 for event in inotify_events:
-                    if event.is_moved_from:
-                        moved_from_events[event.cookie] = event
-                    elif event.is_moved_to:
+                    if event.is_moved_to:
                     # TODO: Sometimes this line will bomb even when a previous
                     # moved_from event with the same cookie has fired. I have
                     # yet to figure out why this is the case, so we're
@@ -708,9 +734,8 @@ if platform.is_linux():
                     # for example, when you execute `git gc` in a monitored
                     # directory.
                         try:
-                            from_event = moved_from_events[event.cookie]
+                            src_path = self._inotify.source_for_move(event)
                             to_event = event
-                            src_path = from_event.src_path
                             dest_path = to_event.src_path
 
                             klass = ACTION_EVENT_MAP[
