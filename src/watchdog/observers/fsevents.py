@@ -33,6 +33,7 @@ from watchdog.utils import platform
 
 if platform.is_darwin():
     import threading
+    import unicodedata
     import os.path
     import _watchdog_fsevents as _fsevents
 
@@ -152,3 +153,11 @@ if platform.is_darwin():
         def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
             BaseObserver.__init__(self, emitter_class=FSEventsEmitter,
                                   timeout=timeout)
+
+        def schedule(self, event_handler, path, recursive=False):
+            # Fix for issue #26: Trace/BPT error when given a unicode path
+            # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
+            if isinstance(path, unicode):
+                #path = unicode(path, 'utf-8')
+                path = unicodedata.normalize('NFC', path).encode('utf-8')
+            BaseObserver.schedule(self, event_handler, path, recursive)
