@@ -63,14 +63,14 @@ except ImportError:
 
 from pathtools.path import absolute_path
 from watchdog.utils import DaemonThread
-from watchdog.utils.bricks import OrderedSetQueue
+from brownie.datastructures import SetQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
 
 
 # Collection classes
-class EventQueue(OrderedSetQueue):
+class EventQueue(SetQueue):
     """Thread-safe event queue based on a thread-safe ordered-set queue
     to ensure duplicate :class:`FileSystemEvent` objects are prevented from
     adding themselves to the queue to avoid dispatching multiple event handling

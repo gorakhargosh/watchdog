@@ -88,7 +88,10 @@ ext_modules = {
     ],
 }
 
-install_requires = ['PyYAML >=3.09', 'argh >=0.8.1', 'pathtools',]
+install_requires = ['PyYAML >=3.09',
+                    'argh >=0.8.1',
+                    'pathtools',
+                    'Brownie >=0.3']
 if sys.version_info < (2, 7, 0):
 # argparse is merged into Python 2.7 in the Python 2x series
 # and Python 3.2 in the Python 3x series.

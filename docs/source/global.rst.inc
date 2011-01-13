@@ -45,3 +45,4 @@
 .. _XCode: http://developer.apple.com/technologies/tools/xcode.html
 .. _zc.buildout: http://www.buildout.org/
 .. _pathtools: http://github.com/gorakhargosh/pathtools
+.. _Brownie: http://github.com/DasIch/brownie
