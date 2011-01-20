@@ -18,6 +18,9 @@ help:
 release: clean test upload-doc
 	python setup.py sdist upload
 
+dist: clean
+	python setup.py sdist
+
 build: doc
 	@bin/python setup.py build
 
