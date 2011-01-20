@@ -36,11 +36,5 @@ API Reference
 .. automodule:: watchdog.utils.dirsnapshot
 
 
-`watchdog.utils.bricks`
-=======================
-
-.. automodule:: watchdog.utils.bricks
-
-
 .. toctree::
    :maxdepth: 2
