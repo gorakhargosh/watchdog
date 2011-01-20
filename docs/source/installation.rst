@@ -32,7 +32,7 @@ Installing from the code repository
 
 .. parsed-literal::
 
-    $ git clone git://github.com/gorakhargosh/|project_name|.git
+    $ git clone --recursive git://github.com/gorakhargosh/|project_name|.git
     $ cd |project_name|
     $ python setup.py install
 
