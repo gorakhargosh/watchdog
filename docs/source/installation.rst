@@ -22,7 +22,7 @@ Installing from source tarballs
 
 .. parsed-literal::
 
-    $ wget -c http://watchdog-python.googlecode.com/files/|project_name|-|project_version|.tar.gz
+    $ wget -c http://pypi.python.org/packages/source/w/watchdog/watchdog-|project_version|.tar.gz
     $ tar zxvf |project_name|-|project_version|.tar.gz
     $ cd |project_name|-|project_version|
     $ python setup.py install
@@ -30,10 +30,10 @@ Installing from source tarballs
 Installing from the code repository
 -----------------------------------
 
-.. parsed-literal::
+::
 
-    $ git clone --recursive git://github.com/gorakhargosh/|project_name|.git
-    $ cd |project_name|
+    $ git clone --recursive git://github.com/gorakhargosh/watchdog.git
+    $ cd watchdog
     $ python setup.py install
 
 .. _installation-dependencies:
