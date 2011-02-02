@@ -63,7 +63,7 @@ except ImportError:
 
 from pathtools.path import absolute_path
 from watchdog.utils import DaemonThread
-from brownie.datastructures import SetQueue
+from brownie.datastructures.queues import SetQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.

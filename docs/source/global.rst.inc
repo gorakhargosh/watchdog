@@ -4,7 +4,7 @@
 .. |author_email| replace:: gora.khargosh@gmail.com
 .. |copyright| replace:: Copyright (C) 2010 Gora Khargosh.
 .. |project_name| replace:: ``watchdog``
-.. |project_version| replace:: 0.5.0
+.. |project_version| replace:: 0.5.1
 
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _code repository: http://github.com/gorakhargosh/watchdog
