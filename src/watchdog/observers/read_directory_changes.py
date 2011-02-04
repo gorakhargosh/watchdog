@@ -32,7 +32,7 @@ if platform.is_windows():
     import os.path
     import time
 
-    from watchdog.utils import absolute_path
+    from pathtools.path import absolute_path
     from watchdog.observers.winapi_common import \
         DIR_ACTION_EVENT_MAP, \
         FILE_ACTION_EVENT_MAP, \
