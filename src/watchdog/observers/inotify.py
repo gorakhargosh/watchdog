@@ -133,8 +133,13 @@ if platform.is_linux():
 
     # #include <sys/inotify.h>
     # int inotify_init1(int flags);
-    inotify_init1 = ctypes.CFUNCTYPE(c_int, c_int, use_errno=True)(
-            ("inotify_init1", libc))
+    try:
+        inotify_init1 = ctypes.CFUNCTYPE(c_int, c_int, use_errno=True)(
+                ("inotify_init1", libc))
+    except AttributeError:
+        def inotify_init1(flags):
+            raise AttributeError("No such symbol inotify_init1 in libc. Non-blocking inotify is only provided by Linux 2.6.27 and newer.")
+
 
     # #include <sys/inotify.h>
     # int inotify_add_watch(int fd, const char *pathname, uint32_t mask);
