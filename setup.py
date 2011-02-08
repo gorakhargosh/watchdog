@@ -158,10 +158,10 @@ setup(name="watchdog",
           'Topic :: System :: Filesystems',
           'Topic :: Utilities',
           ],
-      cmdclass={
-          'build_ext': build_ext
-          },
-      ext_modules=ext_modules.get(platform, []),
+      #cmdclass={
+      #    'build_ext': build_ext
+      #    },
+      #ext_modules=ext_modules.get(platform, []),
       package_dir={'': SRC_DIR},
       packages=find_packages(SRC_DIR),
       include_package_data=True,
