@@ -151,7 +151,8 @@ def schedule_tricks(observer, tricks, pathname, recursive):
         for name, value in trick.items():
             TrickClass = load_class(name)
             handler = TrickClass(**value)
-            observer.schedule(handler, pathname, recursive)
+            trick_pathname = absolute_path(getattr(handler, 'source_directory') or pathname)
+            observer.schedule(handler, trick_pathname, recursive)
 
 
 @alias('tricks')
