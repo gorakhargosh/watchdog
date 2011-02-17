@@ -3,7 +3,7 @@
 """
     :module: tests.shell
     :synopsis: Common shell operations for testing.
-    :author: Gora Khargosh <gora.khargosh@gmail.com>
+    :author: Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 """
 
 import os.path

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <profiles version="1">
-<profile kind="CodeFormatterProfile" name="Gora Khargosh" version="1">
+<profile kind="CodeFormatterProfile" name="Yesudeep Mangalapilly" version="1">
 <setting id="org.eclipse.cdt.core.formatter.insert_space_before_opening_paren_in_method_declaration" value="do not insert"/>
 <setting id="org.eclipse.cdt.core.formatter.insert_space_after_opening_paren_in_for" value="do not insert"/>
 <setting id="org.eclipse.cdt.core.formatter.insert_new_line_in_empty_block" value="insert"/>

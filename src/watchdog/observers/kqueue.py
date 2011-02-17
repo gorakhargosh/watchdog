@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # kqueue.py: kqueue-based event emitter.
 #
-# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@
 """
 :module: watchdog.observers.kqueue
 :synopsis: ``kqueue(2)`` based emitter implementation.
-:author: Gora Khargosh <gora.khargosh@gmail.com>
+:author: Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 :platforms: Mac OS X and BSD with kqueue(2).
 
 .. WARNING:: kqueue is a very heavyweight way to monitor file systems.

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # events.py: File system events and event handlers.
 #
-# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@
 """
 :module: watchdog.events
 :synopsis: File system events and event handlers.
-:author: Gora Khargosh <gora.khargosh@gmail.com>
+:author: Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 
 Event Classes
 -------------

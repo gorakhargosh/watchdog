@@ -3,7 +3,7 @@
 #
 # Copyright (C) 2009, 2010 Raymond Hettinger <python@rcn.com>
 # Copyright (C) 2010 Lukáš Lalinský <lalinsky@gmail.com>
-# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
 Utility collections or "bricks".
 
 :module: watchdog.utils.bricks
-:author: Gora Khargosh <gora.khargosh@gmail.com>
+:author: Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 :author: Lukáš Lalinský <lalinsky@gmail.com>
 :author: Raymond Hettinger <python@rcn.com>
 

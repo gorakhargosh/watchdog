@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # watchmedo.py: Shell file monitoring utilities.
 #
-# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@
 
 """
 :module: watchdog.watchmedo
-:author: Gora Khargosh <gora.khargosh@gmail.com>
+:author: Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 :synopsis: ``watchmedo`` shell script utility.
 """
 
@@ -433,7 +433,7 @@ def shell_command(args):
     observe_with(observer, handler, args.directories, args.recursive)
 
 
-epilog = """Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>.
+epilog = """Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>.
 
 Licensed under the terms of the MIT license. Please see LICENSE in the
 source code for more information."""

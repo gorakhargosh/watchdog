@@ -3,7 +3,7 @@
 #
 # Copyright (C) 2010 Sebastien Martini <seb@dbzteam.org>
 # Copyright (C) 2010 Luke McCarthy <luke@iogopro.co.uk>
-# Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 # Copyright (C) 2010 Tim Cuthbertson <tim+github@gfxmonk.net>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,7 +30,7 @@
 :synopsis: ``inotify(7)`` based emitter implementation.
 :author: Sebastien Martini <seb@dbzteam.org>
 :author: Luke McCarthy <luke@iogopro.co.uk>
-:author: Gora Khargosh <gora.khargosh@gmail.com>
+:author: Yesudeep Mangalapilly <gora.khargosh@gmail.com>
 :author: Tim Cuthbertson <tim+github@gfxmonk.net>
 :platforms: Linux 2.6.13+.
 

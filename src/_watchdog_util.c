@@ -2,7 +2,7 @@
  * _watchdog_util.c: Common routines and global data used by _watchdog_fsevents.
  *
  * Copyright (C) 2009, 2010 Malthe Borch <mborch@gmail.com>
- * Copyright (C) 2010 Gora Khargosh <gora.khargosh@gmail.com>
+ * Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal

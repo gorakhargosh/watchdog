@@ -156,7 +156,7 @@ Licensing
 ---------
 Watchdog is licensed under the terms of the `MIT License`_.
 
-Copyright (C) 2010 `Gora Khargosh`_ and the Watchdog authors.
+Copyright (C) 2010 `Yesudeep Mangalapilly`_ and the Watchdog authors.
 
 Project `source code`_ is available at Github. Please report bugs and file
 enhancement requests at the `issue tracker`_.
@@ -178,7 +178,7 @@ to do:
 * pyfilesystem_
 
 .. links:
-.. _Gora Khargosh: gora.khargosh@gmail.com
+.. _Yesudeep Mangalapilly: gora.khargosh@gmail.com
 .. _source code: http://github.com/gorakhargosh/watchdog
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _MIT License: http://www.opensource.org/licenses/mit-license.php
