@@ -4,7 +4,7 @@
 # Copyright (C) 2007 Thomas Heller <theller@ctypes.org>
 # Copyright (C) 2010 Will McGugan <will@willmcgugan.com>
 # Copyright (C) 2010 Ryan Kelly <ryan@rfk.id.au>
-# Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

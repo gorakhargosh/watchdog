@@ -2,7 +2,7 @@
 # winapi_async.py: Windows impl w/ ReadDirectoryChangesW + I/O Completion ports.
 #
 # Copyright (C) 2010 Luke McCarthy <luke@iogopro.co.uk>
-# Copyright (C) 2010 Yesudeep Mangalapilly <gora.khargosh@gmail.com>
+# Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal

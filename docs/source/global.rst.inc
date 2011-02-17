@@ -1,7 +1,7 @@
 .. Global includes, substitutions, and common links.
 
 .. |author_name| replace:: Yesudeep Mangalapilly
-.. |author_email| replace:: gora.khargosh@gmail.com
+.. |author_email| replace:: yesudeep@gmail.com
 .. |copyright| replace:: Copyright (C) 2010 Yesudeep Mangalapilly.
 .. |project_name| replace:: ``watchdog``
 .. |project_version| replace:: 0.5.4
