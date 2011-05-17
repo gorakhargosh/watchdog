@@ -471,8 +471,16 @@ if platform.is_linux():
             self._moved_from_events = dict()
 
         def source_for_move(self, destination_event):
-            """The source path corresponding to the given MOVED_TO event"""
-            return self._moved_from_events[destination_event.cookie].src_path
+            """
+            The source path corresponding to the given MOVED_TO event.
+
+            If the source path is outside the monitored directories, None
+            is returned instead.
+            """
+            if destination_event.cookie in self._moved_from_events:
+                return self._moved_from_events[destination_event.cookie].src_path
+            else:
+                return None
 
         def remember_move_from_event(self, event):
             """Save this event as the source event for future MOVED_TO events to reference"""
