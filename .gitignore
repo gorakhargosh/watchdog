@@ -38,3 +38,7 @@ nbproject/
 .coverage
 .pythoscope/
 htmlcov/
+
+# From virtualenv.
+include/
+lib/
