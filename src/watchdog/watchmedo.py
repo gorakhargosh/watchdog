@@ -208,7 +208,7 @@ def tricks_from(args):
             time.sleep(1)
     except KeyboardInterrupt:
         for o in observers:
-            o.unschedule()
+            o.unschedule_all()
             o.stop()
     for o in observers:
         o.join()
