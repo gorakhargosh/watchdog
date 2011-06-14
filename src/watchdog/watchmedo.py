@@ -151,7 +151,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
         for name, value in trick.items():
             TrickClass = load_class(name)
             handler = TrickClass(**value)
-            trick_pathname = absolute_path(getattr(handler, 'source_directory') or pathname)
+            trick_pathname = absolute_path(getattr(handler, 'source_directory', None) or pathname)
             observer.schedule(handler, trick_pathname, recursive)
 
 
@@ -208,7 +208,7 @@ def tricks_from(args):
             time.sleep(1)
     except KeyboardInterrupt:
         for o in observers:
-            o.unschedule()
+            o.unschedule_all()
             o.stop()
     for o in observers:
         o.join()
