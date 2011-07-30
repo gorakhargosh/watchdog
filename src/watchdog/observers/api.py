@@ -102,7 +102,7 @@ class ObservedWatch(object):
 
     @property
     def key(self):
-        return (self.path, self.is_recursive)
+        return self.path, self.is_recursive
 
     def __eq__(self, watch):
         return self.key == watch.key
