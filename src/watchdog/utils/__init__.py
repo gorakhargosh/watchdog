@@ -91,7 +91,7 @@ class DaemonThread(threading.Thread):
             self.setDaemon(True)
         self._stopped_event = threading.Event()
 
-        if not has_attribute(self._stopped_event.is_set, 'is_set'):
+        if not has_attribute(self._stopped_event, 'is_set'):
             self._stopped_event.is_set = self._stopped_event.isSet
 
     @property
