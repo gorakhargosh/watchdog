@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import os
+import unittest2
+
+try:
+    import queue  # IGNORE:F0401
+except ImportError:
+    import Queue as queue  # IGNORE:F0401
+
 from time import sleep
 from tests.shell import \
     mkdir, \
@@ -8,17 +15,11 @@ from tests.shell import \
     touch, \
     rm, \
     mv
-from nose import SkipTest
-from nose.tools import assert_equal
 
-from watchdog.events import DirModifiedEvent, DirCreatedEvent, FileCreatedEvent, \
+from watchdog.events import DirModifiedEvent, DirCreatedEvent, \
+    FileCreatedEvent, \
     FileMovedEvent, FileModifiedEvent, DirMovedEvent, FileDeletedEvent, \
     DirDeletedEvent
-
-try:
-    import queue  # IGNORE:F0401
-except ImportError:
-    import Queue as queue  # IGNORE:F0401
 
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
@@ -33,7 +34,8 @@ def p(*args):
     """
     return os.path.join(temp_dir, *args)
 
-class TestPollingEmitter:
+
+class TestPollingEmitter(unittest2.TestCase):
     def setup(self):
         self.event_queue = queue.Queue()
         self.watch = ObservedWatch(temp_dir, True)
@@ -110,16 +112,4 @@ class TestPollingEmitter:
             except queue.Empty:
                 break
 
-        assert_equal(expected, got)
-
-
-    def test_on_thread_exit(self):
-        # polling_emitter = PollingEmitter(event_queue, watch, timeout)
-        # assert_equal(expected, polling_emitter.on_thread_exit())
-        raise SkipTest # TODO: implement your test here
-
-    def test_queue_events(self):
-        # polling_emitter = PollingEmitter(event_queue, watch, timeout)
-        # assert_equal(expected, polling_emitter.queue_events(event_queue, watch, timeout))
-        raise SkipTest # TODO: implement your test here
-
+        self.assertEqual(expected, got)

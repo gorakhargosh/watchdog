@@ -1,0 +1,14 @@
+# .coveragerc to control coverage.py
+[run]
+branch = False
+
+source =
+    watchdog
+
+omit =
+    /*/tests/*
+
+[report]
+
+[html]
+directory = htmlcov
