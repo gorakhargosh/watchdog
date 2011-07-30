@@ -87,7 +87,7 @@ class TestFileSystemEvent(unittest2.TestCase):
     def test_behavior_readonly_public_attributes(self):
         event = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
         for prop in list_attributes(event):
-            assert_Raises(AttributeError, setattr, event, prop, None)
+            self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
 class TestFileSystemMovedEvent(unittest2.TestCase):
@@ -521,19 +521,19 @@ class _TestableEventHandler(LoggingEventHandler):
 
     def on_modified(self, event):
         super(_TestableEventHandler, self).on_modified(event)
-        self.assertEqual(event.event_type, EVENT_TYPE_MODIFIED)
+        assert event.event_type == EVENT_TYPE_MODIFIED
 
     def on_deleted(self, event):
         super(_TestableEventHandler, self).on_deleted(event)
-        self.assertEqual(event.event_type, EVENT_TYPE_DELETED)
+        assert event.event_type == EVENT_TYPE_DELETED
 
     def on_moved(self, event):
         super(_TestableEventHandler, self).on_moved(event)
-        self.assertEqual(event.event_type, EVENT_TYPE_MOVED)
+        assert event.event_type == EVENT_TYPE_MOVED
 
     def on_created(self, event):
         super(_TestableEventHandler, self).on_created(event)
-        self.assertEqual(event.event_type, EVENT_TYPE_CREATED)
+        assert event.event_type == EVENT_TYPE_CREATED
 
 class TestLoggingEventHandler(unittest2.TestCase):
 
