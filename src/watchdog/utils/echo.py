@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 # echo.py: Tracing function calls using Python decorators.
 #
-# Copyright (C) 2008 by Thomas Guest <tag@wordaligned.org>
+# Written by Thomas Guest <tag@wordaligned.org>
 # Please see http://wordaligned.org/articles/echo
+#
+# Place into the public domain.
 
 """ Echo calls made to functions and methods in a module.
 
