@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # winapi.py: Windows API-Python interface (removes dependency on pywin32)
 #
@@ -34,8 +35,10 @@
 # Portions of this code were taken from pyfilesystem, which uses the above
 # new BSD license.
 
+
 from __future__ import with_statement
 from watchdog.utils import platform
+
 
 if platform.is_windows():
     import ctypes.wintypes

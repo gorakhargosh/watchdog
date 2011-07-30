@@ -160,7 +160,7 @@ Dependencies
 
 Licensing
 ---------
-Watchdog is licensed under the terms of the `MIT License`_.
+Watchdog is licensed under the terms of the `Apache License, version 2.0`_.
 
 Copyright (C) 2010 `Yesudeep Mangalapilly`_ and the Watchdog authors.
 
@@ -187,7 +187,7 @@ to do:
 .. _Yesudeep Mangalapilly: yesudeep@gmail.com
 .. _source code: http://github.com/gorakhargosh/watchdog
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
-.. _MIT License: http://www.opensource.org/licenses/mit-license.php
+.. _Apache License, version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 .. _documentation: http://packages.python.org/watchdog/
 
 .. _homebrew: http://mxcl.github.com/homebrew/
