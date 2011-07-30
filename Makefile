@@ -1,19 +1,22 @@
 RM = rm -rf
 
-.PHONY: all
+PKG_NAME=watchdog
+
+.PHONY: all clean distclean develop lint test upload-doc view-doc doc docs build dist release auto submodules push
 
 all: build
 
 help:
 	@echo "Possible targets:"
-	@echo "	   test        - run testsuite"
-	@echo "    doc         - builds the documentation"
-	@echo "	   view-doc    - opens documentation in the browser"
-	@echo "	   upload-doc  - uploads the documentation to PyPI"
-	@echo "	   develop	   - set up development environment"
-	@echo "	   clean       - clean up generated files"
-	@echo "	   release     - performs a release"
-	@echo "	   auto        - continuous builds"
+	@echo "    test        - run testsuite"
+	@echo "    doc(s)      - builds the documentation"
+	@echo "    view-doc    - opens documentation in the browser"
+	@echo "    upload-doc  - uploads the documentation to PyPI"
+	@echo "    develop     - set up development environment"
+	@echo "    clean       - clean up generated files"
+	@echo "    release     - performs a release"
+	@echo "    auto        - continuous builds"
+	@echo "    push        - 'git push' to all hosted repositories"
 
 release: clean test upload-doc
 	python setup.py sdist upload
@@ -24,7 +27,13 @@ dist: clean
 build: doc
 	@bin/python setup.py build
 
-doc: develop
+doc-rebuild:
+	@make -C docs/ clean
+	@make SPHINXBUILD=../bin/sphinx-build -C docs/ html
+
+docs: doc
+
+doc: # develop
 	@make SPHINXBUILD=../bin/sphinx-build -C docs/ html
 
 upload-doc: doc
@@ -33,13 +42,20 @@ upload-doc: doc
 view-doc: doc
 	@bin/python -c "import webbrowser; webbrowser.open('docs/build/html/index.html')"
 
-test:
+test: doc-rebuild
+	@echo "You will need Coverage 3.5 and unittest2 or higher for this to work."
+	@rm -rf htmlcov
 	@bin/coverage erase
-	@bin/python-tests tests/run_tests.py
-	@bin/coverage html
+	@bin/coverage run run_tests.py
+	@bin/coverage report -m
+	@echo "HTML report generated in the 'htmlcov' directory."
+	@bin/coverage html -d htmlcov
 
-auto: scripts/nosy.py
-	@bin/python scripts/nosy.py .
+lint:
+	@pylint $(PKG_NAME)
+
+auto: tools/nosy.py
+	@bin/python tools/nosy.py .
 
 # Development environment targets and dependencies.
 develop: submodules bin/python
@@ -48,10 +64,16 @@ submodules:
 	@git submodule update --init --recursive
 
 bin/buildout: buildout.cfg setup.py
-	@python scripts/bootstrap.py --distribute
+	@python tools/bootstrap.py --distribute
 
 bin/python: bin/buildout
 	@bin/buildout
+
+push:
+	@echo "Pushing repository to remote:google"
+	@git push google master
+	@echo "Pushing repository to remote:origin"
+	@git push origin master
 
 clean:
 	@make -C docs/ clean > /dev/null
