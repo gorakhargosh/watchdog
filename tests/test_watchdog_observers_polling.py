@@ -36,7 +36,7 @@ def p(*args):
 
 
 class TestPollingEmitter(unittest2.TestCase):
-    def setup(self):
+    def setUp(self):
         self.event_queue = queue.Queue()
         self.watch = ObservedWatch(temp_dir, True)
         self.emitter = Emitter(self.event_queue, self.watch, timeout=0.2)
