@@ -57,7 +57,7 @@ except ImportError:
 
 from pathtools.path import absolute_path
 from watchdog.utils import DaemonThread
-from brownie.datastructures.queues import SetQueue
+from watchdog.utils.bricks import OrderedSetQueue as SetQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
