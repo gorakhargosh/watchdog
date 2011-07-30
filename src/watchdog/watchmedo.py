@@ -426,10 +426,10 @@ def shell_command(args):
     observe_with(observer, handler, args.directories, args.recursive)
 
 
-epilog = """Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>.
+epilog = """Copyright (C) 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
 
-Licensed under the terms of the MIT license. Please see LICENSE in the
-source code for more information."""
+Licensed under the terms of the Apache license, version 2.0. Please see
+LICENSE in the source code for more information."""
 
 parser = ArghParser(epilog=epilog)
 parser.add_commands([tricks_from,
