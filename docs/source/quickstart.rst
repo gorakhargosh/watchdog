@@ -31,18 +31,20 @@ A Simple Example
 The following example program will monitor the current directory recursively for
 file system changes and simply log them to the console::
 
+    import sys
     import time
-    from logging import INFO, basicConfig
+    import logging
     from watchdog.observers import Observer
     from watchdog.events import LoggingEventHandler
 
     if __name__ == "__main__":
-        basicConfig(level   = INFO,
-                    format  = '%(asctime)s - %(message)s',
-                    datefmt = '%Y-%m-%d %H:%M:%S')
+        logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s - %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S')
+        path = sys.argv[1]
         event_handler = LoggingEventHandler()
         observer = Observer()
-        observer.schedule(event_handler, path='.', recursive=True)
+        observer.schedule(event_handler, path, recursive=True)
         observer.start()
         try:
             while True:
