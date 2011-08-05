@@ -78,7 +78,7 @@ if platform.is_darwin():
         def queue_events(self, timeout):
             with self._lock:
                 if not self.watch.is_recursive\
-                and self.watch.path not in pathnames:
+                and self.watch.path not in self.pathnames:
                     return
                 new_snapshot = DirectorySnapshot(self.watch.path,
                                                  self.watch.is_recursive)
@@ -133,11 +133,11 @@ if platform.is_darwin():
                 #                            os.path.join(root, directory_name))
                 #            pathnames.add(full_path)
 
-                pathnames = [self.watch.path]
+                self.pathnames = [self.watch.path]
                 _fsevents.add_watch(self,
                                     self.watch,
                                     callback,
-                                    pathnames)
+                                    self.pathnames)
                 _fsevents.read_events(self)
             finally:
                 self.on_thread_exit()
