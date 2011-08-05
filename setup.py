@@ -29,9 +29,6 @@ WATCHDOG_PKG_DIR = os.path.join(SRC_DIR, 'watchdog')
 
 version = imp.load_source('version',
                           os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
-DOWNLOAD_URL =\
-"http://watchdog-python.googlecode.com/files/watchdog-%s.tar.gz"\
-% version.VERSION_STRING
 
 PLATFORM_LINUX = 'linux'
 PLATFORM_WINDOWS = 'windows'
@@ -39,25 +36,26 @@ PLATFORM_MACOSX = 'macosx'
 PLATFORM_BSD = 'bsd'
 
 # Determine platform to pick the implementation.
-platform = get_platform()
-if platform.startswith('macosx'):
-    platform = PLATFORM_MACOSX
-elif platform.startswith('linux'):
-    platform = PLATFORM_LINUX
-elif platform.startswith('win'):
-    platform = PLATFORM_WINDOWS
-else:
-    platform = None
+def determine_platform():
+    platform = get_platform()
+    if platform.startswith('macosx'):
+        platform = PLATFORM_MACOSX
+    elif platform.startswith('linux'):
+        platform = PLATFORM_LINUX
+    elif platform.startswith('win'):
+        platform = PLATFORM_WINDOWS
+    else:
+        platform = None
+    return platform
 
-_watchdog_fsevents_sources = [
-    os.path.join(SRC_DIR, '_watchdog_fsevents.c'),
-    os.path.join(SRC_DIR, '_watchdog_util.c'),
-]
+platform = determine_platform()
 
 ext_modules = {
     PLATFORM_MACOSX: [
         Extension(name='_watchdog_fsevents',
-                  sources=_watchdog_fsevents_sources,
+                  sources=[
+                      'src/watchdog_fsevents.c',
+                  ],
                   libraries=['m'],
                   define_macros=[
                       ('WATCHDOG_VERSION_STRING',
@@ -80,6 +78,14 @@ ext_modules = {
                   ),
     ],
 }
+
+extra_args =dict(
+    cmdclass={
+        'build_ext': build_ext
+    },
+    ext_modules=ext_modules.get(platform, []),
+)
+
 
 install_requires = ['PyYAML >=3.09',
                     'argh >=0.8.1',
@@ -105,10 +111,8 @@ def read_file(filename):
     """
     return open(os.path.join(os.path.dirname(__file__), filename)).read()
 
-if sys.version_info < (3,):
-    extra = {}
-else:
-    extra = dict(use_2to3=True)
+if not sys.version_info < (3,):
+    extra_args.update(dict(use_2to3=True))
 
 setup(name="watchdog",
       version=version.VERSION_STRING,
@@ -150,10 +154,6 @@ setup(name="watchdog",
           'Topic :: System :: Filesystems',
           'Topic :: Utilities',
           ],
-      #cmdclass={
-      #    'build_ext': build_ext
-      #    },
-      #ext_modules=ext_modules.get(platform, []),
       package_dir={'': SRC_DIR},
       packages=find_packages(SRC_DIR),
       include_package_data=True,
@@ -161,8 +161,8 @@ setup(name="watchdog",
       entry_points={
           'console_scripts': [
               'watchmedo = watchdog.watchmedo:main',
-              ]
-          },
+          ]
+      },
       zip_safe=False,
-      **extra
+      **extra_args
       )
