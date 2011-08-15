@@ -158,7 +158,10 @@ This is an inherent problem with kqueue because it uses
 file descriptors to monitor files. That plus the enormous
 amount of bookkeeping that watchdog needs to do in order
 to monitor file descriptors just makes this a painful way
-to monitor files and directories.
+to monitor files and directories. In essence, kqueue is
+not a very scalable way to monitor a deeply nested 
+directory of files and directories with a large number of
+files.
 
 
 Dependencies
