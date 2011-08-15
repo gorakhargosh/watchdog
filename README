@@ -163,6 +163,19 @@ not a very scalable way to monitor a deeply nested
 directory of files and directories with a large number of
 files.
 
+About using watchdog with editors like Vim
+------------------------------------------
+Vim does not modify files unless directed to do so.
+It creates backup files and then swaps it in to replace
+the file you are editing on the disk. This means that
+if you use Vim to edit your files, the on-modified events
+for those files will not be triggered by watchdog.
+You may need to configure Vim to avoid using swapfiles::
+
+    set noswapfile
+
+in your ``~/.vimrc`` should deal with this situation.
+
 
 Dependencies
 ------------
