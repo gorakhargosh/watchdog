@@ -145,6 +145,21 @@ Supported Platforms
 * OS-independent (polling the disk for directory snapshots and comparing them
   periodically; slow and not recommended)
 
+Note that when using watchdog with kqueue, you need the 
+number of file descriptors allowed to be opened by programs
+running on your system to be increased to more than the 
+number of files that you will be monitoring. The easiest way
+to do that is to edit your ``~/.profile`` file and add
+a line similar to::
+
+    ulimit -n 1024
+
+This is an inherent problem with kqueue because it uses
+file descriptors to monitor files. That plus the enormous
+amount of bookkeeping that watchdog needs to do in order
+to monitor file descriptors just makes this a painful way
+to monitor files and directories.
+
 
 Dependencies
 ------------
