@@ -154,4 +154,4 @@ if platform.is_darwin():
             if isinstance(path, unicode):
                 #path = unicode(path, 'utf-8')
                 path = unicodedata.normalize('NFC', path).encode('utf-8')
-            BaseObserver.schedule(self, event_handler, path, recursive)
+            return BaseObserver.schedule(self, event_handler, path, recursive)
