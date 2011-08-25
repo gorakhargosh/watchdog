@@ -403,6 +403,10 @@ Example option usage::
      dest='timeout',
      default=1.0,
      help='use this as the polling interval/blocking timeout')
+@arg('-w', '--wait',
+     dest='wait_for_process',
+     action='store_true',
+     default=False)
 def shell_command(args):
     """
     Subcommand to execute shell commands in response to file system events.
@@ -421,7 +425,8 @@ def shell_command(args):
     handler = ShellCommandTrick(shell_command=args.command,
                                 patterns=patterns,
                                 ignore_patterns=ignore_patterns,
-                                ignore_directories=args.ignore_directories)
+                                ignore_directories=args.ignore_directories,
+                                wait_for_process=args.wait_for_process)
     observer = Observer(timeout=args.timeout)
     observe_with(observer, handler, args.directories, args.recursive)
 
