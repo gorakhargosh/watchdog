@@ -1,22 +1,31 @@
-Yesudeep Mangalapilly <yesudeep@gmail.com>
-Malthe Borch <mborch@gmail.com>
-Tim Golden <mail@timgolden.me.uk>
-Andrew Schaaf <andrew@andrewschaaf.com>
-Luke McCarthy <luke@iogopro.co.uk>
-Thomas Guest <tag@wordaligned.org>
-Lukáš Lalinský <lalinsky@gmail.com>
-Armin Ronacher <armin.ronacher@active-4.com>
-Raymond Hettinger <python@rcn.com>
-Filip Noetzel <filip@j03.de>
-Sebastien Martini <seb@dbzteam.org>
-Will McGugan <will@willmcgugan.com>
-Ryan Kelly <ryan@rfk.id.au>
-Thomas Heller <theller@ctypes.org>
-Tim Cuthbertson <tim+github@gfxmonk.net>
-Adrian Tejn Kern <tejnkern@gmail.com>
-Steven Samuel Cole <steven.samuel.cole@gmail.com>
-Senko Rašić <senko@senko.net>
-Simon Pantzare <simpa395@student.liu.se>
+Yesudeep Mangalapilly    <yesudeep@gmail.com>
+Malthe Borch             <mborch@gmail.com>
+Andrew Schaaf            <andrew@andrewschaaf.com>
+Luke McCarthy            <luke@iogopro.co.uk>
+Thomas Guest             <tag@wordaligned.org>
+Lukáš Lalinský           <lalinsky@gmail.com>
+Raymond Hettinger        <python@rcn.com>
+Filip Noetzel            <filip@j03.de>
+Will McGugan             <will@willmcgugan.com>
+Ryan Kelly               <ryan@rfk.id.au>
+Thomas Heller            <theller@ctypes.org>
+Tim Cuthbertson          <tim+github@gfxmonk.net>
+Adrian Tejn Kern         <tejnkern@gmail.com>
+Steven Samuel Cole       <steven.samuel.cole@gmail.com>
+Senko Rašić              <senko@senko.net>
+Simon Pantzare           <simpa395@student.liu.se>
+Martin Kreichgauer       <http://github.com/kreichgauer>
+Rotem Yaari              <vmalloc@gmail.com>
+
+We would like to thank these individuals for ideas:
+---------------------------------------------------
+Tim Golden               <mail@timgolden.me.uk>
+Sebastien Martini        <seb@dbzteam.org>
+
+Initially we used the flask theme for the documentation which was written by
+----------------------------------------------------------------------------
+Armin Ronacher           <armin.ronacher@active-4.com>
+
 
 Watchdog also includes open source libraries or adapted code
 from the following projects:
