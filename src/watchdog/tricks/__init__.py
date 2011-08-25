@@ -67,9 +67,10 @@ class LoggerTrick(Trick):
 
 class ShellCommandTrick(Trick):
     """Execeutes shell commands in response to matched events."""
-    def __init__(self, shell_command=None, patterns=None, ignore_patterns=None, ignore_directories=False):
+    def __init__(self, shell_command=None, patterns=None, ignore_patterns=None, ignore_directories=False, wait_for_process=False):
         super(ShellCommandTrick, self).__init__(patterns, ignore_patterns, ignore_directories)
         self.shell_command = shell_command
+        self.wait_for_process = wait_for_process
 
     def on_any_event(self, event):
         from string import Template
@@ -97,4 +98,7 @@ class ShellCommandTrick(Trick):
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
-        subprocess.Popen(command, shell=True)
+        process = subprocess.Popen(command, shell=True)
+        if self.wait_for_process:
+            process.wait()
+
