@@ -406,7 +406,8 @@ Example option usage::
 @arg('-w', '--wait',
      dest='wait_for_process',
      action='store_true',
-     default=False)
+     default=False,
+     help="wait for process to finish to avoid multiple simultaneous instances")
 def shell_command(args):
     """
     Subcommand to execute shell commands in response to file system events.
