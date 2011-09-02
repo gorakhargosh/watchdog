@@ -95,7 +95,7 @@ class OrderedSetQueue(queue.Queue):
         if item not in self._set_of_items:
             queue.Queue._put(self, item)
             self._set_of_items.add(item)
-         else:
+        else:
             # `put` increments `unfinished_tasks` even if we did not put
             # anything into the queue here
             self.unfinished_tasks -= 1
