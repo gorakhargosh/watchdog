@@ -114,7 +114,7 @@ if __name__ == "__main__":
             # with the source code, we erase all coverage information
             # before regenerating reports or running `nosetests`.
             "bin/coverage erase",
-            "bin/python-tests tests/run_tests.py",
+            "bin/python-tests ./run_tests.py",
             "bin/coverage html",
         ]
         command = '; '.join(commands)
