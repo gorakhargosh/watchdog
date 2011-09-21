@@ -40,7 +40,7 @@ Steps to setting up a clean environment:
 
     $ git clone --recursive git@github.com:hackeratti/watchdog.git
     $ cd watchdog
-    $ python bootstrap.py --distribute
+    $ python tools/bootstrap.py --distribute
     $ bin/buildout
 
 .. IMPORTANT:: Re-run ``bin/buildout`` every time you make a change to the
