@@ -323,6 +323,10 @@ if platform.is_linux():
             return self._mask & InotifyConstants.IN_MOVE > 0
 
         @property
+        def is_move_self(self):
+            return self._mask & InotifyConstants.IN_MOVE_SELF > 0
+
+        @property
         def is_attrib(self):
             return self._mask & InotifyConstants.IN_ATTRIB > 0
 
@@ -333,6 +337,11 @@ if platform.is_linux():
 
         @property
         def is_directory(self):
+            # It looks like the kernel does not provide this information for 
+            # IN_DELETE_SELF and IN_MOVE_SELF. In this case, assume it's a dir.
+            # See also: https://github.com/seb-m/pyinotify/blob/2c7e8f8/python2/pyinotify.py#L897
+            if self.is_delete_self or self.is_move_self:
+                return True
             return self._mask & InotifyConstants.IN_ISDIR > 0
 
         # Python-specific functionality.
