@@ -226,12 +226,16 @@ if platform.is_linux():
     # Watchdog's API cares only about these events.
 
     WATCHDOG_ALL_EVENTS = reduce(lambda x, y: x | y, [
+            # We don't actually need IN_CLOSE_NOWRITE, but if it is omitted, 
+            # DELETE_SELF is never emitted.
+            InotifyConstants.IN_CLOSE_NOWRITE,
             InotifyConstants.IN_CLOSE_WRITE,
             InotifyConstants.IN_ATTRIB,
             InotifyConstants.IN_MOVED_FROM,
             InotifyConstants.IN_MOVED_TO,
             InotifyConstants.IN_CREATE,
             InotifyConstants.IN_DELETE,
+            InotifyConstants.IN_DELETE_SELF,
             ])
 
     class InotifyEvent(object):
@@ -297,6 +301,10 @@ if platform.is_linux():
         @property
         def is_delete(self):
             return self._mask & InotifyConstants.IN_DELETE > 0
+
+        @property
+        def is_delete_self(self):
+            return self._mask & InotifyConstants.IN_DELETE_SELF > 0
 
         @property
         def is_create(self):
@@ -762,7 +770,7 @@ if platform.is_linux():
                         klass = ACTION_EVENT_MAP[(event.is_directory,
                                                   EVENT_TYPE_MODIFIED)]
                         self.queue_event(klass(event.src_path))
-                    elif event.is_delete:
+                    elif event.is_delete or event.is_delete_self:
                         klass = ACTION_EVENT_MAP[(event.is_directory,
                                                   EVENT_TYPE_DELETED)]
                         self.queue_event(klass(event.src_path))
