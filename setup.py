@@ -19,9 +19,7 @@ import sys
 import imp
 import os.path
 
-from setuptools import setup, find_packages
-from setuptools.extension import Extension
-from setuptools.command.build_ext import build_ext
+from distutils.core import setup, Extension
 from distutils.util import get_platform
 
 SRC_DIR = 'src'
@@ -80,25 +78,22 @@ ext_modules = {
 }
 
 extra_args =dict(
-    cmdclass={
-        'build_ext': build_ext
-    },
     ext_modules=ext_modules.get(platform, []),
 )
 
 
-install_requires = ['PyYAML >=3.09',
-                    'argh >=0.8.1',
+install_requires = ['PyYAML (>=3.09)',
+                    'argh (>=0.8.1)',
                     'pathtools']
 if sys.version_info < (2, 7, 0):
 # argparse is merged into Python 2.7 in the Python 2x series
 # and Python 3.2 in the Python 3x series.
-    install_requires.append('argparse >=1.1')
+    install_requires.append('argparse (>=1.1)')
     if any([key in sys.platform for key in ['bsd', 'darwin']]):
     # Python 2.6 and below have the broken/non-existent kqueue implementations
     # in the select module. This backported patch adds one from Python 2.7,
     # which works.
-        install_requires.append('select_backport >=0.2')
+        install_requires.append('select_backport (>=0.2)')
 
 
 def read_file(filename):
@@ -154,15 +149,17 @@ setup(name="watchdog",
           'Topic :: System :: Filesystems',
           'Topic :: Utilities',
           ],
-      package_dir={'': SRC_DIR},
-      packages=find_packages(SRC_DIR),
-      include_package_data=True,
-      install_requires=install_requires,
+      package_dir={'watchdog': WATCHDOG_PKG_DIR,
+                   'watchdog.observers': os.path.join(WATCHDOG_PKG_DIR, "observers"),
+                   'watchdog.tricks': os.path.join(WATCHDOG_PKG_DIR, "tricks"),
+                   'watchdog.utils': os.path.join(WATCHDOG_PKG_DIR, "utils"),
+                   },
+      packages=['watchdog', 'watchdog.observers', 'watchdog.tricks', 'watchdog.utils'],
+      requires=install_requires,
       entry_points={
           'console_scripts': [
               'watchmedo = watchdog.watchmedo:main',
           ]
       },
-      zip_safe=False,
       **extra_args
       )
