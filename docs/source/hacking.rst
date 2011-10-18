@@ -59,7 +59,7 @@ nose_, and generate coverage_ reports.
 Start it by issuing this command in the ``watchdog`` directory
 checked out earlier::
 
-    $ scripts/autobuild.sh
+    $ tools/autobuild.sh
     ...
 
 Happy hacking!
