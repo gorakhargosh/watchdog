@@ -402,11 +402,17 @@ class BaseObserver(EventDispatcher):
         self.unschedule_all()
 
     def _dispatch_event(self, event, watch):
-        for handler in self._get_handlers_for_watch(watch):
-            handler.dispatch(event)
+        with self._lock:
+            for handler in self._get_handlers_for_watch(watch):
+                handler.dispatch(event)
 
     def dispatch_events(self, event_queue, timeout):
-        with self._lock:
-            event, watch = event_queue.get(block=True, timeout=timeout)
+        event, watch = event_queue.get(block=True, timeout=timeout)
+        try:
             self._dispatch_event(event, watch)
-            event_queue.task_done()
+        except KeyError:
+            # All handlers for the watch have already been removed. We cannot 
+            # lock properly here, because `event_queue.get` blocks whenever the
+            # queue is empty.
+            pass
+        event_queue.task_done()
