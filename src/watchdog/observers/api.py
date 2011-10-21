@@ -215,24 +215,9 @@ class EventDispatcher(DaemonThread):
         thread."""
         return self._event_queue
 
-    def dispatch_event(self, event, watch):
-        """Override this method to dispatch an individual event.
-
-        :param event:
-            Event to be dispatched.
-        :type event:
-            An instance of a subclass of
-            :class:`watchdog.events.FileSystemEvent`
-        :param watch:
-            The watch to dispatch for.
-        :type watch:
-            An instance of :class:`ObservedWatch` or a subclass of
-            :class:`ObservedWatch`
-        """
-
-    def _dispatch_events(self, event_queue, timeout):
-        """Consumes events from an event queue. Blocks on the queue for the
-        specified timeout before raising :class:`queue.Empty`.
+    def dispatch_events(self, event_queue, timeout):
+        """Override this method to consume events from an event queue, blocking
+        on the queue for the specified timeout before raising :class:`queue.Empty`.
 
         :param event_queue:
             Event queue to populate with one set of events.
@@ -246,9 +231,6 @@ class EventDispatcher(DaemonThread):
         :raises:
             :class:`queue.Empty`
         """
-        event, watch = event_queue.get(block=True, timeout=timeout)
-        self.dispatch_event(event, watch)
-        event_queue.task_done()
 
     def on_thread_exit(self):
         """Override this method for cleaning up immediately before the daemon
@@ -258,7 +240,7 @@ class EventDispatcher(DaemonThread):
         try:
             while self.should_keep_running():
                 try:
-                    self._dispatch_events(self.event_queue, self.timeout)
+                    self.dispatch_events(self.event_queue, self.timeout)
                 except queue.Empty:
                     continue
         finally:
@@ -419,7 +401,12 @@ class BaseObserver(EventDispatcher):
     def on_thread_exit(self):
         self.unschedule_all()
 
-    def dispatch_event(self, event, watch):
+    def _dispatch_event(self, event, watch):
+        for handler in self._get_handlers_for_watch(watch):
+            handler.dispatch(event)
+
+    def dispatch_events(self, event_queue, timeout):
         with self._lock:
-            for handler in self._get_handlers_for_watch(watch):
-                handler.dispatch(event)
+            event, watch = event_queue.get(block=True, timeout=timeout)
+            self._dispatch_event(event, watch)
+            event_queue.task_done()
