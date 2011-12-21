@@ -228,6 +228,7 @@ if platform.is_linux():
     WATCHDOG_ALL_EVENTS = reduce(lambda x, y: x | y, [
             # We don't actually need IN_CLOSE_NOWRITE, but if it is omitted, 
             # DELETE_SELF is never emitted.
+            InotifyConstants.IN_MODIFY,
             InotifyConstants.IN_CLOSE_NOWRITE,
             InotifyConstants.IN_CLOSE_WRITE,
             InotifyConstants.IN_ATTRIB,
@@ -776,6 +777,10 @@ if platform.is_linux():
                                                   EVENT_TYPE_MODIFIED)]
                         self.queue_event(klass(event.src_path))
                     elif event.is_close_write:
+                        klass = ACTION_EVENT_MAP[(event.is_directory,
+                                                  EVENT_TYPE_MODIFIED)]
+                        self.queue_event(klass(event.src_path))
+                    elif event.is_modify:
                         klass = ACTION_EVENT_MAP[(event.is_directory,
                                                   EVENT_TYPE_MODIFIED)]
                         self.queue_event(klass(event.src_path))
