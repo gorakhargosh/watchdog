@@ -446,8 +446,10 @@ try to interpret them.
 @arg('-d',
      '--directory',
      dest='directories',
-     nargs='*',
-     help='directory to watch')
+     metavar='directory',
+     action='append',
+     help='Directory to watch. Use another -d or --directory option '
+     'for each directory.')
 @arg('-p',
      '--pattern',
      '--patterns',
