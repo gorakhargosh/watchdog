@@ -508,6 +508,13 @@ def auto_restart(args):
     else:
         stop_signal = int(args.signal)
 
+    # Handle SIGTERM in the same manner as SIGINT so that
+    # this program has a chance to stop the child process.
+    def handle_sigterm(_signum, _frame):
+        raise KeyboardInterrupt()
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
     patterns, ignore_patterns = parse_patterns(args.patterns,
                                                args.ignore_patterns)
     command = [args.command]
