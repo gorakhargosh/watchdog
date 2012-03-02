@@ -166,15 +166,12 @@ files.
 About using watchdog with editors like Vim
 ------------------------------------------
 Vim does not modify files unless directed to do so.
-It creates backup files and then swaps it in to replace
-the file you are editing on the disk. This means that
+It creates backup files and then swaps them in to replace
+the files you are editing on the disk. This means that
 if you use Vim to edit your files, the on-modified events
 for those files will not be triggered by watchdog.
-You may need to configure Vim to avoid using swapfiles::
-
-    set noswapfile
-
-in your ``~/.vimrc`` should deal with this situation.
+You may need to configure Vim to appropriately to disable
+this feature.
 
 
 Dependencies
@@ -192,6 +189,7 @@ Licensing
 Watchdog is licensed under the terms of the `Apache License, version 2.0`_.
 
 Copyright (C) 2011 `Yesudeep Mangalapilly`_ and the Watchdog authors.
+Copyright (C) 2012 Google, Inc.
 
 Project `source code`_ is available at Github. Please report bugs and file
 enhancement requests at the `issue tracker`_.
