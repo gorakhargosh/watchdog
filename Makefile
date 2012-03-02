@@ -104,3 +104,5 @@ distclean: clean
 		.pythoscope/ \
 		.coverage \
 		.installed.cfg
+include package.mk
+
