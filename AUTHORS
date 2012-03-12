@@ -1,21 +1,44 @@
-Yesudeep Mangalapilly    <yesudeep@google.com>
-Malthe Borch             <mborch@gmail.com>
-Andrew Schaaf            <andrew@andrewschaaf.com>
-Luke McCarthy            <luke@iogopro.co.uk>
-Thomas Guest             <tag@wordaligned.org>
-Lukáš Lalinský           <lalinsky@gmail.com>
-Raymond Hettinger        <python@rcn.com>
-Filip Noetzel            <filip@j03.de>
-Will McGugan             <will@willmcgugan.com>
-Ryan Kelly               <ryan@rfk.id.au>
-Thomas Heller            <theller@ctypes.org>
-Tim Cuthbertson          <tim+github@gfxmonk.net>
-Adrian Tejn Kern         <tejnkern@gmail.com>
-Steven Samuel Cole       <steven.samuel.cole@gmail.com>
-Senko Rašić              <senko@senko.net>
-Simon Pantzare           <simpa395@student.liu.se>
-Martin Kreichgauer       <http://github.com/kreichgauer>
-Rotem Yaari              <vmalloc@gmail.com>
+Project Lead:
+-------------
+Yesudeep Mangalapilly <yesudeep@google.com>
+
+Contributors in alphabetical order:
+-----------------------------------
+Adrian Tejn Kern <tejnkern@gmail.com>
+Andrew Schaaf <andrew@andrewschaaf.com>
+David LaPalomento <dlapalomento@gmail.com>
+Filip Noetzel <filip@j03.de>
+Gary van der Merwe <garyvdm@garyvdm.localdomain>
+Gora Khargosh <gora.khargosh@gmail.com>
+Hannu Valtonen <hannu.valtonen@ohmu.fi>
+Jesse Printz <jesse@jonypawks.net>
+Luke McCarthy <luke@iogopro.co.uk>
+Lukáš Lalinský <lalinsky@gmail.com>
+Malthe Borch <mborch@gmail.com>
+Martin Kreichgauer <kreichgauer@gmail.com>
+Martin Kreichgauer <martin@kreichgauer.com>
+Mike Lundy <mike@fluffypenguin.org>
+Raymond Hettinger <python@rcn.com>
+Roman Ovchinnikov <coolthecold@gmail.com>
+Rotem Yaari <vmalloc@gmail.com>
+Ryan Kelly <ryan@rfk.id.au>
+Senko Rasic <senko.rasic@dobarkod.hr>
+Senko Rašić <senko@senko.net>
+Shane Hathaway <shane@hathawaymix.org>
+Simon Pantzare <simon@pewpewlabs.com>
+Simon Pantzare <simpa395@student.liu.se>
+Steven Samuel Cole <steven.samuel.cole@gmail.com>
+Stéphane Klein <stephane@harobed.org>
+Thomas Guest <tag@wordaligned.org>
+Thomas Heller <theller@ctypes.org>
+Tim Cuthbertson <tim+github@gfxmonk.net>
+Todd Whiteman <toddw@activestate.com>
+Will McGugan <will@willmcgugan.com>
+Yesudeep Mangalapilly <gora.khargosh@gmail.com>
+Yesudeep Mangalapilly <yesudeep@google.com>
+dvogel <dvogel@wlscapi.uwsc.wisc.edu>
+gfxmonk <tim3d.junk@gmail.com>
+
 
 We would like to thank these individuals for ideas:
 ---------------------------------------------------
