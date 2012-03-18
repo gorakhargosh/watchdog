@@ -1,7 +1,7 @@
 /**
  * watchdog_fsevents.c: Python-C bridge to the OS X FSEvents API.
  *
- * Copyright (C) 2010 Malthe Borch <mborch@gmail.com>
+ * Copyright 2010 Malthe Borch <mborch@gmail.com>
  * Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
  * Copyright 2012 Google, Inc.
  *
@@ -29,7 +29,7 @@
 #if (PY_VERSION_HEX < 0x02050000) && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
-#define PY_SSIZE_T_MAX INT_MAX  
+#define PY_SSIZE_T_MAX INT_MAX
 #endif
 
 /* Convenience macros to make code more readable. */
@@ -50,18 +50,18 @@ typedef int Py_ssize_t;
 
 /**
  * Event stream callback contextual information passed to
- * our ``watchdog_FSEventStreamCallback`` function by the 
+ * our ``watchdog_FSEventStreamCallback`` function by the
  * FSEvents API whenever an event occurs.
  */
 typedef struct {
     /**
      * A pointer to the Python callback which will
      * will in turn be called by our event handler
-     * with event information. The Python callback 
+     * with event information. The Python callback
      * function must accept 2 arguments, both of which
      * are Python lists::
      *
-     *    def python_callback(event_paths, event_flags): 
+     *    def python_callback(event_paths, event_flags):
      *        pass
      */
     PyObject        *python_callback;
@@ -83,14 +83,14 @@ typedef struct {
 
 
 /**
- * Dictionary to keep track of which run loop 
- * belongs to which emitter thread. 
+ * Dictionary to keep track of which run loop
+ * belongs to which emitter thread.
  */
 PyObject *thread_to_run_loop = NULL;
 
 /**
- * Dictionary to keep track of which stream 
- * belongs to which watch. 
+ * Dictionary to keep track of which stream
+ * belongs to which watch.
  */
 PyObject *watch_to_stream = NULL;
 
@@ -112,10 +112,10 @@ PyObject *watch_to_stream = NULL;
  * :param event_paths:
  *     An array of NUL-terminated C strings representing event paths.
  * :param event_flags:
- *     An array of ``FSEventStreamEventFlags`` unsigned integral 
+ *     An array of ``FSEventStreamEventFlags`` unsigned integral
  *     mask values.
  * :param event_ids:
- *     An array of 64-bit unsigned integers representing event 
+ *     An array of 64-bit unsigned integers representing event
  *     identifiers.
  */
 static void
@@ -133,11 +133,11 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     PyObject *py_event_flags = NULL;
     PyObject *py_event_paths = NULL;
     PyThreadState *saved_thread_state = NULL;
-    
+
     /* Acquire interpreter lock and save original thread state. */
     PyEval_AcquireLock();
     saved_thread_state = PyThreadState_Swap(stream_callback_info_ref->thread_state);
-    
+
     /* Convert event flags and paths to Python ints and strings. */
     py_event_paths = PyList_New(num_events);
     py_event_flags = PyList_New(num_events);
@@ -160,12 +160,12 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
         PyList_SET_ITEM(py_event_paths, i, path);
         PyList_SET_ITEM(py_event_flags, i, flags);
     }
-    
+
     /* Call the Python callback function supplied by the stream information
      * struct. The Python callback function should accept two arguments,
      * both being Python lists:
      *
-     *    def python_callback(event_paths, event_flags): 
+     *    def python_callback(event_paths, event_flags):
      *        pass
      */
     callback_result = \
@@ -179,7 +179,7 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
         }
         CFRunLoopStop(stream_callback_info_ref->run_loop_ref);
     }
-    
+
     /* Release the lock and restore thread state. */
     PyThreadState_Swap(saved_thread_state);
     PyEval_ReleaseLock();
@@ -187,15 +187,15 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
 
 
 /**
- * Converts a list of Python strings to a ``CFMutableArray`` of 
+ * Converts a list of Python strings to a ``CFMutableArray`` of
  * UTF-8 encoded ``CFString`` instances and returns a pointer to
  * the array.
  *
  * :param py_string_list:
  *     List of Python strings.
  * :returns:
- *     A pointer to ``CFMutableArray`` (that is, a 
- *     ``CFMutableArrayRef``) of UTF-8 encoded ``CFString`` 
+ *     A pointer to ``CFMutableArray`` (that is, a
+ *     ``CFMutableArrayRef``) of UTF-8 encoded ``CFString``
  *     instances.
  */
 static CFMutableArrayRef
@@ -207,16 +207,16 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
     CFMutableArrayRef array_of_cf_string = NULL;
     CFStringRef cf_string = NULL;
     PyObject *py_string = NULL;
-    
+
     G_RETURN_NULL_IF_NULL(py_string_list);
-    
+
     string_list_size = PyList_Size(py_string_list);
-    
+
     /* Allocate a CFMutableArray. */
     array_of_cf_string = CFArrayCreateMutable(kCFAllocatorDefault, 1,
                                               &kCFTypeArrayCallBacks);
     G_RETURN_NULL_IF_NULL(array_of_cf_string);
-    
+
     /* Loop through the Python string list and copy strings to the
      * CFString array list. */
     for (i = 0; i < string_list_size; ++i)
@@ -224,13 +224,13 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
         py_string = PyList_GetItem(py_string_list, i);
         G_RETURN_NULL_IF_NULL(py_string);
         c_string = PyString_AS_STRING(py_string);
-        cf_string = CFStringCreateWithCString(kCFAllocatorDefault, 
-                                              c_string, 
+        cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
+                                              c_string,
                                               kCFStringEncodingUTF8);
         CFArraySetValueAtIndex(array_of_cf_string, i, cf_string);
         CFRelease(cf_string);
     }
-    
+
     return array_of_cf_string;
 }
 
@@ -240,10 +240,10 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
  * to the instance.
  *
  * :param stream_callback_info_ref:
- *      Pointer to the callback context information that will be 
+ *      Pointer to the callback context information that will be
  *      passed by the FSEvents API to the callback handler specified
- *      by the ``callback`` argument to this function. This 
- *      information contains a reference to the Python callback that 
+ *      by the ``callback`` argument to this function. This
+ *      information contains a reference to the Python callback that
  *      it must call in turn passing on the event information
  *      as Python objects to the the Python callback.
  * :param py_paths:
@@ -252,7 +252,7 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
  * :param callback:
  *      A function pointer of type ``FSEventStreamCallback``.
  * :returns:
- *      A pointer to an ``FSEventStream`` instance (that is, it returns 
+ *      A pointer to an ``FSEventStream`` instance (that is, it returns
  *      an ``FSEventStreamRef``).
  */
 static FSEventStreamRef
@@ -267,7 +267,7 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
     /* Check arguments. */
     G_RETURN_NULL_IF_NULL(py_paths);
     G_RETURN_NULL_IF_NULL(callback);
-    
+
     /* Convert the Python paths list to a CFMutableArray. */
     paths = watchdog_CFMutableArrayRef_from_PyStringList(py_paths);
     G_RETURN_NULL_IF_NULL(paths);
@@ -276,12 +276,12 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
     FSEventStreamContext stream_context = {
         0, stream_callback_info_ref, NULL, NULL, NULL
     };
-    stream_ref = FSEventStreamCreate(kCFAllocatorDefault, 
-                                     callback, 
-                                     &stream_context, 
-                                     paths, 
-                                     kFSEventStreamEventIdSinceNow, 
-                                     stream_latency, 
+    stream_ref = FSEventStreamCreate(kCFAllocatorDefault,
+                                     callback,
+                                     &stream_context,
+                                     paths,
+                                     kFSEventStreamEventIdSinceNow,
+                                     stream_latency,
                                      kFSEventStreamCreateFlagNoDefer);
     CFRelease(paths);
     return stream_ref;
@@ -304,7 +304,7 @@ PyDoc_STRVAR(watchdog_add_watch__doc__,
 :param paths:\n\
     A list of paths to monitor.\n");
 static PyObject *
-watchdog_add_watch(PyObject *self, PyObject *args) 
+watchdog_add_watch(PyObject *self, PyObject *args)
 {
     FSEventStreamRef stream_ref = NULL;
     StreamCallbackInfo *stream_callback_info_ref = NULL;
@@ -314,43 +314,43 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     PyObject *paths_to_watch = NULL;
     PyObject *python_callback = NULL;
     PyObject *value = NULL;
-    
+
     /* Ensure all arguments are received. */
     G_RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "OOOO:schedule",
-                                          &emitter_thread, &watch, 
+                                          &emitter_thread, &watch,
                                           &python_callback, &paths_to_watch));
-    
+
     /* Watch must not already be scheduled. */
     G_RETURN_NULL_IF(PyDict_Contains(watch_to_stream, watch) == 1);
-    
+
     /* Create an instance of the callback information structure. */
     stream_callback_info_ref = PyMem_New(StreamCallbackInfo, 1);
     G_RETURN_NULL_IF_NULL(stream_callback_info_ref);
-    
+
     /* Create an FSEvent stream and
      * Save the stream reference to the global watch-to-stream dictionary. */
-    stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref, 
-                                              paths_to_watch, 
+    stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref,
+                                              paths_to_watch,
                                               (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
     value = PyCObject_FromVoidPtr(stream_ref, PyMem_Free);
     PyDict_SetItem(watch_to_stream, watch, value);
-    
-    /* Get a reference to the runloop for the emitter thread 
+
+    /* Get a reference to the runloop for the emitter thread
      * or to the current runloop. */
     value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
     }
-    else 
+    else
     {
         run_loop_ref = PyCObject_AsVoidPtr(value);
     }
-    
+
     /* Schedule the stream with the obtained runloop. */
     FSEventStreamScheduleWithRunLoop(stream_ref, run_loop_ref, kCFRunLoopDefaultMode);
-    
-    /* Set the stream information for the callback. 
+
+    /* Set the stream information for the callback.
      * This data will be passed to our watchdog_FSEventStreamCallback function
      * by the FSEvents API whenever an event occurs.
      */
@@ -359,7 +359,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     stream_callback_info_ref->run_loop_ref = run_loop_ref;
     stream_callback_info_ref->thread_state = PyThreadState_Get();
     Py_INCREF(python_callback);
-    
+
     /* Start the event stream. */
     if (G_NOT(FSEventStreamStart(stream_ref)))
     {
@@ -367,7 +367,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
         FSEventStreamRelease(stream_ref);
         return NULL;
     }
-    
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -384,11 +384,11 @@ watchdog_read_events(PyObject *self, PyObject *args)
     CFRunLoopRef run_loop_ref = NULL;
     PyObject *emitter_thread = NULL;
     PyObject *value = NULL;
-    
+
     G_RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &emitter_thread));
-    
+
     PyEval_InitThreads();
-    
+
     /* Allocate information and store thread state. */
     value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
     if (G_IS_NULL(value))
@@ -399,21 +399,21 @@ watchdog_read_events(PyObject *self, PyObject *args)
         Py_INCREF(emitter_thread);
         Py_INCREF(value);
     }
-    
+
     /* No timeout, block until events. */
     Py_BEGIN_ALLOW_THREADS;
     CFRunLoopRun();
     Py_END_ALLOW_THREADS;
-    
+
     /* Clean up state information. */
     if (PyDict_DelItem(thread_to_run_loop, emitter_thread) == 0)
     {
         Py_DECREF(emitter_thread);
         Py_INCREF(value);
     }
-    
+
     G_RETURN_NULL_IF(PyErr_Occurred());
-    
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -428,13 +428,13 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
     PyObject *value = PyDict_GetItem(watch_to_stream, watch);
     PyDict_DelItem(watch_to_stream, watch);
-    
+
     FSEventStreamRef stream_ref = PyCObject_AsVoidPtr(value);
-    
+
     FSEventStreamStop(stream_ref);
     FSEventStreamInvalidate(stream_ref);
     FSEventStreamRelease(stream_ref);
-    
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -449,13 +449,13 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     PyObject *value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
     CFRunLoopRef run_loop_ref = PyCObject_AsVoidPtr(value);
-    
+
     /* Stop the run loop. */
     if (G_IS_NOT_NULL(run_loop_ref))
     {
         CFRunLoopStop(run_loop_ref);
     }
-    
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -500,7 +500,7 @@ watchdog_module_init(void)
  * Adds various attributes to the Python module.
  *
  * :param module:
- *     A pointer to the Python module object to inject 
+ *     A pointer to the Python module object to inject
  *     the attributes into.
  */
 static void
@@ -516,14 +516,14 @@ watchdog_module_add_attributes(PyObject *module)
     PyModule_AddIntConstant(module,
                             "POLLOUT",
                             kCFFileDescriptorWriteCallBack);
-    
+
     /* Adds version information. */
     PyModule_AddObject(module,
                        "__version__",
                        version_tuple);
     PyModule_AddObject(module,
                        "version_string",
-                       Py_BuildValue("s", WATCHDOG_VERSION_STRING));              
+                       Py_BuildValue("s", WATCHDOG_VERSION_STRING));
 }
 
 
@@ -566,4 +566,3 @@ PyInit__watchdog_fsevents(void){
 }
 
 #endif /* !PY_MAJOR_VERSION < 3 */
-
