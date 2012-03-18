@@ -19,7 +19,7 @@
 """
 :module: watchdog.events
 :synopsis: File system events and event handlers.
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 
 Event Classes
 -------------

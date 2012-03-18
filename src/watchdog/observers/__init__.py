@@ -19,7 +19,7 @@
 """
 :module: watchdog.observers
 :synopsis: Observer that picks a native implementation if available.
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 
 
 Classes

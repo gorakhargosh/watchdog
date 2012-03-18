@@ -21,9 +21,9 @@
 Utility collections or "bricks".
 
 :module: watchdog.utils.bricks
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
-:author: Lukáš Lalinský <lalinsky@gmail.com>
-:author: Raymond Hettinger <python@rcn.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: lalinsky@gmail.com (Lukáš Lalinský)
+:author: python@rcn.com (Raymond Hettinger)
 
 Classes
 =======
@@ -184,4 +184,3 @@ if not sys.version < (2, 6, 0):
 
         def __del__(self):
             self.clear()                    # remove circular references
-

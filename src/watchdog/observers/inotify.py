@@ -21,7 +21,7 @@
 :synopsis: ``inotify(7)`` based emitter implementation.
 :author: Sebastien Martini <seb@dbzteam.org>
 :author: Luke McCarthy <luke@iogopro.co.uk>
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: Tim Cuthbertson <tim+github@gfxmonk.net>
 :platforms: Linux 2.6.13+.
 

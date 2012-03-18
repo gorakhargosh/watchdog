@@ -18,7 +18,7 @@
 
 """
 :module: watchdog.watchmedo
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 :synopsis: ``watchmedo`` shell script utility.
 """
 

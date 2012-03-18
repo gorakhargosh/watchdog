@@ -20,7 +20,7 @@
 """
 :module: watchdog.observers.polling
 :synopsis: Polling emitter implementation.
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 
 Classes
 -------

@@ -19,7 +19,7 @@
 """
 :module: watchdog.observers.fsevents
 :synopsis: FSEvents based emitter implementation.
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 :platforms: Mac OS X
 """
 

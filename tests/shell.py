@@ -19,7 +19,7 @@
 """
     :module: tests.shell
     :synopsis: Common shell operations for testing.
-    :author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+    :author: yesudeep@google.com (Yesudeep Mangalapilly)
 """
 from __future__ import with_statement
 

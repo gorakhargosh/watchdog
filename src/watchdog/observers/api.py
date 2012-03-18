@@ -19,7 +19,7 @@
 """
 :module: watchdog.observers.api
 :synopsis: Classes useful to observer implementers.
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 
 Immutables
 ----------

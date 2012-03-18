@@ -20,7 +20,7 @@
 """
 :module: watchdog.utils
 :synopsis: Utility classes and functions.
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 
 Functions
 ---------

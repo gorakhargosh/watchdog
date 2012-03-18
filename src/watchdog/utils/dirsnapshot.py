@@ -19,7 +19,7 @@
 """
 :module: watchdog.utils.dirsnapshot
 :synopsis: Directory snapshots and comparison.
-:author: Yesudeep Mangalapilly <yesudeep@gmail.com>
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 
 .. ADMONITION:: Where are the moved events? They "disappeared"
 
