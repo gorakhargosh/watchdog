@@ -26,13 +26,13 @@ from watchdog.events import PatternMatchingEventHandler
 
 
 class Trick(PatternMatchingEventHandler):
-    """Your tricks should subclass this class."""
+  """Your tricks should subclass this class."""
 
-    @classmethod
-    def generate_yaml(cls):
-        context = dict(module_name=cls.__module__,
-                       klass_name=cls.__name__)
-        template_yaml = """- %(module_name)s.%(klass_name)s:
+  @classmethod
+  def generate_yaml(cls):
+    context = dict(module_name=cls.__module__,
+                   klass_name=cls.__name__)
+    template_yaml = """- %(module_name)s.%(klass_name)s:
   args:
   - argument1
   - argument2
@@ -44,114 +44,120 @@ class Trick(PatternMatchingEventHandler):
     - "version.py"
     ignore_directories: false
 """
-        return template_yaml % context
+    return template_yaml % context
 
 
 class LoggerTrick(Trick):
-    """A simple trick that does only logs events."""
-    def on_any_event(self, event):
-        pass
+  """A simple trick that does only logs events."""
 
-    @echo.echo
-    def on_modified(self, event):
-        pass
+  def on_any_event(self, event):
+    pass
 
-    @echo.echo
-    def on_deleted(self, event):
-        pass
+  @echo.echo
+  def on_modified(self, event):
+    pass
 
-    @echo.echo
-    def on_created(self, event):
-        pass
+  @echo.echo
+  def on_deleted(self, event):
+    pass
 
-    @echo.echo
-    def on_moved(self, event):
-        pass
+  @echo.echo
+  def on_created(self, event):
+    pass
+
+  @echo.echo
+  def on_moved(self, event):
+    pass
 
 
 class ShellCommandTrick(Trick):
-    """Execeutes shell commands in response to matched events."""
-    def __init__(self, shell_command=None, patterns=None, ignore_patterns=None, ignore_directories=False, wait_for_process=False):
-        super(ShellCommandTrick, self).__init__(patterns, ignore_patterns, ignore_directories)
-        self.shell_command = shell_command
-        self.wait_for_process = wait_for_process
+  """Execeutes shell commands in response to matched events."""
 
-    def on_any_event(self, event):
-        from string import Template
-        if event.is_directory:
-            object_type = 'directory'
-        else:
-            object_type = 'file'
+  def __init__(self, shell_command=None, patterns=None, ignore_patterns=None,
+               ignore_directories=False, wait_for_process=False):
+    super(ShellCommandTrick, self).__init__(patterns, ignore_patterns,
+                                            ignore_directories)
+    self.shell_command = shell_command
+    self.wait_for_process = wait_for_process
 
-        context = {
-            'watch_src_path': event.src_path,
-            'watch_dest_path': '',
-            'watch_event_type': event.event_type,
-            'watch_object': object_type,
-            }
+  def on_any_event(self, event):
+    from string import Template
 
-        if self.shell_command is None:
-            if has_attribute(event, 'dest_path'):
-                context.update({'dest_path': event.dest_path})
-                command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
-            else:
-                command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
-        else:
-            if has_attribute(event, 'dest_path'):
-                context.update({'watch_dest_path': event.dest_path})
-            command = self.shell_command
+    if event.is_directory:
+      object_type = 'directory'
+    else:
+      object_type = 'file'
 
-        command = Template(command).safe_substitute(**context)
-        process = subprocess.Popen(command, shell=True)
-        if self.wait_for_process:
-            process.wait()
+    context = {
+      'watch_src_path': event.src_path,
+      'watch_dest_path': '',
+      'watch_event_type': event.event_type,
+      'watch_object': object_type,
+      }
+
+    if self.shell_command is None:
+      if has_attribute(event, 'dest_path'):
+        context.update({'dest_path': event.dest_path})
+        command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
+      else:
+        command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
+    else:
+      if has_attribute(event, 'dest_path'):
+        context.update({'watch_dest_path': event.dest_path})
+      command = self.shell_command
+
+    command = Template(command).safe_substitute(**context)
+    process = subprocess.Popen(command, shell=True)
+    if self.wait_for_process:
+      process.wait()
 
 
 class AutoRestartTrick(Trick):
-    """Starts a long-running subprocess and restarts it on matched events.
+  """Starts a long-running subprocess and restarts it on matched events.
 
-    The command parameter is a list of command arguments, such as
-    ['bin/myserver', '-c', 'etc/myconfig.ini'].
+  The command parameter is a list of command arguments, such as
+  ['bin/myserver', '-c', 'etc/myconfig.ini'].
 
-    Call start() after creating the Trick. Call stop() when stopping
-    the process.
-    """
-    def __init__(self, command, patterns=None, ignore_patterns=None,
-            ignore_directories=False, stop_signal=signal.SIGINT,
-            kill_after=10):
-        super(AutoRestartTrick, self).__init__(
-            patterns, ignore_patterns, ignore_directories)
-        self.command = command
-        self.stop_signal = stop_signal
-        self.kill_after = kill_after
-        self.process = None
+  Call start() after creating the Trick. Call stop() when stopping
+  the process.
+  """
 
-    def start(self):
-        self.process = subprocess.Popen(self.command)
+  def __init__(self, command, patterns=None, ignore_patterns=None,
+               ignore_directories=False, stop_signal=signal.SIGINT,
+               kill_after=10):
+    super(AutoRestartTrick, self).__init__(
+      patterns, ignore_patterns, ignore_directories)
+    self.command = command
+    self.stop_signal = stop_signal
+    self.kill_after = kill_after
+    self.process = None
 
-    def stop(self):
-        if self.process is None:
-            return
+  def start(self):
+    self.process = subprocess.Popen(self.command)
+
+  def stop(self):
+    if self.process is None:
+      return
+    try:
+      self.process.send_signal(self.stop_signal)
+    except OSError:
+      # Process is already gone
+      pass
+    else:
+      kill_time = time.time() + self.kill_after
+      while time.time() < kill_time:
+        if self.process.poll() is not None:
+          break
+        time.sleep(0.25)
+      else:
         try:
-            self.process.send_signal(self.stop_signal)
+          self.process.kill()
         except OSError:
-            # Process is already gone
-            pass
-        else:
-            kill_time = time.time() + self.kill_after
-            while time.time() < kill_time:
-                if self.process.poll() is not None:
-                    break
-                time.sleep(0.25)
-            else:
-                try:
-                    self.process.kill()
-                except OSError:
-                    # Process is already gone
-                    pass
-        self.process = None
+          # Process is already gone
+          pass
+    self.process = None
 
-    @echo.echo
-    def on_any_event(self, event):
-        self.stop()
-        self.start()
+  @echo.echo
+  def on_any_event(self, event):
+    self.stop()
+    self.start()

@@ -23,48 +23,48 @@ raise ImportError("Not implemented yet.")
 
 from watchdog.utils import platform
 from watchdog.events import FileDeletedEvent, FileModifiedEvent,\
-    FileCreatedEvent, FileMovedEvent, DirDeletedEvent, DirModifiedEvent,\
-    DirCreatedEvent, DirMovedEvent
+  FileCreatedEvent, FileMovedEvent, DirDeletedEvent, DirModifiedEvent,\
+  DirCreatedEvent, DirMovedEvent
 
 if platform.is_windows():
-    import threading
-    import time
+  import threading
+  import time
 
-    from watchdog.observers.winapi_common import\
-        read_directory_changes
-    from watchdog.observers.api import\
-        EventQueue,\
-        EventEmitter,\
-        BaseObserver,\
-        DEFAULT_OBSERVER_TIMEOUT,\
-        DEFAULT_EMITTER_TIMEOUT
+  from watchdog.observers.winapi_common import\
+    read_directory_changes
+  from watchdog.observers.api import\
+    EventQueue,\
+    EventEmitter,\
+    BaseObserver,\
+    DEFAULT_OBSERVER_TIMEOUT,\
+    DEFAULT_EMITTER_TIMEOUT
 
 
-    class WindowsApiAsyncEmitter(EventEmitter):
-        """
-        Platform-independent emitter that polls a directory to detect file
-        system changes.
-        """
+  class WindowsApiAsyncEmitter(EventEmitter):
+    """
+    Platform-independent emitter that polls a directory to detect file
+    system changes.
+    """
 
-        def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-            EventEmitter.__init__(self, event_queue, watch, timeout)
-            self._lock = threading.Lock()
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+      EventEmitter.__init__(self, event_queue, watch, timeout)
+      self._lock = threading.Lock()
 
-        def on_thread_exit(self):
-            pass
+    def on_thread_exit(self):
+      pass
 
-        def queue_events(self, timeout):
-            with self._lock:
-                pass
+    def queue_events(self, timeout):
+      with self._lock:
+        pass
 
-    class WindowsApiAsyncObserver(BaseObserver):
-        """
-        Observer thread that schedules watching directories and dispatches
-        calls to event handlers.
-        """
+  class WindowsApiAsyncObserver(BaseObserver):
+    """
+    Observer thread that schedules watching directories and dispatches
+    calls to event handlers.
+    """
 
-        def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-            BaseObserver.__init__(self, emitter_class=WindowsApiAsyncEmitter,
-                                  timeout=timeout)
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+      BaseObserver.__init__(self, emitter_class=WindowsApiAsyncEmitter,
+                            timeout=timeout)
 
 
