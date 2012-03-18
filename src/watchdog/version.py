@@ -20,8 +20,8 @@
 # When updating this version number, please update the
 # ``docs/source/global.rst.inc`` file as well.
 VERSION_MAJOR = 0
-VERSION_MINOR = 5
-VERSION_BUILD = 4
+VERSION_MINOR = 6
+VERSION_BUILD = 0
 VERSION_INFO = (VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD)
 VERSION_STRING = "%d.%d.%d" % VERSION_INFO
 
