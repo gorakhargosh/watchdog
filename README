@@ -145,9 +145,9 @@ Supported Platforms
 * OS-independent (polling the disk for directory snapshots and comparing them
   periodically; slow and not recommended)
 
-Note that when using watchdog with kqueue, you need the 
+Note that when using watchdog with kqueue, you need the
 number of file descriptors allowed to be opened by programs
-running on your system to be increased to more than the 
+running on your system to be increased to more than the
 number of files that you will be monitoring. The easiest way
 to do that is to edit your ``~/.profile`` file and add
 a line similar to::
@@ -159,7 +159,7 @@ file descriptors to monitor files. That plus the enormous
 amount of bookkeeping that watchdog needs to do in order
 to monitor file descriptors just makes this a painful way
 to monitor files and directories. In essence, kqueue is
-not a very scalable way to monitor a deeply nested 
+not a very scalable way to monitor a deeply nested
 directory of files and directories with a large number of
 files.
 
@@ -188,9 +188,9 @@ Licensing
 ---------
 Watchdog is licensed under the terms of the `Apache License, version 2.0`_.
 
-Copyright (C) 2011 `Yesudeep Mangalapilly`_.
+Copyright 2011 `Yesudeep Mangalapilly`_.
 
-Copyright (C) 2012 Google, Inc.
+Copyright 2012 Google, Inc.
 
 Project `source code`_ is available at Github. Please report bugs and file
 enhancement requests at the `issue tracker`_.
@@ -236,4 +236,3 @@ to do:
 .. _treewalker: http://github.com/jbd/treewatcher
 .. _file.monitor: http://github.com/pke/file.monitor
 .. _pyfilesystem: http://code.google.com/p/pyfilesystem
-

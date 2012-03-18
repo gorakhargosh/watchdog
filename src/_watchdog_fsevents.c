@@ -1,8 +1,8 @@
 /**
  * _watchdog_fsevents.c: Low-level FSEvents Python/C API.
  *
- * Copyright (C) 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
- * Copyright (C) 2012 Google, Inc.
+ * Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
+ * Copyright 2012 Google, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

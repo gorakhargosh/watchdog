@@ -2,7 +2,7 @@
 
 .. |author_name| replace:: Yesudeep Mangalapilly
 .. |author_email| replace:: yesudeep@gmail.com
-.. |copyright| replace:: Copyright (C) 2011 Yesudeep Mangalapilly.
+.. |copyright| replace:: Copyright 2012 Google, Inc.
 .. |project_name| replace:: ``watchdog``
 .. |project_version| replace:: 0.5.4
 
