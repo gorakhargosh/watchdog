@@ -85,7 +85,7 @@ class OrderedSetQueue(queue.Queue):
             def __hash__(self):
                 return hash(self._key())
 
-    :author: Lukáš Lalinský <lalinsky@gmail.com>
+    :author: lalinsky@gmail.com (Lukáš Lalinský)
     :url: http://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
     """
     def _init(self, maxsize):
@@ -123,7 +123,7 @@ if not sys.version < (2, 6, 0):
                 Runs on Python 2.6 or later (and runs on Python 3.0 or later
                 without any modifications).
 
-        :author: Raymond Hettinger <python@rcn.com>
+        :author: python@rcn.com (Raymond Hettinger)
         :url: http://code.activestate.com/recipes/576694/
         """
         def __init__(self, iterable=None):
