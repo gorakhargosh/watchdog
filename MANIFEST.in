@@ -1,5 +1,6 @@
 include README
 include LICENSE
+include COPYING
 include AUTHORS
 recursive-include src *.py *.h *.c
 include docs/*.txt
@@ -14,4 +15,3 @@ prune docs/source/_themes/.git*
 #global-exclude *.swp
 #global-exclude *~
 #global-exclude *.bak
-
