@@ -221,7 +221,10 @@ class DirectorySnapshot(object):
     self.is_recursive = recursive
 
     if not _copying:
-      stat_info = os.stat(self._path)
+      try:
+        stat_info = os.stat(self._path)
+      except OSError:
+        return
       self._stat_snapshot[self._path] = stat_info
       self._inode_to_path[stat_info.st_ino] = self._path
       walker_callback(self._path, stat_info)
