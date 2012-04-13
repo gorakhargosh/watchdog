@@ -260,15 +260,20 @@ class DirectorySnapshot(object):
     """
     return DirectorySnapshotDiff(previous_dirsnap, self)
 
-  #def __add__(self, new_dirsnap):
-  #    self._stat_snapshot.update(new_dirsnap._stat_snapshot)
+  def add_entries(self, new_dirsnap):
+      self._stat_snapshot.update(new_dirsnap._stat_snapshot)
 
-  def copy(self, from_pathname):
+  def remove_entries(self, old_dirsnap):
+    for key in old_dirsnap._stat_snapshot.keys():
+      del self._stat_snapshot[key]
+
+  def copy(self, from_pathname, is_recursive):
     snapshot = DirectorySnapshot(path=from_pathname,
                                  recursive=self.is_recursive,
                                  _copying=True)
     for pathname, stat_info in self._stat_snapshot.items():
-      if pathname.startswith(from_pathname):
+      if (pathname.startswith(from_pathname) or pathname + os.sep == from_pathname)\
+             and (is_recursive or os.path.dirname(pathname) + os.sep == from_pathname):
         snapshot._stat_snapshot[pathname] = stat_info
         snapshot._inode_to_path[stat_info.st_ino] = pathname
     return snapshot

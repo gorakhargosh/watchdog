@@ -50,6 +50,10 @@ if platform.is_darwin():
     DEFAULT_EMITTER_TIMEOUT,\
     DEFAULT_OBSERVER_TIMEOUT
 
+  class FSEventsStreamFlag:
+    MustScanSubDirs = 0x00000001
+    UserDropped = 0x00000002
+    KernelDropped = 0x00000004
 
   class FSEventsEmitter(EventEmitter):
     """
@@ -77,14 +81,36 @@ if platform.is_darwin():
       _fsevents.stop(self)
 
     def queue_events(self, timeout):
-      with self._lock:
-        if not self.watch.is_recursive\
-        and self.watch.path not in self.pathnames:
+      for idx in xrange(len(self.pathnames)):
+        event_path = absolute_path(self.pathnames[idx])
+        event_flags = self.flags[idx]
+
+        if not self.watch.is_recursive and self.watch.path != event_path:
           return
-        new_snapshot = DirectorySnapshot(self.watch.path,
-                                         self.watch.is_recursive)
-        events = new_snapshot - self.snapshot
-        self.snapshot = new_snapshot
+
+        recursive_update = bool(event_flags & FSEventsStreamFlag.MustScanSubDirs)\
+                           or not os.path.isdir(event_path)
+
+        # try to build only partial snapshot
+        new_snapshot = DirectorySnapshot(
+          event_path,
+          recursive_update
+        )
+
+        if recursive_update and self.watch.path == event_path:
+          # no optimization is possible
+          events = new_snapshot - self.snapshot
+          self.snapshot = new_snapshot
+        else:
+          # partial comparison will be done
+          previous_snapshot = self.snapshot.copy(event_path, recursive_update)
+
+          # compare them
+          events = new_snapshot - previous_snapshot
+
+          # update last snapshot
+          self.snapshot.remove_entries(previous_snapshot)
+          self.snapshot.add_entries(new_snapshot)
 
         # Files.
         for src_path in events.files_deleted:
@@ -109,8 +135,11 @@ if platform.is_darwin():
 
     def run(self):
       try:
-        def callback(pathnames, flags, emitter=self):
-          emitter.queue_events(emitter.timeout)
+        def callback(pathnames, flags):
+          with self._lock:
+            self.pathnames = pathnames
+            self.flags = flags
+            self.queue_events(self.timeout)
 
         #for pathname, flag in zip(pathnames, flags):
         #if emitter.watch.is_recursive: # and pathname != emitter.watch.path:
@@ -138,7 +167,7 @@ if platform.is_darwin():
         _fsevents.add_watch(self,
                             self.watch,
                             callback,
-                            self.pathnames)
+                            [self.watch.path])
         _fsevents.read_events(self)
       finally:
         self.on_thread_exit()
