@@ -263,16 +263,15 @@ class DirectorySnapshot(object):
   #def __add__(self, new_dirsnap):
   #    self._stat_snapshot.update(new_dirsnap._stat_snapshot)
 
-  def copy(self, from_pathname=None):
+  def copy(self, from_pathname):
     snapshot = DirectorySnapshot(path=from_pathname,
                                  recursive=self.is_recursive,
                                  _copying=True)
     for pathname, stat_info in self._stat_snapshot.items():
-      if pathname.starts_with(from_pathname):
+      if pathname.startswith(from_pathname):
         snapshot._stat_snapshot[pathname] = stat_info
         snapshot._inode_to_path[stat_info.st_ino] = pathname
     return snapshot
-
 
   @property
   def stat_snapshot(self):
