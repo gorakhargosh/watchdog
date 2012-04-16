@@ -268,14 +268,19 @@ class DirectorySnapshot(object):
       del self._stat_snapshot[key]
 
   def copy(self, from_pathname, is_recursive):
-    snapshot = DirectorySnapshot(path=from_pathname,
-                                 recursive=self.is_recursive,
+    return self.copy_multiple([ from_pathname ], is_recursive)
+
+  def copy_multiple(self, from_pathnames, is_recursive):
+    snapshot = DirectorySnapshot(path=','.join(from_pathnames),
+                                 recursive=is_recursive,
                                  _copying=True)
     for pathname, stat_info in self._stat_snapshot.items():
-      if (pathname.startswith(from_pathname) or pathname + os.sep == from_pathname)\
-             and (is_recursive or os.path.dirname(pathname) + os.sep == from_pathname):
-        snapshot._stat_snapshot[pathname] = stat_info
-        snapshot._inode_to_path[stat_info.st_ino] = pathname
+      for from_pathname in from_pathnames:
+        if pathname == from_pathname\
+               or (pathname.startswith(from_pathname)\
+                   and (is_recursive or os.path.dirname(pathname) == from_pathname)):
+          snapshot._stat_snapshot[pathname] = stat_info
+          snapshot._inode_to_path[stat_info.st_ino] = pathname
     return snapshot
 
   @property

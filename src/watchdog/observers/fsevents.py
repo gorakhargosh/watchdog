@@ -88,8 +88,7 @@ if platform.is_darwin():
         if not self.watch.is_recursive and self.watch.path != event_path:
           return
 
-        recursive_update = bool(event_flags & FSEventsStreamFlag.MustScanSubDirs)\
-                           or not os.path.isdir(event_path)
+        recursive_update = bool(event_flags & FSEventsStreamFlag.MustScanSubDirs)
 
         # try to build only partial snapshot
         new_snapshot = DirectorySnapshot(
@@ -107,6 +106,26 @@ if platform.is_darwin():
 
           # compare them
           events = new_snapshot - previous_snapshot
+
+          if events.dirs_deleted or events.dirs_created or events.dirs_moved:
+            # add files from deleted dir to previous snapshot
+            previous_snapshot.add_entries(self.snapshot.copy_multiple(events.dirs_deleted, True))
+
+            # add files from created dir to new_snapshot, create a recursive snapshot of new dir
+            for new_path in events.dirs_created:
+              new_snapshot.add_entries(DirectorySnapshot(new_path, True))
+
+            previous_snapshot.add_entries(
+              self.snapshot.copy_multiple(
+                [ old_path for (old_path, new_path) in events.dirs_moved],
+                True
+              )
+            )
+            for old_path, new_path in events.dirs_moved:
+              new_snapshot.add_entries(DirectorySnapshot(new_path, True))
+
+            # re-do diff
+            events = new_snapshot - previous_snapshot
 
           # update last snapshot
           self.snapshot.remove_entries(previous_snapshot)
