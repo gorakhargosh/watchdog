@@ -55,7 +55,7 @@ except ImportError: # pragma: no cover
 
 
 Observer = _Observer
-  """
-  Observer thread that schedules watching directories and dispatches
-  calls to event handlers.
-  """
+"""
+Observer thread that schedules watching directories and dispatches
+calls to event handlers.
+"""
