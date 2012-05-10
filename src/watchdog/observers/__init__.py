@@ -54,7 +54,7 @@ except ImportError: # pragma: no cover
           from watchdog.observers.polling import PollingObserver as _Observer
 
 
-class Observer(_Observer):
+Observer = _Observer
   """
   Observer thread that schedules watching directories and dispatches
   calls to event handlers.
