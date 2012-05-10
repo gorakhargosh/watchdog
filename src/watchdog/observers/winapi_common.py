@@ -45,7 +45,7 @@ if platform.is_windows():
     CreateFileW,\
     ReadDirectoryChangesW,\
     CreateIoCompletionPort,\
-    CloseHandle
+    CancelIoEx
   from watchdog.events import\
     DirDeletedEvent,\
     DirCreatedEvent,\
@@ -106,7 +106,7 @@ if platform.is_windows():
 
 
   def close_directory_handle(handle):
-    CloseHandle(handle)
+    CancelIoEx(handle, None) #force ReadDirectoryChangesW to return
 
 
   def read_directory_changes(handle, event_buffer, recursive):
