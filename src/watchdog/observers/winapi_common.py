@@ -106,7 +106,10 @@ if platform.is_windows():
 
 
   def close_directory_handle(handle):
-    CancelIoEx(handle, None) #force ReadDirectoryChangesW to return
+    try:
+      CancelIoEx(handle, None) #force ReadDirectoryChangesW to return
+    except WindowsError:
+      return
 
 
   def read_directory_changes(handle, event_buffer, recursive):
@@ -115,14 +118,17 @@ if platform.is_windows():
     http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
     """
     nbytes = ctypes.wintypes.DWORD()
-    ReadDirectoryChangesW(handle,
-                          ctypes.byref(event_buffer),
-                          len(event_buffer),
-                          recursive,
-                          WATCHDOG_FILE_NOTIFY_FLAGS,
-                          ctypes.byref(nbytes),
-                          None,
-                          None)
+    try:
+      ReadDirectoryChangesW(handle,
+                            ctypes.byref(event_buffer),
+                            len(event_buffer),
+                            recursive,
+                            WATCHDOG_FILE_NOTIFY_FLAGS,
+                            ctypes.byref(nbytes),
+                            None,
+                            None)
+    except WindowsError:
+      return [], 0
     # get_FILE_NOTIFY_INFORMATION expects nBytes to be long.
     return event_buffer.raw, long(nbytes.value)
 
