@@ -530,8 +530,8 @@ if platform.is_linux():
       """
       Reads events from inotify and yields them.
       """
+      event_buffer = os.read(self._inotify_fd, event_buffer_size)
       with self._lock:
-        event_buffer = os.read(self._inotify_fd, event_buffer_size)
         event_list = []
         for wd, mask, cookie, name in Inotify._parse_event_buffer(
           event_buffer):
