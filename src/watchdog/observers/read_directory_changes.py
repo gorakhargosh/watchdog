@@ -85,7 +85,7 @@ if platform.is_windows():
             dest_path = src_path
             src_path = last_renamed_src_path
 
-            if os.path.isdir(src_path):
+            if os.path.isdir(dest_path):
               event = DirMovedEvent(src_path, dest_path)
               if self.watch.is_recursive:
                 # HACK: We introduce a forced delay before
