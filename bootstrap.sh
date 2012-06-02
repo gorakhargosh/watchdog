@@ -17,11 +17,11 @@
 # Author: yesudeep@google.com (Yesudeep Mangalapilly)
 
 
-CURL=curl -O
+CURL=curl
 BOOTSTRAP_URL='svn.zope.org/*checkout*/zc.buildout/trunk/bootstrap/bootstrap.py'
 
 if [ ! -f bootstrap.py ]; then
-  $CURL $BOOTSTRAP_URL
+  $CURL $BOOTSTRAP_URL -o bootstrap.py
 fi
 
 python bootstrap.py -d
