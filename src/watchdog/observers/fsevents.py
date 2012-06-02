@@ -140,6 +140,8 @@ if platform.is_darwin():
                             callback,
                             self.pathnames)
         _fsevents.read_events(self)
+      except Exception, e:
+        pass
       finally:
         self.on_thread_exit()
 
