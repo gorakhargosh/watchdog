@@ -99,7 +99,7 @@ class DaemonThread(threading.Thread):
     """Determines whether the daemon thread should continue running."""
     return not self._stopped_event.is_set()
 
-  def on_thread_told_to_stop(self):
+  def on_thread_exit(self):
     """Override this method instead of :meth:`stop()`.
     :meth:`stop()` calls this method.
 
@@ -111,7 +111,7 @@ class DaemonThread(threading.Thread):
   def stop(self):
     """Signals the daemon thread to stop."""
     self._stopped_event.set()
-    self.on_thread_told_to_stop()
+    self.on_thread_exit()
 
 
 if not has_attribute(DaemonThread, 'is_alive'):
