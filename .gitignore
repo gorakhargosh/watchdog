@@ -42,3 +42,4 @@ htmlcov/
 # From virtualenv.
 include/
 lib/
+/bootstrap.py

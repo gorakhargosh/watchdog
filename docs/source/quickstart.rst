@@ -41,7 +41,7 @@ file system changes and simply log them to the console::
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s - %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
-        path = sys.argv[1]
+        path = sys.argv[1] if len(sys.argv) > 1 else '.'
         event_handler = LoggingEventHandler()
         observer = Observer()
         observer.schedule(event_handler, path, recursive=True)
