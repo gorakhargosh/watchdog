@@ -233,20 +233,22 @@ class DirectorySnapshot(object):
         for directory_name in directories:
           try:
             directory_path = os.path.join(root, directory_name)
-            stat_info = os.stat(directory_path)
-            self._stat_snapshot[directory_path] = stat_info
-            self._inode_to_path[stat_info.st_ino] = directory_path
-            walker_callback(directory_path, stat_info)
+            if not os.path.islink(directory_path):
+              stat_info = os.stat(directory_path)
+              self._stat_snapshot[directory_path] = stat_info
+              self._inode_to_path[stat_info.st_ino] = directory_path
+              walker_callback(directory_path, stat_info)
           except OSError:
             continue
 
         for file_name in files:
           try:
             file_path = os.path.join(root, file_name)
-            stat_info = os.stat(file_path)
-            self._stat_snapshot[file_path] = stat_info
-            self._inode_to_path[stat_info.st_ino] = file_path
-            walker_callback(file_path, stat_info)
+            if not os.path.islink(file_path):
+              stat_info = os.stat(file_path)
+              self._stat_snapshot[file_path] = stat_info
+              self._inode_to_path[stat_info.st_ino] = file_path
+              walker_callback(file_path, stat_info)
           except OSError:
             continue
 
@@ -336,4 +338,3 @@ class DirectorySnapshot(object):
 
   def __repr__(self):
     return str(self._stat_snapshot)
-

@@ -117,7 +117,7 @@ if platform.is_darwin():
 
             previous_snapshot.add_entries(
               self.snapshot.copy_multiple(
-                [ old_path for (old_path, new_path) in events.dirs_moved],
+                [old_path for (old_path, new_path) in events.dirs_moved],
                 True
               )
             )
