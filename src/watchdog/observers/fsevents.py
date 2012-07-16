@@ -74,7 +74,7 @@ if platform.is_darwin():
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
       EventEmitter.__init__(self, event_queue, watch, timeout)
       self._lock = threading.Lock()
-      self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
+      self.snapshot = DirectorySnapshot(os.path.realpath(watch.path), watch.is_recursive)
 
     def on_thread_exit(self):
       _fsevents.remove_watch(self.watch)
