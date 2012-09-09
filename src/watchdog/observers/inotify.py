@@ -69,7 +69,7 @@ Some extremely useful articles and documentation:
 
 from __future__ import with_statement
 from watchdog.utils import platform
-
+import errno
 if platform.is_linux():
   import os
   import struct
@@ -534,7 +534,14 @@ if platform.is_linux():
       """
       Reads events from inotify and yields them.
       """
-      event_buffer = os.read(self._inotify_fd, event_buffer_size)
+      while True:
+        try:
+            event_buffer = os.read(self._inotify_fd, event_buffer_size)
+            break
+        except OSError,e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
       with self._lock:
         event_list = []
         for wd, mask, cookie, name in Inotify._parse_event_buffer(
