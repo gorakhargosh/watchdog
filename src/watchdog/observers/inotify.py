@@ -525,7 +525,10 @@ if platform.is_linux():
       """
       with self._lock:
         self._remove_all_watches()
-        os.close(self._inotify_fd)
+        try:
+          os.close(self._inotify_fd)
+        except OSError:
+          pass
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
       """
@@ -655,7 +658,8 @@ if platform.is_linux():
       """
       Removes all watches.
       """
-      for wd in self._wd_for_path.values():
+      for path, wd in list(self._wd_for_path.items()):
+        del self._wd_for_path[path]
         del self._path_for_wd[wd]
         if inotify_rm_watch(self._inotify_fd, wd) == -1:
           Inotify._raise_error()
