@@ -539,7 +539,11 @@ if platform.is_linux():
         event_list = []
         for wd, mask, cookie, name in Inotify._parse_event_buffer(
           event_buffer):
-          wd_path = self._path_for_wd[wd]
+          try:
+            wd_path = self._path_for_wd[wd]
+          except KeyError:
+              # we are no longer interested in this path
+              continue
           src_path = absolute_path(os.path.join(wd_path, name))
           inotify_event = InotifyEvent(wd, mask, cookie, name,
                                        src_path)
