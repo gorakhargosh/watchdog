@@ -476,7 +476,7 @@ if platform.is_linux():
     def fd(self):
       """The file descriptor associated with the inotify instance."""
       return self._inotify_fd
-
+ 
     def clear_move_records(self):
       """Clear cached records of MOVED_FROM events"""
       self._moved_from_events = dict()
@@ -544,8 +544,9 @@ if platform.is_linux():
             raise
       with self._lock:
         event_list = []
-        for wd, mask, cookie, name in Inotify._parse_event_buffer(
-          event_buffer):
+        parsed_events = Inotify._parse_event_buffer(event_buffer)
+        for idx in xrange(len(parsed_events)):
+          wd, mask, cookie, name = parsed_events[idx]
           try:
             wd_path = self._path_for_wd[wd]
           except KeyError:
@@ -556,7 +557,16 @@ if platform.is_linux():
                                        src_path)
 
           if inotify_event.is_moved_from:
-            self.remember_move_from_event(inotify_event)
+            # check if next event if moved_to
+            # otherwise we might be remembering
+            # something that we will never need
+            # and the event will be lost
+            if idx < len(parsed_events) - 1 and\
+               parsed_events[idx+1][2] == cookie:
+              self.remember_move_from_event(inotify_event)
+            else:
+              inotify_event = InotifyEvent(wd, mask, -1, name,
+                                           src_path)
           elif inotify_event.is_moved_to:
             move_src_path = self.source_for_move(inotify_event)
             if move_src_path in self._wd_for_path:
@@ -717,14 +727,15 @@ if platform.is_linux():
       events, for example, it pairs an IN_MOVED_FROM event with an
       IN_MOVED_TO event.
       """
+      events = []
       i = 0
       while i + 16 < len(event_buffer):
         wd, mask, cookie, length =\
         struct.unpack_from('iIII', event_buffer, i)
         name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
         i += 16 + length
-        yield wd, mask, cookie, name
-
+        events.append((wd, mask, cookie, name))
+      return events
 
   ACTION_EVENT_MAP = {
     (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
@@ -791,6 +802,15 @@ if platform.is_linux():
                   self.queue_event(sub_event)
             except KeyError:
               pass
+          elif event.is_moved_from and event.cookie == -1:
+            klass = ACTION_EVENT_MAP[
+              (event.is_directory, EVENT_TYPE_MOVED)]
+            event = klass(event.src_path, None)
+            self.queue_event(event)
+            # Generate sub events for the directory if recursive.
+            if event.is_directory and self.watch.is_recursive:
+              for sub_event in event.sub_moved_events():
+                self.queue_event(sub_event)
           elif event.is_attrib:
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_MODIFIED)]
@@ -811,7 +831,7 @@ if platform.is_linux():
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_CREATED)]
             self.queue_event(klass(event.src_path))
-
+        
 
   class InotifyObserver(BaseObserver):
     """
