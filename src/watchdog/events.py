@@ -454,10 +454,14 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     if self.ignore_directories and event.is_directory:
       return
 
-    if has_attribute(event, 'dest_path'):
+    if has_attribute(event, 'src_path') and has_attribute(event, 'dest_path'):
       paths = [event.src_path, event.dest_path]
-    else:
+    elif has_attribute(event, 'src_path'):
       paths = [event.src_path]
+    elif has_attribute(event, 'dest_path'):
+      paths = [event.dest_path]
+    else:
+      paths = []
 
     if match_any_paths(paths,
                        included_patterns=self.patterns,
