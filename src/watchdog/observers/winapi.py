@@ -154,7 +154,10 @@ if platform.is_windows():
     ctypes.wintypes.HANDLE, # hObject
     )
 
-  CancelIoEx = ctypes.windll.kernel32.CancelIoEx
+  try:
+    CancelIoEx = ctypes.windll.kernel32.CancelIoEx
+  except AttributeError:
+    raise ImportError("CancelIoEx is not available")
   CancelIoEx.restype = ctypes.wintypes.BOOL
   CancelIoEx.errcheck = _errcheck_bool
   CancelIoEx.argtypes = (
