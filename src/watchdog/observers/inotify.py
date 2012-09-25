@@ -807,10 +807,8 @@ if platform.is_linux():
               (event.is_directory, EVENT_TYPE_MOVED)]
             event = klass(event.src_path, None)
             self.queue_event(event)
-            # Generate sub events for the directory if recursive.
-            if event.is_directory and self.watch.is_recursive:
-              for sub_event in event.sub_moved_events():
-                self.queue_event(sub_event)
+            # We cannot generate sub-events since the dest-dir is
+            # outside our watched dir and thus unknown
           elif event.is_attrib:
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_MODIFIED)]
