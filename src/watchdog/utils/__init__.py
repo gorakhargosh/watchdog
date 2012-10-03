@@ -45,17 +45,13 @@ Classes
 import sys
 import threading
 
-try:
-  import ctypes.util
-  ctypes_available = True
-except ImportError:
-  ctypes_available = False
-
 
 def ctypes_find_library(name, default):
   """Finds a dynamic library."""
-  if not ctypes_available:
-    raise RuntimeError
+  try:
+    import ctypes.util
+  except ImportError:
+    raise RuntimeError('ctypes not available on this system')
   module_path = None
   try:
     module_path = ctypes.util.find_library(name)
