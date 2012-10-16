@@ -63,14 +63,19 @@ class PollingEmitter(EventEmitter):
     self._lock = threading.Lock()
 
   def on_thread_exit(self):
-    self._snapshot = None
+    with self._lock:
+      self._snapshot = None
 
 
   def queue_events(self, timeout):
+  # We don't want to hit the disk continuously.
+  # timeout behaves like an interval for polling emitters.
+    time.sleep(timeout)
+
     with self._lock:
-      # We don't want to hit the disk continuously.
-      # timeout behaves like an interval for polling emitters.
-      time.sleep(timeout)
+
+      if not self._snapshot:
+        return
 
       # Get event diff between fresh snapshot and previous snapshot.
       # Update snapshot.
