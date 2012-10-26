@@ -59,17 +59,17 @@ except ImportError:
 
 from pathtools.path import absolute_path
 from watchdog.utils import DaemonThread
-from watchdog.utils.bricks import OrderedSetQueue as SetQueue
+from watchdog.utils.bricks import SkipRepeatsQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
 
 
 # Collection classes
-class EventQueue(SetQueue):
-  """Thread-safe event queue based on a thread-safe ordered-set queue
-  to ensure duplicate :class:`FileSystemEvent` objects are prevented from
-  adding themselves to the queue to avoid dispatching multiple event handling
+class EventQueue(SkipRepeatsQueue):
+  """Thread-safe event queue based on a special queue that skips adding
+  the same event (:class:`FileSystemEvent`) multiple times consecutively.
+  Thus avoiding dispatching multiple event handling
   calls when multiple identical events are produced quicker than an observer
   can consume them.
   """
