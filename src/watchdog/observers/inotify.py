@@ -536,6 +536,8 @@ if platform.is_linux():
         event_list = []
         for wd, mask, cookie, name in Inotify._parse_event_buffer(
           event_buffer):
+          if wd not in self._path_for_wd:
+            continue
           wd_path = self._path_for_wd[wd]
           src_path = absolute_path(os.path.join(wd_path, name))
           inotify_event = InotifyEvent(wd, mask, cookie, name,
@@ -656,9 +658,10 @@ if platform.is_linux():
       Removes all watches.
       """
       for wd in self._wd_for_path.values():
-        del self._path_for_wd[wd]
-        if inotify_rm_watch(self._inotify_fd, wd) == -1:
-          Inotify._raise_error()
+        if wd in self._path_for_wd:
+          del self._path_for_wd[wd]
+          if inotify_rm_watch(self._inotify_fd, wd) == -1:
+            Inotify._raise_error()
 
     def _remove_watch_bookkeeping(self, path):
       wd = self._wd_for_path.pop(path)
