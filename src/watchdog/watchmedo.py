@@ -152,8 +152,12 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 
 @alias('tricks')
 @arg('files',
-     nargs='*',
+     nargs=1,
      help='perform tricks from given file')
+@arg('directory',
+     nargs='?',
+     default=None,
+     help='directory to watch (instead of the location of tricks.yaml)')
 @arg('--python-path',
      default='.',
      help='paths separated by %s to add to the python path' % os.path.sep)
@@ -193,7 +197,7 @@ def tricks_from(args):
     if CONFIG_KEY_PYTHON_PATH in config:
       add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
 
-    dir_path = parent_dir_path(tricks_file)
+    dir_path = args.directory or parent_dir_path(tricks_file)
     schedule_tricks(observer, tricks, dir_path, args.recursive)
     observer.start()
     observers.append(observer)
