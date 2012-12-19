@@ -17,11 +17,13 @@
 # limitations under the License.
 
 
+import os
 import unittest2
 import re
 
 from tests.utils import list_attributes
 from watchdog.utils import has_attribute
+from pathtools.path import absolute_path
 from pathtools.patterns import filter_paths
 from watchdog.events import\
   FileSystemEvent,\
@@ -287,30 +289,30 @@ class TestDirMovedEvent(unittest2.TestCase):
 
   def test_sub_moved_events(self):
     mock_walker_path = [
-      ('/path',
+      (absolute_path('/path'),
        ['ad', 'bd'],
        ['af', 'bf', 'cf']),
-      ('/path/ad',
+      (absolute_path('/path/ad'),
        [],
        ['af', 'bf', 'cf']),
-      ('/path/bd',
+      (absolute_path('/path/bd'),
        [],
        ['af', 'bf', 'cf']),
     ]
-    dest_path = '/path'
-    src_path = '/foobar'
+    dest_path = absolute_path('/path')
+    src_path = absolute_path('/foobar')
     expected_events = set([
-      DirMovedEvent('/foobar/ad', '/path/ad'),
-      DirMovedEvent('/foobar/bd', '/path/bd'),
-      FileMovedEvent('/foobar/af', '/path/af'),
-      FileMovedEvent('/foobar/bf', '/path/bf'),
-      FileMovedEvent('/foobar/cf', '/path/cf'),
-      FileMovedEvent('/foobar/ad/af', '/path/ad/af'),
-      FileMovedEvent('/foobar/ad/bf', '/path/ad/bf'),
-      FileMovedEvent('/foobar/ad/cf', '/path/ad/cf'),
-      FileMovedEvent('/foobar/bd/af', '/path/bd/af'),
-      FileMovedEvent('/foobar/bd/bf', '/path/bd/bf'),
-      FileMovedEvent('/foobar/bd/cf', '/path/bd/cf'),
+      DirMovedEvent(absolute_path('/foobar/ad'), absolute_path('/path/ad')),
+      DirMovedEvent(absolute_path('/foobar/bd'), absolute_path('/path/bd')),
+      FileMovedEvent(absolute_path('/foobar/af'), absolute_path('/path/af')),
+      FileMovedEvent(absolute_path('/foobar/bf'), absolute_path('/path/bf')),
+      FileMovedEvent(absolute_path('/foobar/cf'), absolute_path('/path/cf')),
+      FileMovedEvent(absolute_path('/foobar/ad/af'), absolute_path('/path/ad/af')),
+      FileMovedEvent(absolute_path('/foobar/ad/bf'), absolute_path('/path/ad/bf')),
+      FileMovedEvent(absolute_path('/foobar/ad/cf'), absolute_path('/path/ad/cf')),
+      FileMovedEvent(absolute_path('/foobar/bd/af'), absolute_path('/path/bd/af')),
+      FileMovedEvent(absolute_path('/foobar/bd/bf'), absolute_path('/path/bd/bf')),
+      FileMovedEvent(absolute_path('/foobar/bd/cf'), absolute_path('/path/bd/cf')),
       ])
     dir_moved_event = DirMovedEvent(src_path, dest_path)
 
@@ -728,30 +730,30 @@ class TestLoggingEventHandler(unittest2.TestCase):
 class TestGenerateSubMovedEventsFor(unittest2.TestCase):
   def test_generate_sub_moved_events_for(self):
     mock_walker_path = [
-      ('/path',
+      (absolute_path('/path'),
        ['ad', 'bd'],
        ['af', 'bf', 'cf']),
-      ('/path/ad',
+      (absolute_path('/path/ad'),
        [],
        ['af', 'bf', 'cf']),
-      ('/path/bd',
+      (absolute_path('/path/bd'),
        [],
        ['af', 'bf', 'cf']),
     ]
-    dest_path = '/path'
-    src_path = '/foobar'
+    dest_path = absolute_path('/path')
+    src_path = absolute_path('/foobar')
     expected_events = set([
-      DirMovedEvent('/foobar/ad', '/path/ad'),
-      DirMovedEvent('/foobar/bd', '/path/bd'),
-      FileMovedEvent('/foobar/af', '/path/af'),
-      FileMovedEvent('/foobar/bf', '/path/bf'),
-      FileMovedEvent('/foobar/cf', '/path/cf'),
-      FileMovedEvent('/foobar/ad/af', '/path/ad/af'),
-      FileMovedEvent('/foobar/ad/bf', '/path/ad/bf'),
-      FileMovedEvent('/foobar/ad/cf', '/path/ad/cf'),
-      FileMovedEvent('/foobar/bd/af', '/path/bd/af'),
-      FileMovedEvent('/foobar/bd/bf', '/path/bd/bf'),
-      FileMovedEvent('/foobar/bd/cf', '/path/bd/cf'),
+      DirMovedEvent(absolute_path('/foobar/ad'), absolute_path('/path/ad')),
+      DirMovedEvent(absolute_path('/foobar/bd'), absolute_path('/path/bd')),
+      FileMovedEvent(absolute_path('/foobar/af'), absolute_path('/path/af')),
+      FileMovedEvent(absolute_path('/foobar/bf'), absolute_path('/path/bf')),
+      FileMovedEvent(absolute_path('/foobar/cf'), absolute_path('/path/cf')),
+      FileMovedEvent(absolute_path('/foobar/ad/af'), absolute_path('/path/ad/af')),
+      FileMovedEvent(absolute_path('/foobar/ad/bf'), absolute_path('/path/ad/bf')),
+      FileMovedEvent(absolute_path('/foobar/ad/cf'), absolute_path('/path/ad/cf')),
+      FileMovedEvent(absolute_path('/foobar/bd/af'), absolute_path('/path/bd/af')),
+      FileMovedEvent(absolute_path('/foobar/bd/bf'), absolute_path('/path/bd/bf')),
+      FileMovedEvent(absolute_path('/foobar/bd/cf'), absolute_path('/path/bd/cf')),
       ])
 
     def _mock_os_walker(path):
