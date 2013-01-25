@@ -72,6 +72,7 @@ from watchdog.utils import platform
 
 if platform.is_linux():
   import os
+  import errno
   import struct
   import threading
   import ctypes
@@ -531,7 +532,15 @@ if platform.is_linux():
       """
       Reads events from inotify and yields them.
       """
-      event_buffer = os.read(self._inotify_fd, event_buffer_size)
+      while True:
+        try:
+          event_buffer = os.read(self._inotify_fd, event_buffer_size)
+        except OSError, e:
+          if e.errno == errno.EINTR:
+            # Interrupted system call
+            continue
+          raise
+        break
       with self._lock:
         event_list = []
         for wd, mask, cookie, name in Inotify._parse_event_buffer(
