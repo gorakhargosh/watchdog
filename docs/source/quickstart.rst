@@ -5,7 +5,7 @@
 Quickstart
 ==========
 Below we present a simple example that monitors the current directory
-non-recursively (which means, it will not traverse any sub-directories)
+recursively (which means, it will traverse any sub-directories)
 to detect changes. Here is what we will do with the API:
 
 1. Create an instance of the :class:`watchdog.observers.Observer` thread class.
@@ -21,9 +21,9 @@ to detect changes. Here is what we will do with the API:
    without blocking our main thread.
 
 By default, an :class:`watchdog.observers.Observer` instance will not monitor
-sub-directories. You can set ``recursive=True`` in the call to
-:meth:`watchdog.observers.Observer.schedule` to ensure monitoring
-entire directory trees.
+sub-directories. By passing ``recursive=True`` in the call to
+:meth:`watchdog.observers.Observer.schedule` monitoring
+entire directory trees is ensured.
 
 
 A Simple Example
