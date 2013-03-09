@@ -69,7 +69,7 @@ Some extremely useful articles and documentation:
 
 from __future__ import with_statement
 from watchdog.utils import platform
-
+import errno
 if platform.is_linux():
   import os
   import struct
@@ -476,7 +476,7 @@ if platform.is_linux():
     def fd(self):
       """The file descriptor associated with the inotify instance."""
       return self._inotify_fd
-
+ 
     def clear_move_records(self):
       """Clear cached records of MOVED_FROM events"""
       self._moved_from_events = dict()
@@ -525,24 +525,48 @@ if platform.is_linux():
       """
       with self._lock:
         self._remove_all_watches()
-        os.close(self._inotify_fd)
+        try:
+          os.close(self._inotify_fd)
+        except OSError:
+          pass
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
       """
       Reads events from inotify and yields them.
       """
-      event_buffer = os.read(self._inotify_fd, event_buffer_size)
+      while True:
+        try:
+            event_buffer = os.read(self._inotify_fd, event_buffer_size)
+            break
+        except OSError,e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
       with self._lock:
         event_list = []
-        for wd, mask, cookie, name in Inotify._parse_event_buffer(
-          event_buffer):
-          wd_path = self._path_for_wd[wd]
+        parsed_events = Inotify._parse_event_buffer(event_buffer)
+        for idx in xrange(len(parsed_events)):
+          wd, mask, cookie, name = parsed_events[idx]
+          try:
+            wd_path = self._path_for_wd[wd]
+          except KeyError:
+              # we are no longer interested in this path
+              continue
           src_path = absolute_path(os.path.join(wd_path, name))
           inotify_event = InotifyEvent(wd, mask, cookie, name,
                                        src_path)
 
           if inotify_event.is_moved_from:
-            self.remember_move_from_event(inotify_event)
+            # check if next event if moved_to
+            # otherwise we might be remembering
+            # something that we will never need
+            # and the event will be lost
+            if idx < len(parsed_events) - 1 and\
+               parsed_events[idx+1][2] == cookie:
+              self.remember_move_from_event(inotify_event)
+            else:
+              inotify_event = InotifyEvent(wd, mask, -1, name,
+                                           src_path)
           elif inotify_event.is_moved_to:
             move_src_path = self.source_for_move(inotify_event)
             if move_src_path in self._wd_for_path:
@@ -655,7 +679,8 @@ if platform.is_linux():
       """
       Removes all watches.
       """
-      for wd in self._wd_for_path.values():
+      for path, wd in list(self._wd_for_path.items()):
+        del self._wd_for_path[path]
         del self._path_for_wd[wd]
         if inotify_rm_watch(self._inotify_fd, wd) == -1:
           Inotify._raise_error()
@@ -702,14 +727,15 @@ if platform.is_linux():
       events, for example, it pairs an IN_MOVED_FROM event with an
       IN_MOVED_TO event.
       """
+      events = []
       i = 0
       while i + 16 < len(event_buffer):
         wd, mask, cookie, length =\
         struct.unpack_from('iIII', event_buffer, i)
         name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
         i += 16 + length
-        yield wd, mask, cookie, name
-
+        events.append((wd, mask, cookie, name))
+      return events
 
   ACTION_EVENT_MAP = {
     (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
@@ -776,6 +802,13 @@ if platform.is_linux():
                   self.queue_event(sub_event)
             except KeyError:
               pass
+          elif event.is_moved_from and event.cookie == -1:
+            klass = ACTION_EVENT_MAP[
+              (event.is_directory, EVENT_TYPE_MOVED)]
+            event = klass(event.src_path, None)
+            self.queue_event(event)
+            # We cannot generate sub-events since the dest-dir is
+            # outside our watched dir and thus unknown
           elif event.is_attrib:
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_MODIFIED)]
@@ -796,7 +829,7 @@ if platform.is_linux():
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_CREATED)]
             self.queue_event(klass(event.src_path))
-
+        
 
   class InotifyObserver(BaseObserver):
     """

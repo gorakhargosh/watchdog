@@ -50,6 +50,10 @@ if platform.is_darwin():
     DEFAULT_EMITTER_TIMEOUT,\
     DEFAULT_OBSERVER_TIMEOUT
 
+  class FSEventsStreamFlag:
+    MustScanSubDirs = 0x00000001
+    UserDropped = 0x00000002
+    KernelDropped = 0x00000004
 
   class FSEventsEmitter(EventEmitter):
     """
@@ -70,21 +74,62 @@ if platform.is_darwin():
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
       EventEmitter.__init__(self, event_queue, watch, timeout)
       self._lock = threading.Lock()
-      self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
+      self.snapshot = DirectorySnapshot(os.path.realpath(watch.path), watch.is_recursive)
 
     def on_thread_exit(self):
       _fsevents.remove_watch(self.watch)
       _fsevents.stop(self)
 
     def queue_events(self, timeout):
-      with self._lock:
-        if not self.watch.is_recursive\
-        and self.watch.path not in self.pathnames:
+      for idx in xrange(len(self.pathnames)):
+        event_path = absolute_path(self.pathnames[idx])
+        event_flags = self.flags[idx]
+
+        if not self.watch.is_recursive and self.watch.path != event_path:
           return
-        new_snapshot = DirectorySnapshot(self.watch.path,
-                                         self.watch.is_recursive)
-        events = new_snapshot - self.snapshot
-        self.snapshot = new_snapshot
+
+        recursive_update = bool(event_flags & FSEventsStreamFlag.MustScanSubDirs)
+
+        # try to build only partial snapshot
+        new_snapshot = DirectorySnapshot(
+          event_path,
+          recursive_update
+        )
+
+        if recursive_update and self.watch.path == event_path:
+          # no optimization is possible
+          events = new_snapshot - self.snapshot
+          self.snapshot = new_snapshot
+        else:
+          # partial comparison will be done
+          previous_snapshot = self.snapshot.copy(event_path, recursive_update)
+
+          # compare them
+          events = new_snapshot - previous_snapshot
+
+          if events.dirs_deleted or events.dirs_created or events.dirs_moved:
+            # add files from deleted dir to previous snapshot
+            previous_snapshot.add_entries(self.snapshot.copy_multiple(events.dirs_deleted, True))
+
+            # add files from created dir to new_snapshot, create a recursive snapshot of new dir
+            for new_path in events.dirs_created:
+              new_snapshot.add_entries(DirectorySnapshot(new_path, True))
+
+            previous_snapshot.add_entries(
+              self.snapshot.copy_multiple(
+                [old_path for (old_path, new_path) in events.dirs_moved],
+                True
+              )
+            )
+            for old_path, new_path in events.dirs_moved:
+              new_snapshot.add_entries(DirectorySnapshot(new_path, True))
+
+            # re-do diff
+            events = new_snapshot - previous_snapshot
+
+          # update last snapshot
+          self.snapshot.remove_entries(previous_snapshot)
+          self.snapshot.add_entries(new_snapshot)
 
         # Files.
         for src_path in events.files_deleted:
@@ -109,8 +154,11 @@ if platform.is_darwin():
 
     def run(self):
       try:
-        def callback(pathnames, flags, emitter=self):
-          emitter.queue_events(emitter.timeout)
+        def callback(pathnames, flags):
+          with self._lock:
+            self.pathnames = pathnames
+            self.flags = flags
+            self.queue_events(self.timeout)
 
         #for pathname, flag in zip(pathnames, flags):
         #if emitter.watch.is_recursive: # and pathname != emitter.watch.path:
@@ -138,7 +186,7 @@ if platform.is_darwin():
         _fsevents.add_watch(self,
                             self.watch,
                             callback,
-                            self.pathnames)
+                            [self.watch.path])
         _fsevents.read_events(self)
       except Exception, e:
         pass

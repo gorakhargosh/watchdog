@@ -221,7 +221,10 @@ class DirectorySnapshot(object):
     self.is_recursive = recursive
 
     if not _copying:
-      stat_info = os.stat(self._path)
+      try:
+        stat_info = os.stat(self._path)
+      except OSError:
+        return
       self._stat_snapshot[self._path] = stat_info
       self._inode_to_path[stat_info.st_ino] = self._path
       walker_callback(self._path, stat_info)
@@ -230,20 +233,22 @@ class DirectorySnapshot(object):
         for directory_name in directories:
           try:
             directory_path = os.path.join(root, directory_name)
-            stat_info = os.stat(directory_path)
-            self._stat_snapshot[directory_path] = stat_info
-            self._inode_to_path[stat_info.st_ino] = directory_path
-            walker_callback(directory_path, stat_info)
+            if not os.path.islink(directory_path):
+              stat_info = os.stat(directory_path)
+              self._stat_snapshot[directory_path] = stat_info
+              self._inode_to_path[stat_info.st_ino] = directory_path
+              walker_callback(directory_path, stat_info)
           except OSError:
             continue
 
         for file_name in files:
           try:
             file_path = os.path.join(root, file_name)
-            stat_info = os.stat(file_path)
-            self._stat_snapshot[file_path] = stat_info
-            self._inode_to_path[stat_info.st_ino] = file_path
-            walker_callback(file_path, stat_info)
+            if not os.path.islink(file_path):
+              stat_info = os.stat(file_path)
+              self._stat_snapshot[file_path] = stat_info
+              self._inode_to_path[stat_info.st_ino] = file_path
+              walker_callback(file_path, stat_info)
           except OSError:
             continue
 
@@ -257,19 +262,28 @@ class DirectorySnapshot(object):
     """
     return DirectorySnapshotDiff(previous_dirsnap, self)
 
-  #def __add__(self, new_dirsnap):
-  #    self._stat_snapshot.update(new_dirsnap._stat_snapshot)
+  def add_entries(self, new_dirsnap):
+      self._stat_snapshot.update(new_dirsnap._stat_snapshot)
 
-  def copy(self, from_pathname=None):
-    snapshot = DirectorySnapshot(path=from_pathname,
-                                 recursive=self.is_recursive,
+  def remove_entries(self, old_dirsnap):
+    for key in old_dirsnap._stat_snapshot.keys():
+      del self._stat_snapshot[key]
+
+  def copy(self, from_pathname, is_recursive):
+    return self.copy_multiple([ from_pathname ], is_recursive)
+
+  def copy_multiple(self, from_pathnames, is_recursive):
+    snapshot = DirectorySnapshot(path=','.join(from_pathnames),
+                                 recursive=is_recursive,
                                  _copying=True)
     for pathname, stat_info in self._stat_snapshot.items():
-      if pathname.starts_with(from_pathname):
-        snapshot._stat_snapshot[pathname] = stat_info
-        snapshot._inode_to_path[stat_info.st_ino] = pathname
+      for from_pathname in from_pathnames:
+        if pathname == from_pathname\
+               or (pathname.startswith(from_pathname)\
+                   and (is_recursive or os.path.dirname(pathname) == from_pathname)):
+          snapshot._stat_snapshot[pathname] = stat_info
+          snapshot._inode_to_path[stat_info.st_ino] = pathname
     return snapshot
-
 
   @property
   def stat_snapshot(self):
@@ -324,4 +338,3 @@ class DirectorySnapshot(object):
 
   def __repr__(self):
     return str(self._stat_snapshot)
-

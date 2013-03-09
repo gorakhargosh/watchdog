@@ -107,7 +107,10 @@ if platform.is_windows():
 
   def close_directory_handle(handle):
     try:
-      CancelIoEx(handle, None) #force ReadDirectoryChangesW to return
+      if CancelIoEx is not None:
+        CancelIoEx(handle, None) #force ReadDirectoryChangesW to return
+      else:
+        CloseHandle(handle)
     except WindowsError:
       return
 

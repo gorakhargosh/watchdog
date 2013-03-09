@@ -454,10 +454,14 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     if self.ignore_directories and event.is_directory:
       return
 
-    if has_attribute(event, 'dest_path'):
+    if has_attribute(event, 'src_path') and has_attribute(event, 'dest_path'):
       paths = [event.src_path, event.dest_path]
-    else:
+    elif has_attribute(event, 'src_path'):
       paths = [event.src_path]
+    elif has_attribute(event, 'dest_path'):
+      paths = [event.dest_path]
+    else:
+      paths = []
 
     if match_any_paths(paths,
                        included_patterns=self.patterns,
@@ -607,15 +611,22 @@ def _generate_sub_moved_events_for(src_dir_path, dest_dir_path,
       An iterable of file system events of type :class:`DirMovedEvent` and
       :class:`FileMovedEvent`.
   """
-  src_dir_path = absolute_path(src_dir_path)
+  if src_dir_path:
+    src_dir_path = absolute_path(src_dir_path)
   dest_dir_path = absolute_path(dest_dir_path)
   for root, directories, filenames in _walker(dest_dir_path):
     for directory in directories:
       full_path = os.path.join(root, directory)
-      renamed_path = full_path.replace(dest_dir_path, src_dir_path)
+      if src_dir_path:
+        renamed_path = full_path.replace(dest_dir_path, src_dir_path)
+      else:
+        renamed_path = None
       yield DirMovedEvent(renamed_path, full_path)
     for filename in filenames:
       full_path = os.path.join(root, filename)
-      renamed_path = full_path.replace(dest_dir_path, src_dir_path)
+      if src_dir_path:
+        renamed_path = full_path.replace(dest_dir_path, src_dir_path)
+      else:
+        renamed_path = None
       yield FileMovedEvent(renamed_path, full_path)
 
