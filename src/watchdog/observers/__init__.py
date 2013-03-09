@@ -50,7 +50,7 @@ except ImportError: # pragma: no cover
       except ImportError: # pragma: no cover
         try: # pragma: no cover
           from watchdog.observers.read_directory_changes import WindowsApiObserver as _Observer
-        except ImportError: # pragma: no cover
+        except (ImportError, AttributeError): # pragma: no cover
           from watchdog.observers.polling import PollingObserver as _Observer
 
 
