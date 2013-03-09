@@ -643,7 +643,7 @@ if platform.is_linux():
           Event bit mask.
       """
       wd = inotify_add_watch(self._inotify_fd,
-                             path,
+                             path.encode('utf-8'),
                              mask)
       if wd == -1:
         Inotify._raise_error()
@@ -706,7 +706,7 @@ if platform.is_linux():
       while i + 16 < len(event_buffer):
         wd, mask, cookie, length =\
         struct.unpack_from('iIII', event_buffer, i)
-        name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
+        name = event_buffer[i + 16:i + 16 + length].rstrip('\0').decode('utf-8')
         i += 16 + length
         yield wd, mask, cookie, name
 
