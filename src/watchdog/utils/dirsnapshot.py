@@ -58,7 +58,7 @@ import stat
 
 from pathtools.path import walk as path_walk, absolute_path
 
-if not sys.version < (2, 6, 0):
+if sys.version_info >= (2, 6, 0):
   from watchdog.utils.bricks import OrderedSet as set
 
 class DirectorySnapshotDiff(object):
