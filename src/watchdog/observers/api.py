@@ -85,7 +85,7 @@ class ObservedWatch(object):
   """
 
   def __init__(self, path, recursive):
-    self._path = absolute_path(path)
+    self._path = path
     self._is_recursive = recursive
 
   @property
