@@ -178,11 +178,11 @@ this feature.
 Dependencies
 ------------
 1. Python 2.5 or above.
-2. XCode_ (only on Mac OS X)
-3. PyYAML_
-4. argh_
-5. select_backport_ (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
-6. pathtools_
+2. pathtools_
+3. select_backport_ (select.kqueue replacement for Python2.5/2.6 on BSD/Mac OS X)
+4. XCode_ (only on Mac OS X)
+5. PyYAML_ (only for ``watchmedo`` script)
+6. argh_ (only for ``watchmedo`` script)
 
 
 Licensing
