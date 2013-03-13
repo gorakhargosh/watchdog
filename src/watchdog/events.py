@@ -454,10 +454,11 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     if self.ignore_directories and event.is_directory:
       return
 
+    paths = []
     if has_attribute(event, 'dest_path'):
-      paths = [event.src_path, event.dest_path]
-    else:
-      paths = [event.src_path]
+      paths.append(event.dest_path)
+    if event.src_path:
+      paths.append(event.src_path)
 
     if match_any_paths(paths,
                        included_patterns=self.patterns,
@@ -536,10 +537,11 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
     if self.ignore_directories and event.is_directory:
       return
 
+    paths = []
     if has_attribute(event, 'dest_path'):
-      paths = [event.src_path, event.dest_path]
-    else:
-      paths = [event.src_path]
+      paths.append(event.dest_path)
+    if event.src_path:
+      paths.append(event.src_path)
 
     if any(r.match(p) for r in self.ignore_regexes for p in paths):
       return
