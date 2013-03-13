@@ -545,7 +545,7 @@ if platform.is_linux():
         for wd, mask, cookie, name in Inotify._parse_event_buffer(
           event_buffer):
           if wd == -1:
-              continue
+            continue
           wd_path = self._path_for_wd[wd]
           src_path = absolute_path(os.path.join(wd_path, name))
           inotify_event = InotifyEvent(wd, mask, cookie, name,
