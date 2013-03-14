@@ -190,7 +190,7 @@ class EventEmitter(DaemonThread):
       while self.should_keep_running():
         self.queue_events(self.timeout)
     finally:
-      self.on_thread_exit()
+      pass
 
 
 class EventDispatcher(DaemonThread):
