@@ -106,9 +106,9 @@ class DirectorySnapshotDiff(object):
     # Detect all the moves/renames.
     # Doesn't work on Windows, so exlude on Windows.
     if not sys.platform.startswith('win'):
-      for created_path in paths_created.copy():
+      for created_path in paths_created:
         created_stat_info = dirsnap.stat_info(created_path)
-        for deleted_path in paths_deleted.copy():
+        for deleted_path in paths_deleted:
           deleted_stat_info = ref_dirsnap.stat_info(deleted_path)
           if created_stat_info.st_ino == deleted_stat_info.st_ino:
             paths_deleted.remove(deleted_path)
