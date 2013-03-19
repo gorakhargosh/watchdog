@@ -172,7 +172,7 @@ class OrderedSetQueue(queue.Queue):
 
 
 if sys.version_info >= (2, 6, 0):
-  KEY, PREV, NEXT = range(3)
+  KEY, PREV, NEXT = list(range(3))
 
   class OrderedSet(collections.MutableSet):
     """

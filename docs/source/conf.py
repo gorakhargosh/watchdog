@@ -25,9 +25,9 @@ sys.path.insert(0, SRC_DIR_PATH)
 
 import watchdog.version
 
-PROJECT_NAME = u'watchdog'
-AUTHOR_NAME = u'Yesudeep Mangalapilly'
-COPYRIGHT = u'2010, Yesudeep Mangalapilly'
+PROJECT_NAME = 'watchdog'
+AUTHOR_NAME = 'Yesudeep Mangalapilly'
+COPYRIGHT = '2010, Yesudeep Mangalapilly'
 
 
 # -- General configuration -----------------------------------------------------
@@ -192,7 +192,7 @@ htmlhelp_basename = '%sdoc' % PROJECT_NAME
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', '%s.tex' % PROJECT_NAME, u'%s Documentation' % PROJECT_NAME,
+  ('index', '%s.tex' % PROJECT_NAME, '%s Documentation' % PROJECT_NAME,
    AUTHOR_NAME, 'manual'),
 ]
 
@@ -225,7 +225,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', PROJECT_NAME, u'%s Documentation' % PROJECT_NAME,
+    ('index', PROJECT_NAME, '%s Documentation' % PROJECT_NAME,
      [AUTHOR_NAME], 1)
 ]
 

@@ -31,7 +31,10 @@ import logging
 try:
   from cStringIO import StringIO
 except ImportError:
-  from StringIO import StringIO
+  try:
+    from StringIO import StringIO
+  except ImportError:
+    from io import StringIO
 
 from argh import arg, alias, ArghParser
 
@@ -142,7 +145,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
       ``True`` if recursive; ``False`` otherwise.
   """
   for trick in tricks:
-    for name, value in trick.items():
+    for name, value in list(trick.items()):
       TrickClass = load_class(name)
       handler = TrickClass(**value)
       trick_pathname = absolute_path(

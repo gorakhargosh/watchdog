@@ -96,7 +96,7 @@ class DirectorySnapshotDiff(object):
 
     # Detect modifications and distinguish modifications that are actually
     # renames of files on top of existing file names (OS X/Linux only)
-    for path, stat_info in dirsnap.stat_snapshot.items():
+    for path, stat_info in list(dirsnap.stat_snapshot.items()):
       if path in ref_dirsnap.stat_snapshot:
         ref_stat_info = ref_dirsnap.stat_info(path)
         if stat_info.st_ino == ref_stat_info.st_ino and stat_info.st_mtime != ref_stat_info.st_mtime:
@@ -283,7 +283,7 @@ class DirectorySnapshot(object):
     snapshot = DirectorySnapshot(path=from_pathname,
                                  recursive=self.is_recursive,
                                  _copying=True)
-    for pathname, stat_info in self._stat_snapshot.items():
+    for pathname, stat_info in list(self._stat_snapshot.items()):
       if pathname.starts_with(from_pathname):
         snapshot._stat_snapshot[pathname] = stat_info
         snapshot._inode_to_path[stat_info.st_ino] = pathname

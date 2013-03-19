@@ -61,7 +61,7 @@ def absolute_walker(pathname, recursive):
       try:
         return next(os.walk(_path))
       except NameError:
-        return os.walk(_path).next()
+        return next(os.walk(_path))
   for root, directories, filenames in walk(pathname):
     yield root
     for directory in directories:

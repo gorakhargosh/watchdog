@@ -18,6 +18,7 @@
 
 
 from watchdog.utils import platform
+from functools import reduce
 
 if platform.is_windows():
   import ctypes
@@ -130,7 +131,13 @@ if platform.is_windows():
     except WindowsError:
       return [], 0
     # get_FILE_NOTIFY_INFORMATION expects nBytes to be long.
-    return event_buffer.raw, long(nbytes.value)
+
+    # Python 2/3 compat
+    try:
+      int_class = long
+    except NameError:
+      int_class = int
+    return event_buffer.raw, int_class(nbytes.value)
 
 
   def create_io_completion_port():

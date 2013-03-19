@@ -194,7 +194,7 @@ if platform.is_bsd() or platform.is_darwin():
       List of paths for which kevents have been created.
       """
       with self._lock:
-        return self._descriptor_for_path.keys()
+        return list(self._descriptor_for_path.keys())
 
     def get_for_fd(self, fd):
       """
@@ -467,7 +467,7 @@ if platform.is_bsd() or platform.is_darwin():
       """
       try:
         self._descriptors.add(path, is_directory)
-      except OSError, e:
+      except OSError as e:
         if e.errno == errno.ENOENT:
           # Probably dealing with a temporary file that was created
           # and then quickly deleted before we could open
@@ -701,7 +701,7 @@ if platform.is_bsd() or platform.is_darwin():
             self._queue_dirs_modified(dirs_modified,
                                       ref_snapshot,
                                       new_snapshot)
-        except OSError, e:
+        except OSError as e:
           if e.errno == errno.EBADF:
             #logging.debug(e)
             pass

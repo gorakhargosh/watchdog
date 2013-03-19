@@ -42,7 +42,7 @@ def name(item):
 
 def is_classmethod(instancemethod):
   " Determine if an instancemethod is a classmethod. "
-  return instancemethod.im_self is not None
+  return instancemethod.__self__ is not None
 
 
 def is_class_private_name(name):
@@ -59,7 +59,7 @@ def method_name(method):
   """
   mname = name(method)
   if is_class_private_name(mname):
-    mname = "_%s%s" % (name(method.im_class), mname)
+    mname = "_%s%s" % (name(method.__self__.__class__), mname)
   return mname
 
 
@@ -82,21 +82,21 @@ def echo(fn, write=sys.stdout.write):
   """
   import functools
   # Unpack function's arg count, arg names, arg defaults
-  code = fn.func_code
+  code = fn.__code__
   argcount = code.co_argcount
   argnames = code.co_varnames[:argcount]
-  fn_defaults = fn.func_defaults or list()
-  argdefs = dict(zip(argnames[-len(fn_defaults):], fn_defaults))
+  fn_defaults = fn.__defaults__ or list()
+  argdefs = dict(list(zip(argnames[-len(fn_defaults):], fn_defaults)))
 
   @functools.wraps(fn)
   def wrapped(*v, **k):
     # Collect function arguments by chaining together positional,
     # defaulted, extra positional and keyword arguments.
-    positional = map(format_arg_value, zip(argnames, v))
+    positional = list(map(format_arg_value, list(zip(argnames, v))))
     defaulted = [format_arg_value((a, argdefs[a]))
                  for a in argnames[len(v):] if a not in k]
-    nameless = map(repr, v[argcount:])
-    keyword = map(format_arg_value, k.items())
+    nameless = list(map(repr, v[argcount:]))
+    keyword = list(map(format_arg_value, list(k.items())))
     args = positional + defaulted + nameless + keyword
     write("%s(%s)\n" % (name(fn), ", ".join(args)))
     return fn(*v, **k)
@@ -115,7 +115,7 @@ def echo_instancemethod(klass, method, write=sys.stdout.write):
   if mname in never_echo:
     pass
   elif is_classmethod(method):
-    setattr(klass, mname, classmethod(echo(method.im_func, write)))
+    setattr(klass, mname, classmethod(echo(method.__func__, write)))
   else:
     setattr(klass, mname, echo(method, write))
 

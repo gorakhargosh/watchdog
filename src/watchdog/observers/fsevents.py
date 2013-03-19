@@ -140,7 +140,7 @@ if platform.is_darwin():
                             callback,
                             self.pathnames)
         _fsevents.read_events(self)
-      except Exception, e:
+      except Exception as e:
         pass
 
 
@@ -150,9 +150,15 @@ if platform.is_darwin():
                             timeout=timeout)
 
     def schedule(self, event_handler, path, recursive=False):
+      # Python 2/3 compat
+      try:
+        str_class = unicode
+      except NameError:
+        str_class = str
+
       # Fix for issue #26: Trace/BPT error when given a unicode path
       # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
-      if isinstance(path, unicode):
+      if isinstance(path, str_class):
         #path = unicode(path, 'utf-8')
         path = unicodedata.normalize('NFC', path).encode('utf-8')
       return BaseObserver.schedule(self, event_handler, path, recursive)

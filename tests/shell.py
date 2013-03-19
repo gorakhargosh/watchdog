@@ -55,7 +55,7 @@ in the path)."""
   if parents:
     try:
       os.makedirs(path)
-    except OSError, e:
+    except OSError as e:
       if not e.errno == errno.EEXIST:
         raise
   else:
