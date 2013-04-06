@@ -18,6 +18,7 @@
 
 
 import os
+import sys
 import unittest2
 
 try:
@@ -104,12 +105,9 @@ class TestPollingEmitter(unittest2.TestCase):
       DirModifiedEvent(p()),
 
       DirModifiedEvent(p()),
-      FileMovedEvent(p('fromfile'), p('project', 'tofile')),
-
       FileModifiedEvent(p('afile')),
 
       DirModifiedEvent(p('project')),
-      DirMovedEvent(p('project', 'blah'), p('project', 'boo')),
 
       DirModifiedEvent(p()),
       FileDeletedEvent(p('project', 'tofile')),
@@ -118,10 +116,19 @@ class TestPollingEmitter(unittest2.TestCase):
 
       DirModifiedEvent(p()),
       FileDeletedEvent(p('afile')),
-
       ])
-    got = set()
 
+    if sys.platform.startswith("win"):
+      # On Windows depending on circumstances, a rename may turn into a Delete/Create
+      expected.add(FileDeletedEvent(p('fromfile')))
+      expected.add(FileCreatedEvent(p('project', 'tofile')))
+      expected.add(DirCreatedEvent(p('project', 'boo')))
+      expected.add(DirDeletedEvent(p('project', 'blah')))
+    else:
+      expected.add(FileMovedEvent(p('fromfile'), p('project', 'tofile')))
+      expected.add(DirMovedEvent(p('project', 'blah'), p('project', 'boo')))
+
+    got = set()
     while True:
       try:
         event, _ = self.event_queue.get_nowait()
