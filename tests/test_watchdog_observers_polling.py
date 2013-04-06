@@ -112,7 +112,7 @@ class TestPollingEmitter(unittest2.TestCase):
       DirMovedEvent(p('project', 'blah'), p('project', 'boo')),
 
       DirModifiedEvent(p()),
-      FileDeletedEvent(p('project', 'boo')),
+      FileDeletedEvent(p('project', 'tofile')),
       DirDeletedEvent(p('project', 'boo')),
       DirDeletedEvent(p('project')),
 
