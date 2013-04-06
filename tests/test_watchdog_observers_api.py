@@ -53,7 +53,7 @@ class TestObservedWatch(unittest2.TestCase):
 
   def test___repr__(self):
     observed_watch = ObservedWatch('/foobar', True)
-    self.assertEqual('<ObservedWatch: path=' + absolute_path('/foobar') + ', is_recursive=True>',
+    self.assertEqual('<ObservedWatch: path=' + '/foobar' + ', is_recursive=True>',
                      observed_watch.__repr__())
 
 
