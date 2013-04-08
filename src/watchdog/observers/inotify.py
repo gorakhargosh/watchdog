@@ -569,7 +569,7 @@ if platform.is_linux():
 
           event_list.append(inotify_event)
 
-          if inotify_event.is_directory:
+          if self.is_recursive and inotify_event.is_directory:
             if inotify_event.is_create:
             # HACK: We need to traverse the directory path
             # recursively and simulate events for newly
