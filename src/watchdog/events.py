@@ -142,9 +142,7 @@ src_path=%(src_path)s, is_directory=%(is_directory)s>" %\
   # Used for comparison of events.
   @property
   def key(self):
-    return (self.event_type,
-            self.src_path,
-            self.is_directory)
+    return (self.event_type, self.src_path, self.is_directory)
 
   def __eq__(self, event):
     return self.key == event.key
@@ -174,11 +172,9 @@ class FileSystemMovedEvent(FileSystemEvent):
     return self._dest_path
 
   # Used for hashing this as an immutable object.
-  def _key(self):
-    return (self.event_type,
-            self.src_path,
-            self.dest_path,
-            self.is_directory)
+  @property
+  def key(self):
+    return (self.event_type, self.src_path, self.dest_path, self.is_directory)
 
   def __repr__(self):
     return "<%(class_name)s: src_path=%(src_path)s, dest_path=%(dest_path)s, \
