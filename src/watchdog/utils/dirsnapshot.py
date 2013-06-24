@@ -90,7 +90,12 @@ class DirectorySnapshotDiff(object):
     self._dirs_deleted = list()
     self._dirs_created = list()
 
-    # Detect all the modifications.
+    paths_moved_from_not_deleted = []
+    paths_deleted = set()
+    paths_created = set()
+
+    # Detect modifications and distinguish modifications that are actually
+    # renames of files on top of existing file names (OS X/Linux only)
     for path, stat_info in dirsnap.stat_snapshot.items():
       if path in ref_dirsnap.stat_snapshot:
         ref_stat_info = ref_dirsnap.stat_info(path)
@@ -99,12 +104,26 @@ class DirectorySnapshotDiff(object):
             self._dirs_modified.append(path)
           else:
             self._files_modified.append(path)
+        elif stat_info.st_ino != ref_stat_info.st_ino:
+          # Same path exists... but different inode
+          if ref_dirsnap.has_inode(stat_info.st_ino):
+            old_path = ref_dirsnap.path_for_inode(stat_info.st_ino)
+            paths_moved_from_not_deleted.append(old_path)
+            if stat.S_ISDIR(stat_info.st_mode):
+              self._dirs_moved.append((old_path, path))
+            else:
+              self._files_moved.append((old_path, path))
+          else:
+            # we have a newly created item with existing name, but different inode
+            paths_deleted.add(path)
+            paths_created.add(path)
 
-    paths_deleted = ref_dirsnap.paths - dirsnap.paths
-    paths_created = dirsnap.paths - ref_dirsnap.paths
+    paths_deleted = paths_deleted | ((ref_dirsnap.paths - dirsnap.paths) - set(paths_moved_from_not_deleted))
+    paths_created = paths_created | (dirsnap.paths - ref_dirsnap.paths)
 
-    # Detect all the moves/renames.
-    # Doesn't work on Windows, so exlude on Windows.
+    # Detect all the moves/renames except for atomic renames on top of existing files
+    # that are handled in the file modification check for-loop above
+    # Doesn't work on Windows since st_ino is always 0, so exclude on Windows.
     if not sys.platform.startswith('win'):
       for created_path in paths_created:
         created_stat_info = dirsnap.stat_info(created_path)
@@ -300,6 +319,14 @@ class DirectorySnapshot(object):
     """
     return self._inode_to_path[inode]
 
+  def has_inode(self, inode):
+    """
+    Determines if the inode exists.
+
+    :param inode:
+        inode number.
+    """
+    return inode in self._inode_to_path
 
   def stat_info_for_inode(self, inode):
     """
@@ -324,4 +351,3 @@ class DirectorySnapshot(object):
 
   def __repr__(self):
     return str(self._stat_snapshot)
-
