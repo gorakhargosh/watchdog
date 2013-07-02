@@ -142,8 +142,6 @@ if platform.is_darwin():
         _fsevents.read_events(self)
       except Exception, e:
         pass
-      finally:
-        self.on_thread_exit()
 
 
   class FSEventsObserver(BaseObserver):
