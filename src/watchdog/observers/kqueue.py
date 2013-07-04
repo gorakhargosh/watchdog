@@ -708,7 +708,7 @@ if platform.is_bsd() or platform.is_darwin():
           else:
             raise
 
-    def on_thread_exit(self):
+    def on_thread_stop(self):
       # Clean up.
       with self._lock:
         self._descriptors.clear()

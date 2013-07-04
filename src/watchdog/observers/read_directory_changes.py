@@ -66,7 +66,7 @@ if platform.is_windows():
                                                     WATCHDOG_FILE_FLAGS)
       self._buffer = ctypes.create_string_buffer(BUFFER_SIZE)
 
-    def on_thread_exit(self):
+    def on_thread_stop(self):
       close_directory_handle(self._directory_handle)
 
 

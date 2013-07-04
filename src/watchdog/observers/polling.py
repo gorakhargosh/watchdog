@@ -62,7 +62,7 @@ class PollingEmitter(EventEmitter):
     self._snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
     self._lock = threading.Lock()
 
-  def on_thread_exit(self):
+  def on_thread_stop(self):
     with self._lock:
       self._snapshot = None
 

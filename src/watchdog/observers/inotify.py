@@ -738,7 +738,7 @@ if platform.is_linux():
       self._lock = threading.Lock()
       self._inotify = Inotify(watch.path, watch.is_recursive)
 
-    def on_thread_exit(self):
+    def on_thread_stop(self):
       self._inotify.close()
 
     def queue_events(self, timeout):

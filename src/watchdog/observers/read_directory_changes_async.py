@@ -50,9 +50,6 @@ if platform.is_windows():
       EventEmitter.__init__(self, event_queue, watch, timeout)
       self._lock = threading.Lock()
 
-    def on_thread_exit(self):
-      pass
-
     def queue_events(self, timeout):
       with self._lock:
         pass

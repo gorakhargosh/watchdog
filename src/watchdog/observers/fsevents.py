@@ -72,7 +72,7 @@ if platform.is_darwin():
       self._lock = threading.Lock()
       self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
 
-    def on_thread_exit(self):
+    def on_thread_stop(self):
       _fsevents.remove_watch(self.watch)
       _fsevents.stop(self)
 
@@ -142,8 +142,6 @@ if platform.is_darwin():
         _fsevents.read_events(self)
       except Exception, e:
         pass
-      finally:
-        self.on_thread_exit()
 
 
   class FSEventsObserver(BaseObserver):

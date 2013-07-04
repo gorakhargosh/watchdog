@@ -179,12 +179,6 @@ class EventEmitter(DaemonThread):
         ``float``
     """
 
-  def on_thread_exit(self):
-    """
-    Override this method for cleaning up immediately before the daemon
-    thread stops completely.
-    """
-
   def run(self):
     try:
       while self.should_keep_running():
@@ -238,19 +232,12 @@ class EventDispatcher(DaemonThread):
         :class:`queue.Empty`
     """
 
-  def on_thread_exit(self):
-    """Override this method for cleaning up immediately before the daemon
-  thread stops completely."""
-
   def run(self):
-    try:
-      while self.should_keep_running():
-        try:
-          self.dispatch_events(self.event_queue, self.timeout)
-        except queue.Empty:
-          continue
-    finally:
-      self.on_thread_exit()
+    while self.should_keep_running():
+      try:
+        self.dispatch_events(self.event_queue, self.timeout)
+      except queue.Empty:
+        continue
 
 
 class BaseObserver(EventDispatcher):
@@ -405,7 +392,7 @@ class BaseObserver(EventDispatcher):
       self._clear_emitters()
       self._watches.clear()
 
-  def on_thread_exit(self):
+  def on_thread_stop(self):
     self.unschedule_all()
 
   def _dispatch_event(self, event, watch):
