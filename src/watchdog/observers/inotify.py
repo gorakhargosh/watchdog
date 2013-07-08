@@ -525,7 +525,6 @@ if platform.is_linux():
       Closes the inotify instance and removes all associated watches.
       """
       with self._lock:
-        self._remove_all_watches()
         os.close(self._inotify_fd)
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
@@ -645,15 +644,6 @@ if platform.is_linux():
       self._wd_for_path[path] = wd
       self._path_for_wd[wd] = path
       return wd
-
-    def _remove_all_watches(self):
-      """
-      Removes all watches.
-      """
-      for wd in self._wd_for_path.values():
-        del self._path_for_wd[wd]
-        if inotify_rm_watch(self._inotify_fd, wd) == -1:
-          Inotify._raise_error()
 
     def _remove_watch_bookkeeping(self, path):
       wd = self._wd_for_path.pop(path)
