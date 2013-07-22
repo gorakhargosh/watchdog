@@ -60,6 +60,13 @@ Please see the help information for these commands by typing::
 
     watchmedo [command] --help
 
+Command for Network drives
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Currently there is no special support for network drives - you need to use polling.
+
+So make it easy to work with network drives you can replace ``watchmedo`` by the
+``watchmount`` command.
 
 About ``watchmedo`` Tricks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

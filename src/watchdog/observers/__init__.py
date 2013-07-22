@@ -75,7 +75,20 @@ except ImportError: # pragma: no cover
 
 
 Observer = _Observer
-"""
-Observer thread that schedules watching directories and dispatches
-calls to event handlers.
-"""
+
+# On network mounts, we currectly have no other option but PollingServer.
+# This might be improved in the future by implementing a service that runs
+# on the remote machine. Until then, this is just an alias.
+#
+# Btw.: We could improve the automatic detection with os.path.ismount() if it was
+# supported on Windows. For more context, see
+# http://bugs.python.org/issue9035
+
+from watchdog.observers.polling import PollingObserver
+
+class MountObserver(PollingObserver):
+  """
+  Observer thread that schedules watching directories and dispatches
+  calls to event handlers.
+  This is just an alias to PollingObserver but might improve in the future.
+  """

@@ -162,6 +162,7 @@ setup(name="watchdog",
       entry_points={
         'console_scripts': [
           'watchmedo = watchdog.watchmedo:main',
+          'watchmount = watchdog.watchmedo:mainmount',
           ]
       },
       zip_safe=False,
