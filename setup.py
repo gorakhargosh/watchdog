@@ -115,14 +115,14 @@ def read_file(filename):
 if not sys.version_info < (3,):
   extra_args.update(dict(use_2to3=True))
 
-setup(name="watchdog",
+setup(name="pydica-watchdog",
       version=version.VERSION_STRING,
       description="Filesystem events monitoring",
       long_description=read_file('README'),
       author="Yesudeep Mangalapilly",
       author_email="yesudeep@gmail.com",
       license="Apache License 2.0",
-      url="http://github.com/gorakhargosh/watchdog",
+      url="https://bitbucket.org/pydica/watchdog",
       keywords=' '.join([
         'python',
         'filesystem',
