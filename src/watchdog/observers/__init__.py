@@ -84,11 +84,5 @@ Observer = _Observer
 # supported on Windows. For more context, see
 # http://bugs.python.org/issue9035
 
-from watchdog.observers.polling import PollingObserver
+from watchdog.observers.polling import MountObserver
 
-class MountObserver(PollingObserver):
-  """
-  Observer thread that schedules watching directories and dispatches
-  calls to event handlers.
-  This is just an alias to PollingObserver but might improve in the future.
-  """

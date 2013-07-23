@@ -233,14 +233,16 @@ class DirectorySnapshot(object):
                path,
                recursive=True,
                walker_callback=(lambda p, s: None),
-               _copying=False):
+               _copying=False,
+               _os_stat=os.stat):
     self._path = absolute_path(path)
     self._stat_snapshot = {}
     self._inode_to_path = {}
     self.is_recursive = recursive
+    self._statfunc = _os_stat
 
     if not _copying:
-      stat_info = os.stat(self._path)
+      stat_info = _os_stat(self._path)
       self._stat_snapshot[self._path] = stat_info
       self._inode_to_path[stat_info.st_ino] = self._path
       walker_callback(self._path, stat_info)
@@ -249,7 +251,7 @@ class DirectorySnapshot(object):
         for directory_name in directories:
           try:
             directory_path = os.path.join(root, directory_name)
-            stat_info = os.stat(directory_path)
+            stat_info = _os_stat(directory_path)
             self._stat_snapshot[directory_path] = stat_info
             self._inode_to_path[stat_info.st_ino] = directory_path
             walker_callback(directory_path, stat_info)
@@ -259,7 +261,7 @@ class DirectorySnapshot(object):
         for file_name in files:
           try:
             file_path = os.path.join(root, file_name)
-            stat_info = os.stat(file_path)
+            stat_info = _os_stat(file_path)
             self._stat_snapshot[file_path] = stat_info
             self._inode_to_path[stat_info.st_ino] = file_path
             walker_callback(file_path, stat_info)
@@ -280,9 +282,10 @@ class DirectorySnapshot(object):
   #    self._stat_snapshot.update(new_dirsnap._stat_snapshot)
 
   def copy(self, from_pathname=None):
-    snapshot = DirectorySnapshot(path=from_pathname,
-                                 recursive=self.is_recursive,
-                                 _copying=True)
+    snapshot = self.__class__(path=from_pathname,
+                              recursive=self.is_recursive,
+                              _copying=True,
+                              _os_stat=self._statfunc)
     for pathname, stat_info in self._stat_snapshot.items():
       if pathname.starts_with(from_pathname):
         snapshot._stat_snapshot[pathname] = stat_info
@@ -351,3 +354,44 @@ class DirectorySnapshot(object):
 
   def __repr__(self):
     return str(self._stat_snapshot)
+
+
+class stat_res_filter(object):
+  __slots__ = ['_stat_result']
+
+  def __init__(self, stat_res):
+    self._stat_result = stat_res
+
+  def __getattr__(self, name):
+    return getattr(self._stat_result, name)
+
+  @property
+  def st_ino(self):
+    return 0
+
+
+def filtered_os_stat(*args, **kw):
+  """
+  Wrapper around os.stat that filters the st_ino field.
+  """
+  stat_res = os.stat(*args, **kw)
+  return stat_res_filter(stat_res)
+
+
+class MountSnapshot(DirectorySnapshot):
+  """
+  A snapshot of stat information of files in a mounted directory.
+  """
+
+  def __init__(self,
+               path,
+               recursive=True,
+               walker_callback=(lambda p, s: None),
+               _copying=False,
+               _os_stat=filtered_os_stat):
+    DirectorySnapshot.__init__(self,
+                               path,
+                               recursive,
+                               walker_callback,
+                               _copying,
+                               _os_stat)

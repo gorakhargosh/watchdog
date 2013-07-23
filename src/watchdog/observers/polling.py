@@ -34,7 +34,10 @@ from __future__ import with_statement
 import time
 import threading
 
-from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
+from watchdog.utils.dirsnapshot import\
+  DirectorySnapshot,\
+  DirectorySnapshotDiff,\
+  MountSnapshot
 from watchdog.observers.api import\
   EventEmitter,\
   BaseObserver,\
@@ -104,6 +107,18 @@ class PollingEmitter(EventEmitter):
         self.queue_event(DirMovedEvent(src_path, dest_path))
 
 
+class MountEmitter(PollingEmitter):
+  """
+  Mount-aware emitter that polls a directory to detect file
+  system changes. Inodes are explicitly ignored because they
+  can have random effects on virtual machines.
+  """
+  def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+    EventEmitter.__init__(self, event_queue, watch, timeout)
+    self._snapshot = MountSnapshot(watch.path, watch.is_recursive)
+    self._lock = threading.Lock()
+
+
 class PollingObserver(BaseObserver):
   """
   Observer thread that schedules watching directories and dispatches
@@ -112,5 +127,15 @@ class PollingObserver(BaseObserver):
 
   def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
     BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
+
+
+class MountObserver(BaseObserver):
+  """
+  Observer thread that schedules watching directories and dispatches
+  calls to event handlers.
+  """
+
+  def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    BaseObserver.__init__(self, emitter_class=MountEmitter, timeout=timeout)
 
 
