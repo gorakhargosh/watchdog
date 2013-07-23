@@ -62,7 +62,8 @@ class PollingEmitter(EventEmitter):
 
   def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
     EventEmitter.__init__(self, event_queue, watch, timeout)
-    self._snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
+    self._factory = DirectorySnapshot
+    self._snapshot = self._factory(watch.path, watch.is_recursive)
     self._lock = threading.Lock()
 
   def on_thread_stop(self):
@@ -82,7 +83,7 @@ class PollingEmitter(EventEmitter):
 
       # Get event diff between fresh snapshot and previous snapshot.
       # Update snapshot.
-      new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+      new_snapshot = self._factory(self.watch.path, self.watch.is_recursive)
       events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
       self._snapshot = new_snapshot
 
@@ -115,7 +116,8 @@ class MountEmitter(PollingEmitter):
   """
   def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
     EventEmitter.__init__(self, event_queue, watch, timeout)
-    self._snapshot = MountSnapshot(watch.path, watch.is_recursive)
+    self._factory = MountSnapshot
+    self._snapshot = self._factory(watch.path, watch.is_recursive)
     self._lock = threading.Lock()
 
 
