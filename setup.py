@@ -117,7 +117,7 @@ if not sys.version_info < (3,):
 
 setup(name="pydica-watchdog",
       version=version.VERSION_STRING,
-      description="Filesystem events monitoring",
+      description="Native and Virtual Filesystem Events Monitoring",
       long_description=read_file('README'),
       author="Yesudeep Mangalapilly",
       author_email="yesudeep@gmail.com",
@@ -126,6 +126,7 @@ setup(name="pydica-watchdog",
       keywords=' '.join([
         'python',
         'filesystem',
+        'virtual',
         'monitoring',
         'monitor',
         'FSEvents',
