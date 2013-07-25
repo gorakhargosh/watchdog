@@ -174,3 +174,19 @@ OS Independent Polling
               interested in your event handlers to determine
               this, although it is rather slow. |project_name| does not
               attempt to handle this on Windows. It is left to your discretion.
+
+Mounted Drives and Virtual Servers
+    Although mounted drives with the same system sometimes just work fine with
+    the better drivers, there are cases where even polling fails miserably.
+    This can be handled with ``MountObserver``. The reason is:
+    
+    On virtual servers, when polling a drive from the host machine,
+    the virtualization software creates pseudo-inode numbers which change
+    at every access.
+    
+    To make this case work, |project_name| has a version of polling where
+    ``os.stat()`` explicitly gets filtered. The drawback is that file movement
+    always appears as deletion and insertion.
+
+    .. NOTE:: This was tested with Parallels Desktop, but it seems to be true for
+              other virtualizations, too.
