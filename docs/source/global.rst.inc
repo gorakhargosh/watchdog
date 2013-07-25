@@ -3,11 +3,11 @@
 .. |author_name| replace:: Yesudeep Mangalapilly
 .. |author_email| replace:: yesudeep@gmail.com
 .. |copyright| replace:: Copyright 2012 Google, Inc.
-.. |project_name| replace:: ``watchdog``
+.. |project_name| replace:: ``pydica-watchdog``
 .. |project_version| replace:: 0.6.2
 
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
-.. _code repository: http://github.com/gorakhargosh/watchdog
+.. _code repository: http://bitbucket.org/pydica/watchdog
 .. _mailing list: http://groups.google.com/group/watchdog-python
 
 .. _kqueue: http://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
