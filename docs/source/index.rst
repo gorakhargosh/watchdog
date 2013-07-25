@@ -22,9 +22,11 @@ Get started quickly with a simple example in :ref:`quickstart`.
 
 Easy installation
 -----------------
-You can use pip_ to install |project_name| quickly and easily::
+You can use pip_ to install |project_name| quickly and easily:
 
-    $ pip install watchdog
+.. parsed-literal::
+
+    $ pip install |project_name|
 
 Need more help with installing? See :ref:`installation`.
 

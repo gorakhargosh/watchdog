@@ -40,6 +40,8 @@ Class          Platforms                        Note
 |Kqueue|       Mac OS X and BSD with kqueue(2)  ``kqueue(2)`` based observer
 |WinApi|       MS Windows                       Windows API-based observer
 |Polling|      Any                              fallback implementation
+|Mount|        Any                              explicitly ignores inode
+                                                numbers (virtual windows)
 ============== ================================ ==============================
 
 .. |Inotify|     replace:: :class:`.inotify.InotifyObserver`
@@ -48,6 +50,7 @@ Class          Platforms                        Note
 .. |WinApi|      replace:: :class:`.read_directory_changes.WindowsApiObserver`
 .. |WinApiAsync| replace:: :class:`.read_directory_changes_async.WindowsApiAsyncObserver`
 .. |Polling|     replace:: :class:`.polling.PollingObserver`
+.. |Mount|       replace:: :class:`.polling.MountObserver`
 
 """
 
@@ -75,7 +78,14 @@ except ImportError: # pragma: no cover
 
 
 Observer = _Observer
-"""
-Observer thread that schedules watching directories and dispatches
-calls to event handlers.
-"""
+
+# On network mounts, we currectly have no other option but PollingServer.
+# This might be improved in the future by implementing a service that runs
+# on the remote machine. Until then, this is just an alias.
+#
+# Btw.: We could improve the automatic detection with os.path.ismount() if it was
+# supported on Windows. For more context, see
+# http://bugs.python.org/issue9035
+
+from watchdog.observers.polling import MountObserver
+

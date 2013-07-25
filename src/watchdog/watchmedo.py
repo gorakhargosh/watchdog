@@ -172,7 +172,7 @@ def tricks_from(args):
   :param args:
       Command line argument options.
   """
-  from watchdog.observers import Observer
+  Observer = args.default_observer
 
   add_to_sys_path(path_split(args.python_path))
   observers = []
@@ -347,7 +347,7 @@ def log(args):
   else:
   # Automatically picks the most appropriate observer for the platform
   # on which it is running.
-    from watchdog.observers import Observer
+    Observer = args.default_observer
   observer = Observer(timeout=args.timeout)
   observe_with(observer, handler, args.directories, args.recursive)
 
@@ -417,7 +417,7 @@ def shell_command(args):
   :param args:
       Command line argument options.
   """
-  from watchdog.observers import Observer
+  Observer = args.default_observer
   from watchdog.tricks import ShellCommandTrick
 
   if not args.command:
@@ -496,7 +496,7 @@ def auto_restart(args):
   :param args:
       Command line argument options.
   """
-  from watchdog.observers import Observer
+  Observer = args.default_observer
   from watchdog.tricks import AutoRestartTrick
   import signal
   import re
@@ -550,8 +550,18 @@ parser.add_argument('--version',
                     version='%(prog)s ' + VERSION_STRING)
 
 
+
 def main():
   """Entry-point function."""
+  from watchdog.observers import Observer
+  parser.set_defaults(default_observer = Observer)
+  parser.dispatch()
+
+
+def mainmount():
+  """Entry-point function."""
+  from watchdog.observers import MountObserver
+  parser.set_defaults(default_observer = MountObserver)
   parser.dispatch()
 
 

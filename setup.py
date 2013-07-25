@@ -117,7 +117,7 @@ if not sys.version_info < (3,):
 
 setup(name="watchdog",
       version=version.VERSION_STRING,
-      description="Filesystem events monitoring",
+      description="Native and Virtual Filesystem Events Monitoring",
       long_description=read_file('README'),
       author="Yesudeep Mangalapilly",
       author_email="yesudeep@gmail.com",
@@ -126,6 +126,7 @@ setup(name="watchdog",
       keywords=' '.join([
         'python',
         'filesystem',
+        'virtual',
         'monitoring',
         'monitor',
         'FSEvents',
@@ -162,6 +163,7 @@ setup(name="watchdog",
       entry_points={
         'console_scripts': [
           'watchmedo = watchdog.watchmedo:main',
+          'watchmount = watchdog.watchmedo:mainmount',
           ]
       },
       zip_safe=False,

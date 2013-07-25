@@ -60,6 +60,31 @@ Please see the help information for these commands by typing::
 
     watchmedo [command] --help
 
+Network Drives and Virtual Machines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are cases where the automatic configuration of ``watchmedo`` goes wrong
+when mounted file systems are different.
+
+Although ``watchmedo log`` has an option to require explicit polling,
+this does not apply to other subcommands.
+
+Especially a virtual machine with Windows in a Linux/Os X host will not get
+any events, but with polling you get many false events.
+The reason is that the ``inode`` information from the virtualization is faked
+and changes all the time.
+
+To make this work for all subcommands there is an alternative ``watchmount`` command
+with the same options, i.E.::
+
+    watchmount shell-command \
+        --patterns="*.py;*.txt" \
+        --recursive \
+        --command='echo "${watch_src_path}"' \
+        .
+
+The auto-detection of the best treatment of certain networked connection
+is a non-trivial topic for later versions ...
 
 About ``watchmedo`` Tricks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
