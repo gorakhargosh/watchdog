@@ -40,6 +40,8 @@ Class          Platforms                        Note
 |Kqueue|       Mac OS X and BSD with kqueue(2)  ``kqueue(2)`` based observer
 |WinApi|       MS Windows                       Windows API-based observer
 |Polling|      Any                              fallback implementation
+|Mount|        Any                              explicitly ignores inode
+                                                numbers (virtual windows)
 ============== ================================ ==============================
 
 .. |Inotify|     replace:: :class:`.inotify.InotifyObserver`
@@ -48,6 +50,7 @@ Class          Platforms                        Note
 .. |WinApi|      replace:: :class:`.read_directory_changes.WindowsApiObserver`
 .. |WinApiAsync| replace:: :class:`.read_directory_changes_async.WindowsApiAsyncObserver`
 .. |Polling|     replace:: :class:`.polling.PollingObserver`
+.. |Mount|       replace:: :class:`.polling.MountObserver`
 
 """
 
