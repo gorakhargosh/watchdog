@@ -9,7 +9,6 @@ A simple program that uses watchdog to monitor directories specified
 as command-line arguments and logs events generated::
 
     import sys
-    import time
     import logging
     from watchdog.observers import Observer
     from watchdog.events import LoggingEventHandler
@@ -24,8 +23,7 @@ as command-line arguments and logs events generated::
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
         try:
-            while True:
-                time.sleep(1)
+            observer.join()
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
