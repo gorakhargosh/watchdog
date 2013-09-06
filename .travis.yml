@@ -3,10 +3,14 @@ language: python
 python:
   - 2.6
   - 2.7
+  - 3.2
+  - 3.3
   - pypy
 
 before_install:
-  - pip install --use-mirrors pathtools argh pyyaml unittest2 coverage
+  - pip install --use-mirrors pathtools argh pyyaml coverage
+  - if [[ ${TRAVIS_PYTHON_VERSION:0:1} != '3' ]]; then pip install --use-mirrors unittest2; fi
+  - if [[ ${TRAVIS_PYTHON_VERSION:0:1} == '3' ]]; then pip install --use-mirrors unittest2py3k; fi
 
 install: python setup.py install
 
