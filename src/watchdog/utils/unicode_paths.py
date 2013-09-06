@@ -45,20 +45,20 @@ fs_fallback_encoding = 'utf-8'
 def encode(path):
     if isinstance(path, str_cls):
         try:
-            path = path.encode(fs_encoding, errors='strict')
+            path = path.encode(fs_encoding, 'strict')
         except (UnicodeEncodeError) as e:
             if not platform.is_linux():
                 raise
-            path = path.encode(fs_fallback_encoding, errors='strict')
+            path = path.encode(fs_fallback_encoding, 'strict')
     return path
 
 
 def decode(path):
     if isinstance(path, bytes_cls):
         try:
-            path = path.decode(fs_encoding, errors='strict')
+            path = path.decode(fs_encoding, 'strict')
         except (UnicodeDecodeError) as e:
             if not platform.is_linux():
                 raise
-            path = path.decode(fs_fallback_encoding, errors='strict')
+            path = path.decode(fs_fallback_encoding, 'strict')
     return path
