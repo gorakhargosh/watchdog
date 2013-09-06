@@ -71,7 +71,7 @@ from __future__ import with_statement
 from watchdog.utils import platform
 import sys
 
-is_py3 = sys.version_info > (3, 0)
+is_py3 = sys.version_info >= (3,)
 
 if platform.is_linux():
   import os
