@@ -69,6 +69,9 @@ Some extremely useful articles and documentation:
 
 from __future__ import with_statement
 from watchdog.utils import platform
+import sys
+
+is_py3 = sys.version_info >= (3,)
 
 if platform.is_linux():
   import os
@@ -139,7 +142,13 @@ if platform.is_linux():
   inotify_add_watch =\
   ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
     ("inotify_add_watch", libc))
-
+  if is_py3:
+    _inotify_add_watch = inotify_add_watch
+    def inotify_add_watch(fd, pathname, mask):
+      pathname = pathname.encode(sys.getfilesystemencoding())
+      pathname = ctypes.create_string_buffer(pathname)
+      return _inotify_add_watch(fd, pathname, mask)
+    
   # #include <sys/inotify.h>
   # int inotify_rm_watch(int fd, uint32_t wd);
   inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
@@ -691,7 +700,12 @@ if platform.is_linux():
       while i + 16 < len(event_buffer):
         wd, mask, cookie, length =\
         struct.unpack_from('iIII', event_buffer, i)
-        name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
+        name = event_buffer[i + 16:i + 16 + length]
+        if is_py3:
+          name = name.rstrip(b'\0')
+          name = name.decode(sys.getfilesystemencoding())
+        else:
+          name = name.rstrip('\0')
         i += 16 + length
         yield wd, mask, cookie, name
 
