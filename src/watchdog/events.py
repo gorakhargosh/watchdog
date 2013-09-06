@@ -88,10 +88,12 @@ Event Handler Classes
 import os.path
 import logging
 import re
+import sys
 
 from pathtools.path import absolute_path
 from pathtools.patterns import match_any_paths
 from watchdog.utils import has_attribute
+from watchdog.utils import unicode_paths
 
 
 EVENT_TYPE_MOVED = 'moved'
@@ -452,9 +454,9 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 
     paths = []
     if has_attribute(event, 'dest_path'):
-      paths.append(event.dest_path)
+      paths.append(unicode_paths.decode(event.dest_path))
     if event.src_path:
-      paths.append(event.src_path)
+      paths.append(unicode_paths.decode(event.src_path))
 
     if match_any_paths(paths,
                        included_patterns=self.patterns,
@@ -535,9 +537,9 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
 
     paths = []
     if has_attribute(event, 'dest_path'):
-      paths.append(event.dest_path)
+      paths.append(unicode_paths.decode(event.dest_path))
     if event.src_path:
-      paths.append(event.src_path)
+      paths.append(unicode_paths.decode(event.src_path))
 
     if any(r.match(p) for r in self.ignore_regexes for p in paths):
       return

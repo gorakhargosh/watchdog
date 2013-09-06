@@ -69,6 +69,9 @@ Some extremely useful articles and documentation:
 
 from __future__ import with_statement
 from watchdog.utils import platform
+from watchdog.utils import unicode_paths
+from functools import reduce
+import sys
 
 if platform.is_linux():
   import os
@@ -544,7 +547,7 @@ if platform.is_linux():
         for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
           if wd == -1:
             continue
-          wd_path = self._path_for_wd[wd]
+          wd_path = unicode_paths.encode(self._path_for_wd[wd])
           src_path = absolute_path(os.path.join(wd_path, name))
           inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
@@ -637,7 +640,7 @@ if platform.is_linux():
           Event bit mask.
       """
       wd = inotify_add_watch(self._inotify_fd,
-                             path,
+                             unicode_paths.encode(path),
                              mask)
       if wd == -1:
         Inotify._raise_error()
@@ -691,7 +694,7 @@ if platform.is_linux():
       while i + 16 < len(event_buffer):
         wd, mask, cookie, length =\
         struct.unpack_from('iIII', event_buffer, i)
-        name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
+        name = event_buffer[i + 16:i + 16 + length].rstrip(b'\0')
         i += 16 + length
         yield wd, mask, cookie, name
 

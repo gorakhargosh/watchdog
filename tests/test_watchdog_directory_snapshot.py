@@ -81,6 +81,7 @@ class TestPollingEmitterSimple(unittest2.TestCase):
         self.assertEqual(0, len(got), "Actually got: %r when expected: %r" % (comp_dict, expected))
 
 
+  @unittest2.skipIf(os.name == 'nt', "windows can not detect moves")
   def test_mv_file_to_other_sibling_folder(self):
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -101,6 +102,7 @@ class TestPollingEmitterSimple(unittest2.TestCase):
 
     self.verify(expected, changes)
 
+  @unittest2.skipIf(os.name == 'nt', "windows can not detect moves")
   def test_replace_same_folder(self):
     mkdir(p('dir1'))
     touch(p('dir1', 'a'))
@@ -121,7 +123,7 @@ class TestPollingEmitterSimple(unittest2.TestCase):
 
     self.verify(expected, changes)
 
-
+  @unittest2.skipIf(os.name == 'nt', "windows can not detect moves")
   def test_replace_in_other_folder(self):
     mkdir(p('dir1'))
     mkdir(p('dir2'))

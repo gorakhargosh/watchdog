@@ -92,7 +92,7 @@ def accepts(*types):
   """
 
   def check_accepts(f):
-    assert len(types) == f.func_code.co_argcount
+    assert len(types) == f.__code__.co_argcount
 
     def new_f(*args, **kwds):
       for (a, t) in zip(args, types):
@@ -100,7 +100,7 @@ def accepts(*types):
         "arg %r does not match %s" % (a, t)
       return f(*args, **kwds)
 
-    new_f.func_name = f.func_name
+    new_f.__name__ = f.__name__
     return new_f
 
   return check_accepts
@@ -124,7 +124,7 @@ def returns(rtype):
       "return value %r does not match %s" % (result, rtype)
       return result
 
-    new_f.func_name = f.func_name
+    new_f.__name__ = f.__name__
     return new_f
 
   return check_returns
@@ -190,8 +190,8 @@ def deprecated(func):
         'funcname': func.__name__,
         },
       category=DeprecationWarning,
-      filename=func.func_code.co_filename,
-      lineno=func.func_code.co_firstlineno + 1
+      filename=func.__code__.co_filename,
+      lineno=func.__code__.co_firstlineno + 1
     )
     return func(*args, **kwargs)
 
