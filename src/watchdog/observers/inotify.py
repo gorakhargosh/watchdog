@@ -149,7 +149,7 @@ if platform.is_linux():
       pathname = ctypes.create_string_buffer(pathname)
       return _inotify_add_watch(fd, pathname, mask)
     
-  # #include <sys/inotify.h>eve
+  # #include <sys/inotify.h>
   # int inotify_rm_watch(int fd, uint32_t wd);
   inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
     ("inotify_rm_watch", libc))
@@ -701,7 +701,8 @@ if platform.is_linux():
         wd, mask, cookie, length =\
         struct.unpack_from('iIII', event_buffer, i)
         name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
-        name = name.decode(sys.getfilesystemencoding())
+        if is_py3:
+          name = name.decode(sys.getfilesystemencoding())
         i += 16 + length
         yield wd, mask, cookie, name
 
