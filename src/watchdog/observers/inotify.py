@@ -700,9 +700,12 @@ if platform.is_linux():
       while i + 16 < len(event_buffer):
         wd, mask, cookie, length =\
         struct.unpack_from('iIII', event_buffer, i)
-        name = event_buffer[i + 16:i + 16 + length].rstrip('\0')
+        name = event_buffer[i + 16:i + 16 + length]
         if is_py3:
+          name = name.rstrip(b'\0')
           name = name.decode(sys.getfilesystemencoding())
+        else:
+          name = name.rstrip('\0')
         i += 16 + length
         yield wd, mask, cookie, name
 
