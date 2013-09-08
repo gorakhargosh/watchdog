@@ -618,6 +618,7 @@ if platform.is_linux():
       :param mask:
           Event bit mask.
       """
+      path = unicode_paths.encode(path)
       if not os.path.isdir(path):
         raise OSError('Path is not a directory')
       self._add_watch(path, mask)
