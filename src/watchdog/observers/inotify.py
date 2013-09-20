@@ -96,13 +96,16 @@ if platform.is_linux():
     DEFAULT_OBSERVER_TIMEOUT
   from watchdog.events import\
     DirDeletedEvent,\
+    DirAccessedEvent,\
     DirModifiedEvent,\
     DirMovedEvent,\
     DirCreatedEvent,\
     FileDeletedEvent,\
+    FileAccessedEvent,\
     FileModifiedEvent,\
     FileMovedEvent,\
     FileCreatedEvent,\
+    EVENT_TYPE_ACCESSED,\
     EVENT_TYPE_MODIFIED,\
     EVENT_TYPE_CREATED,\
     EVENT_TYPE_DELETED,\
@@ -233,6 +236,7 @@ if platform.is_linux():
   WATCHDOG_ALL_EVENTS = reduce(lambda x, y: x | y, [
     # We don't actually need IN_CLOSE_NOWRITE, but if it is omitted,
     # DELETE_SELF is never emitted.
+    InotifyConstants.IN_ACCESS,
     InotifyConstants.IN_MODIFY,
     InotifyConstants.IN_CLOSE_NOWRITE,
     InotifyConstants.IN_CLOSE_WRITE,
@@ -701,10 +705,12 @@ if platform.is_linux():
 
 
   ACTION_EVENT_MAP = {
+    (True, EVENT_TYPE_ACCESSED): DirAccessedEvent,
     (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
     (True, EVENT_TYPE_CREATED): DirCreatedEvent,
     (True, EVENT_TYPE_DELETED): DirDeletedEvent,
     (True, EVENT_TYPE_MOVED): DirMovedEvent,
+    (False, EVENT_TYPE_ACCESSED): FileAccessedEvent,
     (False, EVENT_TYPE_MODIFIED): FileModifiedEvent,
     (False, EVENT_TYPE_CREATED): FileCreatedEvent,
     (False, EVENT_TYPE_DELETED): FileDeletedEvent,
@@ -772,6 +778,10 @@ if platform.is_linux():
           elif event.is_close_write:
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_MODIFIED)]
+            self.queue_event(klass(event.src_path))
+          elif event.is_access:
+            klass = ACTION_EVENT_MAP[(event.is_directory,
+                                      EVENT_TYPE_ACCESSED)]
             self.queue_event(klass(event.src_path))
           elif event.is_modify:
             klass = ACTION_EVENT_MAP[(event.is_directory,

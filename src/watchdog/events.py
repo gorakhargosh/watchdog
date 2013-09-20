@@ -32,6 +32,14 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileAccessedEvent
+   :members:
+   :show-inheritance:
+
+.. autoclass:: DirAccessedEvent
+   :members:
+   :show-inheritance:
+
 .. autoclass:: FileMovedEvent
    :members:
    :show-inheritance:
@@ -96,6 +104,7 @@ from watchdog.utils import has_attribute
 from watchdog.utils import unicode_paths
 
 
+EVENT_TYPE_ACCESSED = 'accessed'
 EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
@@ -229,6 +238,19 @@ class FileCreatedEvent(FileSystemEvent):
                 src_path=self.src_path)
 
 
+class FileAccessedEvent(FileSystemEvent):
+  """File system event representing file access on the file system."""
+
+  def __init__(self, src_path):
+    super(FileAccessedEvent, self).__init__(event_type=EVENT_TYPE_ACCESSED,
+                                           src_path=src_path)
+
+  def __repr__(self):
+    return "<%(class_name)s: src_path=%(src_path)s>" %\
+           dict(class_name=self.__class__.__name__,
+                src_path=self.src_path)
+
+
 class FileMovedEvent(FileSystemMovedEvent):
   """File system event representing file movement on the file system."""
 
@@ -292,6 +314,20 @@ class DirCreatedEvent(FileSystemEvent):
                 src_path=self.src_path)
 
 
+class DirAccessedEvent(FileSystemEvent):
+  """File system event representing directory access on the file system."""
+
+  def __init__(self, src_path):
+    super(DirAccessedEvent, self).__init__(event_type=EVENT_TYPE_ACCESSED,
+                                          src_path=src_path,
+                                          is_directory=True)
+
+  def __repr__(self):
+    return "<%(class_name)s: src_path=%(src_path)s>" %\
+           dict(class_name=self.__class__.__name__,
+                src_path=self.src_path)
+
+
 class DirMovedEvent(FileSystemMovedEvent):
   """File system event representing directory movement on the file system."""
 
@@ -339,6 +375,7 @@ class FileSystemEventHandler(object):
     """
     self.on_any_event(event)
     _method_map = {
+      EVENT_TYPE_ACCESSED: self.on_accessed,
       EVENT_TYPE_MODIFIED: self.on_modified,
       EVENT_TYPE_MOVED: self.on_moved,
       EVENT_TYPE_CREATED: self.on_created,
@@ -354,6 +391,15 @@ class FileSystemEventHandler(object):
         The event object representing the file system event.
     :type event:
         :class:`FileSystemEvent`
+    """
+
+  def on_accessed(self, event):
+    """Called when a file or directory is accessed.
+
+    :param event:
+        Event representing file/directory movement.
+    :type event:
+        :class:`DirAccessedEvent` or :class:`FileAccessedEvent`
     """
 
   def on_moved(self, event):
@@ -464,6 +510,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
                        case_sensitive=self.case_sensitive):
       self.on_any_event(event)
       _method_map = {
+        EVENT_TYPE_ACCESSED: self.on_accessed,
         EVENT_TYPE_MODIFIED: self.on_modified,
         EVENT_TYPE_MOVED: self.on_moved,
         EVENT_TYPE_CREATED: self.on_created,
@@ -547,6 +594,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
     if any(r.match(p) for r in self.regexes for p in paths):
       self.on_any_event(event)
       _method_map = {
+        EVENT_TYPE_ACCESSED: self.on_accessed,
         EVENT_TYPE_MODIFIED: self.on_modified,
         EVENT_TYPE_MOVED: self.on_moved,
         EVENT_TYPE_CREATED: self.on_created,
@@ -584,6 +632,11 @@ class LoggingEventHandler(FileSystemEventHandler):
     what = 'directory' if event.is_directory else 'file'
     logging.info("Modified %s: %s", what, event.src_path)
 
+  def on_accessed(self, event):
+    super(LoggingEventHandler, self).on_accessed(event)
+
+    what = 'directory' if event.is_directory else 'file'
+    logging.info("Accessed %s: %s", what, event.src_path)
 
 class LoggingFileSystemEventHandler(LoggingEventHandler):
   """For backwards-compatibility. Please use :class:`LoggingEventHandler` instead."""
