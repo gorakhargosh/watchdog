@@ -769,10 +769,6 @@ if platform.is_linux():
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_MODIFIED)]
             self.queue_event(klass(event.src_path))
-          elif event.is_close_write:
-            klass = ACTION_EVENT_MAP[(event.is_directory,
-                                      EVENT_TYPE_MODIFIED)]
-            self.queue_event(klass(event.src_path))
           elif event.is_modify:
             klass = ACTION_EVENT_MAP[(event.is_directory,
                                       EVENT_TYPE_MODIFIED)]
