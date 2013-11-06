@@ -738,8 +738,7 @@ if platform.is_linux():
     def queue_events(self, timeout):
       with self._lock:
         inotify_events = self._inotify.read_events()
-        if not any([event.is_moved_from or event.is_moved_to for event in
-                    inotify_events]):
+        if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
           self._inotify.clear_move_records()
         for event in inotify_events:
           if event.is_moved_to:
@@ -754,9 +753,7 @@ if platform.is_linux():
               src_path = self._inotify.source_for_move(event)
               to_event = event
               dest_path = to_event.src_path
-
-              klass = ACTION_EVENT_MAP[
-              (to_event.is_directory, EVENT_TYPE_MOVED)]
+              klass = ACTION_EVENT_MAP[(to_event.is_directory, EVENT_TYPE_MOVED)]
               event = klass(src_path, dest_path)
               self.queue_event(event)
               # Generate sub events for the directory if recursive.
@@ -766,20 +763,16 @@ if platform.is_linux():
             except KeyError:
               pass
           elif event.is_attrib:
-            klass = ACTION_EVENT_MAP[(event.is_directory,
-                                      EVENT_TYPE_MODIFIED)]
+            klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MODIFIED)]
             self.queue_event(klass(event.src_path))
           elif event.is_modify:
-            klass = ACTION_EVENT_MAP[(event.is_directory,
-                                      EVENT_TYPE_MODIFIED)]
+            klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MODIFIED)]
             self.queue_event(klass(event.src_path))
           elif event.is_delete or event.is_delete_self:
-            klass = ACTION_EVENT_MAP[(event.is_directory,
-                                      EVENT_TYPE_DELETED)]
+            klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
             self.queue_event(klass(event.src_path))
           elif event.is_create:
-            klass = ACTION_EVENT_MAP[(event.is_directory,
-                                      EVENT_TYPE_CREATED)]
+            klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_CREATED)]
             self.queue_event(klass(event.src_path))
 
 
