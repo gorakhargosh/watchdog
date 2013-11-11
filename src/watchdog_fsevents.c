@@ -19,7 +19,7 @@
  */
 
 
-#include <Python/Python.h>
+#include <Python.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 #include <stdlib.h>
