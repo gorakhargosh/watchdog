@@ -21,7 +21,7 @@
 #ifndef _WATCHDOG_FSEVENTS_H_
 #define _WATCHDOG_FSEVENTS_H_ 1
 
-#include "Python.h"
+#include <Python.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <limits.h>
