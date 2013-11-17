@@ -547,17 +547,6 @@ class Inotify(object):
         """
         Reads events from inotify and yields them.
         """
-
-        def _moved_to(move_src_path, inotify_event):
-            if move_src_path in self._wd_for_path:
-                moved_wd = self._wd_for_path[move_src_path]
-                del self._wd_for_path[move_src_path]
-                self._wd_for_path[inotify_event.src_path] = moved_wd
-                self._path_for_wd[moved_wd] = inotify_event.src_path
-                src_path = absolute_path(os.path.join(wd_path, name))
-
-            return InotifyEvent(wd, mask, cookie, name, src_path)
-
         # HACK: We need to traverse the directory path
         # recursively and simulate events for newly
         # created subdirectories/files. This will handle
@@ -605,7 +594,13 @@ class Inotify(object):
                     self.remember_move_from_event(inotify_event)
                 elif inotify_event.is_moved_to:
                     move_src_path = self.source_for_move(inotify_event)
-                    inotify_event = _moved_to(move_src_path, inotify_event)
+                    if move_src_path in self._wd_for_path:
+                        moved_wd = self._wd_for_path[move_src_path]
+                        del self._wd_for_path[move_src_path]
+                        self._wd_for_path[inotify_event.src_path] = moved_wd
+                        self._path_for_wd[moved_wd] = inotify_event.src_path
+                    src_path = absolute_path(os.path.join(wd_path, name))
+                    inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
                 if inotify_event.is_ignored:
                     # Clean up book-keeping for deleted watches.
