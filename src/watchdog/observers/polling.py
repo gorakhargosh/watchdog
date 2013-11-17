@@ -35,82 +35,84 @@ import time
 import threading
 
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
-from watchdog.observers.api import\
-  EventEmitter,\
-  BaseObserver,\
-  DEFAULT_OBSERVER_TIMEOUT,\
-  DEFAULT_EMITTER_TIMEOUT
-from watchdog.events import\
-  DirMovedEvent,\
-  DirDeletedEvent,\
-  DirCreatedEvent,\
-  DirModifiedEvent,\
-  FileMovedEvent,\
-  FileDeletedEvent,\
-  FileCreatedEvent,\
-  FileModifiedEvent
+from watchdog.observers.api import (
+    EventEmitter,
+    BaseObserver,
+    DEFAULT_OBSERVER_TIMEOUT,
+    DEFAULT_EMITTER_TIMEOUT
+)
+
+from watchdog.events import (
+    DirMovedEvent,
+    DirDeletedEvent,
+    DirCreatedEvent,
+    DirModifiedEvent,
+    FileMovedEvent,
+    FileDeletedEvent,
+    FileCreatedEvent,
+    FileModifiedEvent
+)
 
 
 class PollingEmitter(EventEmitter):
-  """
-  Platform-independent emitter that polls a directory to detect file
-  system changes.
-  """
 
-  def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-    EventEmitter.__init__(self, event_queue, watch, timeout)
-    self._snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
-    self._lock = threading.Lock()
+    """
+    Platform-independent emitter that polls a directory to detect file
+    system changes.
+    """
 
-  def on_thread_stop(self):
-    with self._lock:
-      self._snapshot = None
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+        EventEmitter.__init__(self, event_queue, watch, timeout)
+        self._snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
+        self._lock = threading.Lock()
 
+    def on_thread_stop(self):
+        with self._lock:
+            self._snapshot = None
 
-  def queue_events(self, timeout):
-  # We don't want to hit the disk continuously.
-  # timeout behaves like an interval for polling emitters.
-    time.sleep(timeout)
+    def queue_events(self, timeout):
+    # We don't want to hit the disk continuously.
+    # timeout behaves like an interval for polling emitters.
+        time.sleep(timeout)
 
-    with self._lock:
+        with self._lock:
 
-      if not self._snapshot:
-        return
+            if not self._snapshot:
+                return
 
-      # Get event diff between fresh snapshot and previous snapshot.
-      # Update snapshot.
-      new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
-      events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
-      self._snapshot = new_snapshot
+            # Get event diff between fresh snapshot and previous snapshot.
+            # Update snapshot.
+            new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+            events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
+            self._snapshot = new_snapshot
 
-      # Files.
-      for src_path in events.files_deleted:
-        self.queue_event(FileDeletedEvent(src_path))
-      for src_path in events.files_modified:
-        self.queue_event(FileModifiedEvent(src_path))
-      for src_path in events.files_created:
-        self.queue_event(FileCreatedEvent(src_path))
-      for src_path, dest_path in events.files_moved:
-        self.queue_event(FileMovedEvent(src_path, dest_path))
+            # Files.
+            for src_path in events.files_deleted:
+                self.queue_event(FileDeletedEvent(src_path))
+            for src_path in events.files_modified:
+                self.queue_event(FileModifiedEvent(src_path))
+            for src_path in events.files_created:
+                self.queue_event(FileCreatedEvent(src_path))
+            for src_path, dest_path in events.files_moved:
+                self.queue_event(FileMovedEvent(src_path, dest_path))
 
-      # Directories.
-      for src_path in events.dirs_deleted:
-        self.queue_event(DirDeletedEvent(src_path))
-      for src_path in events.dirs_modified:
-        self.queue_event(DirModifiedEvent(src_path))
-      for src_path in events.dirs_created:
-        self.queue_event(DirCreatedEvent(src_path))
-      for src_path, dest_path in events.dirs_moved:
-        self.queue_event(DirMovedEvent(src_path, dest_path))
+            # Directories.
+            for src_path in events.dirs_deleted:
+                self.queue_event(DirDeletedEvent(src_path))
+            for src_path in events.dirs_modified:
+                self.queue_event(DirModifiedEvent(src_path))
+            for src_path in events.dirs_created:
+                self.queue_event(DirCreatedEvent(src_path))
+            for src_path, dest_path in events.dirs_moved:
+                self.queue_event(DirMovedEvent(src_path, dest_path))
 
 
 class PollingObserver(BaseObserver):
-  """
-  Observer thread that schedules watching directories and dispatches
-  calls to event handlers.
-  """
 
-  def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-    BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
+    """
+    Observer thread that schedules watching directories and dispatches
+    calls to event handlers.
+    """
 
-
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+        BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
