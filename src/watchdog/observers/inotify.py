@@ -774,6 +774,31 @@ if platform.is_linux():
           elif event.is_create:
             klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_CREATED)]
             self.queue_event(klass(event.src_path))
+        
+            # Patch code starts here
+          elif event.is_moved_from:
+            try:
+              src_path = self._inotify.source_for_move(event)
+              to_event = event
+              if not(hasattr(to_event,'dest_path')):
+                 dest_path = None
+                 klass = ACTION_EVENT_MAP[(event.is_directory,
+                                      EVENT_TYPE_DELETED)]
+                 self.queue_event(klass(event.src_path))
+              else:
+                 dest_path = to_event.dest_path
+                 klass = ACTION_EVENT_MAP[
+                     (to_event.is_directory, EVENT_TYPE_MOVED)]
+                 event = klass(src_path, dest_path)
+                 self.queue_event(event)
+    
+                 # Generate sub events for the directory if recursive.
+                 if event.is_directory and self.watch.is_recursive:
+                    for sub_event in event.sub_moved_events():
+                       self.queue_event(sub_event)
+    
+            except KeyError:
+              pass
 
 
   class InotifyObserver(BaseObserver):
