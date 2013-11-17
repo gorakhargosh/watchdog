@@ -118,7 +118,7 @@ if not sys.version_info < (3,):
 setup(name="watchdog",
       version=version.VERSION_STRING,
       description="Filesystem events monitoring",
-      long_description=read_file('README'),
+      long_description=read_file('README.rst'),
       author="Yesudeep Mangalapilly",
       author_email="yesudeep@gmail.com",
       license="Apache License 2.0",
