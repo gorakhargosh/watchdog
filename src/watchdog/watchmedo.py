@@ -29,19 +29,22 @@ import time
 import logging
 
 try:
-  from cStringIO import StringIO
+    from cStringIO import StringIO
 except ImportError:
-  try:
-    from StringIO import StringIO
-  except ImportError:
-    from io import StringIO
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
 
 from argh import arg, alias, ArghParser
 
 from watchdog.version import VERSION_STRING
-from watchdog.utils import\
-  read_text_file,\
-  load_class
+
+from watchdog.utils import (
+    read_text_file,
+    load_class
+)
+
 from pathtools.path import absolute_path, parent_dir_path
 
 
@@ -55,102 +58,102 @@ CONFIG_KEY_PYTHON_PATH = 'python-path'
 
 
 def path_split(pathname_spec, separator=os.path.sep):
-  """
-  Splits a pathname specification separated by an OS-dependent separator.
+    """
+    Splits a pathname specification separated by an OS-dependent separator.
 
-  :param pathname_spec:
-      The pathname specification.
-  :param separator:
-      (OS Dependent) `:` on Unix and `;` on Windows or user-specified.
-  """
-  return list(pathname_spec.split(separator))
+    :param pathname_spec:
+        The pathname specification.
+    :param separator:
+        (OS Dependent) `:` on Unix and `;` on Windows or user-specified.
+    """
+    return list(pathname_spec.split(separator))
 
 
 def add_to_sys_path(pathnames, index=0):
-  """
-  Adds specified paths at specified index into the sys.path list.
+    """
+    Adds specified paths at specified index into the sys.path list.
 
-  :param paths:
-      A list of paths to add to the sys.path
-  :param index:
-      (Default 0) The index in the sys.path list where the paths will be
-      added.
-  """
-  for pathname in pathnames[::-1]:
-    sys.path.insert(index, pathname)
+    :param paths:
+        A list of paths to add to the sys.path
+    :param index:
+        (Default 0) The index in the sys.path list where the paths will be
+        added.
+    """
+    for pathname in pathnames[::-1]:
+        sys.path.insert(index, pathname)
 
 
 def load_config(tricks_file_pathname):
-  """
-  Loads the YAML configuration from the specified file.
+    """
+    Loads the YAML configuration from the specified file.
 
-  :param tricks_file_path:
-      The path to the tricks configuration file.
-  :returns:
-      A dictionary of configuration information.
-  """
-  content = read_text_file(tricks_file_pathname)
-  config = yaml.load(content)
-  return config
+    :param tricks_file_path:
+        The path to the tricks configuration file.
+    :returns:
+        A dictionary of configuration information.
+    """
+    content = read_text_file(tricks_file_pathname)
+    config = yaml.load(content)
+    return config
 
 
 def parse_patterns(patterns_spec, ignore_patterns_spec, separator=';'):
-  """
-  Parses pattern argument specs and returns a two-tuple of
-  (patterns, ignore_patterns).
-  """
-  patterns = patterns_spec.split(separator)
-  ignore_patterns = ignore_patterns_spec.split(separator)
-  if ignore_patterns == ['']:
-    ignore_patterns = []
-  return (patterns, ignore_patterns)
+    """
+    Parses pattern argument specs and returns a two-tuple of
+    (patterns, ignore_patterns).
+    """
+    patterns = patterns_spec.split(separator)
+    ignore_patterns = ignore_patterns_spec.split(separator)
+    if ignore_patterns == ['']:
+        ignore_patterns = []
+    return (patterns, ignore_patterns)
 
 
 def observe_with(observer, event_handler, pathnames, recursive):
-  """
-  Single observer thread with a scheduled path and event handler.
+    """
+    Single observer thread with a scheduled path and event handler.
 
-  :param observer:
-      The observer thread.
-  :param event_handler:
-      Event handler which will be called in response to file system events.
-  :param pathnames:
-      A list of pathnames to monitor.
-  :param recursive:
-      ``True`` if recursive; ``False`` otherwise.
-  """
-  for pathname in set(pathnames):
-    observer.schedule(event_handler, pathname, recursive)
-  observer.start()
-  try:
-    while True:
-      time.sleep(1)
-  except KeyboardInterrupt:
-    observer.stop()
-  observer.join()
+    :param observer:
+        The observer thread.
+    :param event_handler:
+        Event handler which will be called in response to file system events.
+    :param pathnames:
+        A list of pathnames to monitor.
+    :param recursive:
+        ``True`` if recursive; ``False`` otherwise.
+    """
+    for pathname in set(pathnames):
+        observer.schedule(event_handler, pathname, recursive)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
 
 
 def schedule_tricks(observer, tricks, pathname, recursive):
-  """
-  Schedules tricks with the specified observer and for the given watch
-  path.
+    """
+    Schedules tricks with the specified observer and for the given watch
+    path.
 
-  :param observer:
-      The observer thread into which to schedule the trick and watch.
-  :param tricks:
-      A list of tricks.
-  :param pathname:
-      A path name which should be watched.
-  :param recursive:
-      ``True`` if recursive; ``False`` otherwise.
-  """
-  for trick in tricks:
-    for name, value in list(trick.items()):
-      TrickClass = load_class(name)
-      handler = TrickClass(**value)
-      trick_pathname = absolute_path(
-        getattr(handler, 'source_directory', None) or pathname)
-      observer.schedule(handler, trick_pathname, recursive)
+    :param observer:
+        The observer thread into which to schedule the trick and watch.
+    :param tricks:
+        A list of tricks.
+    :param pathname:
+        A path name which should be watched.
+    :param recursive:
+        ``True`` if recursive; ``False`` otherwise.
+    """
+    for trick in tricks:
+        for name, value in list(trick.items()):
+            TrickClass = load_class(name)
+            handler = TrickClass(**value)
+            trick_pathname = absolute_path(
+                getattr(handler, 'source_directory', None) or pathname)
+            observer.schedule(handler, trick_pathname, recursive)
 
 
 @alias('tricks')
@@ -169,47 +172,47 @@ def schedule_tricks(observer, tricks, pathname, recursive):
      default=True,
      help='recursively monitor paths')
 def tricks_from(args):
-  """
-  Subcommand to execute tricks from a tricks configuration file.
+    """
+    Subcommand to execute tricks from a tricks configuration file.
 
-  :param args:
-      Command line argument options.
-  """
-  from watchdog.observers import Observer
+    :param args:
+        Command line argument options.
+    """
+    from watchdog.observers import Observer
 
-  add_to_sys_path(path_split(args.python_path))
-  observers = []
-  for tricks_file in args.files:
-    observer = Observer(timeout=args.timeout)
+    add_to_sys_path(path_split(args.python_path))
+    observers = []
+    for tricks_file in args.files:
+        observer = Observer(timeout=args.timeout)
 
-    if not os.path.exists(tricks_file):
-      raise IOError("cannot find tricks file: %s" % tricks_file)
+        if not os.path.exists(tricks_file):
+            raise IOError("cannot find tricks file: %s" % tricks_file)
 
-    config = load_config(tricks_file)
+        config = load_config(tricks_file)
+
+        try:
+            tricks = config[CONFIG_KEY_TRICKS]
+        except KeyError:
+            raise KeyError("No `%s' key specified in %s." % (
+                           CONFIG_KEY_TRICKS, tricks_file))
+
+        if CONFIG_KEY_PYTHON_PATH in config:
+            add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
+
+        dir_path = parent_dir_path(tricks_file)
+        schedule_tricks(observer, tricks, dir_path, args.recursive)
+        observer.start()
+        observers.append(observer)
 
     try:
-      tricks = config[CONFIG_KEY_TRICKS]
-    except KeyError:
-      raise KeyError("No `%s' key specified in %s." % (
-        CONFIG_KEY_TRICKS, tricks_file))
-
-    if CONFIG_KEY_PYTHON_PATH in config:
-      add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
-
-    dir_path = parent_dir_path(tricks_file)
-    schedule_tricks(observer, tricks, dir_path, args.recursive)
-    observer.start()
-    observers.append(observer)
-
-  try:
-    while True:
-      time.sleep(1)
-  except KeyboardInterrupt:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        for o in observers:
+            o.unschedule_all()
+            o.stop()
     for o in observers:
-      o.unschedule_all()
-      o.stop()
-  for o in observers:
-    o.join()
+        o.join()
 
 
 @alias('generate-tricks-yaml')
@@ -230,37 +233,37 @@ if not specified, prints to standard output')
      help='if --append-to-file is not specified, produces output for \
 appending instead of a complete tricks yaml file.')
 def tricks_generate_yaml(args):
-  """
-  Subcommand to generate Yaml configuration for tricks named on the command
-  line.
+    """
+    Subcommand to generate Yaml configuration for tricks named on the command
+    line.
 
-  :param args:
-      Command line argument options.
-  """
-  python_paths = path_split(args.python_path)
-  add_to_sys_path(python_paths)
-  output = StringIO()
+    :param args:
+        Command line argument options.
+    """
+    python_paths = path_split(args.python_path)
+    add_to_sys_path(python_paths)
+    output = StringIO()
 
-  for trick_path in args.trick_paths:
-    TrickClass = load_class(trick_path)
-    output.write(TrickClass.generate_yaml())
+    for trick_path in args.trick_paths:
+        TrickClass = load_class(trick_path)
+        output.write(TrickClass.generate_yaml())
 
-  content = output.getvalue()
-  output.close()
-
-  header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths})
-  header += "%s:\n" % CONFIG_KEY_TRICKS
-  if args.append_to_file is None:
-    # Output to standard output.
-    if not args.append_only:
-      content = header + content
-    sys.stdout.write(content)
-  else:
-    if not os.path.exists(args.append_to_file):
-      content = header + content
-    output = open(args.append_to_file, 'ab')
-    output.write(content)
+    content = output.getvalue()
     output.close()
+
+    header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths})
+    header += "%s:\n" % CONFIG_KEY_TRICKS
+    if args.append_to_file is None:
+        # Output to standard output.
+        if not args.append_only:
+            content = header + content
+        sys.stdout.write(content)
+    else:
+        if not os.path.exists(args.append_to_file):
+            content = header + content
+        output = open(args.append_to_file, 'ab')
+        output.write(content)
+        output.close()
 
 
 @arg('directories',
@@ -316,43 +319,43 @@ def tricks_generate_yaml(args):
      default=False,
      help='[debug] forces Linux inotify(7)')
 def log(args):
-  """
-  Subcommand to log file system events to the console.
+    """
+    Subcommand to log file system events to the console.
 
-  :param args:
-      Command line argument options.
-  """
-  from watchdog.utils import echo
-  from watchdog.tricks import LoggerTrick
+    :param args:
+        Command line argument options.
+    """
+    from watchdog.utils import echo
+    from watchdog.tricks import LoggerTrick
 
-  if args.trace:
-    echo.echo_class(LoggerTrick)
+    if args.trace:
+        echo.echo_class(LoggerTrick)
 
-  patterns, ignore_patterns =\
-  parse_patterns(args.patterns, args.ignore_patterns)
-  handler = LoggerTrick(patterns=patterns,
-                        ignore_patterns=ignore_patterns,
-                        ignore_directories=args.ignore_directories)
-  if args.debug_force_polling:
-    from watchdog.observers.polling import PollingObserver as Observer
-  elif args.debug_force_kqueue:
-    from watchdog.observers.kqueue import KqueueObserver as Observer
-  elif args.debug_force_winapi_async:
-    from watchdog.observers.read_directory_changes_async import\
-      WindowsApiAsyncObserver as Observer
-  elif args.debug_force_winapi:
-    from watchdog.observers.read_directory_changes import\
-      WindowsApiObserver as Observer
-  elif args.debug_force_inotify:
-    from watchdog.observers.inotify import InotifyObserver as Observer
-  elif args.debug_force_fsevents:
-    from watchdog.observers.fsevents import FSEventsObserver as Observer
-  else:
-  # Automatically picks the most appropriate observer for the platform
-  # on which it is running.
-    from watchdog.observers import Observer
-  observer = Observer(timeout=args.timeout)
-  observe_with(observer, handler, args.directories, args.recursive)
+    patterns, ignore_patterns =\
+        parse_patterns(args.patterns, args.ignore_patterns)
+    handler = LoggerTrick(patterns=patterns,
+                          ignore_patterns=ignore_patterns,
+                          ignore_directories=args.ignore_directories)
+    if args.debug_force_polling:
+        from watchdog.observers.polling import PollingObserver as Observer
+    elif args.debug_force_kqueue:
+        from watchdog.observers.kqueue import KqueueObserver as Observer
+    elif args.debug_force_winapi_async:
+        from watchdog.observers.read_directory_changes_async import\
+            WindowsApiAsyncObserver as Observer
+    elif args.debug_force_winapi:
+        from watchdog.observers.read_directory_changes import\
+            WindowsApiObserver as Observer
+    elif args.debug_force_inotify:
+        from watchdog.observers.inotify import InotifyObserver as Observer
+    elif args.debug_force_fsevents:
+        from watchdog.observers.fsevents import FSEventsObserver as Observer
+    else:
+    # Automatically picks the most appropriate observer for the platform
+    # on which it is running.
+        from watchdog.observers import Observer
+    observer = Observer(timeout=args.timeout)
+    observe_with(observer, handler, args.directories, args.recursive)
 
 
 @arg('directories',
@@ -414,27 +417,27 @@ Example option usage::
      default=False,
      help="wait for process to finish to avoid multiple simultaneous instances")
 def shell_command(args):
-  """
-  Subcommand to execute shell commands in response to file system events.
+    """
+    Subcommand to execute shell commands in response to file system events.
 
-  :param args:
-      Command line argument options.
-  """
-  from watchdog.observers import Observer
-  from watchdog.tricks import ShellCommandTrick
+    :param args:
+        Command line argument options.
+    """
+    from watchdog.observers import Observer
+    from watchdog.tricks import ShellCommandTrick
 
-  if not args.command:
-    args.command = None
+    if not args.command:
+        args.command = None
 
-  patterns, ignore_patterns = parse_patterns(args.patterns,
-                                             args.ignore_patterns)
-  handler = ShellCommandTrick(shell_command=args.command,
-                              patterns=patterns,
-                              ignore_patterns=ignore_patterns,
-                              ignore_directories=args.ignore_directories,
-                              wait_for_process=args.wait_for_process)
-  observer = Observer(timeout=args.timeout)
-  observe_with(observer, handler, args.directories, args.recursive)
+    patterns, ignore_patterns = parse_patterns(args.patterns,
+                                               args.ignore_patterns)
+    handler = ShellCommandTrick(shell_command=args.command,
+                                patterns=patterns,
+                                ignore_patterns=ignore_patterns,
+                                ignore_directories=args.ignore_directories,
+                                wait_for_process=args.wait_for_process)
+    observer = Observer(timeout=args.timeout)
+    observe_with(observer, handler, args.directories, args.recursive)
 
 
 @arg('command',
@@ -492,48 +495,48 @@ try to interpret them.
      help='when stopping, kill the subprocess after the specified timeout '
           '(default 10)')
 def auto_restart(args):
-  """
-  Subcommand to start a long-running subprocess and restart it
-  on matched events.
+    """
+    Subcommand to start a long-running subprocess and restart it
+    on matched events.
 
-  :param args:
-      Command line argument options.
-  """
-  from watchdog.observers import Observer
-  from watchdog.tricks import AutoRestartTrick
-  import signal
-  import re
+    :param args:
+        Command line argument options.
+    """
+    from watchdog.observers import Observer
+    from watchdog.tricks import AutoRestartTrick
+    import signal
+    import re
 
-  if not args.directories:
-    args.directories = ['.']
+    if not args.directories:
+        args.directories = ['.']
 
-  # Allow either signal name or number.
-  if re.match('^SIG[A-Z]+$', args.signal):
-    stop_signal = getattr(signal, args.signal)
-  else:
-    stop_signal = int(args.signal)
+    # Allow either signal name or number.
+    if re.match('^SIG[A-Z]+$', args.signal):
+        stop_signal = getattr(signal, args.signal)
+    else:
+        stop_signal = int(args.signal)
 
-  # Handle SIGTERM in the same manner as SIGINT so that
-  # this program has a chance to stop the child process.
-  def handle_sigterm(_signum, _frame):
-    raise KeyboardInterrupt()
+    # Handle SIGTERM in the same manner as SIGINT so that
+    # this program has a chance to stop the child process.
+    def handle_sigterm(_signum, _frame):
+        raise KeyboardInterrupt()
 
-  signal.signal(signal.SIGTERM, handle_sigterm)
+    signal.signal(signal.SIGTERM, handle_sigterm)
 
-  patterns, ignore_patterns = parse_patterns(args.patterns,
-                                             args.ignore_patterns)
-  command = [args.command]
-  command.extend(args.command_args)
-  handler = AutoRestartTrick(command=command,
-                             patterns=patterns,
-                             ignore_patterns=ignore_patterns,
-                             ignore_directories=args.ignore_directories,
-                             stop_signal=stop_signal,
-                             kill_after=args.kill_after)
-  handler.start()
-  observer = Observer(timeout=args.timeout)
-  observe_with(observer, handler, args.directories, args.recursive)
-  handler.stop()
+    patterns, ignore_patterns = parse_patterns(args.patterns,
+                                               args.ignore_patterns)
+    command = [args.command]
+    command.extend(args.command_args)
+    handler = AutoRestartTrick(command=command,
+                               patterns=patterns,
+                               ignore_patterns=ignore_patterns,
+                               ignore_directories=args.ignore_directories,
+                               stop_signal=stop_signal,
+                               kill_after=args.kill_after)
+    handler.start()
+    observer = Observer(timeout=args.timeout)
+    observe_with(observer, handler, args.directories, args.recursive)
+    handler.stop()
 
 
 epilog = """Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
@@ -554,9 +557,9 @@ parser.add_argument('--version',
 
 
 def main():
-  """Entry-point function."""
-  parser.dispatch()
+    """Entry-point function."""
+    parser.dispatch()
 
 
 if __name__ == '__main__':
-  main()
+    main()

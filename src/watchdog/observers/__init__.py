@@ -51,30 +51,30 @@ Class          Platforms                        Note
 
 """
 
-from watchdog.observers.api import BaseObserver, DEFAULT_OBSERVER_TIMEOUT
+from watchdog.utils.importlib2 import import_module
 
-# Ensure FSEvents is checked *before* kqueue here. Mac OS X supports
-# both FSEvents and kqueue, and FSEvents is the preferred way of monitoring
-# file system events on this OS.
-try: # pragma: no cover
-  from watchdog.observers.inotify import InotifyObserver as _Observer
-except ImportError: # pragma: no cover
-  try: # pragma: no cover
-    from watchdog.observers.fsevents import FSEventsObserver as _Observer
-  except ImportError: # pragma: no cover
-    try: # pragma: no cover
-      from watchdog.observers.kqueue import KqueueObserver as _Observer
-    except ImportError: # pragma: no cover
-      try: # pragma: no cover
-        from watchdog.observers.read_directory_changes_async import WindowsApiAsyncObserver as _Observer
-      except ImportError: # pragma: no cover
-        try: # pragma: no cover
-          from watchdog.observers.read_directory_changes import WindowsApiObserver as _Observer
-        except (ImportError, AttributeError): # pragma: no cover
-          from watchdog.observers.polling import PollingObserver as _Observer
+OBS_PROVIDERS = (
+    ('inotify', 'InotifyObserver'),
+    ('fsevents', 'FSEventsObserver'),
+    ('kqueue', 'KqueueObserver'),
+    ('read_directory_changes_async', 'WindowsApiAsyncObserver'),
+    ('read_directory_changes', 'WindowsApiObserver'),
+    ('polling', 'PollingObserver')
+)
 
 
-Observer = _Observer
+def _lookup_obs():
+    c = None
+    for mod, cls in OBS_PROVIDERS:
+        m_name = 'watchdog.observers.%s' % mod
+        try:
+            c = import_module(cls, m_name)
+        except (ImportError, AttributeError):  # more exceptions?
+            continue
+        return c
+
+Observer = _lookup_obs()
+
 """
 Observer thread that schedules watching directories and dispatches
 calls to event handlers.
