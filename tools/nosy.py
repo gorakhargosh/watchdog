@@ -31,97 +31,92 @@ from fnmatch import fnmatch
 
 
 def match_patterns(pathname, patterns):
-  """Returns ``True`` if the pathname matches any of the given patterns."""
-  for pattern in patterns:
-    if fnmatch(pathname, pattern):
-      return True
-  return False
+    """Returns ``True`` if the pathname matches any of the given patterns."""
+    for pattern in patterns:
+        if fnmatch(pathname, pattern):
+            return True
+    return False
 
 
 def filter_paths(pathnames, patterns=None, ignore_patterns=None):
-  """Filters from a set of paths based on acceptable patterns and
- ignorable patterns."""
-  result = []
-  if patterns is None:
-    patterns = ['*']
-  if ignore_patterns is None:
-    ignore_patterns = []
-  for pathname in pathnames:
-    if match_patterns(pathname, patterns) and not match_patterns(pathname,
-                                                                 ignore_patterns):
-      result.append(pathname)
-  return result
+    """Filters from a set of paths based on acceptable patterns and
+   ignorable patterns."""
+    result = []
+    if patterns is None:
+        patterns = ['*']
+    if ignore_patterns is None:
+        ignore_patterns = []
+    for pathname in pathnames:
+        if match_patterns(pathname, patterns) and not match_patterns(pathname, ignore_patterns):
+            result.append(pathname)
+    return result
 
 
 def absolute_walker(pathname, recursive):
-  if recursive:
-    walk = os.walk
-  else:
-    def walk(_path):
-      try:
-        return next(os.walk(_path))
-      except NameError:
-        return next(os.walk(_path))
-  for root, directories, filenames in walk(pathname):
-    yield root
-    for directory in directories:
-      yield os.path.abspath(os.path.join(root, directory))
-    for filename in filenames:
-      yield os.path.abspath(os.path.join(root, filename))
+    if recursive:
+        walk = os.walk
+    else:
+        def walk(_path):
+            try:
+                return next(os.walk(_path))
+            except NameError:
+                return next(os.walk(_path))
+    for root, directories, filenames in walk(pathname):
+        yield root
+        for directory in directories:
+            yield os.path.abspath(os.path.join(root, directory))
+        for filename in filenames:
+            yield os.path.abspath(os.path.join(root, filename))
 
 
 def glob_recursive(pathname, patterns=None, ignore_patterns=None):
-  full_paths = []
-  for root, _, filenames in os.walk(pathname):
-    for filename in filenames:
-      full_path = os.path.abspath(os.path.join(root, filename))
-      full_paths.append(full_path)
-  filepaths = filter_paths(full_paths, patterns, ignore_patterns)
-  return filepaths
+    full_paths = []
+    for root, _, filenames in os.walk(pathname):
+        for filename in filenames:
+            full_path = os.path.abspath(os.path.join(root, filename))
+            full_paths.append(full_path)
+    filepaths = filter_paths(full_paths, patterns, ignore_patterns)
+    return filepaths
 
 
 def check_sum(pathname='.', patterns=None, ignore_patterns=None):
-  checksum = 0
-  for f in glob_recursive(pathname, patterns, ignore_patterns):
-    stats = os.stat(f)
-    checksum += stats[stat.ST_SIZE] + stats[stat.ST_MTIME]
-  return checksum
+    checksum = 0
+    for f in glob_recursive(pathname, patterns, ignore_patterns):
+        stats = os.stat(f)
+        checksum += stats[stat.ST_SIZE] + stats[stat.ST_MTIME]
+    return checksum
 
 
 if __name__ == "__main__":
-  if len(sys.argv) > 1:
-    path = sys.argv[1]
-  else:
-    path = '.'
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    else:
+        path = '.'
 
-  if len(sys.argv) > 2:
-    command = sys.argv[2]
-  else:
-    commands = [
-      # Build documentation automatically as well as the source code
-      # changes.
-      "make SPHINXBUILD=../bin/sphinx-build -C docs html",
+    if len(sys.argv) > 2:
+        command = sys.argv[2]
+    else:
+        commands = [
+            # Build documentation automatically as well as the source code
+            # changes.
+            "make SPHINXBUILD=../bin/sphinx-build -C docs html",
 
-      # The reports coverage generates all by itself are more
-      # user-friendly than the ones which `nosetests --with-coverage`
-      # generates. Therefore, we call `coverage` explicitly to
-      # generate reports, and to keep the reports in synchronization
-      # with the source code, we erase all coverage information
-      # before regenerating reports or running `nosetests`.
-      "bin/coverage erase",
-      "bin/python-tests ./run_tests.py",
-      "bin/coverage html",
-      ]
-    command = '; '.join(commands)
+            # The reports coverage generates all by itself are more
+            # user-friendly than the ones which `nosetests --with-coverage`
+            # generates. Therefore, we call `coverage` explicitly to
+            # generate reports, and to keep the reports in synchronization
+            # with the source code, we erase all coverage information
+            # before regenerating reports or running `nosetests`.
+            "bin/coverage erase",
+            "bin/python-tests ./run_tests.py",
+            "bin/coverage html",
+        ]
+        command = '; '.join(commands)
 
-  previous_checksum = 0
-  while True:
-    calculated_checksum = check_sum(path,
-                                    patterns=['*.py', '*.rst', '*.rst.inc'])
-    if calculated_checksum != previous_checksum:
-      previous_checksum = calculated_checksum
-      subprocess.Popen(command, shell=True)
-    time.sleep(2)
-
-
-
+    previous_checksum = 0
+    while True:
+        calculated_checksum = check_sum(path, patterns=['*.py', '*.rst', '*.rst.inc'])
+        if calculated_checksum != previous_checksum:
+            previous_checksum = calculated_checksum
+            subprocess.Popen(command, shell=True)
+        time.sleep(2)

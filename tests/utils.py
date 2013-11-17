@@ -20,11 +20,12 @@
 from __future__ import with_statement
 import collections
 
+
 def list_attributes(o, only_public=True):
-  if only_public:
-    def isattribute(o, attribute):
-      return not (attribute.startswith('_') or isinstance(getattr(o, attribute), collections.Callable))
-  else:
-    def isattribute(o, attribute):
-      return not isinstance(getattr(o, attribute), collections.Callable)
-  return [attribute for attribute in dir(o) if isattribute(o, attribute)]
+    if only_public:
+        def isattribute(o, attribute):
+            return not (attribute.startswith('_') or isinstance(getattr(o, attribute), collections.Callable))
+    else:
+        def isattribute(o, attribute):
+            return not isinstance(getattr(o, attribute), collections.Callable)
+    return [attribute for attribute in dir(o) if isattribute(o, attribute)]

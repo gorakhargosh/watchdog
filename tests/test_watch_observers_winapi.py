@@ -21,74 +21,76 @@ import os
 import unittest2
 
 try:
-  import queue  # IGNORE:F0401
+    import queue  # IGNORE:F0401
 except ImportError:
-  import Queue as queue  # IGNORE:F0401
+    import Queue as queue  # IGNORE:F0401
 
 from time import sleep
-from tests.shell import\
-  mkdir,\
-  mkdtemp,\
-  touch,\
-  rm,\
-  mv
 
-from watchdog.events import DirModifiedEvent, DirCreatedEvent,\
-  FileCreatedEvent,\
-  FileMovedEvent, FileModifiedEvent, DirMovedEvent, FileDeletedEvent,\
-  DirDeletedEvent
+from tests.shell import (
+    mkdir,
+    mkdtemp,
+    mv
+)
+
+
+from watchdog.events import (
+    DirCreatedEvent,
+    DirMovedEvent,
+)
 
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
 if platform.is_windows():
-  from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
+    from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
 
-  temp_dir = mkdtemp()
+    temp_dir = mkdtemp()
 
-  def p(*args):
-    """
-    Convenience function to join the temporary directory path
-    with the provided arguments.
-    """
-    return os.path.join(temp_dir, *args)
+    def p(*args):
+        """
+        Convenience function to join the temporary directory path
+        with the provided arguments.
+        """
+        return os.path.join(temp_dir, *args)
 
-  class TestWindowsApiEmitter(unittest2.TestCase):
-    def setUp(self):
-      self.event_queue = queue.Queue()
-      self.watch = ObservedWatch(temp_dir, True)
-      self.emitter = Emitter(self.event_queue, self.watch, timeout=0.2)
+    class TestWindowsApiEmitter(unittest2.TestCase):
 
-    def teardown(self):
-      pass
+        def setUp(self):
+            self.event_queue = queue.Queue()
+            self.watch = ObservedWatch(temp_dir, True)
+            self.emitter = Emitter(self.event_queue, self.watch, timeout=0.2)
 
-    def test___init__(self):
-      SLEEP_TIME = 1
-      self.emitter.start()
-      sleep(SLEEP_TIME)
-      mkdir(p('fromdir'))
-      sleep(SLEEP_TIME)
-      mv(p('fromdir'), p('todir'))
-      sleep(SLEEP_TIME)
-      self.emitter.stop()
+        def teardown(self):
+            pass
 
-      # What we need here for the tests to pass is a collection type
-      # that is:
-      #   * unordered
-      #   * non-unique
-      # A multiset! Python's collections.Counter class seems appropriate.
-      expected = set([
-        DirCreatedEvent(p('fromdir')),
-        DirMovedEvent(p('fromdir'),p('todir')),
-        ])
-      got = set()
+        def test___init__(self):
+            SLEEP_TIME = 1
+            self.emitter.start()
+            sleep(SLEEP_TIME)
+            mkdir(p('fromdir'))
+            sleep(SLEEP_TIME)
+            mv(p('fromdir'), p('todir'))
+            sleep(SLEEP_TIME)
+            self.emitter.stop()
 
-      while True:
-        try:
-          event, _ = self.event_queue.get_nowait()
-          got.add(event)
-        except queue.Empty:
-          break
+            # What we need here for the tests to pass is a collection type
+            # that is:
+            #   * unordered
+            #   * non-unique
+            # A multiset! Python's collections.Counter class seems appropriate.
+            expected = set([
+                           DirCreatedEvent(p('fromdir')),
+                           DirMovedEvent(p('fromdir'), p('todir')),
+                           ])
+            got = set()
 
-      print(got)
-      self.assertEqual(expected, got)
+            while True:
+                try:
+                    event, _ = self.event_queue.get_nowait()
+                    got.add(event)
+                except queue.Empty:
+                    break
+
+            print(got)
+            self.assertEqual(expected, got)
