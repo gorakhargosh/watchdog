@@ -127,6 +127,7 @@ try:
     ReadDirectoryChangesW = ctypes.windll.kernel32.ReadDirectoryChangesW
 except AttributeError:
     raise ImportError("ReadDirectoryChangesW is not available")
+
 ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
 ReadDirectoryChangesW.errcheck = _errcheck_bool
 ReadDirectoryChangesW.argtypes = (

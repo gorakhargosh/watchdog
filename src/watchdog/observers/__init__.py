@@ -69,7 +69,7 @@ def _lookup_obs():
         m_name = 'watchdog.observers.%s' % mod
         try:
             c = import_module(cls, m_name)
-        except ImportError:  # more exceptions?
+        except (ImportError, AttributeError):  # more exceptions?
             continue
         return c
 
