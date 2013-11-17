@@ -768,13 +768,13 @@ class InotifyEmitter(EventEmitter):
                 self._inotify.clear_move_records()
             for event in inotify_events:
                 if event.is_moved_to:
-                # TODO: Sometimes this line will bomb even when a previous
-                # moved_from event with the same cookie has fired. I have
-                # yet to figure out why this is the case, so we're
-                # temporarily swallowing the exception and the move event.
-                # This happens only during massively quick file movement
-                # for example, when you execute `git gc` in a monitored
-                # directory.
+                    # TODO: Sometimes this line will bomb even when a previous
+                    # moved_from event with the same cookie has fired. I have
+                    # yet to figure out why this is the case, so we're
+                    # temporarily swallowing the exception and the move event.
+                    # This happens only during massively quick file movement
+                    # for example, when you execute `git gc` in a monitored
+                    # directory.
                     try:
                         src_path = self._inotify.source_for_move(event)
                         to_event = event
