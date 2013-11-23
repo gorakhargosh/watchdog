@@ -139,15 +139,12 @@ _`BSD Unix variants`
                   ulimit -n 1024
 
 
-Windows XP and later
+Windows Vista and later
     The Windows API on Windows XP provides the ReadDirectoryChangesW_
     function, which operates in either synchronous or asynchronous mode.
-    |project_name| contains implementations for both approaches.
-
-    The asynchronous I/O implementation is more scalable, does not depend
-    entirely only on Python threads, and is hence preferred over the
-    synchronous blocking version, which |project_name| isolates from your main
-    thread using Python threads so that your programs do not block.
+    |project_name| currently contains implementation for the synchronous
+    approach and use additional API functionality only available in Windows
+    Vista and later.
 
     .. NOTE:: Since renaming is not the same operation as movement
               on Windows, |project_name| tries hard to convert renames to
