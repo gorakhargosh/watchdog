@@ -492,7 +492,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
     Matches given regexes with file paths associated with occurring events.
     """
 
-    def __init__(self, regexes=[r".*"], ignore_regexes=None,
+    def __init__(self, regexes=[r".*"], ignore_regexes=[],
                  ignore_directories=False, case_sensitive=False):
         super(RegexMatchingEventHandler, self).__init__()
 
