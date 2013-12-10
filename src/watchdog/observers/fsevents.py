@@ -31,6 +31,7 @@ if not platform.is_darwin():
 
 import threading
 import unicodedata
+import time
 import _watchdog_fsevents as _fsevents
 
 from watchdog.events import (
@@ -86,6 +87,22 @@ class FSEventsEmitter(EventEmitter):
                 return
             new_snapshot = DirectorySnapshot(self.watch.path,
                                              self.watch.is_recursive)
+                                             
+            len_dirsnap = len(self.snapshot.stat_snapshot.items())
+            len_ref_dirsnap = len(new_snapshot.stat_snapshot.items())
+
+            # Watchdog incorrectly reports delete/create events when too many 
+            # files are moved at the same time
+            #
+            # This is caused by multiple snapshots rapidly generated during
+            # multiple file events, which leads to inconsistencies between the difs
+            #
+            # Sleep 1 second and then regenerate the new snapshot. This gives us
+            # sufficient time to generate a correct diff
+            if ((len_ref_dirsnap - len_dirsnap) != 0):
+                time.sleep(1)
+                new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)                                             
+                                             
             events = new_snapshot - self.snapshot
             self.snapshot = new_snapshot
 
