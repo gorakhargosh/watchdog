@@ -3,7 +3,7 @@
 
 import os
 import sys
-import unittest2 as unittest
+import unittest
 
 current_path = os.path.abspath(os.path.dirname(__file__))
 tests_path = os.path.join(current_path, 'tests')
