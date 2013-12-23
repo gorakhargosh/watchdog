@@ -26,11 +26,11 @@ import sys
 
 from watchdog.utils import platform
 
-try:
+if hasattr(str, 'decode'):
     # Python 2
     str_cls = unicode
     bytes_cls = str
-except NameError:
+else:
     # Python 3
     str_cls = str
     bytes_cls = bytes
