@@ -17,7 +17,7 @@
 # limitations under the License.
 
 
-import unittest2
+from tests import unittest
 
 from tests.utils import list_attributes
 from watchdog.utils import has_attribute
@@ -50,7 +50,7 @@ path_1 = '/path/xyz'
 path_2 = '/path/abc'
 
 
-class TestFileSystemEvent(unittest2.TestCase):
+class TestFileSystemEvent(unittest.TestCase):
 
     def test___eq__(self):
         event1 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
@@ -111,7 +111,7 @@ class TestFileSystemEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestFileSystemMovedEvent(unittest2.TestCase):
+class TestFileSystemMovedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = FileSystemMovedEvent(path_1, path_2, True)
@@ -136,7 +136,7 @@ class TestFileSystemMovedEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestFileDeletedEvent(unittest2.TestCase):
+class TestFileDeletedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = FileDeletedEvent(path_1)
@@ -161,7 +161,7 @@ class TestFileDeletedEvent(unittest2.TestCase):
         self.assertFalse(event1.is_directory)
 
 
-class TestFileModifiedEvent(unittest2.TestCase):
+class TestFileModifiedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = FileModifiedEvent(path_1)
@@ -186,7 +186,7 @@ class TestFileModifiedEvent(unittest2.TestCase):
         self.assertFalse(event1.is_directory)
 
 
-class TestFileCreatedEvent(unittest2.TestCase):
+class TestFileCreatedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = FileCreatedEvent(path_1)
@@ -205,7 +205,7 @@ class TestFileCreatedEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestFileMovedEvent(unittest2.TestCase):
+class TestFileMovedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = FileMovedEvent(path_1, path_2)
@@ -225,7 +225,7 @@ class TestFileMovedEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestDirDeletedEvent(unittest2.TestCase):
+class TestDirDeletedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = DirDeletedEvent(path_1)
@@ -244,7 +244,7 @@ class TestDirDeletedEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestDirModifiedEvent(unittest2.TestCase):
+class TestDirModifiedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = DirModifiedEvent(path_1)
@@ -263,7 +263,7 @@ class TestDirModifiedEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestDirCreatedEvent(unittest2.TestCase):
+class TestDirCreatedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = DirCreatedEvent(path_1)
@@ -282,7 +282,7 @@ class TestDirCreatedEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestDirMovedEvent(unittest2.TestCase):
+class TestDirMovedEvent(unittest.TestCase):
 
     def test___init__(self):
         event = DirMovedEvent(path_1, path_2)
@@ -342,7 +342,7 @@ class TestDirMovedEvent(unittest2.TestCase):
             self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
-class TestFileSystemEventHandler(unittest2.TestCase):
+class TestFileSystemEventHandler(unittest.TestCase):
 
     def test_dispatch(self):
         dir_del_event = DirDeletedEvent('/path/blah.py')
@@ -394,7 +394,7 @@ g_allowed_patterns = ["*.py", "*.txt"]
 g_ignore_patterns = ["*.foo"]
 
 
-class TestPatternMatchingEventHandler(unittest2.TestCase):
+class TestPatternMatchingEventHandler(unittest.TestCase):
 
     def test_dispatch(self):
         # Utilities.
@@ -545,7 +545,7 @@ g_allowed_regexes = [r".*\.py", r".*\.txt"]
 g_ignore_regexes = [r".*\.pyc"]
 
 
-class TestRegexMatchingEventHandler(unittest2.TestCase):
+class TestRegexMatchingEventHandler(unittest.TestCase):
 
     def test_dispatch(self):
         # Utilities.
@@ -717,7 +717,7 @@ class _TestableEventHandler(LoggingEventHandler):
         assert event.event_type == EVENT_TYPE_CREATED
 
 
-class TestLoggingEventHandler(unittest2.TestCase):
+class TestLoggingEventHandler(unittest.TestCase):
 
     def test_dispatch(self):
         # Utilities.
@@ -746,7 +746,7 @@ class TestLoggingEventHandler(unittest2.TestCase):
             handler.dispatch(event)
 
 
-class TestGenerateSubMovedEventsFor(unittest2.TestCase):
+class TestGenerateSubMovedEventsFor(unittest.TestCase):
 
     def test_generate_sub_moved_events_for(self):
         mock_walker_path = [

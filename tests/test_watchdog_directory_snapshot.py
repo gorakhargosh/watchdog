@@ -18,7 +18,7 @@
 
 
 import os
-import unittest2
+from tests import unittest, skipIfNtMove
 
 # try:
 # import queue  # IGNORE:F0401
@@ -47,7 +47,7 @@ def p(*args):
     return os.path.join(temp_dir, *args)
 
 
-class TestPollingEmitterSimple(unittest2.TestCase):
+class TestPollingEmitterSimple(unittest.TestCase):
 
     def setUp(self):
         global temp_dir
@@ -78,7 +78,7 @@ class TestPollingEmitterSimple(unittest2.TestCase):
                 self.assertEqual(
                     0, len(got), "Actually got: %r when expected: %r" % (comp_dict, expected))
 
-    @unittest2.skipIf(os.name == 'nt', "windows can not detect moves")
+    @skipIfNtMove
     def test_mv_file_to_other_sibling_folder(self):
         mkdir(p('dir1'))
         mkdir(p('dir2'))
@@ -99,7 +99,7 @@ class TestPollingEmitterSimple(unittest2.TestCase):
 
         self.verify(expected, changes)
 
-    @unittest2.skipIf(os.name == 'nt', "windows can not detect moves")
+    @skipIfNtMove
     def test_replace_same_folder(self):
         mkdir(p('dir1'))
         touch(p('dir1', 'a'))
@@ -120,7 +120,7 @@ class TestPollingEmitterSimple(unittest2.TestCase):
 
         self.verify(expected, changes)
 
-    @unittest2.skipIf(os.name == 'nt', "windows can not detect moves")
+    @skipIfNtMove
     def test_replace_in_other_folder(self):
         mkdir(p('dir1'))
         mkdir(p('dir2'))

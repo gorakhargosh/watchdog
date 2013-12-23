@@ -17,7 +17,7 @@
 # limitations under the License.
 
 import time
-import unittest2
+from tests import unittest
 
 from watchdog.observers.api import (
     BaseObserver,
@@ -30,7 +30,7 @@ from watchdog.observers.api import (
 from watchdog.events import LoggingEventHandler, FileModifiedEvent
 
 
-class TestObservedWatch(unittest2.TestCase):
+class TestObservedWatch(unittest.TestCase):
 
     def test___eq__(self):
         watch1 = ObservedWatch('/foobar', True)
@@ -58,7 +58,7 @@ class TestObservedWatch(unittest2.TestCase):
                          observed_watch.__repr__())
 
 
-class TestEventEmitter(unittest2.TestCase):
+class TestEventEmitter(unittest.TestCase):
 
     def test___init__(self):
         event_queue = EventQueue()
@@ -67,7 +67,7 @@ class TestEventEmitter(unittest2.TestCase):
         event_emitter.queue_event(FileModifiedEvent('/foobar/blah'))
 
 
-class TestEventDispatcher(unittest2.TestCase):
+class TestEventDispatcher(unittest.TestCase):
 
     def test_dispatch_event(self):
         event = FileModifiedEvent('/foobar')
@@ -85,7 +85,7 @@ class TestEventDispatcher(unittest2.TestCase):
         event_dispatcher.stop()
 
 
-class TestBaseObserver(unittest2.TestCase):
+class TestBaseObserver(unittest.TestCase):
 
     def test_basic(self):
         observer = BaseObserver(EventEmitter)
