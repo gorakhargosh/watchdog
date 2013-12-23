@@ -16,11 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest2
+from tests import unittest
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 
-class TestSkipRepeatsQueue(unittest2.TestCase):
+class TestSkipRepeatsQueue(unittest.TestCase):
 
     def test_basic_queue(self):
         q = SkipRepeatsQueue()

@@ -19,7 +19,7 @@
 
 import os
 import sys
-import unittest2
+from tests import unittest
 
 try:
     import queue  # IGNORE:F0401
@@ -61,7 +61,7 @@ def p(*args):
     return os.path.join(temp_dir, *args)
 
 
-class TestPollingEmitter(unittest2.TestCase):
+class TestPollingEmitter(unittest.TestCase):
 
     def setUp(self):
         self.event_queue = queue.Queue()
