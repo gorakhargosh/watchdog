@@ -140,7 +140,7 @@ class InotifyEmitter(EventEmitter):
             if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
                 self._inotify.clear_move_records()
             for event in inotify_events:
-                if event.is_moved_to:
+                if event.is_moved_to or event.is_moved_from:
                     # TODO: Sometimes this line will bomb even when a previous
                     # moved_from event with the same cookie has fired. I have
                     # yet to figure out why this is the case, so we're
