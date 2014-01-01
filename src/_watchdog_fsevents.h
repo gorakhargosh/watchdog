@@ -44,6 +44,13 @@ typedef int Py_ssize_t;
 #endif /* PY_VERSION_HEX && !PY_SSIZE_T_MIN */
 
 /**
+ * Destructor call for PyCapsule API when compiling against Python 3
+ */
+#if PY_MAJOR_VERSION >= 3
+static void watchdog_pycapsule_destructor(PyObject *ptr);
+#endif
+
+/**
  * Error messages.
  */
 #define ERROR_MESSAGE_CANNOT_CALL_CALLBACK "Cannot call callback function."

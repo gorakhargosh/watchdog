@@ -45,6 +45,20 @@ static PyObject *g__stream_for_watch = NULL;
 
 
 /**
+ * Destructor for PyCapsule code in Python 3
+ */
+#if PY_MAJOR_VERSION >= 3
+static void watchdog_pycapsule_destructor(PyObject *ptr)
+{
+    void *p = PyCapsule_GetPointer(ptr, NULL);
+    if (p) {
+        PyMem_Free(p);
+    }
+}
+#endif
+
+
+/**
  * Initializes data structures for the _watchdog_fsevents Python module.
  * This function is called by Python initializer functions.
  */
@@ -72,7 +86,11 @@ Watchdog_CFRunLoopForEmitter_GetItem(PyObject *emitter_thread)
 {
     PyObject *py_runloop = PyDict_GetItem(g__runloop_for_emitter,
                                           emitter_thread);
+#if PY_MAJOR_VERSION >= 3
+    CFRunLoopRef runloop = PyCapsule_GetPointer(py_runloop, NULL);
+#else
     CFRunLoopRef runloop = PyCObject_AsVoidPtr(py_runloop);
+#endif
     return runloop;
 }
 
@@ -93,7 +111,11 @@ int
 Watchdog_CFRunLoopForEmitter_SetItem(PyObject *emitter_thread,
                                      CFRunLoopRef runloop)
 {
+#if PY_MAJOR_VERSION >= 3
+    PyObject *emitter_runloop = PyCapsule_New(runloop, NULL, watchdog_pycapsule_destructor);
+#else
     PyObject *emitter_runloop = PyCObject_FromVoidPtr(runloop, PyMem_Free);
+#endif
     // refcount(emitter_runloop) = 1
     // refcount(emitter_thread) = 1
 
@@ -195,7 +217,11 @@ Watchdog_CFRunLoopForEmitter_GetItemOrDefault(PyObject *emitter_thread)
         }
     else
         {
+#if PY_MAJOR_VERSION >= 3
+            runloop = PyCapsule_GetPointer(py_runloop, NULL);
+#else
             runloop = PyCObject_AsVoidPtr(py_runloop);
+#endif
         }
 
     return runloop;
@@ -220,7 +246,11 @@ int
 Watchdog_StreamForWatch_SetItem(PyObject *watch, FSEventStreamRef stream)
 {
     int retval = 0;
+#if PY_MAJOR_VERSION >= 3
+    PyObject *py_stream = PyCapsule_New(py_runloop, NULL, watchdog_pycapsule_destructor);
+#else
     PyObject *py_stream = PyCObject_FromVoidPtr(stream, PyMem_Free);
+#endif
 
     retval = PyDict_SetItem(g__stream_for_watch, watch, py_stream);
     if (0 > retval)
@@ -248,7 +278,11 @@ FSEventStreamRef
 Watchdog_StreamForWatch_GetItem(PyObject *watch)
 {
     PyObject *py_stream = PyDict_GetItem(g__stream_for_watch, watch);
+#if PY_MAJOR_VERSION >= 3
+    FSEventStreamRef stream = PyCapsule_GetPointer(py_stream, NULL);
+#else
     FSEventStreamRef stream = PyCObject_AsVoidPtr(py_stream);
+#endif
     return stream;
 }
 
@@ -350,7 +384,15 @@ Watchdog_CFMutableArray_From_PyStringList(PyObject *py_string_list)
     for (i = 0; i < string_list_size; ++i)
         {
             py_string = PyList_GetItem(py_string_list, i);
+#if PY_MAJOR_VERSION >= 3
+            if (PyUnicode_Check(py_string)) {
+                c_string = PyUnicode_AsUTF8(py_string);
+            } else {
+                c_string = PyBytes_AS_STRING(py_string);
+            }
+#else
             c_string = PyString_AS_STRING(py_string);
+#endif
             cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
                                                   c_string,
                                                   kCFStringEncodingUTF8);
@@ -471,8 +513,13 @@ Watchdog_FSEventStream_Callback(ConstFSEventStreamRef stream,
     /* Enumerate event paths and flags into Python lists. */
     for (i = 0; i < num_events; ++i)
         {
+#if PY_MAJOR_VERSION >= 3
+            event_path = PyUnicode_FromString(event_paths[i]);
+            event_flag = PyLong_FromLong(event_flags[i]);
+#else
             event_path = PyString_FromString(event_paths[i]);
             event_flag = PyInt_FromLong(event_flags[i]);
+#endif
             if (!(event_flag && event_path))
                 {
                     Py_DECREF(event_path_list);

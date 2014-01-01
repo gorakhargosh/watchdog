@@ -116,7 +116,7 @@ def read_file(filename):
     return open(os.path.join(os.path.dirname(__file__), filename)).read()
 
 if not sys.version_info < (3,):
-    extra_args.update(dict(use_2to3=True))
+    extra_args.update(dict(use_2to3=False))
 
 setup(name="watchdog",
       version=version.VERSION_STRING,

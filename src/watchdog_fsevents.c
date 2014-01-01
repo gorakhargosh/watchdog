@@ -96,6 +96,20 @@ PyObject *watch_to_stream = NULL;
 
 
 /**
+ * PyCapsule destructor for Python 3 compatibility
+ */
+#if PY_MAJOR_VERSION >= 3
+static void watchdog_pycapsule_destructor(PyObject *ptr)
+{
+    void *p = PyCapsule_GetPointer(ptr, NULL);
+    if (p) {
+        PyMem_Free(p);
+    }
+}
+#endif
+
+
+/**
  * This is the callback passed to the FSEvents API, which calls
  * the Python callback function, in turn, by passing in event data
  * as Python objects.
@@ -135,7 +149,7 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     PyThreadState *saved_thread_state = NULL;
 
     /* Acquire interpreter lock and save original thread state. */
-    PyEval_AcquireLock();
+    PyGILState_STATE gil_state = PyGILState_Ensure();
     saved_thread_state = PyThreadState_Swap(stream_callback_info_ref->thread_state);
 
     /* Convert event flags and paths to Python ints and strings. */
@@ -149,8 +163,13 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     }
     for (i = 0; i < num_events; ++i)
     {
+#if PY_MAJOR_VERSION >= 3
+        path = PyUnicode_FromString(event_paths[i]);
+        flags = PyLong_FromLong(event_flags[i]);
+#else
         path = PyString_FromString(event_paths[i]);
         flags = PyInt_FromLong(event_flags[i]);
+#endif
         if (G_NOT(path && flags))
         {
             Py_DECREF(py_event_paths);
@@ -182,7 +201,7 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
 
     /* Release the lock and restore thread state. */
     PyThreadState_Swap(saved_thread_state);
-    PyEval_ReleaseLock();
+    PyGILState_Release(gil_state);
 }
 
 
@@ -223,7 +242,15 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
     {
         py_string = PyList_GetItem(py_string_list, i);
         G_RETURN_NULL_IF_NULL(py_string);
+#if PY_MAJOR_VERSION >= 3
+        if (PyUnicode_Check(py_string)) {
+          c_string = PyUnicode_AsUTF8(py_string);
+        } else {
+          c_string = PyBytes_AS_STRING(py_string);
+        }
+#else
         c_string = PyString_AS_STRING(py_string);
+#endif
         cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
                                               c_string,
                                               kCFStringEncodingUTF8);
@@ -332,7 +359,11 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref,
                                               paths_to_watch,
                                               (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
+#if PY_MAJOR_VERSION >= 3
+    value = PyCapsule_New(stream_ref, NULL, watchdog_pycapsule_destructor);
+#else
     value = PyCObject_FromVoidPtr(stream_ref, PyMem_Free);
+#endif
     PyDict_SetItem(watch_to_stream, watch, value);
 
     /* Get a reference to the runloop for the emitter thread
@@ -344,7 +375,11 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     }
     else
     {
+#if PY_MAJOR_VERSION >= 3
+        run_loop_ref = PyCapsule_GetPointer(value, NULL);
+#else
         run_loop_ref = PyCObject_AsVoidPtr(value);
+#endif
     }
 
     /* Schedule the stream with the obtained runloop. */
@@ -394,7 +429,11 @@ watchdog_read_events(PyObject *self, PyObject *args)
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
+#if PY_MAJOR_VERSION >= 3
+        value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
+#else
         value = PyCObject_FromVoidPtr(run_loop_ref, PyMem_Free);
+#endif
         PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
         Py_INCREF(emitter_thread);
         Py_INCREF(value);
@@ -429,7 +468,11 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
     PyObject *value = PyDict_GetItem(watch_to_stream, watch);
     PyDict_DelItem(watch_to_stream, watch);
 
+#if PY_MAJOR_VERSION >= 3
+    FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
+#else
     FSEventStreamRef stream_ref = PyCObject_AsVoidPtr(value);
+#endif
 
     FSEventStreamStop(stream_ref);
     FSEventStreamInvalidate(stream_ref);
@@ -448,7 +491,11 @@ static PyObject *
 watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     PyObject *value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
+#if PY_MAJOR_VERSION >= 3
+    CFRunLoopRef run_loop_ref = PyCapsule_GetPointer(value, NULL);
+#else
     CFRunLoopRef run_loop_ref = PyCObject_AsVoidPtr(value);
+#endif
 
     /* Stop the run loop. */
     if (G_IS_NOT_NULL(run_loop_ref))
