@@ -29,6 +29,7 @@ from watchdog.utils import platform
 if not platform.is_darwin():
     raise ImportError
 
+import sys
 import threading
 import unicodedata
 import _watchdog_fsevents as _fsevents
@@ -161,5 +162,15 @@ class FSEventsObserver(BaseObserver):
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
         if isinstance(path, str_class):
             #path = unicode(path, 'utf-8')
-            path = unicodedata.normalize('NFC', path).encode('utf-8')
+            path = unicodedata.normalize('NFC', path)
+            # We only encode the path in Python 2 for backwards compatibility.
+            # On Python 3 we want the path to stay as unicode if possible for
+            # the sake of path matching not having to be rewritten to use the
+            # bytes API instead of strings. The _watchdog_fsevent.so code for
+            # Python 3 can handle both str and bytes paths, which is why we
+            # do not HAVE to encode it with Python 3. The Python 2 code in
+            # _watchdog_fsevents.so was not changed for the sake of backwards
+            # compatibility.
+            if sys.version_info < (3,):
+                path = path.encode('utf-8')
         return BaseObserver.schedule(self, event_handler, path, recursive)
