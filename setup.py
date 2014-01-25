@@ -84,9 +84,25 @@ ext_modules = {
     ],
 }
 
+from setuptools.command.test import test as TestCommand
+
+class PyTest(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = [ '--cov=src', 'tests' ]
+        self.test_suite = True
+    def run_tests(self):
+        import pytest
+        errno = pytest.main(self.test_args)
+        sys.exit(errno)
+
+tests_require=['pytest', 'pytest-cov']
+
+
 extra_args = dict(
     cmdclass={
-        'build_ext': build_ext
+        'build_ext': build_ext,
+        'test': PyTest,
     },
     ext_modules=ext_modules.get(platform, []),
 )
@@ -162,6 +178,7 @@ setup(name="watchdog",
       packages=find_packages(SRC_DIR),
       include_package_data=True,
       install_requires=install_requires,
+      tests_require=tests_require,
       entry_points={'console_scripts': [
           'watchmedo = watchdog.watchmedo:main',
       ]},
