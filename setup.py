@@ -72,6 +72,8 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 tests_require=['pytest', 'pytest-cov']
+if sys.version_info < (2, 7, 0):
+    tests_require.append('unittest2')
 
 install_requires = ['PyYAML >=3.09', 'argh >=0.8.1', 'pathtools >=0.1.1']
 if sys.version_info < (2, 7, 0):
