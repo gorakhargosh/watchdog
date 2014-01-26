@@ -5,7 +5,7 @@
 # Public domain.
 #
 
-bin/python tools/nosy.py .
+python tools/nosy.py .
 
 
 

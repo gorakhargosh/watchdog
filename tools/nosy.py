@@ -101,15 +101,7 @@ if __name__ == "__main__":
             # changes.
             "make SPHINXBUILD=../bin/sphinx-build -C docs html",
 
-            # The reports coverage generates all by itself are more
-            # user-friendly than the ones which `nosetests --with-coverage`
-            # generates. Therefore, we call `coverage` explicitly to
-            # generate reports, and to keep the reports in synchronization
-            # with the source code, we erase all coverage information
-            # before regenerating reports or running `nosetests`.
-            "bin/coverage erase",
-            "bin/python-tests ./run_tests.py",
-            "bin/coverage html",
+            "python -m pytest",
         ]
         command = '; '.join(commands)
 
