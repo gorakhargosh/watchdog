@@ -16,14 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from watchdog.utils import platform
-from functools import reduce
-
-if not platform.is_windows():
-    raise ImportError
-
 import ctypes
+from functools import reduce
 
 from watchdog.observers.winapi import (
     FILE_FLAG_BACKUP_SEMANTICS,

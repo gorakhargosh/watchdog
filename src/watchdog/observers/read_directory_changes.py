@@ -18,10 +18,6 @@
 
 
 from __future__ import with_statement
-from watchdog.utils import platform
-
-if not platform.is_windows():
-    raise ImportError
 
 import ctypes
 import threading

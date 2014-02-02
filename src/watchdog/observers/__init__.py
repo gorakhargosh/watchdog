@@ -28,6 +28,9 @@ Classes
    :members:
    :show-inheritance:
    :inherited-members:
+   
+   Observer thread that schedules watching directories and dispatches
+   calls to event handlers.
 
 You can also import platform specific classes directly and use it instead
 of :class:`Observer`.  Here is a list of implemented observer classes.:
@@ -51,31 +54,30 @@ Class          Platforms                        Note
 
 """
 
-from watchdog.utils.importlib2 import import_module
+import warnings
+from watchdog.utils import platform
 
-OBS_PROVIDERS = (
-    ('inotify', 'InotifyObserver'),
-    ('fsevents', 'FSEventsObserver'),
-    ('kqueue', 'KqueueObserver'),
-    ('read_directory_changes_async', 'WindowsApiAsyncObserver'),
-    ('read_directory_changes', 'WindowsApiObserver'),
-    ('polling', 'PollingObserver')
-)
+if platform.is_linux():
+    from .inotify import InotifyObserver as Observer
 
+elif platform.is_darwin():
+    try:
+        from .fsevents import FSEventsObserver as Observer
+    except:
+        from .kqueue import KqueueObserver as Observer
+        warnings.warn("Failed to import fsevents. Fall back to kqueue")
 
-def _lookup_obs():
-    c = None
-    for mod, cls in OBS_PROVIDERS:
-        m_name = 'watchdog.observers.%s' % mod
-        try:
-            c = import_module(cls, m_name)
-        except (ImportError, AttributeError):  # more exceptions?
-            continue
-        return c
+elif platform.is_bsd():
+    from .kqueue import KqueueObserver as Observer
 
-Observer = _lookup_obs()
+elif platform.is_windows():
+    # TODO: find a reliable way of checking Windows version and import
+    # polling explicitly for Windows XP
+    try:
+        from .read_directory_changes import WindowsApiObserver as Observer
+    except:
+        from .polling import PollingObserver as Observer
+        warnings.warn("Failed to import read_directory_changes. Fall back to polling.")
 
-"""
-Observer thread that schedules watching directories and dispatches
-calls to event handlers.
-"""
+else:
+    from .polling import PollingObserver as Observer

@@ -80,9 +80,6 @@ Collections and Utility Classes
 from __future__ import with_statement
 from watchdog.utils import platform
 
-if not platform.is_bsd() and not platform.is_darwin():
-    raise ImportError
-
 import threading
 import errno
 import sys

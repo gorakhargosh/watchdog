@@ -35,13 +35,7 @@
 # Portions of this code were taken from pyfilesystem, which uses the above
 # new BSD license.
 
-
 from __future__ import with_statement
-from watchdog.utils import platform
-
-
-if not platform.is_windows():
-    raise ImportError
 
 import ctypes.wintypes
 import struct

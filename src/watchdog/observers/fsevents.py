@@ -24,10 +24,6 @@
 """
 
 from __future__ import with_statement
-from watchdog.utils import platform
-
-if not platform.is_darwin():
-    raise ImportError
 
 import sys
 import threading
