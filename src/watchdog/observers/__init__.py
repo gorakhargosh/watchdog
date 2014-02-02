@@ -29,8 +29,8 @@ Classes
    :show-inheritance:
    :inherited-members:
    
-   Observer thread that schedules watching directories and dispatches
-   calls to event handlers.
+Observer thread that schedules watching directories and dispatches
+calls to event handlers.
 
 You can also import platform specific classes directly and use it instead
 of :class:`Observer`.  Here is a list of implemented observer classes.:
