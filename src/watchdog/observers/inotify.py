@@ -74,7 +74,7 @@ if not platform.is_linux():
     raise ImportError
 
 import threading
-from inotify_c import Inotify
+from .inotify_c import Inotify
 
 from watchdog.observers.api import (
     EventEmitter,
