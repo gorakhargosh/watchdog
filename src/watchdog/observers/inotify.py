@@ -89,6 +89,7 @@ from watchdog.events import (
     FileMovedEvent,
     FileCreatedEvent,
     EVENT_TYPE_MODIFIED,
+    EVENT_TYPE_CLOSED,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MOVED
@@ -101,6 +102,7 @@ ACTION_EVENT_MAP = {
     (True, EVENT_TYPE_MOVED): DirMovedEvent,
     (False, EVENT_TYPE_MODIFIED): FileModifiedEvent,
     (False, EVENT_TYPE_CREATED): FileCreatedEvent,
+    (False, EVENT_TYPE_CLOSED): FileClosedEvent,
     (False, EVENT_TYPE_DELETED): FileDeletedEvent,
     (False, EVENT_TYPE_MOVED): FileMovedEvent,
 }
@@ -165,6 +167,9 @@ class InotifyEmitter(EventEmitter):
                     self.queue_event(klass(event.src_path))
                 elif event.is_delete or event.is_delete_self:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
+                    self.queue_event(klass(event.src_path))
+                elif event.is_close_write:
+                    klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_CLOSED)]
                     self.queue_event(klass(event.src_path))
                 elif event.is_create:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_CREATED)]
