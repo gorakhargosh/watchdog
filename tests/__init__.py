@@ -17,13 +17,11 @@
 # limitations under the License.
 
 from sys import version_info
-from os import name as OS_NAME
 
-__all__= ['unittest', 'skipIfNtMove']
+__all__= ['unittest']
 
 if version_info < (2, 7):
     import unittest2 as unittest
 else:
     import unittest
 
-skipIfNtMove = unittest.skipIf(OS_NAME == 'nt', "windows can not detect moves")
