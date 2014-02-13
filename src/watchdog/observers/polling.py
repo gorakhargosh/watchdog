@@ -66,10 +66,6 @@ class PollingEmitter(EventEmitter):
         self._snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
         self._lock = threading.Lock()
 
-    def on_thread_stop(self):
-        with self._lock:
-            self._snapshot = None
-
     def queue_events(self, timeout):
     # We don't want to hit the disk continuously.
     # timeout behaves like an interval for polling emitters.
@@ -77,7 +73,7 @@ class PollingEmitter(EventEmitter):
 
         with self._lock:
 
-            if not self._snapshot:
+            if not self.should_keep_running():
                 return
 
             # Get event diff between fresh snapshot and previous snapshot.
