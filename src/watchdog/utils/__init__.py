@@ -95,10 +95,6 @@ class DaemonThread(threading.Thread):
     def stopped_event(self):
         return self._stopped_event
 
-    def should_stop(self):
-        """Determines whether the daemon thread should stop."""
-        return self._stopped_event.is_set()
-
     def should_keep_running(self):
         """Determines whether the daemon thread should continue running."""
         return not self._stopped_event.is_set()
