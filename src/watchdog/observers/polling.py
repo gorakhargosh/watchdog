@@ -67,12 +67,10 @@ class PollingEmitter(EventEmitter):
         self._lock = threading.Lock()
 
     def queue_events(self, timeout):
-    # We don't want to hit the disk continuously.
-    # timeout behaves like an interval for polling emitters.
+        # We don't want to hit the disk continuously.
+        # timeout behaves like an interval for polling emitters.
         time.sleep(timeout)
-
         with self._lock:
-
             if not self.should_keep_running():
                 return
 
