@@ -118,10 +118,6 @@ class DaemonThread(threading.Thread):
         self.on_thread_stop()
 
 
-if not has_attribute(DaemonThread, 'is_alive'):
-    DaemonThread.is_alive = DaemonThread.isAlive
-
-
 def load_module(module_name):
     """Imports a module given its name and returns a handle to it."""
     try:
