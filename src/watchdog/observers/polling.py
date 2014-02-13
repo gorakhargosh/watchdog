@@ -63,10 +63,13 @@ class PollingEmitter(EventEmitter):
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
-        self._snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
+        self._snapshot = None
         self._lock = threading.Lock()
 
     def queue_events(self, timeout):
+        if not self._snapshot:
+            self._snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
         time.sleep(timeout)
