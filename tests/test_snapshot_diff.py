@@ -52,7 +52,7 @@ def test_move_to(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     ref = DirectorySnapshot(p('dir2'))
-    mv(p('dir1/a'), p('dir2/b'))
+    mv(p('dir1', 'a'), p('dir2', 'b'))
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('dir2')))
     assert diff.files_created == [p('dir2/b')]
 
@@ -62,9 +62,9 @@ def test_move_from(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     ref = DirectorySnapshot(p('dir1'))
-    mv(p('dir1/a'), p('dir2/b'))
+    mv(p('dir1', 'a'), p('dir2', 'b'))
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('dir1')))
-    assert diff.files_deleted == [p('dir1/a')]
+    assert diff.files_deleted == [p('dir1', 'a')]
 
 
 @windows_only
