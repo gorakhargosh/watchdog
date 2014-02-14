@@ -54,7 +54,7 @@ def test_move_to(p):
     ref = DirectorySnapshot(p('dir2'))
     mv(p('dir1', 'a'), p('dir2', 'b'))
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('dir2')))
-    assert diff.files_created == [p('dir2/b')]
+    assert diff.files_created == [p('dir2', 'b')]
 
 
 def test_move_from(p):
