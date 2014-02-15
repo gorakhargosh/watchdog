@@ -203,13 +203,13 @@ class DirectorySnapshot(object):
     """
     
     def __init__(self, path, recursive=True, walker_callback=(lambda p, s: None)):
-        statf = os.stat
+        from watchdog.utils import stat
+        statf = stat
         walker = path_walk
-        self._has_inodes = not platform.is_windows()
         self._stat_info = {}
         self._inode_to_path = {}
         
-        stat_info = os.stat(path)
+        stat_info = statf(path)
         self._stat_info[path] = stat_info
         self._inode_to_path[stat_info.st_ino] = self.path
         
@@ -245,16 +245,12 @@ class DirectorySnapshot(object):
         """
         Returns path for inode. None if inode is unknown to this snapshot.
         """
-        if not self._has_inodes:
-            return None
         return self._inode_to_path.get(inode)
     
     def inode(self, path):
         """
-        Returns inode for path. 0 if inode is unknown.
+        Returns inode for path.
         """
-        if not self._has_inodes:
-            return 0
         return self._stat_info[path].st_ino
     
     def isdir(self, path):
