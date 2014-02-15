@@ -47,7 +47,7 @@ except AttributeError:
     LPVOID = ctypes.c_void_p
 
 # Invalid handle value.
-INVALID_HANDLE_VALUE = 0xFFFFFFFF     # -1
+INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
 # File notification contants.
 FILE_NOTIFY_CHANGE_FILE_NAME = 0x01

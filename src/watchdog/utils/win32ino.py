@@ -30,7 +30,7 @@ import ctypes
 import ctypes.wintypes
 
 
-INVALID_HANDLE_VALUE = 0xFFFFFFFF
+INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 OPEN_EXISTING = 3
 FILE_READ_ATTRIBUTES = 0x80
 FILE_ATTRIBUTE_NORMAL = 0x80
