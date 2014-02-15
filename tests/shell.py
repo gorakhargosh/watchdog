@@ -28,6 +28,7 @@ import os.path
 import tempfile
 import shutil
 import errno
+import time
 
 
 # def tree(path='.', show_files=False):
@@ -93,7 +94,12 @@ def truncate(path):
 
 def mv(src_path, dest_path):
     """Moves files or directories."""
-    shutil.move(src_path, dest_path)
+    try:
+        os.rename(src_path, dest_path)
+    except OSError:
+        # this will happen on windows
+        os.remove(dest_path)
+        os.rename(src_path, dest_path)
 
 
 def mkdtemp():
