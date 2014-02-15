@@ -129,15 +129,8 @@ class TestPollingEmitter(unittest.TestCase):
             ]
         )
 
-        if sys.platform.startswith("win"):
-            # On Windows depending on circumstances, a rename may turn into a Delete/Create
-            expected.add(FileDeletedEvent(p('fromfile')))
-            expected.add(FileCreatedEvent(p('project', 'tofile')))
-            expected.add(DirCreatedEvent(p('project', 'boo')))
-            expected.add(DirDeletedEvent(p('project', 'blah')))
-        else:
-            expected.add(FileMovedEvent(p('fromfile'), p('project', 'tofile')))
-            expected.add(DirMovedEvent(p('project', 'blah'), p('project', 'boo')))
+        expected.add(FileMovedEvent(p('fromfile'), p('project', 'tofile')))
+        expected.add(DirMovedEvent(p('project', 'blah'), p('project', 'boo')))
 
         got = set()
         while True:
