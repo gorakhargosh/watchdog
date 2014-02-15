@@ -41,9 +41,28 @@ Classes
    :inherited-members:
 
 """
-
+import os
 import sys
 import threading
+import watchdog.utils.platform
+from collections import namedtuple
+
+
+StatResult = namedtuple('StatResult', 'st_ino st_mode st_mtime')
+
+if sys.version_info[0] == 2 and platform.is_windows():
+    # st_ino is not implemented in os.stat on this platform
+    import win32ino
+    def _stat(path):
+        st = os.stat(path)
+        id = win32ino.file_id(path)
+        return StatResult(id, st.st_mode, st.st_mtime)
+    stat = _stat
+else:
+    def _stat(path):
+        st = os.stat(path)
+        return StatResult(st.st_ino, st.st_mode, st.st_mtime)
+    stat = _stat
 
 
 def ctypes_find_library(name, default):
