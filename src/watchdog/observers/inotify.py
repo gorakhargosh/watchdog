@@ -69,6 +69,7 @@ Some extremely useful articles and documentation:
 
 from __future__ import with_statement
 
+import os
 import threading
 from .inotify_c import Inotify
 
@@ -163,12 +164,17 @@ class InotifyEmitter(EventEmitter):
                 elif event.is_modify:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MODIFIED)]
                     self.queue_event(klass(event.src_path))
-                elif event.is_delete or event.is_delete_self:
+                elif event.is_delete_self:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
                     self.queue_event(klass(event.src_path))
+                elif event.is_delete:
+                    klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
+                    self.queue_event(klass(event.src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
                 elif event.is_create:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_CREATED)]
                     self.queue_event(klass(event.src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
 
 
 class InotifyObserver(BaseObserver):
