@@ -170,21 +170,14 @@ class Inotify(object):
         The directory path for which we want an inotify object.
     :param recursive:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
-    :param non_blocking:
-        ``True`` to initialize inotify in non-blocking mode; ``False``
-        otherwise.
     """
 
     def __init__(self,
                  path,
                  recursive=False,
-                 event_mask=WATCHDOG_ALL_EVENTS,
-                 non_blocking=False):
+                 event_mask=WATCHDOG_ALL_EVENTS):
         # The file descriptor associated with the inotify instance.
-        if non_blocking:
-            inotify_fd = inotify_init1(InotifyConstants.IN_NONBLOCK)
-        else:
-            inotify_fd = inotify_init()
+        inotify_fd = inotify_init()
         if inotify_fd == -1:
             Inotify._raise_error()
         self._inotify_fd = inotify_fd
@@ -198,7 +191,6 @@ class Inotify(object):
         self._path = path
         self._event_mask = event_mask
         self._is_recursive = recursive
-        self._is_non_blocking = non_blocking
         self._add_dir_watch(path, recursive, event_mask)
         self._moved_from_events = dict()
 
@@ -216,11 +208,6 @@ class Inotify(object):
     def is_recursive(self):
         """Whether we are watching directories recursively."""
         return self._is_recursive
-
-    @property
-    def is_non_blocking(self):
-        """Determines whether this instance of inotify is non-blocking."""
-        return self._is_non_blocking
 
     @property
     def fd(self):
