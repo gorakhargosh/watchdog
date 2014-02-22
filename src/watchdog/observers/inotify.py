@@ -71,7 +71,7 @@ from __future__ import with_statement
 
 import os
 import threading
-from .inotify_c import Inotify
+from .inotify_buffered import InotifyBuffered
 
 from watchdog.observers.api import (
     EventEmitter,
@@ -126,39 +126,32 @@ class InotifyEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self._inotify = Inotify(watch.path, watch.is_recursive)
+        self._inotify = InotifyBuffered(watch.path, watch.is_recursive)
 
     def on_thread_stop(self):
         self._inotify.close()
 
     def queue_events(self, timeout):
         with self._lock:
-            inotify_events = self._inotify.read_events()
-            if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
-                self._inotify.clear_move_records()
-            for event in inotify_events:
-                if event.is_moved_to:
-                    # TODO: Sometimes this line will bomb even when a previous
-                    # moved_from event with the same cookie has fired. I have
-                    # yet to figure out why this is the case, so we're
-                    # temporarily swallowing the exception and the move event.
-                    # This happens only during massively quick file movement
-                    # for example, when you execute `git gc` in a monitored
-                    # directory.
-                    try:
-                        src_path = self._inotify.source_for_move(event)
-                        to_event = event
-                        dest_path = to_event.src_path
-                        klass = ACTION_EVENT_MAP[(to_event.is_directory, EVENT_TYPE_MOVED)]
-                        event = klass(src_path, dest_path)
-                        self.queue_event(event)
-                        # Generate sub events for the directory if recursive.
-                        if event.is_directory and self.watch.is_recursive:
-                            for sub_event in event.sub_moved_events():
-                                self.queue_event(sub_event)
-                    except KeyError:
-                        pass
-                elif event.is_attrib:
+            event = self._inotify.read_event()
+
+            try:
+                move_from, move_to = event
+                klass = ACTION_EVENT_MAP[(move_from.is_directory, EVENT_TYPE_MOVED)]
+                event = klass(move_from.src_path, move_to.src_path)
+                self.queue_event(event)
+
+                #TODO: remove all record keeping code from inotify_c
+                #if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
+                #    self._inotify.clear_move_records()
+                #for event in inotify_events:
+
+                if move_from.is_directory and self.watch.is_recursive:
+                    for sub_event in event.sub_moved_events():
+                        self.queue_event(sub_event)
+
+            except TypeError:
+                if event.is_attrib:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MODIFIED)]
                     self.queue_event(klass(event.src_path))
                 elif event.is_modify:
@@ -167,11 +160,11 @@ class InotifyEmitter(EventEmitter):
                 elif event.is_delete_self:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
                     self.queue_event(klass(event.src_path))
-                elif event.is_delete:
+                elif event.is_delete or event.is_moved_from:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
                     self.queue_event(klass(event.src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
-                elif event.is_create:
+                elif event.is_create or event.is_moved_to:
                     klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_CREATED)]
                     self.queue_event(klass(event.src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
