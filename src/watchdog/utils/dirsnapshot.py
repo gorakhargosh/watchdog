@@ -263,6 +263,21 @@ class DirectorySnapshot(object):
     def mtime(self, path):
         return self._stat_info[path].st_mtime
     
+    def stat_info(self, path):
+        """
+        Returns a stat information object for the specified path from
+        the snapshot.
+
+        Attached information is subject to change. Do not use unless
+        you specify `stat` in constructor. Use :func:`inode`, :func:`mtime`,
+        :func:`isdir` instead.
+
+        :param path:
+            The path for which stat information should be obtained
+            from a snapshot.
+        """
+        return self._stat_info[path]
+
     def __sub__(self, previous_dirsnap):
         """Allow subtracting a DirectorySnapshot object instance from
         another.
@@ -285,25 +300,11 @@ class DirectorySnapshot(object):
     def stat_snapshot(self):
         """
         .. deprecated:: 0.7.2
-           Use :func:`inode`, :func:`isdir` and :func:`mtime` instead.
-        
+           Use :func:`stat_info` or :func:`inode`/:func:`mtime`/:func:`isdir`
+
         Returns a dictionary of stat information with file paths being keys.
         """
         return self._stat_info
-
-    def stat_info(self, path):
-        """
-        .. deprecated:: 0.7.2
-           Use :func:`inode`, :func:`isdir` and :func:`mtime` instead.
-        
-        Returns a stat information object for the specified path from
-        the snapshot.
-
-        :param path:
-            The path for which stat information should be obtained
-            from a snapshot.
-        """
-        return self._stat_info[path]
 
     def path_for_inode(self, inode):
         """
