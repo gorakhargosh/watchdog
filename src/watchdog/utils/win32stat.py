@@ -15,25 +15,28 @@
 # limitations under the License.
 
 """
-:module: watchdog.utils.win32ino
-:synopsis: Inode-like unique file IDs for Windows. Implementation is similar
-to that of `os.stat` in python 3.
+:module: watchdog.utils.win32stat
+:synopsis: Implementation of stat with st_ino and st_dev support.
 
 Functions
 ---------
 
-.. autofunction:: file_id
+.. autofunction:: stat
 
 """
 
 import ctypes
 import ctypes.wintypes
+import stat as stdstat
+from collections import namedtuple
 
 
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 OPEN_EXISTING = 3
 FILE_READ_ATTRIBUTES = 0x80
 FILE_ATTRIBUTE_NORMAL = 0x80
+FILE_ATTRIBUTE_READONLY = 0x1
+FILE_ATTRIBUTE_DIRECTORY = 0x10
 FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
 FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
 
@@ -80,7 +83,25 @@ CloseHandle.restype = ctypes.wintypes.BOOL
 CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)
 
 
-def file_id(path):
+StatResult = namedtuple('StatResult', 'st_dev st_ino st_mode st_mtime')
+
+def _to_mode(attr):
+    m = 0
+    if (attr & FILE_ATTRIBUTE_DIRECTORY):
+        m |= stdstat.S_IFDIR | 0111
+    else:
+        m |= stdstat.S_IFREG;
+    if (attr & FILE_ATTRIBUTE_READONLY):
+        m |= 0444
+    else:
+        m |= 0666
+    return m
+
+def _to_unix_time(ft):
+    t = (ft.dwHighDateTime) << 32 | ft.dwLowDateTime
+    return (t / 10000000) - 11644473600
+
+def stat(path):
     hfile = CreateFile(path,
             FILE_READ_ATTRIBUTES,
             0,
@@ -95,4 +116,8 @@ def file_id(path):
     CloseHandle(hfile)
     if not r:
         raise ctypes.WinError()
-    return (info.nFileIndexHigh << 32) + info.nFileIndexLow
+    return StatResult(st_dev=info.dwVolumeSerialNumber,
+                      st_ino=(info.nFileIndexHigh << 32) + info.nFileIndexLow,
+                      st_mode=_to_mode(info.dwFileAttributes),
+                      st_mtime=_to_unix_time(info.ftLastWriteTime)
+                      )

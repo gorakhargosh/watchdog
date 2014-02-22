@@ -52,12 +52,8 @@ StatResult = namedtuple('StatResult', 'st_ino st_mode st_mtime')
 
 if sys.version_info[0] == 2 and platform.is_windows():
     # st_ino is not implemented in os.stat on this platform
-    import win32ino
-    def _stat(path):
-        st = os.stat(path)
-        id = win32ino.file_id(path)
-        return StatResult(id, st.st_mode, st.st_mtime)
-    stat = _stat
+    import win32stat
+    stat = win32stat.stat
 else:
     def _stat(path):
         st = os.stat(path)
