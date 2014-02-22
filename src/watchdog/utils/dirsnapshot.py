@@ -59,6 +59,7 @@ import itertools
 
 from pathtools.path import walk as path_walk, absolute_path
 from watchdog.utils import platform
+from watchdog.utils import stat as default_stat
 
 
 class DirectorySnapshotDiff(object):
@@ -197,14 +198,17 @@ class DirectorySnapshot(object):
         ``bool``
     :param walker_callback:
         .. deprecated:: 0.7.2
+    :param stat:
+        Use custom stat function that returns a stat structure for path.
+        Currently only st_dev, st_ino, st_mode and st_mtime are needed.
         
         A function with the signature ``walker_callback(path, stat_info)``
         which will be called for every entry in the directory tree.
     """
     
-    def __init__(self, path, recursive=True, walker_callback=(lambda p, s: None)):
-        from watchdog.utils import stat
-        statf = stat
+    def __init__(self, path, recursive=True,
+                 walker_callback=(lambda p, s: None),
+                 stat=default_stat):
         walker = path_walk
         self._stat_info = {}
         self._inode_to_path = {}
@@ -217,7 +221,7 @@ class DirectorySnapshot(object):
             for directory_name in directories:
                 try:
                     directory_path = os.path.join(root, directory_name)
-                    stat_info = statf(directory_path)
+                    stat_info = stat(directory_path)
                     self._stat_info[directory_path] = stat_info
                     self._inode_to_path[stat_info.st_ino] = directory_path
                     walker_callback(directory_path, stat_info)
@@ -227,7 +231,7 @@ class DirectorySnapshot(object):
             for file_name in files:
                 try:
                     file_path = os.path.join(root, file_name)
-                    stat_info = statf(file_path)
+                    stat_info = stat(file_path)
                     self._stat_info[file_path] = stat_info
                     self._inode_to_path[stat_info.st_ino] = file_path
                     walker_callback(file_path, stat_info)
