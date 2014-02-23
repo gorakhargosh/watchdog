@@ -3,6 +3,7 @@
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc.
+# Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -201,42 +202,41 @@ class DirectorySnapshot(object):
         
         A function with the signature ``walker_callback(path, stat_info)``
         which will be called for every entry in the directory tree.
+    :param listdir:
     """
     
     def __init__(self, path, recursive=True,
                  walker_callback=(lambda p, s: None),
                  stat=default_stat):
-        walker = path_walk
+        listdir = os.listdir
         self._stat_info = {}
         self._inode_to_path = {}
         
         stat_info = stat(path)
         self._stat_info[path] = stat_info
         self._inode_to_path[stat_info.st_ino] = self.path
-        
-        for root, directories, files in walker(path, recursive):
-            for directory_name in directories:
-                try:
-                    directory_path = os.path.join(root, directory_name)
-                    stat_info = stat(directory_path)
-                    self._stat_info[directory_path] = stat_info
-                    i = (stat_info.st_ino, stat_info.st_dev)
-                    self._inode_to_path[i] = directory_path
-                    walker_callback(directory_path, stat_info)
-                except OSError:
-                    continue
 
-            for file_name in files:
+        def walk(root):
+            paths = [os.path.join(root, name) for name in listdir(root)]
+            entries = []
+            for p in paths:
                 try:
-                    file_path = os.path.join(root, file_name)
-                    stat_info = stat(file_path)
-                    self._stat_info[file_path] = stat_info
-                    i = (stat_info.st_ino, stat_info.st_dev)
-                    self._inode_to_path[i] = file_path
-                    walker_callback(file_path, stat_info)
+                    entries.append((p, stat(p)))
                 except OSError:
                     continue
-    
+            for _ in entries:
+                yield _
+            for path, st in entries:
+                if S_ISDIR(st.st_mode):
+                    for _ in walk(path):
+                        yield _
+
+        for p, st in walk(path):
+            i = (st.st_ino, st.st_dev)
+            self._inode_to_path[i] = p
+            self._stat_info[p] = st
+            walker_callback(p, st)
+
     @property
     def paths(self):
         """
