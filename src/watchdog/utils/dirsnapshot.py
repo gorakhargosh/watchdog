@@ -220,7 +220,8 @@ class DirectorySnapshot(object):
                     directory_path = os.path.join(root, directory_name)
                     stat_info = stat(directory_path)
                     self._stat_info[directory_path] = stat_info
-                    self._inode_to_path[stat_info.st_ino] = directory_path
+                    i = (stat_info.st_ino, stat_info.st_dev)
+                    self._inode_to_path[i] = directory_path
                     walker_callback(directory_path, stat_info)
                 except OSError:
                     continue
@@ -230,7 +231,8 @@ class DirectorySnapshot(object):
                     file_path = os.path.join(root, file_name)
                     stat_info = stat(file_path)
                     self._stat_info[file_path] = stat_info
-                    self._inode_to_path[stat_info.st_ino] = file_path
+                    i = (stat_info.st_ino, stat_info.st_dev)
+                    self._inode_to_path[i] = file_path
                     walker_callback(file_path, stat_info)
                 except OSError:
                     continue
@@ -249,10 +251,9 @@ class DirectorySnapshot(object):
         return self._inode_to_path.get(inode)
     
     def inode(self, path):
-        """
-        Returns inode for path.
-        """
-        return self._stat_info[path].st_ino
+        """ Returns an id for path. """
+        st = self._stat_info[path]
+        return (st.st_ino, st.st_dev)
     
     def isdir(self, path):
         return S_ISDIR(self._stat_info[path].st_mode)
