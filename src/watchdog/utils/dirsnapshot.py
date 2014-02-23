@@ -53,10 +53,7 @@ Classes
 """
 
 import os
-import sys
-import stat
-import itertools
-
+from stat import S_ISDIR
 from pathtools.path import walk as path_walk, absolute_path
 from watchdog.utils import platform
 from watchdog.utils import stat as default_stat
@@ -213,7 +210,7 @@ class DirectorySnapshot(object):
         self._stat_info = {}
         self._inode_to_path = {}
         
-        stat_info = statf(path)
+        stat_info = stat(path)
         self._stat_info[path] = stat_info
         self._inode_to_path[stat_info.st_ino] = self.path
         
@@ -258,7 +255,7 @@ class DirectorySnapshot(object):
         return self._stat_info[path].st_ino
     
     def isdir(self, path):
-        return stat.S_ISDIR(self._stat_info[path].st_mode)
+        return S_ISDIR(self._stat_info[path].st_mode)
     
     def mtime(self, path):
         return self._stat_info[path].st_mtime
