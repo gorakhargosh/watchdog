@@ -32,15 +32,6 @@
         the snapshot diff will represent file/directory movement as
         created and deleted events.
 
-        Windows does not have any concept of ``inodes``, which prevents
-        this snapshotter from determining file or directory renames/movement
-        on it. The snapshotter does not try to handle this on Windows.
-        File or directory movement will show up as creation and deletion
-        events.
-
-        Please do not use this on a virtual file system mapped to
-        a network share.
-
 Classes
 -------
 .. autoclass:: DirectorySnapshot
