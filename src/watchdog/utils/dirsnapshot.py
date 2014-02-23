@@ -46,7 +46,6 @@ Classes
 
 import os
 from stat import S_ISDIR
-from pathtools.path import walk as path_walk, absolute_path
 from watchdog.utils import platform
 from watchdog.utils import stat as default_stat
 
