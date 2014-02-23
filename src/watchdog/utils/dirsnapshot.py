@@ -203,12 +203,13 @@ class DirectorySnapshot(object):
         A function with the signature ``walker_callback(path, stat_info)``
         which will be called for every entry in the directory tree.
     :param listdir:
+        Use custom listdir function. See ``os.listdir`` for details.
     """
     
     def __init__(self, path, recursive=True,
                  walker_callback=(lambda p, s: None),
-                 stat=default_stat):
-        listdir = os.listdir
+                 stat=default_stat,
+                 listdir=os.listdir):
         self._stat_info = {}
         self._inode_to_path = {}
         
