@@ -218,10 +218,11 @@ class DirectorySnapshot(object):
                     continue
             for _ in entries:
                 yield _
-            for path, st in entries:
-                if S_ISDIR(st.st_mode):
-                    for _ in walk(path):
-                        yield _
+            if recursive:
+                for path, st in entries:
+                    if S_ISDIR(st.st_mode):
+                        for _ in walk(path):
+                            yield _
 
         for p, st in walk(path):
             i = (st.st_ino, st.st_dev)
