@@ -88,13 +88,13 @@ StatResult = namedtuple('StatResult', 'st_dev st_ino st_mode st_mtime')
 def _to_mode(attr):
     m = 0
     if (attr & FILE_ATTRIBUTE_DIRECTORY):
-        m |= stdstat.S_IFDIR | 0111
+        m |= stdstat.S_IFDIR | 0o111
     else:
-        m |= stdstat.S_IFREG;
+        m |= stdstat.S_IFREG
     if (attr & FILE_ATTRIBUTE_READONLY):
-        m |= 0444
+        m |= 0o444
     else:
-        m |= 0666
+        m |= 0o666
     return m
 
 def _to_unix_time(ft):
