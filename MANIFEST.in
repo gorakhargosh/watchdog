@@ -8,7 +8,6 @@ include docs/*.xml
 include docs/Makefile
 include docs/make.bat
 recursive-include docs/source *
-prune docs/source/_themes/.git*
 #global-exclude .DS_Store
 #global-exclude Thumbs.db
 #global-exclude Desktop.ini

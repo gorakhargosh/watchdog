@@ -19,8 +19,6 @@ import os.path
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 TOP_DIR_PATH = os.path.abspath('../../')
 SRC_DIR_PATH = os.path.join(TOP_DIR_PATH, 'src')
-#sys.path.insert(0, os.path.abspath('.'))
-sys.path.append(os.path.abspath('_themes'))
 sys.path.insert(0, SRC_DIR_PATH)
 
 import watchdog.version
