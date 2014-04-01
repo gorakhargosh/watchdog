@@ -72,7 +72,9 @@ class PollingEmitter(EventEmitter):
 
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
-        time.sleep(timeout)
+        if self.stopped_event.wait(timeout):
+            return
+
         with self._lock:
             if not self.should_keep_running():
                 return
