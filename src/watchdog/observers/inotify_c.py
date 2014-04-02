@@ -36,7 +36,7 @@ from watchdog.utils import (
     ctypes_find_library
 )
 
-libc_string = ctypes_find_library('c', 'libc.so.6')
+libc_string = ctypes_find_library('c', 'libc.so')
 libc = ctypes.CDLL(libc_string, use_errno=True)
 
 if (not has_attribute(libc, 'inotify_init') or
