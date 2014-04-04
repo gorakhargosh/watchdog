@@ -24,6 +24,12 @@ API Reference
 .. automodule:: watchdog.observers
 
 
+`watchdog.observers.polling`
+============================
+
+.. automodule:: watchdog.observers.polling
+
+
 `watchdog.utils`
 ================
 

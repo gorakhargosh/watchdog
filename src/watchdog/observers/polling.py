@@ -24,9 +24,14 @@
 
 Classes
 -------
-.. autoclass:: PollingEmitter
+.. autoclass:: PollingObserver
    :members:
    :show-inheritance:
+
+.. autoclass:: PollingObserverVFS
+   :members:
+   :show-inheritance:
+   :special-members:
 """
 
 from __future__ import with_statement
