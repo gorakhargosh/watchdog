@@ -116,8 +116,8 @@ class PollingEmitter(EventEmitter):
 
 class PollingObserver(BaseObserver):
     """
-    Observer thread that schedules watching directories and dispatches
-    calls to event handlers.
+    Platform-independent observer that polls a directory to detect file
+    system changes.
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
@@ -126,7 +126,7 @@ class PollingObserver(BaseObserver):
 
 class PollingObserverVFS(BaseObserver):
     """
-    Observer for use with virtual file systems.
+    File system independent observer that polls a directory to detect changes.
     """
 
     def __init__(self, stat, listdir, polling_interval=1):
