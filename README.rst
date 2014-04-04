@@ -156,6 +156,12 @@ Documentation
 -------------
 You can browse the latest release documentation_ online.
 
+Contribute
+==========
+Fork the `code repository`_ on GitHub and send a pull request, or file an issue
+ticket at the `issue tracker`_. For general help and questions use the official
+`mailing list`_ or ask on `stackoverflow`_ with tag `python-watchdog`.
+
 Supported Platforms
 -------------------
 * Linux 2.6 (inotify)
@@ -238,6 +244,7 @@ to do:
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _Apache License, version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 .. _documentation: http://packages.python.org/watchdog/
+.. _stackoverflow: http://stackoverflow.com/questions/tagged/python-watchdog
 
 .. _homebrew: http://mxcl.github.com/homebrew/
 .. _select_backport: http://pypi.python.org/pypi/select_backport
