@@ -30,10 +30,11 @@ Classes
 """
 
 from __future__ import with_statement
-
+import os
 import time
 import threading
-
+from functools import partial
+from watchdog.utils import stat as default_stat
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
 from watchdog.observers.api import (
     EventEmitter,
@@ -55,20 +56,22 @@ from watchdog.events import (
 
 
 class PollingEmitter(EventEmitter):
-
     """
     Platform-independent emitter that polls a directory to detect file
     system changes.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
+                 stat=default_stat, listdir=os.listdir):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._snapshot = None
         self._lock = threading.Lock()
+        self._take_snapshot = lambda: DirectorySnapshot(
+            self.watch.path, self.watch.is_recursive, stat=stat, listdir=listdir)
 
     def queue_events(self, timeout):
         if not self._snapshot:
-            self._snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+            self._snapshot = self._take_snapshot()
 
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
@@ -81,7 +84,7 @@ class PollingEmitter(EventEmitter):
 
             # Get event diff between fresh snapshot and previous snapshot.
             # Update snapshot.
-            new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+            new_snapshot = self._take_snapshot()
             events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
             self._snapshot = new_snapshot
 
@@ -107,7 +110,6 @@ class PollingEmitter(EventEmitter):
 
 
 class PollingObserver(BaseObserver):
-
     """
     Observer thread that schedules watching directories and dispatches
     calls to event handlers.
@@ -115,3 +117,19 @@ class PollingObserver(BaseObserver):
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
+
+
+class PollingObserverVFS(BaseObserver):
+    """
+    Observer for use with virtual file systems.
+    """
+
+    def __init__(self, stat, listdir, polling_interval=1):
+        """
+        :param stat: stat function. See ``os.stat`` for details.
+        :param listdir: listdir function. See ``os.listdir`` for details.
+        :type polling_interval: float
+        :param polling_interval: interval in seconds between polling the file system.
+        """
+        emitter_cls = partial(PollingEmitter, stat=stat, listdir=listdir)
+        BaseObserver.__init__(self, emitter_class=emitter_cls, timeout=polling_interval)
