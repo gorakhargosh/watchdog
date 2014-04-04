@@ -157,7 +157,7 @@ Documentation
 You can browse the latest release documentation_ online.
 
 Contribute
-==========
+----------
 Fork the `code repository`_ on GitHub and send a pull request, or file an issue
 ticket at the `issue tracker`_. For general help and questions use the official
 `mailing list`_ or ask on `stackoverflow`_ with tag `python-watchdog`.
