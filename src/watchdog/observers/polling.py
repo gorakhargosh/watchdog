@@ -36,7 +36,6 @@ Classes
 
 from __future__ import with_statement
 import os
-import time
 import threading
 from functools import partial
 from watchdog.utils import stat as default_stat
