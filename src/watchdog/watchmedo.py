@@ -37,14 +37,8 @@ except ImportError:
         from io import StringIO
 
 from argh import arg, alias, ArghParser
-
 from watchdog.version import VERSION_STRING
-
-from watchdog.utils import (
-    read_text_file,
-    load_class
-)
-
+from watchdog.utils import load_class
 from pathtools.path import absolute_path, parent_dir_path
 
 
@@ -92,7 +86,9 @@ def load_config(tricks_file_pathname):
     :returns:
         A dictionary of configuration information.
     """
-    content = read_text_file(tricks_file_pathname)
+    f = open(tricks_file_pathname, 'rb')
+    content = f.read()
+    f.close()
     config = yaml.load(content)
     return config
 

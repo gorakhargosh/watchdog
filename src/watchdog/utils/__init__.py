@@ -168,15 +168,3 @@ def load_class(dotted_path):
     else:
         raise ValueError(
             'Dotted module path %s must contain a module name and a classname' % dotted_path)
-
-
-def read_text_file(file_path, mode='rb'):
-    """
-    Returns the contents of a file after opening it in read-only mode.
-
-    :param file_path:
-        Path to the file to be read from.
-    :param mode:
-        Mode string.
-    """
-    return open(file_path, mode).read()
