@@ -100,7 +100,8 @@ from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
     DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
+    DEFAULT_EMITTER_TIMEOUT,
+    DEFAULT_SMOOTHING_TIMEOUT
 )
 
 from watchdog.utils.dirsnapshot import DirectorySnapshot
@@ -722,5 +723,5 @@ class KqueueObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout)
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, smoothing=DEFAULT_SMOOTHING_TIMEOUT):
+        BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout, smoothing=DEFAULT_SMOOTHING_TIMEOUT)

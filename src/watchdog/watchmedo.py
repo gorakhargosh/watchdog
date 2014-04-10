@@ -417,6 +417,10 @@ Example option usage::
      action='store_true',
      default=False,
      help="Ignore events that happen while the previous process is still running")
+@arg('-s', '--smoothing',
+     dest='smoothing',
+     default=0,
+     help='gather and ignore this many seconds worth of filesystem events after the initial event before running the shell command')
 def shell_command(args):
     """
     Subcommand to execute shell commands in response to file system events.
@@ -438,7 +442,7 @@ def shell_command(args):
                                 ignore_directories=args.ignore_directories,
                                 wait_for_process=args.wait_for_process,
                                 no_parallel_processes=args.no_parallel_processes)
-    observer = Observer(timeout=args.timeout)
+    observer = Observer(timeout=args.timeout, smoothing=args.smoothing)
     observe_with(observer, handler, args.directories, args.recursive)
 
 

@@ -47,7 +47,8 @@ from watchdog.observers.api import (
     EventEmitter,
     BaseObserver,
     DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
+    DEFAULT_EMITTER_TIMEOUT,
+    DEFAULT_SMOOTHING_TIMEOUT
 )
 
 from watchdog.events import (
@@ -138,10 +139,11 @@ class WindowsApiObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, smoothing=DEFAULT_SMOOTHING_TIMEOUT):
         BaseObserver.__init__(self,
                               emitter_class=WindowsApiEmitter,
-                              timeout=timeout)
+                              timeout=timeout,
+                              smoothing=smoothing)
 
 
 def _generate_sub_created_events_for(src_dir_path):

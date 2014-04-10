@@ -46,7 +46,8 @@ from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
     DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT
+    DEFAULT_OBSERVER_TIMEOUT,
+    DEFAULT_SMOOTHING_TIMEOUT
 )
 
 
@@ -143,9 +144,10 @@ class FSEventsEmitter(EventEmitter):
 
 class FSEventsObserver(BaseObserver):
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, smoothing=DEFAULT_SMOOTHING_TIMEOUT):
         BaseObserver.__init__(self, emitter_class=FSEventsEmitter,
-                              timeout=timeout)
+                              timeout=timeout,
+                              smoothing=smoothing)
 
     def schedule(self, event_handler, path, recursive=False):
         # Python 2/3 compat
