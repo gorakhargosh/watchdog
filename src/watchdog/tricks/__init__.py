@@ -79,18 +79,18 @@ class ShellCommandTrick(Trick):
 
     def __init__(self, shell_command=None, patterns=None, ignore_patterns=None,
                  ignore_directories=False, wait_for_process=False,
-                 no_parallel_processes=False):
+                 drop_during_process=False):
         super(ShellCommandTrick, self).__init__(patterns, ignore_patterns,
                                                 ignore_directories)
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
-        self.no_parallel_processes = no_parallel_processes
+        self.drop_during_process = drop_during_process
         self.process = None
 
     def on_any_event(self, event):
         from string import Template
-        
-        if self.no_parallel_processes and self.process and self.process.poll() is None:
+
+        if self.drop_during_process and self.process and self.process.poll() is None:
             return
 
         if event.is_directory:

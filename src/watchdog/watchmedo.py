@@ -412,11 +412,12 @@ Example option usage::
      action='store_true',
      default=False,
      help="wait for process to finish to avoid multiple simultaneous instances")
-@arg('-n', '--no-parallel',
-     dest='no_parallel_processes',
+@arg('-W', '--drop',
+     dest='drop_during_process',
      action='store_true',
      default=False,
-     help="Ignore events that happen while the previous process is still running")
+     help="Ignore events that occur while command is still being executed " \
+          "to avoid multiple simultaneous instances")
 def shell_command(args):
     """
     Subcommand to execute shell commands in response to file system events.
@@ -437,7 +438,7 @@ def shell_command(args):
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories,
                                 wait_for_process=args.wait_for_process,
-                                no_parallel_processes=args.no_parallel_processes)
+                                drop_during_process=args.drop_during_process)
     observer = Observer(timeout=args.timeout)
     observe_with(observer, handler, args.directories, args.recursive)
 
