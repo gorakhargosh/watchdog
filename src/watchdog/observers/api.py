@@ -51,6 +51,7 @@ Classes
 
 from __future__ import with_statement
 import threading
+import time
 
 try:
     import queue  # IGNORE:F0401
@@ -62,6 +63,7 @@ from watchdog.utils.bricks import SkipRepeatsQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
+DEFAULT_SMOOTHING_TIMEOUT = 0  # in seconds.
 
 
 # Collection classes
@@ -247,7 +249,7 @@ class BaseObserver(EventDispatcher):
 
     """Base observer."""
 
-    def __init__(self, emitter_class, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, emitter_class, timeout=DEFAULT_OBSERVER_TIMEOUT, smoothing=DEFAULT_SMOOTHING_TIMEOUT):
         EventDispatcher.__init__(self, timeout)
         self._emitter_class = emitter_class
         self._lock = threading.Lock()
@@ -255,6 +257,7 @@ class BaseObserver(EventDispatcher):
         self._handlers = dict()
         self._emitters = set()
         self._emitter_for_watch = dict()
+        self._smoothing = smoothing
 
     def _add_emitter(self, emitter):
         self._emitter_for_watch[emitter.watch] = emitter
@@ -404,6 +407,18 @@ class BaseObserver(EventDispatcher):
 
     def dispatch_events(self, event_queue, timeout):
         event, watch = event_queue.get(block=True, timeout=timeout)
+
+        # Sleep for the specified amount of time, then clean out the
+        # event queue, and then dispatch the event.
+        if self._smoothing > 0:
+            time.sleep(self._smoothing)
+
+            if not event_queue.empty():
+                print("Smoothing over / ignoring {0} filesystem events that arrived after the triggering event.".format(event_queue.qsize()))
+
+            while not event_queue.empty():
+                event_queue.get_nowait()
+
         try:
             self._dispatch_event(event, watch)
         except KeyError:

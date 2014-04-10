@@ -44,7 +44,8 @@ from watchdog.observers.api import (
     EventEmitter,
     BaseObserver,
     DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
+    DEFAULT_EMITTER_TIMEOUT,
+    DEFAULT_SMOOTHING_TIMEOUT
 )
 
 from watchdog.events import (
@@ -119,8 +120,8 @@ class PollingObserver(BaseObserver):
     system changes.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, smoothing=DEFAULT_SMOOTHING_TIMEOUT):
+        BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout, smoothing=smoothing)
 
 
 class PollingObserverVFS(BaseObserver):

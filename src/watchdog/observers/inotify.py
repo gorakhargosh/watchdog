@@ -77,7 +77,8 @@ from watchdog.observers.api import (
     EventEmitter,
     BaseObserver,
     DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT
+    DEFAULT_OBSERVER_TIMEOUT,
+    DEFAULT_SMOOTHING_TIMEOUT
 )
 
 from watchdog.events import (
@@ -183,6 +184,7 @@ class InotifyObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, smoothing=DEFAULT_SMOOTHING_TIMEOUT):
         BaseObserver.__init__(self, emitter_class=InotifyEmitter,
-                              timeout=timeout)
+                              timeout=timeout,
+                              smoothing=smoothing)
