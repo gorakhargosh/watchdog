@@ -86,11 +86,13 @@ if sys.version_info < (2, 7, 0):
         # which works.
         install_requires.append('select_backport >=0.2')
 
+with open('README.rst') as f:
+    readme = f.read()
 
 setup(name="watchdog",
       version=version.VERSION_STRING,
       description="Filesystem events monitoring",
-      long_description=open('README.rst').read(),
+      long_description=readme,
       author="Yesudeep Mangalapilly",
       author_email="yesudeep@gmail.com",
       license="Apache License 2.0",
