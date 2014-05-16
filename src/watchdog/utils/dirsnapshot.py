@@ -199,6 +199,8 @@ class DirectorySnapshot(object):
     def __init__(self, path, recursive=True,
                  walker_callback=(lambda p, s: None),
                  stat=default_stat,
+                 dev_id=None,
+                 follow_symlinks=True,
                  listdir=os.listdir):
         self._stat_info = {}
         self._inode_to_path = {}
@@ -219,9 +221,14 @@ class DirectorySnapshot(object):
                 yield _
             if recursive:
                 for path, st in entries:
-                    if S_ISDIR(st.st_mode):
-                        for _ in walk(path):
-                            yield _
+                    is_dir = S_ISDIR(st.st_mode)
+                    is_symlink = S_ISLNK(st.st_mode)
+                    is_same_dev = st.ST_DEV == dev_id
+                    if is_dir \
+                        and not is_symlink or follow_symlinks \
+                        and not dev_id or is_same_dev:
+                            for _ in walk(path):
+                                yield _
 
         for p, st in walk(path):
             i = (st.st_ino, st.st_dev)

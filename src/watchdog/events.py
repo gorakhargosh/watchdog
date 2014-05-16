@@ -413,9 +413,8 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     """
 
     def __init__(self, patterns=None, ignore_patterns=None,
-                 ignore_directories=False, case_sensitive=False):
+            ignore_directories=False, case_sensitive=False):
         super(PatternMatchingEventHandler, self).__init__()
-
         self._patterns = patterns
         self._ignore_patterns = ignore_patterns
         self._ignore_directories = ignore_directories

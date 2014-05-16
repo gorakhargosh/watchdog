@@ -85,9 +85,11 @@ class ObservedWatch(object):
         ``True`` if watch is recursive; ``False`` otherwise.
     """
 
-    def __init__(self, path, recursive):
+    def __init__(self, path, **kw):
         self._path = path
-        self._is_recursive = recursive
+        self._is_recursive = kw.get("recursive", False)
+        self._follow_symlinks = kw.get("recursive", True)
+        self._dev_id = kw.get("dev_id", None)
 
     @property
     def path(self):
@@ -98,6 +100,16 @@ class ObservedWatch(object):
     def is_recursive(self):
         """Determines whether subdirectories are watched for the path."""
         return self._is_recursive
+
+    @property
+    def follow_symlinks(self):
+        """Determines whether to follow symlinks"""
+        return self._follow_symlinks
+
+    @property
+    def dev_id(self):
+        """return the dev_id we should only watch"""
+        return self._dev_id
 
     @property
     def key(self):
@@ -290,7 +302,7 @@ class BaseObserver(EventDispatcher):
         handlers = self._get_handlers_for_watch(watch)
         handlers.remove(handler)
 
-    def schedule(self, event_handler, path, recursive=False):
+    def schedule(self, event_handler, path, **kw):
         """
         Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
@@ -315,7 +327,7 @@ class BaseObserver(EventDispatcher):
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive)
+            watch = ObservedWatch(path, **kw)
             self._add_handler_for_watch(event_handler, watch)
             try:
                 # If we have an emitter for this watch already, we don't create a
