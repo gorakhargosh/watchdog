@@ -518,8 +518,6 @@ class TestPatternMatchingEventHandler(unittest.TestCase):
                                                g_ignore_patterns, True)
         handler2 = PatternMatchingEventHandler(g_allowed_patterns,
                                                g_ignore_patterns, False)
-        self.assertEqual(handler1.patterns, g_allowed_patterns)
-        self.assertEqual(handler1.ignore_patterns, g_ignore_patterns)
         self.assertTrue(handler1.ignore_directories)
         self.assertFalse(handler2.ignore_directories)
 
@@ -531,15 +529,6 @@ class TestPatternMatchingEventHandler(unittest.TestCase):
         self.assertTrue(handler1.ignore_directories)
         self.assertFalse(handler2.ignore_directories)
 
-    def test_ignore_patterns(self):
-        handler1 = PatternMatchingEventHandler(g_allowed_patterns,
-                                               g_ignore_patterns, True)
-        self.assertEqual(handler1.ignore_patterns, g_ignore_patterns)
-
-    def test_patterns(self):
-        handler1 = PatternMatchingEventHandler(g_allowed_patterns,
-                                               g_ignore_patterns, True)
-        self.assertEqual(handler1.patterns, g_allowed_patterns)
 
 g_allowed_regexes = [r".*\.py", r".*\.txt"]
 g_ignore_regexes = [r".*\.pyc"]

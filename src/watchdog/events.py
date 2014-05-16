@@ -416,8 +416,9 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
                  ignore_directories=False, case_sensitive=False):
         super(PatternMatchingEventHandler, self).__init__()
 
-        self._patterns = patterns
-        self._ignore_patterns = ignore_patterns
+        absolutize = lambda paths: [os.path.abspath(p) for p in paths]
+        self._patterns = absolutize(patterns)
+        self._ignore_patterns = absolutize(ignore_patterns)
         self._ignore_directories = ignore_directories
         self._case_sensitive = case_sensitive
 
