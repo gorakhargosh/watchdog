@@ -187,28 +187,6 @@ class DirectorySnapshot(object):
         self._inode_to_path = {}
         self.scan()
 
-    def _walk(self, root=None):
-        if root == None:
-            root = self._path
-        paths = [os.path.join(root, name) for name in self._listdir(root)]
-        entries = []
-        for p in paths:
-            try:
-                entries.append((p, self._stat(p)))
-            except OSError:
-                continue
-        for path, st in entries:
-            is_dir = is_stat.S_ISDIR(st.st_mode)
-            lst = os.lstat(path)
-            is_symlink = is_stat.S_ISLNK(lst.st_mode)
-            is_same_dev = (st.st_dev == self._dev_id)
-            if (is_dir and self._recursive) and \
-                (not is_symlink or self._follow_symlinks) and \
-                (not self._dev_id or is_same_dev):
-                    for info in self._walk(path):
-                        yield info
-            yield (path, st)
-
     def copy(self):
         return self.__class__(self._path, **self._init_kw)
         
@@ -226,6 +204,31 @@ class DirectorySnapshot(object):
         for p, st in self._walk(self._path):
             self.track_file(p, st)
             self._walker_callback(p, st)
+
+    def _walk(self, root=None):
+        if root == None:
+            root = self._path
+        try:
+            paths = [os.path.join(root, name) for name in self._listdir(root)]
+        except OSError:
+            paths = []
+        entries = []
+        for p in paths:
+            try:
+                entries.append((p, self._stat(p)))
+            except OSError:
+                continue
+        for path, st in entries:
+            is_dir = is_stat.S_ISDIR(st.st_mode)
+            lst = os.lstat(path)
+            is_symlink = is_stat.S_ISLNK(lst.st_mode)
+            is_same_dev = (st.st_dev == self._dev_id)
+            if (is_dir and self._recursive) and \
+                (not is_symlink or self._follow_symlinks) and \
+                (not self._dev_id or is_same_dev):
+                    for info in self._walk(path):
+                        yield info
+            yield (path, st)
 
     @property
     def paths(self):
