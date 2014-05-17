@@ -110,6 +110,5 @@ def test_detect_modify_for_moved_files(p):
     touch(p('a'))
     mv(p('a'), p('b'))
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
-    print diff
     assert diff.files_moved == [(p('a'), p('b'))]
     assert diff.files_modified == [p('a')]

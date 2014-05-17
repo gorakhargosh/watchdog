@@ -210,7 +210,6 @@ class DirectorySnapshot(object):
         self._inode_to_path[stat_info.st_ino] = self.path
 
         def walk(root):
-            print '__walk__', root
             paths = [os.path.join(root, name) for name in listdir(root)]
             entries = []
             for p in paths:
