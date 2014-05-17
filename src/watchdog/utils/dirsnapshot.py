@@ -182,7 +182,6 @@ class DirectorySnapshot(object):
         self._init_kw["_follow_symlinks"] = follow_symlinks
         self._init_kw["_dev_id"] = dev_id
         self._init_kw["_listdir"] = listdir
-        print "init", self._init_kw
         self.__dict__.update(self._init_kw)
         self._stat_info = {}
         self._inode_to_path = {}
