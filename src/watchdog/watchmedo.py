@@ -119,7 +119,6 @@ def observe_with(observer, event_handler, pathnames, observe_kw_args):
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
     """
-    print observe_kw_args
     for pathname in set(pathnames):
         observer.schedule(event_handler, pathname, **observe_kw_args)
     observer.start()
