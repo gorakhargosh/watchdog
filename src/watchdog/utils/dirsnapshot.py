@@ -45,7 +45,7 @@ Classes
 """
 
 import os
-from stat import S_ISDIR
+import stat as is_stat
 from watchdog.utils import platform
 from watchdog.utils import stat as default_stat
 
@@ -210,6 +210,7 @@ class DirectorySnapshot(object):
         self._inode_to_path[stat_info.st_ino] = self.path
 
         def walk(root):
+            print '__walk__', root
             paths = [os.path.join(root, name) for name in listdir(root)]
             entries = []
             for p in paths:
@@ -221,12 +222,12 @@ class DirectorySnapshot(object):
                 yield _
             if recursive:
                 for path, st in entries:
-                    is_dir = S_ISDIR(st.st_mode)
-                    is_symlink = S_ISLNK(st.st_mode)
-                    is_same_dev = st.ST_DEV == dev_id
-                    if is_dir \
-                        and not is_symlink or follow_symlinks \
-                        and not dev_id or is_same_dev:
+                    is_dir = is_stat.S_ISDIR(st.st_mode)
+                    is_symlink = is_stat.S_ISLNK(st.st_mode)
+                    is_same_dev = (st.st_dev == dev_id)
+                    if is_dir and \
+                        (not is_symlink or follow_symlinks) and \
+                        (not dev_id or is_same_dev):
                             for _ in walk(path):
                                 yield _
 
@@ -255,7 +256,7 @@ class DirectorySnapshot(object):
         return (st.st_ino, st.st_dev)
     
     def isdir(self, path):
-        return S_ISDIR(self._stat_info[path].st_mode)
+        return is_stat.S_ISDIR(self._stat_info[path].st_mode)
     
     def mtime(self, path):
         return self._stat_info[path].st_mtime
