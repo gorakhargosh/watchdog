@@ -458,9 +458,7 @@ class KqueueEmitter(EventEmitter):
 
         self._snapshot = DirectorySnapshot(watch.path,
                                            walker_callback=walker_callback,
-                                           recursive=watch.is_recursive,
-                                           dev_id=watch.dev_id,
-                                           follow_symlinks=watch.follow_symlinks)
+                                           **watch.config_kw)
 
     def _register_kevent(self, path, is_directory):
         """

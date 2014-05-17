@@ -70,7 +70,7 @@ class FSEventsEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
+        self.snapshot = DirectorySnapshot(watch.path, **watch.config_kw)
 
     def on_thread_stop(self):
         _fsevents.remove_watch(self.watch)
@@ -81,8 +81,7 @@ class FSEventsEmitter(EventEmitter):
             if not self.watch.is_recursive\
                 and self.watch.path not in self.pathnames:
                 return
-            new_snapshot = DirectorySnapshot(self.watch.path,
-                                             self.watch.is_recursive)
+            new_snapshot = self.snapshot.copy()
             events = new_snapshot - self.snapshot
             self.snapshot = new_snapshot
 

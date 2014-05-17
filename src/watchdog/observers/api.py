@@ -90,7 +90,7 @@ class ObservedWatch(object):
             kw["recursive"] = args[0]
         self._path = path
         self._is_recursive = kw.get("recursive", False)
-        self._follow_symlinks = kw.get("recursive", True)
+        self._follow_symlinks = kw.get("follow_symlinks", True)
         self._dev_id = kw.get("dev_id", None)
 
     @property
@@ -112,6 +112,11 @@ class ObservedWatch(object):
     def dev_id(self):
         """return the dev_id we should only watch"""
         return self._dev_id
+
+    @property
+    def config_kw(self):
+        """return the dev_id we should only watch"""
+        return {"recursive": self._is_recursive, "follow_symlinks": self._follow_symlinks, "dev_id": self._dev_id}
 
     @property
     def key(self):

@@ -47,16 +47,18 @@ def test_follow_symlink(p):
     symlink(p('root', 'real'), p('root', 'symlink'))
     touch(p('root', 'real', 'a'))
     ref = DirectorySnapshot(p(''), follow_symlinks=True)
-    assert p('root', 'symlink', 'a') in ref.stat_snapshot
+    assert p('root', 'symlink', 'a') in ref.paths
     ref = DirectorySnapshot(p(''), follow_symlinks=False)
-    assert p('root', 'symlink', 'a') not in ref.stat_snapshot
+    assert p('root', 'symlink', 'a') not in ref.paths
 
 def test_one_filesystem(p):
     mkdir(p('root'))
     target = p('root', 'a')
     touch(target)
     dev_id = os.stat(target).st_dev
+    ref = DirectorySnapshot(p(''))
+    assert target in ref.paths
     ref = DirectorySnapshot(p(''), dev_id=dev_id)
-    assert target in ref.stat_snapshot
+    assert target in ref.paths
     ref = DirectorySnapshot(p(''), dev_id=(dev_id + 1))
-    assert target not in ref.stat_snapshot
+    assert target not in ref.paths
