@@ -115,13 +115,3 @@ def test_detect_modify_for_moved_files(p):
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
     assert diff.files_moved == [(p('a'), p('b'))]
     assert diff.files_modified == [p('a')]
-
-def test_follow_symlink(p):
-    mkdir(p('root'))
-    mkdir(p('root', 'real'))
-    symlink(p('root', 'real'), p('root', 'symlink'))
-    touch(p('root', 'real', 'a'))
-    ref = DirectorySnapshot(p(''), follow_symlinks=True)
-    assert p('root', 'symlink', 'a') in ref.stat_snapshot
-    ref = DirectorySnapshot(p(''), follow_symlinks=False)
-    assert p('root', 'symlink', 'a') not in ref.stat_snapshot
