@@ -214,27 +214,27 @@ class DirectorySnapshot(object):
             entries = []
             for p in paths:
                 try:
-                    entries.append((p, stat(p)))
+                    entries.append((p, os.stat(p)))
                 except OSError:
                     continue
-            for _ in entries:
-                yield _
-            if recursive:
-                for path, st in entries:
-                    is_dir = is_stat.S_ISDIR(st.st_mode)
-                    is_symlink = is_stat.S_ISLNK(st.st_mode)
-                    is_same_dev = (st.st_dev == dev_id)
-                    if is_dir and \
-                        (not is_symlink or follow_symlinks) and \
-                        (not dev_id or is_same_dev):
-                            for _ in walk(path):
-                                yield _
+            for path, st in entries:
+                lst = os.lstat(path)
+                is_dir = is_stat.S_ISDIR(st.st_mode)
+                is_symlink = is_stat.S_ISLNK(lst.st_mode)
+                is_same_dev = (st.st_dev == dev_id)
+                if (is_dir and recursive) and \
+                    (not is_symlink or follow_symlinks) and \
+                    (not dev_id or is_same_dev):
+                        for info in walk(path):
+                            yield info
+                yield (path, st)
 
         for p, st in walk(path):
             i = (st.st_ino, st.st_dev)
             self._inode_to_path[i] = p
             self._stat_info[p] = st
             walker_callback(p, st)
+
 
     @property
     def paths(self):

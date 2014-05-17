@@ -18,13 +18,15 @@ import os
 import time
 import pytest
 from functools import partial
-from .shell import mkdtemp, mkdir, touch, mv
+from .shell import mkdtemp, mkdir, touch, mv, symlink
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
 
-
+def sync():
+    os.system("sync")
 def wait():
-    time.sleep(1.0)
+    sync()
+    time.sleep(1)
 
 @pytest.fixture()
 def tmpdir():
@@ -99,7 +101,8 @@ def test_dir_modify_on_move(p):
     ref = DirectorySnapshot(p(''))
     wait()
     mv(p('dir1', 'a'), p('dir2', 'b'))
-    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
+    next_shot = DirectorySnapshot(p(''))
+    diff = DirectorySnapshotDiff(ref, next_shot)
     assert set(diff.dirs_modified) == set([p('dir1'), p('dir2')])
 
 
@@ -112,3 +115,13 @@ def test_detect_modify_for_moved_files(p):
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
     assert diff.files_moved == [(p('a'), p('b'))]
     assert diff.files_modified == [p('a')]
+
+def test_follow_symlink(p):
+    mkdir(p('root'))
+    mkdir(p('root', 'real'))
+    symlink(p('root', 'real'), p('root', 'symlink'))
+    touch(p('root', 'real', 'a'))
+    ref = DirectorySnapshot(p(''), follow_symlinks=True)
+    assert p('root', 'symlink', 'a') in ref.stat_snapshot
+    ref = DirectorySnapshot(p(''), follow_symlinks=False)
+    assert p('root', 'symlink', 'a') not in ref.stat_snapshot

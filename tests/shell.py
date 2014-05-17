@@ -76,7 +76,6 @@ def rm(path, recursive=False):
     else:
         os.remove(path)
 
-
 def touch(path, times=None):
     """Updates the modified timestamp of a file or directory."""
     if os.path.isdir(path):
@@ -85,12 +84,19 @@ def touch(path, times=None):
         with open(path, 'ab'):
             os.utime(path, times)
 
-
 def truncate(path):
     """Truncates a file."""
     with open(path, 'wb'):
         os.utime(path, None)
 
+def symlink(src_path, dest_path):
+    """symlink files or directories."""
+    try:
+        os.symlink(src_path, dest_path)
+    except OSError:
+        # this will happen on windows
+        os.remove(dest_path)
+        os.symlink(src_path, dest_path)
 
 def mv(src_path, dest_path):
     """Moves files or directories."""
