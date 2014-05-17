@@ -555,10 +555,10 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         if event.src_path:
             paths.append(unicode_paths.decode(event.src_path))
 
-        if any(r.match(p) for r in self.ignore_regexes for p in paths):
+        if any(re.match(r, p) for r in self.ignore_regexes for p in paths):
             return
 
-        if any(r.match(p) for r in self.regexes for p in paths):
+        if any(re.match(r, p) for r in self.regexes for p in paths):
             self.on_any_event(event)
             _method_map = {
                 EVENT_TYPE_MODIFIED: self.on_modified,
