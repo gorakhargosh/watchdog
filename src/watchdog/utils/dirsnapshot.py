@@ -65,56 +65,28 @@ class DirectorySnapshotDiff(object):
     :type snapshot:
         :class:`DirectorySnapshot`
     """
+    def __init__(self, new, old):
+        self.init(new, old)
     
-    def __init__(self, ref, snapshot):
-        created = snapshot.paths - ref.paths
-        deleted = ref.paths - snapshot.paths
-        
-        # check that all unchanged paths have the same inode
-        for path in ref.paths & snapshot.paths:
-            if ref.inode(path) != snapshot.inode(path):
-                created.add(path)
-                deleted.add(path)
-        
-        # find moved paths
-        moved = set()
-        for path in set(deleted):
-            inode = ref.inode(path)
-            new_path = snapshot.path(inode)
-            if new_path:
-                # file is not deleted but moved
-                deleted.remove(path)
-                moved.add((path, new_path))
-        
-        for path in set(created):
-            inode = snapshot.inode(path)
-            old_path = ref.path(inode)
-            if old_path:
-                created.remove(path)
-                moved.add((old_path, path))
-        
-        # find modified paths
-        # first check paths that have not moved
-        modified = set()
-        for path in ref.paths & snapshot.paths:
-            if ref.inode(path) == snapshot.inode(path):
-                if ref.mtime(path) != snapshot.mtime(path):
-                    modified.add(path)
-        
-        for (old_path, new_path) in moved:
-            if ref.mtime(old_path) != snapshot.mtime(new_path):
-                modified.add(old_path)
-        
-        self._dirs_created = [path for path in created if snapshot.isdir(path)]
-        self._dirs_deleted = [path for path in deleted if ref.isdir(path)]
-        self._dirs_modified = [path for path in modified if ref.isdir(path)]
-        self._dirs_moved = [(frm, to) for (frm, to) in moved if ref.isdir(frm)]
+    def init(self, old, new):
+        new_inodes = new.get_inodes()
+        old_inodes = old.get_inodes()
+        created = set([new.path(inode) for inode in new_inodes - old_inodes])
+        deleted = set([old.path(inode) for inode in old_inodes - new_inodes])
+        modified = set([old.path(inode) for inode in new_inodes.intersection(old_inodes) if new.mtime(inode) != old.mtime(inode)])
+        moved = set([(old.path(inode), new.path(inode)) for inode in new_inodes.intersection(old_inodes) if new.path(inode) != old.path(inode)])
+
+        self._dirs_created = [path for path in created if new.isdir(path)]
+        self._dirs_deleted = [path for path in deleted if old.isdir(path)]
+        self._dirs_modified = [path for path in modified if old.isdir(path)]
+        self._dirs_moved = [(frm, to) for (frm, to) in moved if old.isdir(frm)]
         
         self._files_created = list(created - set(self._dirs_created))
         self._files_deleted = list(deleted - set(self._dirs_deleted))
         self._files_modified = list(modified - set(self._dirs_modified))
         self._files_moved = list(moved - set(self._dirs_moved))
-    
+
+                
     @property
     def files_created(self):
         """List of files that were created."""
@@ -198,43 +170,62 @@ class DirectorySnapshot(object):
     
     def __init__(self, path, recursive=True,
                  walker_callback=(lambda p, s: None),
-                 stat=default_stat,
+                 stat=os.stat,
                  dev_id=None,
                  follow_symlinks=True,
                  listdir=os.listdir):
+        self._init_kw = {}
+        self._path = path
+        self._init_kw["_recursive"] = recursive
+        self._init_kw["_walker_callback"] = walker_callback
+        self._init_kw["_stat"] = stat
+        self._init_kw["_follow_symlinks"] = follow_symlinks
+        self._init_kw["_dev_id"] = dev_id
+        self._init_kw["_listdir"] = listdir
+        self.__dict__.update(self._init_kw)
         self._stat_info = {}
         self._inode_to_path = {}
+        self.scan()
+
+    def _walk(self, root=None):
+        if root == None:
+            root = self._path
+        paths = [os.path.join(root, name) for name in self._listdir(root)]
+        entries = []
+        for p in paths:
+            try:
+                entries.append((p, self._stat(p)))
+            except OSError:
+                continue
+        for path, st in entries:
+            is_dir = is_stat.S_ISDIR(st.st_mode)
+            lst = os.lstat(path)
+            is_symlink = is_stat.S_ISLNK(lst.st_mode)
+            is_same_dev = (st.st_dev == self._dev_id)
+            if (is_dir and self._recursive) and \
+                (not is_symlink or self._follow_symlinks) and \
+                (not self._dev_id or is_same_dev):
+                    for info in self._walk(path):
+                        yield info
+            yield (path, st)
+
+    def copy(self):
+        return self.__class__(self._path, **self._init_kw)
         
-        stat_info = stat(path)
-        self._stat_info[path] = stat_info
-        self._inode_to_path[stat_info.st_ino] = self.path
+    def track_file(self, path, st=None):
+        if not st:
+            st = self._stat(path)
+        self._inode_to_path[st.st_ino] = path
+        self._stat_info[path] = st
 
-        def walk(root):
-            paths = [os.path.join(root, name) for name in listdir(root)]
-            entries = []
-            for p in paths:
-                try:
-                    entries.append((p, os.stat(p)))
-                except OSError:
-                    continue
-            for path, st in entries:
-                lst = os.lstat(path)
-                is_dir = is_stat.S_ISDIR(st.st_mode)
-                is_symlink = is_stat.S_ISLNK(lst.st_mode)
-                is_same_dev = (st.st_dev == dev_id)
-                if (is_dir and recursive) and \
-                    (not is_symlink or follow_symlinks) and \
-                    (not dev_id or is_same_dev):
-                        for info in walk(path):
-                            yield info
-                yield (path, st)
+    def get_inodes(self):
+        return set(self._inode_to_path.keys())
 
-        for p, st in walk(path):
-            i = (st.st_ino, st.st_dev)
-            self._inode_to_path[i] = p
-            self._stat_info[p] = st
-            walker_callback(p, st)
-
+    def scan(self):
+        self.track_file(self._path)
+        for p, st in self._walk(self._path):
+            self.track_file(p, st)
+            self._walker_callback(p, st)
 
     @property
     def paths(self):
@@ -252,13 +243,20 @@ class DirectorySnapshot(object):
     def inode(self, path):
         """ Returns an id for path. """
         st = self._stat_info[path]
-        return (st.st_ino, st.st_dev)
+        return st.st_ino
     
+    def dev_id(self, path):
+        """ Returns an devid for path. """
+        st = self._stat_info[path]
+        return st.st_dev
+
     def isdir(self, path):
         return is_stat.S_ISDIR(self._stat_info[path].st_mode)
     
-    def mtime(self, path):
-        return self._stat_info[path].st_mtime
+    def mtime(self, path_or_inode):
+        if type(path_or_inode) == int:
+            path_or_inode = self.path(path_or_inode)
+        return self._stat_info[path_or_inode].st_mtime
     
     def stat_info(self, path):
         """
@@ -273,7 +271,7 @@ class DirectorySnapshot(object):
             The path for which stat information should be obtained
             from a snapshot.
         """
-        return self._stat_info[path]
+        return self._stat_info.get(path)
 
     def __sub__(self, previous_dirsnap):
         """Allow subtracting a DirectorySnapshot object instance from
@@ -290,6 +288,8 @@ class DirectorySnapshot(object):
     def __repr__(self):
         return str(self._stat_info)
     
+    def __contains__(self, path):
+        return path in self._stat_info
     
     ### deprecated methods ###
     
