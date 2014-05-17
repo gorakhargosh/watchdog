@@ -147,7 +147,7 @@ class FSEventsObserver(BaseObserver):
         BaseObserver.__init__(self, emitter_class=FSEventsEmitter,
                               timeout=timeout)
 
-    def schedule(self, event_handler, path, recursive=False):
+    def schedule(self, event_handler, path, **kwargs):
         # Python 2/3 compat
         try:
             str_class = unicode
@@ -169,4 +169,4 @@ class FSEventsObserver(BaseObserver):
             # compatibility.
             if sys.version_info < (3,):
                 path = path.encode('utf-8')
-        return BaseObserver.schedule(self, event_handler, path, recursive)
+        return BaseObserver.schedule(self, event_handler, path, **kwargs)

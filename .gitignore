@@ -43,3 +43,6 @@ htmlcov/
 include/
 lib/
 /bootstrap.py
+
+# tags
+tags
