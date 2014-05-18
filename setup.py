@@ -89,10 +89,13 @@ if sys.version_info < (2, 7, 0):
 with open('README.rst') as f:
     readme = f.read()
 
+with open('changelog.rst') as f:
+    changelog = f.read()
+
 setup(name="watchdog",
       version=version.VERSION_STRING,
       description="Filesystem events monitoring",
-      long_description=readme,
+      long_description=readme + '\n\n' + changelog,
       author="Yesudeep Mangalapilly",
       author_email="yesudeep@gmail.com",
       license="Apache License 2.0",
