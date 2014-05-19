@@ -75,7 +75,7 @@ class LoggerTrick(Trick):
 
 class ShellCommandTrick(Trick):
 
-    """Execeutes shell commands in response to matched events."""
+    """Executes shell commands in response to matched events."""
 
     def __init__(self, shell_command=None, patterns=None, ignore_patterns=None,
                  ignore_directories=False, wait_for_process=False,
