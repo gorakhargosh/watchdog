@@ -22,10 +22,7 @@ from .shell import mkdtemp, mkdir, touch, mv, symlink
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
 
-def sync():
-    os.system("sync")
 def wait():
-    sync()
     time.sleep(1)
 
 @pytest.fixture()
@@ -112,7 +109,6 @@ def test_detect_modify_for_moved_files(p):
     wait()
     touch(p('a'))
     mv(p('a'), p('b'))
-    wait()
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
     assert diff.files_moved == [(p('a'), p('b'))]
     assert diff.files_modified == [p('a')]

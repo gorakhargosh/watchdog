@@ -170,7 +170,7 @@ class DirectorySnapshot(object):
     
     def __init__(self, path, recursive=True,
                  walker_callback=(lambda p, s: None),
-                 stat=os.stat,
+                 stat=default_stat,
                  dev_id=None,
                  follow_symlinks=True,
                  listdir=os.listdir):
