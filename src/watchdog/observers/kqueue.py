@@ -457,8 +457,8 @@ class KqueueEmitter(EventEmitter):
             self._register_kevent(path, stat.S_ISDIR(stat_info.st_mode))
 
         self._snapshot = DirectorySnapshot(watch.path,
-                                           watch.is_recursive,
-                                           walker_callback)
+                                           walker_callback=walker_callback,
+                                           **watch.config_kw)
 
     def _register_kevent(self, path, is_directory):
         """
@@ -682,10 +682,8 @@ class KqueueEmitter(EventEmitter):
 
                 # Take a fresh snapshot of the directory and update the
                 # saved snapshot.
-                new_snapshot = DirectorySnapshot(self.watch.path,
-                                                 self.watch.is_recursive)
                 ref_snapshot = self._snapshot
-                self._snapshot = new_snapshot
+                self._snapshot = self._snapshot.copy()
 
                 if files_renamed or dirs_renamed or dirs_modified:
                     for src_path in files_renamed:

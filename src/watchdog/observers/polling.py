@@ -71,7 +71,7 @@ class PollingEmitter(EventEmitter):
         self._snapshot = None
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
-            self.watch.path, self.watch.is_recursive, stat=stat, listdir=listdir)
+            self.watch.path, stat=stat, listdir=listdir, **self.watch.config_kw)
 
     def queue_events(self, timeout):
         if not self._snapshot:

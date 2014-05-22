@@ -18,13 +18,12 @@ import os
 import time
 import pytest
 from functools import partial
-from .shell import mkdtemp, mkdir, touch, mv
+from .shell import mkdtemp, mkdir, touch, mv, symlink
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
 
-
 def wait():
-    time.sleep(0.5)
+    time.sleep(1)
 
 @pytest.fixture()
 def tmpdir():
@@ -99,7 +98,8 @@ def test_dir_modify_on_move(p):
     ref = DirectorySnapshot(p(''))
     wait()
     mv(p('dir1', 'a'), p('dir2', 'b'))
-    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
+    next_shot = DirectorySnapshot(p(''))
+    diff = DirectorySnapshotDiff(ref, next_shot)
     assert set(diff.dirs_modified) == set([p('dir1'), p('dir2')])
 
 

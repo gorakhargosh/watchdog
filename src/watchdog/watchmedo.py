@@ -27,6 +27,7 @@ import sys
 import yaml
 import time
 import logging
+import glob
 
 try:
     from cStringIO import StringIO
@@ -105,7 +106,7 @@ def parse_patterns(patterns_spec, ignore_patterns_spec, separator=';'):
     return (patterns, ignore_patterns)
 
 
-def observe_with(observer, event_handler, pathnames, recursive):
+def observe_with(observer, event_handler, pathnames, observe_kw_args):
     """
     Single observer thread with a scheduled path and event handler.
 
@@ -119,7 +120,7 @@ def observe_with(observer, event_handler, pathnames, recursive):
         ``True`` if recursive; ``False`` otherwise.
     """
     for pathname in set(pathnames):
-        observer.schedule(event_handler, pathname, recursive)
+        observer.schedule(event_handler, pathname, **observe_kw_args)
     observer.start()
     try:
         while True:
@@ -129,7 +130,7 @@ def observe_with(observer, event_handler, pathnames, recursive):
     observer.join()
 
 
-def schedule_tricks(observer, tricks, pathname, recursive):
+def schedule_tricks(observer, tricks, pathname, observe_kw_args={}):
     """
     Schedules tricks with the specified observer and for the given watch
     path.
@@ -149,8 +150,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
             handler = TrickClass(**value)
             trick_pathname = absolute_path(
                 getattr(handler, 'source_directory', None) or pathname)
-            observer.schedule(handler, trick_pathname, recursive)
-
+            observer.schedule(handler, trick_pathname, **observe_kw_args)
 
 @alias('tricks')
 @arg('files',
@@ -167,6 +167,17 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 @arg('--recursive',
      default=True,
      help='recursively monitor paths')
+def get_dev_id_arg(args):
+    if not args.one_filesystem:
+        return None
+    fn = glob.glob(args.directories[0])[0]
+    return os.stat(fn).st_dev
+def observe_kw_args(args):
+    kw = {}
+    kw["follow_symlinks"] = args.follow_symlinks
+    kw["dev_id"] = get_dev_id_arg(args)
+    kw["recursive"] = args.recursive
+    return kw
 def tricks_from(args):
     """
     Subcommand to execute tricks from a tricks configuration file.
@@ -196,7 +207,7 @@ def tricks_from(args):
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
 
         dir_path = parent_dir_path(tricks_file)
-        schedule_tricks(observer, tricks, dir_path, args.recursive)
+        schedule_tricks(observer, tricks, dir_path, observe_kw_args(args))
         observer.start()
         observers.append(observer)
 
@@ -288,6 +299,16 @@ def tricks_generate_yaml(args):
      dest='recursive',
      default=False,
      help='monitors the directories recursively')
+@arg('-F',
+     '--dont-follow-symlinks',
+     dest='follow_symlinks',
+     default=True,
+     help='during recursion, do not follow symlinks')
+@arg('-x',
+     '--one-filesystem',
+     dest='one_filesystem',
+     default=False,
+     help='Only watch files on the same filesystem')
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -351,7 +372,7 @@ def log(args):
     # on which it is running.
         from watchdog.observers import Observer
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
+    observe_with(observer, handler, args.directories, observe_kw_args(args))
 
 
 @arg('directories',
@@ -402,6 +423,16 @@ Example option usage::
      dest='recursive',
      default=False,
      help='monitors the directories recursively')
+@arg('-F',
+     '--dont-follow-symlinks',
+     dest='follow_symlinks',
+     default=True,
+     help='during recursion, do not follow symlinks')
+@arg('-x',
+     '--one-filesystem',
+     dest='one_filesystem',
+     default=False,
+     help='Only watch files on the same filesystem')
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -440,7 +471,7 @@ def shell_command(args):
                                 wait_for_process=args.wait_for_process,
                                 drop_during_process=args.drop_during_process)
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
+    observe_with(observer, handler, args.directories, args.recursive, observe_kw_args(args))
 
 
 @arg('command',
@@ -483,6 +514,16 @@ try to interpret them.
      dest='recursive',
      default=False,
      help='monitors the directories recursively')
+@arg('-F',
+     '--dont-follow-symlinks',
+     dest='follow_symlinks',
+     default=True,
+     help='during recursion, do not follow symlinks')
+@arg('-x',
+     '--one-filesystem',
+     dest='one_filesystem',
+     default=False,
+     help='Only watch files on the same filesystem')
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -538,7 +579,7 @@ def auto_restart(args):
                                kill_after=args.kill_after)
     handler.start()
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
+    observe_with(observer, handler, args.directories, observe_kw_args(args))
     handler.stop()
 
 
