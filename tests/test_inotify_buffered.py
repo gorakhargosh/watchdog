@@ -14,9 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from watchdog.utils import platform
+import pytest
+pytestmark = pytest.mark.skipif(not platform.is_linux(), reason="")
+
 import os
 import random
-import pytest
 from tests import tmpdir, p  # pytest magic
 from .shell import mkdir, touch, mv
 from watchdog.observers.inotify_buffered import InotifyBuffered
