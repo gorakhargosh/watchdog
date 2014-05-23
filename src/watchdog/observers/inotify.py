@@ -88,23 +88,8 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
-    FileCreatedEvent,
-    EVENT_TYPE_MODIFIED,
-    EVENT_TYPE_CREATED,
-    EVENT_TYPE_DELETED,
-    EVENT_TYPE_MOVED
+    FileCreatedEvent
 )
-
-ACTION_EVENT_MAP = {
-    (True, EVENT_TYPE_MODIFIED): DirModifiedEvent,
-    (True, EVENT_TYPE_CREATED): DirCreatedEvent,
-    (True, EVENT_TYPE_DELETED): DirDeletedEvent,
-    (True, EVENT_TYPE_MOVED): DirMovedEvent,
-    (False, EVENT_TYPE_MODIFIED): FileModifiedEvent,
-    (False, EVENT_TYPE_CREATED): FileCreatedEvent,
-    (False, EVENT_TYPE_DELETED): FileDeletedEvent,
-    (False, EVENT_TYPE_MOVED): FileMovedEvent,
-}
 
 
 class InotifyEmitter(EventEmitter):
@@ -135,41 +120,36 @@ class InotifyEmitter(EventEmitter):
         with self._lock:
             event = self._inotify.read_event()
 
-            try:
+            if isinstance(event, tuple):
                 move_from, move_to = event
-                klass = ACTION_EVENT_MAP[(move_from.is_directory, EVENT_TYPE_MOVED)]
-                event = klass(move_from.src_path, move_to.src_path)
-                self.queue_event(event)
+                cls = DirMovedEvent if move_from.is_directory else FileMovedEvent
+                self.queue_event(cls(move_from.src_path, move_to.src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(move_from.src_path)))
                 self.queue_event(DirModifiedEvent(os.path.dirname(move_to.src_path)))
 
                 #TODO: remove all record keeping code from inotify_c
-                #if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
-                #    self._inotify.clear_move_records()
-                #for event in inotify_events:
 
                 if move_from.is_directory and self.watch.is_recursive:
                     for sub_event in event.sub_moved_events():
                         self.queue_event(sub_event)
 
-            except TypeError:
-                if event.is_attrib:
-                    klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MODIFIED)]
-                    self.queue_event(klass(event.src_path))
-                elif event.is_modify:
-                    klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_MODIFIED)]
-                    self.queue_event(klass(event.src_path))
-                elif event.is_delete_self:
-                    klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
-                    self.queue_event(klass(event.src_path))
-                elif event.is_delete or event.is_moved_from:
-                    klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_DELETED)]
-                    self.queue_event(klass(event.src_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
-                elif event.is_create or event.is_moved_to:
-                    klass = ACTION_EVENT_MAP[(event.is_directory, EVENT_TYPE_CREATED)]
-                    self.queue_event(klass(event.src_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
+            elif event.is_attrib:
+                cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                self.queue_event(cls(event.src_path))
+            elif event.is_modify:
+                cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                self.queue_event(cls(event.src_path))
+            elif event.is_delete_self:
+                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                self.queue_event(cls(event.src_path))
+            elif event.is_delete or event.is_moved_from:
+                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                self.queue_event(cls(event.src_path))
+                self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
+            elif event.is_create or event.is_moved_to:
+                cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                self.queue_event(cls(event.src_path))
+                self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
 
 
 class InotifyObserver(BaseObserver):
