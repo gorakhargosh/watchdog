@@ -28,43 +28,43 @@ DEALAY = 0.5
 class _Worker(DaemonThread):
     def __init__(self, inotify, queue):
         DaemonThread.__init__(self)
-        self.read_events = inotify.read_events
-        self.queue = queue
+        self._read_events = inotify.read_events
+        self._queue = queue
 
     def run(self):
         while self.should_keep_running():
-            inotify_events = self.read_events()
+            inotify_events = self._read_events()
             for inotify_event in inotify_events:
                 logging.debug("worker: in event %s", inotify_event)
                 if inotify_event.is_moved_to:
-                    from_event = self.queue._catch(inotify_event.cookie)
+                    from_event = self._queue._catch(inotify_event.cookie)
                     if from_event:
-                        self.queue._put((from_event, inotify_event))
+                        self._queue._put((from_event, inotify_event))
                     else:
                         logging.debug("worker: could not find maching move_from event")
-                        self.queue._put(inotify_event)
+                        self._queue._put(inotify_event)
                 else:
-                    self.queue._put(inotify_event)
+                    self._queue._put(inotify_event)
 
 
 class InotifyBuffered(object):
     def __init__(self, path, recursive=False):
-        self.lock = threading.Lock()
-        self.not_empty = threading.Condition(self.lock)
-        self.queue = deque()
+        self._lock = threading.Lock()
+        self._not_empty = threading.Condition(self._lock)
+        self._queue = deque()
         self.delay = DEALAY
-        self.inotify = Inotify(path, recursive)
-        self.worker = _Worker(self.inotify, self)
-        self.worker.start()
+        self._inotify = Inotify(path, recursive)
+        self._worker = _Worker(self._inotify, self)
+        self._worker.start()
 
     def read_event(self):
         while True:
             # wait for queue
-            self.not_empty.acquire()
-            while len(self.queue) == 0:
-                self.not_empty.wait()
-            head, insert_time = self.queue[0]
-            self.not_empty.release()
+            self._not_empty.acquire()
+            while len(self._queue) == 0:
+                self._not_empty.wait()
+            head, insert_time = self._queue[0]
+            self._not_empty.release()
 
             # wait for delay
             time_left = insert_time + self.delay - time.time()
@@ -73,36 +73,36 @@ class InotifyBuffered(object):
                 time_left = insert_time + self.delay - time.time()
 
             # return if event is still here
-            self.lock.acquire()
+            self._lock.acquire()
             try:
-                if len(self.queue) > 0 and self.queue[0][0] is head:
-                    self.queue.popleft()
+                if len(self._queue) > 0 and self._queue[0][0] is head:
+                    self._queue.popleft()
                     return head
             finally:
-                self.lock.release()
+                self._lock.release()
 
     def close(self):
-        self.worker.stop()
-        self.inotify.close()
-        self.worker.join()
+        self._worker.stop()
+        self._inotify.close()
+        self._worker.join()
 
     def _put(self, elem):
-        self.lock.acquire()
-        self.queue.append((elem, time.time()))
-        self.not_empty.notify()
-        self.lock.release()
+        self._lock.acquire()
+        self._queue.append((elem, time.time()))
+        self._not_empty.notify()
+        self._lock.release()
 
     def _catch(self, cookie):
-        self.lock.acquire()
+        self._lock.acquire()
         ret = None
-        for i, elem in enumerate(self.queue):
+        for i, elem in enumerate(self._queue):
             event, _ = elem
             try:
                 if event.is_moved_from and event.cookie == cookie:
                     ret = event
-                    del self.queue[i]
+                    del self._queue[i]
                     break
             except AttributeError:
                 pass
-        self.lock.release()
+        self._lock.release()
         return ret
