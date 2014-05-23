@@ -16,30 +16,11 @@
 
 import os
 import pytest
-from functools import partial
 from tests import Queue
-from .shell import mkdtemp, mkdir, touch, mv, rm
+from tests import tmpdir, p  # pytest magic
+from .shell import mkdir, touch, mv
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyEmitter
-
-
-@pytest.fixture()
-def tmpdir(request):
-    path = mkdtemp()
-
-    def finalizer():
-        rm(path, recursive=True)
-    request.addfinalizer(finalizer)
-    return path
-
-
-@pytest.fixture()
-def p(tmpdir, *args):
-    """
-    Convenience function to join the temporary directory path
-    with the provided arguments.
-    """
-    return partial(os.path.join, tmpdir)
 
 
 def test_create(p):

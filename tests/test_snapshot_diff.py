@@ -14,30 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import time
-import pytest
-from functools import partial
-from .shell import mkdtemp, mkdir, touch, mv
+from tests import tmpdir, p  # pytest magic
+from .shell import mkdir, touch, mv
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
 
 
 def wait():
     time.sleep(0.5)
-
-@pytest.fixture()
-def tmpdir():
-    return mkdtemp()
-
-
-@pytest.fixture()
-def p(tmpdir, *args):
-    """
-    Convenience function to join the temporary directory path
-    with the provided arguments.
-    """
-    return partial(os.path.join, tmpdir)
 
 
 def test_move_to(p):

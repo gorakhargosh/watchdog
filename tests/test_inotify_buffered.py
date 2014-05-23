@@ -17,24 +17,9 @@
 import os
 import random
 import pytest
-from functools import partial
-from .shell import mkdtemp, mkdir, touch, mv
+from tests import tmpdir, p  # pytest magic
+from .shell import mkdir, touch, mv
 from watchdog.observers.inotify_buffered import InotifyBuffered
-
-
-@pytest.fixture()
-def tmpdir(request):
-    path = mkdtemp()
-    return path
-
-
-@pytest.fixture()
-def p(tmpdir, *args):
-    """
-    Convenience function to join the temporary directory path
-    with the provided arguments.
-    """
-    return partial(os.path.join, tmpdir)
 
 
 def wait_for_move_event(read_event):
