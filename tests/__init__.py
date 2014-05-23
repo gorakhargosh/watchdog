@@ -18,10 +18,14 @@
 
 from sys import version_info
 
-__all__= ['unittest']
+__all__ = ['unittest', 'Queue']
 
 if version_info < (2, 7):
     import unittest2 as unittest
 else:
     import unittest
 
+try:
+    from Queue import Queue  # Python 2
+except ImportError:
+    from queue import Queue  # Python 3

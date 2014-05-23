@@ -17,13 +17,10 @@
 import os
 import pytest
 from functools import partial
+from tests import Queue
 from .shell import mkdtemp, mkdir, touch, mv, rm
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyEmitter
-try:
-    from Queue import Queue  # Python 2
-except ImportError:
-    from queue import Queue  # Python 3
 
 
 @pytest.fixture()
