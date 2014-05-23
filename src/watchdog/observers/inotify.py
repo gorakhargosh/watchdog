@@ -140,6 +140,8 @@ class InotifyEmitter(EventEmitter):
                 klass = ACTION_EVENT_MAP[(move_from.is_directory, EVENT_TYPE_MOVED)]
                 event = klass(move_from.src_path, move_to.src_path)
                 self.queue_event(event)
+                self.queue_event(DirModifiedEvent(os.path.dirname(move_from.src_path)))
+                self.queue_event(DirModifiedEvent(os.path.dirname(move_to.src_path)))
 
                 #TODO: remove all record keeping code from inotify_c
                 #if not any([event.is_moved_from or event.is_moved_to for event in inotify_events]):
