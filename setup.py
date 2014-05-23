@@ -71,7 +71,7 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
-tests_require=['pytest', 'pytest-cov']
+tests_require=['pytest', 'pytest-cov', 'pytest-timeout >=0.3']
 if sys.version_info < (2, 7, 0):
     tests_require.append('unittest2')
 
