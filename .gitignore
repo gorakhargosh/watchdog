@@ -17,6 +17,7 @@ __MACOSX__
 
 # Ignore generated files and directories.
 *.egg-info/
+*.egg
 .installed.cfg
 bin/
 bin25/
