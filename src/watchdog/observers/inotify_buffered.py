@@ -22,9 +22,6 @@ from watchdog.utils import DaemonThread
 from .inotify_c import Inotify
 
 
-DEALAY = 0.5
-
-
 class _Worker(DaemonThread):
     def __init__(self, inotify, queue):
         DaemonThread.__init__(self)
@@ -49,10 +46,10 @@ class _Worker(DaemonThread):
 
 class InotifyBuffered(object):
     def __init__(self, path, recursive=False):
+        self.delay = 0.5
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         self._queue = deque()
-        self.delay = DEALAY
         self._inotify = Inotify(path, recursive)
         self._worker = _Worker(self._inotify, self)
         self._worker.start()
