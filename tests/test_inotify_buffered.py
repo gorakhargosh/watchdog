@@ -43,6 +43,7 @@ def test_move_from(p):
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_from
     assert event.src_path == p('dir1', 'a').encode()
+    inotify.close()
 
 
 @pytest.mark.timeout(5)
@@ -56,6 +57,7 @@ def test_move_to(p):
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_to
     assert event.src_path == p('dir2', 'b').encode()
+    inotify.close()
 
 
 @pytest.mark.timeout(5)
@@ -69,6 +71,7 @@ def test_move_internal(p):
     frm, to = wait_for_move_event(inotify.read_event)
     assert frm.src_path.decode() == p('dir1', 'a')
     assert to.src_path.decode() == p('dir2', 'b')
+    inotify.close()
     
 
 @pytest.mark.timeout(10)
@@ -94,3 +97,4 @@ def test_move_internal_batch(p):
         assert os.path.dirname(to.src_path).endswith(b'/dir2')
         assert frm.name == to.name
         i += 1
+    inotify.close()
