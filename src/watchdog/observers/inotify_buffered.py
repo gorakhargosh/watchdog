@@ -23,6 +23,10 @@ from .inotify_c import Inotify
 
 
 class _Worker(DaemonThread):
+    """
+    Thread that reads events from `inotify` and writes to `queue`.
+    """
+
     def __init__(self, inotify, queue):
         DaemonThread.__init__(self)
         self._read_events = inotify.read_events
@@ -45,6 +49,10 @@ class _Worker(DaemonThread):
 
 
 class InotifyBuffered(object):
+    """
+    A wrapper for `Inotify` that keeps events in memory for `delay` seconds.
+    IN_MOVED_FROM and IN_MOVED_TO events are paired during this time.
+    """
     def __init__(self, path, recursive=False):
         self.delay = 0.5
         self._lock = threading.Lock()
@@ -55,6 +63,10 @@ class InotifyBuffered(object):
         self._worker.start()
 
     def read_event(self):
+        """
+        Returns a single event or a tuple of from/to events in case of a
+        paired move event.
+        """
         while True:
             # wait for queue
             self._not_empty.acquire()
