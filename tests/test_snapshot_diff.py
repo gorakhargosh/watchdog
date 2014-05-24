@@ -19,10 +19,19 @@ from tests import tmpdir, p  # pytest magic
 from .shell import mkdir, touch, mv
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
+from watchdog.utils import platform
 
 
 def wait():
-    time.sleep(0.5)
+    """
+    Wait long enough for file/folder mtime to change. This is needed
+    to be able to detected modifications.
+    """
+    if platform.is_darwin():
+         # on osx resolution of stat.mtime is only 1 second
+        time.sleep(1.5)
+    else:
+        time.sleep(0.5)
 
 
 def test_move_to(p):
