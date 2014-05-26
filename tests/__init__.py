@@ -36,7 +36,7 @@ except ImportError:
 
 @pytest.fixture()
 def tmpdir(request):
-    path = shell.mkdtemp()
+    path = os.path.realpath(shell.mkdtemp())
     def finalizer():
         shell.rm(path, recursive=True)
     request.addfinalizer(finalizer)
