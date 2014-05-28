@@ -51,13 +51,8 @@ Classes
 
 from __future__ import with_statement
 import threading
-
-try:
-    import queue  # IGNORE:F0401
-except ImportError:
-    import Queue as queue  # IGNORE:F0401
-
 from watchdog.utils import DaemonThread
+from watchdog.utils.compat import queue
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.

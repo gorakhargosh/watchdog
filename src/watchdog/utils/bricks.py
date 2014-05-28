@@ -38,12 +38,7 @@ Classes
 
 import sys
 import collections
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
+from .compat import queue
 
 class SkipRepeatsQueue(queue.Queue):
 

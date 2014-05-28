@@ -24,6 +24,7 @@ import os
 import logging
 import unicodedata
 from threading import Thread
+from watchdog.utils.compat import queue
 
 from watchdog.events import (
     FileDeletedEvent,
@@ -74,11 +75,6 @@ from FSEvents import (
     kFSEventStreamEventFlagItemIsDir,
     kFSEventStreamEventFlagItemIsSymlink,
 )
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 
 class FSEventsQueue(Thread):
