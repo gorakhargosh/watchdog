@@ -14,15 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from watchdog.utils import platform
-import pytest
-pytestmark = pytest.mark.skipif(not platform.is_linux(), reason="")
-
 import os
 import random
+import pytest
 from tests import tmpdir, p  # pytest magic
 from .shell import mkdir, touch, mv
-from watchdog.observers.inotify_buffered import InotifyBuffered
+from watchdog.utils import platform
+
+pytestmark = pytest.mark.skipif(not platform.is_linux(), reason="")
+if platform.is_linux():
+    from watchdog.observers.inotify_buffered import InotifyBuffered
 
 
 def wait_for_move_event(read_event):
