@@ -85,11 +85,6 @@ class FSEventsQueue(Thread):
         self._queue = queue.Queue()
         self._run_loop = None
 
-        try:
-            string = unicode
-        except NameError:
-            string = str
-
         if isinstance(path, bytes):
             self._path = path.decode('utf-8')
         self._path = unicodedata.normalize('NFC', self._path)
