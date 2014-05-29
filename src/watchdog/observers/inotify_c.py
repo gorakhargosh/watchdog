@@ -414,8 +414,13 @@ class Inotify(object):
         """
         Raises errors for inotify failures.
         """
-        _errnum = ctypes.get_errno()
-        raise OSError(os.strerror(_errnum))
+        err = ctypes.get_errno()
+        if err == errno.ENOSPC:
+            raise OSError("inotify watch limit reached")
+        elif err == errno.EMFILE:
+            raise OSError("inotify instance limit reached")
+        else:
+            raise OSError(os.strerror(err))
 
     @staticmethod
     def _parse_event_buffer(event_buffer):
