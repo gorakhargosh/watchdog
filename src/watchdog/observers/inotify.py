@@ -87,6 +87,7 @@ from watchdog.events import (
     DirCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
+    FileClosedEvent,
     FileMovedEvent,
     FileCreatedEvent
 )
@@ -138,6 +139,9 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(cls(event.src_path))
             elif event.is_modify:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                self.queue_event(cls(event.src_path))
+            elif event.is_close and not event.is_directory:
+                cls = FileClosedEvent
                 self.queue_event(cls(event.src_path))
             elif event.is_delete_self:
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent

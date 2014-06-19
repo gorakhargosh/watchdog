@@ -81,7 +81,6 @@ class InotifyConstants(object):
     IN_MOVE_SELF = 0x00000800     # Self was moved.
 
     # Helper user-space events.
-    IN_CLOSE = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
     IN_MOVE = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
 
     # Events sent by the kernel to a watch.
@@ -496,6 +495,10 @@ class InotifyEvent(object):
         return self._mask & InotifyConstants.IN_MODIFY > 0
 
     @property
+    def is_close(self):
+        return self.is_close_write or self.is_close_nowrite
+
+    @property
     def is_close_write(self):
         return self._mask & InotifyConstants.IN_CLOSE_WRITE > 0
 
@@ -574,7 +577,7 @@ class InotifyEvent(object):
     def _get_mask_string(self, mask):
         masks = []
         for c in dir(InotifyConstants):
-            if c.startswith('IN_') and c not in ['IN_ALL_EVENTS', 'IN_CLOSE', 'IN_MOVE']:
+            if c.startswith('IN_') and c not in ['IN_ALL_EVENTS', 'IN_MOVE']:
                 c_val = getattr(InotifyConstants, c)
                 if mask & c_val:
                     masks.append(c)

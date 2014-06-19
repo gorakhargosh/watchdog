@@ -99,6 +99,7 @@ EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
+EVENT_TYPE_CLOSED = 'closed'
 
 
 class FileSystemEvent(object):
@@ -216,7 +217,19 @@ class FileModifiedEvent(FileSystemEvent):
     def __init__(self, src_path):
         super(FileModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED,
                                                 src_path=src_path)
+    def __repr__(self):
+        return ("<%(class_name)s: src_path=%(src_path)s>"
+                ) % (dict(class_name=self.__class__.__name__,
+                          src_path=self.src_path))
 
+
+class FileClosedEvent(FileSystemEvent):
+
+    """File system event representing file deletion on the file system."""
+
+    def __init__(self, src_path):
+        super(FileClosedEvent, self).__init__(event_type=EVENT_TYPE_CLOSED,
+                                               src_path=src_path)
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)s>"
                 ) % (dict(class_name=self.__class__.__name__,
@@ -230,7 +243,6 @@ class FileCreatedEvent(FileSystemEvent):
     def __init__(self, src_path):
         super(FileCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED,
                                                src_path=src_path)
-
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)s>"
                 ) % (dict(class_name=self.__class__.__name__,
@@ -353,6 +365,7 @@ class FileSystemEventHandler(object):
         self.on_any_event(event)
         _method_map = {
             EVENT_TYPE_MODIFIED: self.on_modified,
+            EVENT_TYPE_CLOSED: self.on_closed,
             EVENT_TYPE_MOVED: self.on_moved,
             EVENT_TYPE_CREATED: self.on_created,
             EVENT_TYPE_DELETED: self.on_deleted,
@@ -403,6 +416,15 @@ class FileSystemEventHandler(object):
             Event representing file/directory modification.
         :type event:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
+        """
+
+    def on_closed(self, event):
+        """Called when a file is closed (inotify only).
+
+        :param event:
+            Event representing file modification.
+        :type event:
+            :class:`FileClosedEvent`
         """
 
 
@@ -475,15 +497,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
                            included_patterns=self.patterns,
                            excluded_patterns=self.ignore_patterns,
                            case_sensitive=self.case_sensitive):
-            self.on_any_event(event)
-            _method_map = {
-                EVENT_TYPE_MODIFIED: self.on_modified,
-                EVENT_TYPE_MOVED: self.on_moved,
-                EVENT_TYPE_CREATED: self.on_created,
-                EVENT_TYPE_DELETED: self.on_deleted,
-            }
-            event_type = event.event_type
-            _method_map[event_type](event)
+            super(PatternMatchingEventHandler, self).dispatch(event)
 
 
 class RegexMatchingEventHandler(FileSystemEventHandler):
@@ -559,15 +573,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             return
 
         if any(r.match(p) for r in self.regexes for p in paths):
-            self.on_any_event(event)
-            _method_map = {
-                EVENT_TYPE_MODIFIED: self.on_modified,
-                EVENT_TYPE_MOVED: self.on_moved,
-                EVENT_TYPE_CREATED: self.on_created,
-                EVENT_TYPE_DELETED: self.on_deleted,
-            }
-            event_type = event.event_type
-            _method_map[event_type](event)
+            super(RegexMatchingEventHandler, self).dispatch(event)
 
 
 class LoggingEventHandler(FileSystemEventHandler):
@@ -598,6 +604,11 @@ class LoggingEventHandler(FileSystemEventHandler):
 
         what = 'directory' if event.is_directory else 'file'
         logging.info("Modified %s: %s", what, event.src_path)
+
+    def on_closed(self, event):
+        super(LoggingEventHandler, self).on_closed(event)
+
+        logging.info("Closed file: %s", event.src_path)
 
 
 class LoggingFileSystemEventHandler(LoggingEventHandler):
