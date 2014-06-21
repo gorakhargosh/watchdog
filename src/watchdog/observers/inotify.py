@@ -88,7 +88,8 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
-    FileCreatedEvent
+    FileCreatedEvent,
+    generate_sub_moved_events,
 )
 
 
@@ -122,15 +123,15 @@ class InotifyEmitter(EventEmitter):
 
             if isinstance(event, tuple):
                 move_from, move_to = event
+                src_path = move_from.src_path
+                dest_path = move_to.src_path
                 cls = DirMovedEvent if move_from.is_directory else FileMovedEvent
-                self.queue_event(cls(move_from.src_path, move_to.src_path))
-                self.queue_event(DirModifiedEvent(os.path.dirname(move_from.src_path)))
-                self.queue_event(DirModifiedEvent(os.path.dirname(move_to.src_path)))
-
-                #TODO: remove all record keeping code from inotify_c
+                self.queue_event(cls(src_path, dest_path))
+                self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
 
                 if move_from.is_directory and self.watch.is_recursive:
-                    for sub_event in event.sub_moved_events():
+                    for sub_event in generate_sub_moved_events(src_path, dest_path):
                         self.queue_event(sub_event)
 
             elif event.is_attrib:

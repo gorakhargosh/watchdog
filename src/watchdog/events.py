@@ -320,22 +320,6 @@ class DirMovedEvent(FileSystemMovedEvent):
                           src_path=self.src_path,
                           dest_path=self.dest_path))
 
-    def sub_moved_events(self, _walker=os.walk):
-        """Generates moved events for file sytem objects within the
-        moved directory.
-
-        :param _walker:
-            Walker used to walk directory trees :func:`os.walk` style. Sanity
-            tests use this parameter to inject a mock walker that behaves like
-            :func:`os.walk`.
-        :returns:
-            iterable of event objects of type :class:`FileMovedEvent` and
-            :class:`DirMovedEvent`.
-        """
-        return list(
-            _generate_sub_moved_events_for(self.src_path, self.dest_path,
-                                           _walker=_walker))
-
 
 class FileSystemEventHandler(object):
 
@@ -605,27 +589,22 @@ class LoggingFileSystemEventHandler(LoggingEventHandler):
     """For backwards-compatibility. Please use :class:`LoggingEventHandler` instead."""
 
 
-def _generate_sub_moved_events_for(src_dir_path, dest_dir_path,
-                                   _walker=os.walk):
-    """Generates an event list of :class:`DirMovedEvent` and :class:`FileMovedEvent`
-    objects for all the files and directories within the given moved directory
-    that were moved along with the directory.
+def generate_sub_moved_events(src_dir_path, dest_dir_path):
+    """Generates an event list of :class:`DirMovedEvent` and
+    :class:`FileMovedEvent` objects for all the files and directories within
+    the given moved directory that were moved along with the directory.
 
     :param src_dir_path:
         The source path of the moved directory.
     :param dest_dir_path:
         The destination path of the moved directory.
-    :param _walker:
-        Walker used to walk directory trees :func:`os.walk` style. Sanity tests
-        use this parameter to inject a mock walker that behaves like
-        :func:`os.walk`.
     :returns:
         An iterable of file system events of type :class:`DirMovedEvent` and
         :class:`FileMovedEvent`.
     """
     src_dir_path = absolute_path(src_dir_path) if src_dir_path else None
     dest_dir_path = absolute_path(dest_dir_path)
-    for root, directories, filenames in _walker(dest_dir_path):
+    for root, directories, filenames in os.walk(dest_dir_path):
         for directory in directories:
             full_path = os.path.join(root, directory)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
@@ -634,3 +613,21 @@ def _generate_sub_moved_events_for(src_dir_path, dest_dir_path,
             full_path = os.path.join(root, filename)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
             yield FileMovedEvent(renamed_path, full_path)
+
+
+def generate_sub_created_events(src_dir_path):
+    """Generates an event list of :class:`DirCreatedEvent` and
+    :class:`FileCreatedEvent` objects for all the files and directories within
+    the given moved directory that were moved along with the directory.
+
+    :param src_dir_path:
+        The source path of the created directory.
+    :returns:
+        An iterable of file system events of type :class:`DirCreatedEvent` and
+        :class:`FileCreatedEvent`.
+    """
+    for root, directories, filenames in os.walk(src_dir_path):
+        for directory in directories:
+            yield DirCreatedEvent(os.path.join(root, directory))
+        for filename in filenames:
+            yield FileCreatedEvent(os.path.join(root, filename))
