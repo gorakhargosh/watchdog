@@ -1,4 +1,5 @@
 include README.rst
+include changelog.rst
 include LICENSE
 include COPYING
 include AUTHORS
