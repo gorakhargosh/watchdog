@@ -90,6 +90,7 @@ from watchdog.events import (
     FileMovedEvent,
     FileCreatedEvent,
     generate_sub_moved_events,
+    generate_sub_created_events,
 )
 
 
@@ -129,11 +130,16 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(cls(src_path, dest_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
-
                 if move_from.is_directory and self.watch.is_recursive:
                     for sub_event in generate_sub_moved_events(src_path, dest_path):
                         self.queue_event(sub_event)
-
+            elif event.is_moved_to:
+                cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                self.queue_event(cls(event.src_path))
+                self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
+                if event.is_directory and self.watch.is_recursive:
+                    for sub_event in generate_sub_created_events(event.src_path):
+                        self.queue_event(sub_event)
             elif event.is_attrib:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
                 self.queue_event(cls(event.src_path))
@@ -147,7 +153,7 @@ class InotifyEmitter(EventEmitter):
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(event.src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
-            elif event.is_create or event.is_moved_to:
+            elif event.is_create:
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                 self.queue_event(cls(event.src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(event.src_path)))
