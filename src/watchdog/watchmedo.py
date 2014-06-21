@@ -42,7 +42,7 @@ from watchdog.utils import load_class
 from pathtools.path import absolute_path, parent_dir_path
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 CURRENT_DIR = absolute_path(os.getcwd())
 DEFAULT_TRICKS_FILE_NAME = 'tricks.yaml'
