@@ -24,17 +24,9 @@ import ctypes
 from functools import reduce
 from watchdog.utils import unicode_paths
 from pathtools.path import absolute_path
+from ctypes import c_int, c_char_p, c_uint32
+from watchdog.utils import has_attribute, ctypes_find_library
 
-from ctypes import (
-    c_int,
-    c_char_p,
-    c_uint32
-)
-
-from watchdog.utils import (
-    has_attribute,
-    ctypes_find_library
-)
 
 libc_string = ctypes_find_library('c', 'libc.so')
 libc = ctypes.CDLL(libc_string, use_errno=True)
@@ -59,13 +51,11 @@ try:
 except AttributeError:
     def inotify_init1(flags):
         raise AttributeError(
-            "No such symbol inotify_init1 in libc. Non-blocking inotify is only provided by Linux 2.6.27 and newer.")
+            "No such symbol inotify_init1 in libc. Non-blocking inotify is "
+            "only provided by Linux 2.6.27 and newer.")
 
 
 class InotifyConstants(object):
-    """
-    Constants related to inotify.
-    """
     # User-space events
     IN_ACCESS = 0x00000001     # File was accessed.
     IN_MODIFY = 0x00000002     # File was modified.
@@ -172,10 +162,7 @@ class Inotify(object):
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def __init__(self,
-                 path,
-                 recursive=False,
-                 event_mask=WATCHDOG_ALL_EVENTS):
+    def __init__(self, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:
@@ -231,7 +218,10 @@ class Inotify(object):
             return None
 
     def remember_move_from_event(self, event):
-        """Save this event as the source event for future MOVED_TO events to reference"""
+        """
+        Save this event as the source event for future MOVED_TO events to
+        reference.
+        """
         self._moved_from_events[event.cookie] = event
 
     def add_watch(self, path):
@@ -309,8 +299,7 @@ class Inotify(object):
                     continue
                 wd_path = unicode_paths.encode(self._path_for_wd[wd])
                 src_path = absolute_path(os.path.join(wd_path, name))
-                inotify_event = InotifyEvent(
-                    wd, mask, cookie, name, src_path)
+                inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
                 if inotify_event.is_moved_from:
                     self.remember_move_from_event(inotify_event)
@@ -331,8 +320,7 @@ class Inotify(object):
 
                 event_list.append(inotify_event)
 
-                if (self.is_recursive and
-                        inotify_event.is_directory and
+                if (self.is_recursive and inotify_event.is_directory and
                         inotify_event.is_create):
 
                     # TODO: When a directory from another part of the
@@ -539,7 +527,6 @@ class InotifyEvent(object):
     def is_attrib(self):
         return self._mask & InotifyConstants.IN_ATTRIB > 0
 
-    # Additional bit masks
     @property
     def is_ignored(self):
         return self._mask & InotifyConstants.IN_IGNORED > 0
@@ -549,18 +536,12 @@ class InotifyEvent(object):
         # It looks like the kernel does not provide this information for
         # IN_DELETE_SELF and IN_MOVE_SELF. In this case, assume it's a dir.
         # See also: https://github.com/seb-m/pyinotify/blob/2c7e8f8/python2/pyinotify.py#L897
-        if self.is_delete_self or self.is_move_self:
-            return True
-        return self._mask & InotifyConstants.IN_ISDIR > 0
+        return (self.is_delete_self or self.is_move_self or
+                self._mask & InotifyConstants.IN_ISDIR > 0)
 
-    # Python-specific functionality.
     @property
     def key(self):
-        return (self._src_path,
-                self._wd,
-                self._mask,
-                self._cookie,
-                self._name)
+        return self._src_path, self._wd, self._mask, self._cookie, self._name
 
     def __eq__(self, inotify_event):
         return self.key == inotify_event.key
@@ -571,7 +552,8 @@ class InotifyEvent(object):
     def __hash__(self):
         return hash(self.key)
 
-    def _get_mask_string(self, mask):
+    @staticmethod
+    def _get_mask_string(mask):
         masks = []
         for c in dir(InotifyConstants):
             if c.startswith('IN_') and c not in ['IN_ALL_EVENTS', 'IN_CLOSE', 'IN_MOVE']:
@@ -581,12 +563,7 @@ class InotifyEvent(object):
         mask_string = '|'.join(masks)
         return mask_string
 
-    _R = "<InotifyEvent: src_path=%s, wd=%d, mask=%s, cookie=%d, name=%s>"
-
     def __repr__(self):
         mask_string = self._get_mask_string(self.mask)
-        return InotifyEvent._R % (self.src_path,
-                                  self.wd,
-                                  mask_string,
-                                  self.cookie,
-                                  self.name)
+        s = "<InotifyEvent: src_path=%s, wd=%d, mask=%s, cookie=%d, name=%s>"
+        return s % (self.src_path, self.wd, mask_string, self.cookie, self.name)
