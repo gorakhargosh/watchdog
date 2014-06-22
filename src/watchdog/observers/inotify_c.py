@@ -112,11 +112,7 @@ class InotifyConstants(object):
 # Watchdog's API cares only about these events.
 WATCHDOG_ALL_EVENTS = reduce(
     lambda x, y: x | y, [
-        # We don't actually need IN_CLOSE_NOWRITE, but if it is omitted,
-        # DELETE_SELF is never emitted.
         InotifyConstants.IN_MODIFY,
-        InotifyConstants.IN_CLOSE_NOWRITE,
-        InotifyConstants.IN_CLOSE_WRITE,
         InotifyConstants.IN_ATTRIB,
         InotifyConstants.IN_MOVED_FROM,
         InotifyConstants.IN_MOVED_TO,
