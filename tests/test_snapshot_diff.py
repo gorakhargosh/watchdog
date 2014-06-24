@@ -27,7 +27,7 @@ def wait():
     Wait long enough for file/folder mtime to change. This is needed
     to be able to detected modifications.
     """
-    if platform.is_darwin():
+    if platform.is_darwin() or platform.is_windows()::
          # on osx resolution of stat.mtime is only 1 second
         time.sleep(1.5)
     else:
