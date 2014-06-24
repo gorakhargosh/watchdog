@@ -88,6 +88,9 @@ WAIT_IO_COMPLETION = 0x000000C0
 WAIT_OBJECT_0 = 0x00000000
 WAIT_TIMEOUT = 0x00000102
 
+# Error codes
+ERROR_OPERATION_ABORTED = 995
+
 
 class OVERLAPPED(ctypes.Structure):
     _fields_ = [('Internal', LPVOID),
@@ -296,8 +299,10 @@ def read_directory_changes(handle, recursive):
                               len(event_buffer), recursive,
                               WATCHDOG_FILE_NOTIFY_FLAGS,
                               ctypes.byref(nbytes), None, None)
-    except WindowsError:
-        return [], 0
+    except WindowsError as e:
+        if e.winerror == ERROR_OPERATION_ABORTED:
+            return [], 0
+        raise e
 
     # Python 2/3 compat
     try:
