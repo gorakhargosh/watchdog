@@ -27,17 +27,15 @@ import time
 from pathtools.path import absolute_path
 
 from watchdog.observers.winapi import (
-    DIR_ACTION_EVENT_MAP,
-    FILE_ACTION_EVENT_MAP,
-    WATCHDOG_FILE_FLAGS,
-    WATCHDOG_TRAVERSE_MOVED_DIR_DELAY,
     read_directory_changes,
     get_directory_handle,
     close_directory_handle,
-    BUFFER_SIZE
 )
 
 from watchdog.observers.winapi import (
+    FILE_ACTION_CREATED,
+    FILE_ACTION_DELETED,
+    FILE_ACTION_MODIFIED,
     FILE_ACTION_RENAMED_OLD_NAME,
     FILE_ACTION_RENAMED_NEW_NAME,
     get_FILE_NOTIFY_INFORMATION
@@ -52,12 +50,33 @@ from watchdog.observers.api import (
 
 from watchdog.events import (
     DirCreatedEvent,
+    DirDeletedEvent,
     DirMovedEvent,
+    DirModifiedEvent,
     FileCreatedEvent,
+    FileDeletedEvent,
     FileMovedEvent,
+    FileModifiedEvent,
     generate_sub_moved_events,
     generate_sub_created_events,
 )
+
+
+DIR_ACTION_EVENT_MAP = {
+    FILE_ACTION_CREATED: DirCreatedEvent,
+    FILE_ACTION_DELETED: DirDeletedEvent,
+    FILE_ACTION_MODIFIED: DirModifiedEvent,
+}
+FILE_ACTION_EVENT_MAP = {
+    FILE_ACTION_CREATED: FileCreatedEvent,
+    FILE_ACTION_DELETED: FileDeletedEvent,
+    FILE_ACTION_MODIFIED: FileModifiedEvent,
+}
+
+# HACK:
+WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1   # seconds
+
+BUFFER_SIZE = 2048
 
 
 class WindowsApiEmitter(EventEmitter):
@@ -71,8 +90,7 @@ class WindowsApiEmitter(EventEmitter):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
 
-        self._directory_handle = get_directory_handle(watch.path,
-                                                      WATCHDOG_FILE_FLAGS)
+        self._directory_handle = get_directory_handle(watch.path)
         self._buffer = ctypes.create_string_buffer(BUFFER_SIZE)
 
     def on_thread_stop(self):

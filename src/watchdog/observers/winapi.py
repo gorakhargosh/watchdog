@@ -267,32 +267,15 @@ WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
         FILE_NOTIFY_CHANGE_CREATION,
     ])
 
-# HACK:
-WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1   # seconds
 
-BUFFER_SIZE = 2048
-
-# Moved event is handled explicitly in the emitter thread.
-DIR_ACTION_EVENT_MAP = {
-    FILE_ACTION_CREATED: DirCreatedEvent,
-    FILE_ACTION_DELETED: DirDeletedEvent,
-    FILE_ACTION_MODIFIED: DirModifiedEvent,
-}
-FILE_ACTION_EVENT_MAP = {
-    FILE_ACTION_CREATED: FileCreatedEvent,
-    FILE_ACTION_DELETED: FileDeletedEvent,
-    FILE_ACTION_MODIFIED: FileModifiedEvent,
-}
-
-
-def get_directory_handle(path, file_flags):
+def get_directory_handle(path):
     """Returns a Windows handle to the specified directory path."""
     handle = CreateFileW(path,
                          FILE_LIST_DIRECTORY,
                          WATCHDOG_FILE_SHARE_FLAGS,
                          None,
                          OPEN_EXISTING,
-                         file_flags,
+                         WATCHDOG_FILE_FLAGS,
                          None)
     return handle
 
