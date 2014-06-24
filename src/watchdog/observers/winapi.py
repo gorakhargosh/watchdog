@@ -246,34 +246,9 @@ def get_FILE_NOTIFY_INFORMATION(readBuffer, nBytes):
     return results
 
 
-def get_FILE_NOTIFY_INFORMATION_alt(event_buffer, nBytes):
-    """Extract the information out of a FILE_NOTIFY_INFORMATION structure."""
-    pos = 0
-    event_buffer = event_buffer[:nBytes]
-    while pos < len(event_buffer):
-        jump, action, namelen = struct.unpack("iii", event_buffer[pos:pos + 12])
-        # TODO: this may return a shortname or a longname, with no way
-        # to tell which.  Normalise them somehow?
-        name = event_buffer[pos + 12:pos + 12 + namelen].decode("utf-16")
-        yield (name, action)
-        if not jump:
-            break
-        pos += jump
-
-
-from watchdog.events import (
-    DirDeletedEvent,
-    DirCreatedEvent,
-    DirModifiedEvent,
-    FileDeletedEvent,
-    FileCreatedEvent,
-    FileModifiedEvent
-)
-
 # We don't need to recalculate these flags every time a call is made to
 # the win32 API functions.
 WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
-WATCHDOG_FILE_FLAGS_ASYNC = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED
 WATCHDOG_FILE_SHARE_FLAGS = reduce(
     lambda x, y: x | y, [
         FILE_SHARE_READ,
@@ -354,10 +329,3 @@ def read_directory_changes(handle, event_buffer, recursive):
     except NameError:
         int_class = int
     return event_buffer.raw, int_class(nbytes.value)
-
-
-def create_io_completion_port():
-    """
-    http://timgolden.me.uk/pywin32-docs/win32file__CreateIoCompletionPort_meth.html
-    """
-    return CreateIoCompletionPort(INVALID_HANDLE_VALUE, None, 0, 0)
