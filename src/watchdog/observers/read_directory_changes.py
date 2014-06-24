@@ -26,7 +26,7 @@ import time
 
 from pathtools.path import absolute_path
 
-from watchdog.observers.winapi_common import (
+from watchdog.observers.winapi import (
     DIR_ACTION_EVENT_MAP,
     FILE_ACTION_EVENT_MAP,
     WATCHDOG_FILE_FLAGS,
