@@ -6,6 +6,7 @@
 # Copyright (C) 2010 Will McGugan <will@willmcgugan.com>
 # Copyright (C) 2010 Ryan Kelly <ryan@rfk.id.au>
 # Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
+# Copyright (C) 2014 Thomas Amland
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -230,22 +231,6 @@ class FILE_NOTIFY_INFORMATION(ctypes.Structure):
 LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
 
 
-def get_FILE_NOTIFY_INFORMATION(readBuffer, nBytes):
-    results = []
-    while nBytes > 0:
-        fni = ctypes.cast(readBuffer, LPFNI)[0]
-        ptr = ctypes.addressof(fni) + FILE_NOTIFY_INFORMATION.FileName.offset
-        #filename = ctypes.wstring_at(ptr, fni.FileNameLength)
-        filename = ctypes.string_at(ptr, fni.FileNameLength)
-        results.append((fni.Action, filename.decode('utf-16')))
-        numToSkip = fni.NextEntryOffset
-        if numToSkip <= 0:
-            break
-        readBuffer = readBuffer[numToSkip:]
-        nBytes -= numToSkip  # numToSkip is long. nBytes should be long too.
-    return results
-
-
 # We don't need to recalculate these flags every time a call is made to
 # the win32 API functions.
 WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
@@ -267,17 +252,29 @@ WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
         FILE_NOTIFY_CHANGE_CREATION,
     ])
 
+BUFFER_SIZE = 2048
+
+    
+def _parse_event_buffer(readBuffer, nBytes):
+    results = []
+    while nBytes > 0:
+        fni = ctypes.cast(readBuffer, LPFNI)[0]
+        ptr = ctypes.addressof(fni) + FILE_NOTIFY_INFORMATION.FileName.offset
+        #filename = ctypes.wstring_at(ptr, fni.FileNameLength)
+        filename = ctypes.string_at(ptr, fni.FileNameLength)
+        results.append((fni.Action, filename.decode('utf-16')))
+        numToSkip = fni.NextEntryOffset
+        if numToSkip <= 0:
+            break
+        readBuffer = readBuffer[numToSkip:]
+        nBytes -= numToSkip  # numToSkip is long. nBytes should be long too.
+    return results
+
 
 def get_directory_handle(path):
     """Returns a Windows handle to the specified directory path."""
-    handle = CreateFileW(path,
-                         FILE_LIST_DIRECTORY,
-                         WATCHDOG_FILE_SHARE_FLAGS,
-                         None,
-                         OPEN_EXISTING,
-                         WATCHDOG_FILE_FLAGS,
-                         None)
-    return handle
+    return CreateFileW(path, FILE_LIST_DIRECTORY, WATCHDOG_FILE_SHARE_FLAGS,
+                       None, OPEN_EXISTING, WATCHDOG_FILE_FLAGS, None)
 
 
 def close_directory_handle(handle):
@@ -287,24 +284,20 @@ def close_directory_handle(handle):
         return
 
 
-def read_directory_changes(handle, event_buffer, recursive):
+def read_directory_changes(handle, recursive):
     """Read changes to the directory using the specified directory handle.
 
     http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
     """
+    event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
     nbytes = ctypes.wintypes.DWORD()
     try:
-        ReadDirectoryChangesW(handle,
-                              ctypes.byref(event_buffer),
-                              len(event_buffer),
-                              recursive,
+        ReadDirectoryChangesW(handle, ctypes.byref(event_buffer),
+                              len(event_buffer), recursive,
                               WATCHDOG_FILE_NOTIFY_FLAGS,
-                              ctypes.byref(nbytes),
-                              None,
-                              None)
+                              ctypes.byref(nbytes), None, None)
     except WindowsError:
         return [], 0
-    # get_FILE_NOTIFY_INFORMATION expects nBytes to be long.
 
     # Python 2/3 compat
     try:
@@ -312,3 +305,38 @@ def read_directory_changes(handle, event_buffer, recursive):
     except NameError:
         int_class = int
     return event_buffer.raw, int_class(nbytes.value)
+
+
+class WinAPINativeEvent(object):
+    def __init__(self, action, src_path):
+        self.action = action
+        self.src_path = src_path
+    
+    @property
+    def is_added(self):
+        return self.action == FILE_ACTION_CREATED
+    
+    @property
+    def is_removed(self):
+        return self.action == FILE_ACTION_REMOVED
+    
+    @property
+    def is_modified(self):
+        return self.action == FILE_ACTION_MODIFIED
+    
+    @property
+    def is_renamed_old(self):
+        return self.action == FILE_ACTION_RENAMED_OLD_NAME
+    
+    @property
+    def is_renamed_new(self):
+        return self.action == FILE_ACTION_RENAMED_NEW_NAME
+    
+    def __repr__(self):
+        return ("<WinAPINativeEvent: action=%d, src_path=%s>" % (self.action, self.src_path))
+
+
+def read_events(handle, recursive):
+    buf, nbytes = read_directory_changes(handle, recursive)
+    events = _parse_event_buffer(buf, nbytes)
+    return [WinAPINativeEvent(action, path) for action, path in events]
