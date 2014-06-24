@@ -132,6 +132,18 @@ class WindowsApiEmitter(EventEmitter):
                     else:
                         self.queue_event(FILE_ACTION_EVENT_MAP[action](src_path))
 
+    def run(self):
+        try:
+            while self.should_keep_running():
+                self.queue_events(self.timeout)
+        except WindowsError as error:
+            # Just exit quietly on 'Access denied' errors, which, incidentally,
+            # also might mean the watched folder was deleted externally.
+            if error.winerror == 5:
+                pass
+            else:
+                raise
+
 
 class WindowsApiObserver(BaseObserver):
 

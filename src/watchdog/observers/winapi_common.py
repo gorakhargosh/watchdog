@@ -128,7 +128,11 @@ def read_directory_changes(handle, event_buffer, recursive):
                               ctypes.byref(nbytes),
                               None,
                               None)
-    except WindowsError:
+    except WindowsError as error:
+        # If the watched directory is deleted by an external process, the call
+        # fails with an 'Access denied' and it is pointless to continue watching.
+        if error.winerror == 5:
+            raise
         return [], 0
     # get_FILE_NOTIFY_INFORMATION expects nBytes to be long.
 
