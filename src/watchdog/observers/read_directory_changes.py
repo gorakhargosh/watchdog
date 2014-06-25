@@ -24,8 +24,6 @@ import threading
 import os.path
 import time
 
-from pathtools.path import absolute_path
-
 from watchdog.events import (
     DirCreatedEvent,
     DirDeletedEvent,
