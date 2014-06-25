@@ -602,8 +602,6 @@ def generate_sub_moved_events(src_dir_path, dest_dir_path):
         An iterable of file system events of type :class:`DirMovedEvent` and
         :class:`FileMovedEvent`.
     """
-    src_dir_path = absolute_path(src_dir_path) if src_dir_path else None
-    dest_dir_path = absolute_path(dest_dir_path)
     for root, directories, filenames in os.walk(dest_dir_path):
         for directory in directories:
             full_path = os.path.join(root, directory)
