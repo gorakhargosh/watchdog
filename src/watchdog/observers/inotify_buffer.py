@@ -48,7 +48,7 @@ class _Worker(DaemonThread):
                     self._queue._put(inotify_event)
 
 
-class InotifyBuffered(object):
+class InotifyBuffer(object):
     """
     A wrapper for `Inotify` that keeps events in memory for `delay` seconds.
     IN_MOVED_FROM and IN_MOVED_TO events are paired during this time.

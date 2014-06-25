@@ -71,7 +71,7 @@ from __future__ import with_statement
 
 import os
 import threading
-from .inotify_buffered import InotifyBuffered
+from .inotify_buffer import InotifyBuffer
 
 from watchdog.observers.api import (
     EventEmitter,
@@ -113,7 +113,7 @@ class InotifyEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self._inotify = InotifyBuffered(watch.path, watch.is_recursive)
+        self._inotify = InotifyBuffer(watch.path, watch.is_recursive)
 
     def on_thread_stop(self):
         self._inotify.close()

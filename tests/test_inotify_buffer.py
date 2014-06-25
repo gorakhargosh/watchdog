@@ -23,7 +23,7 @@ from watchdog.utils import platform
 
 pytestmark = pytest.mark.skipif(not platform.is_linux(), reason="")
 if platform.is_linux():
-    from watchdog.observers.inotify_buffered import InotifyBuffered
+    from watchdog.observers.inotify_buffer import InotifyBuffer
 
 
 def wait_for_move_event(read_event):
@@ -39,7 +39,7 @@ def test_move_from(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffered(p('dir1'))
+    inotify = InotifyBuffer(p('dir1'))
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_from
@@ -53,7 +53,7 @@ def test_move_to(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffered(p('dir2'))
+    inotify = InotifyBuffer(p('dir2'))
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_to
@@ -67,7 +67,7 @@ def test_move_internal(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffered(p(''), recursive=True)
+    inotify = InotifyBuffer(p(''), recursive=True)
     mv(p('dir1', 'a'), p('dir2', 'b'))
     frm, to = wait_for_move_event(inotify.read_event)
     assert frm.src_path.decode() == p('dir1', 'a')
@@ -84,7 +84,7 @@ def test_move_internal_batch(p):
     for f in files:
         touch(p('dir1', f))
 
-    inotify = InotifyBuffered(p(''), recursive=True)
+    inotify = InotifyBuffer(p(''), recursive=True)
 
     random.shuffle(files)
     for f in files:
