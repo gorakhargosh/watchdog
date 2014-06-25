@@ -136,7 +136,7 @@ class FileSystemEvent(object):
 
     def __repr__(self):
         return ("<%(class_name)s: event_type=%(event_type)s, "
-                "src_path=%(src_path)s, "
+                "src_path=%(src_path)r, "
                 "is_directory=%(is_directory)s>"
                 ) % (dict(
                      class_name=self.__class__.__name__,
@@ -183,8 +183,8 @@ class FileSystemMovedEvent(FileSystemEvent):
         return (self.event_type, self.src_path, self.dest_path, self.is_directory)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s, "
-                "dest_path=%(dest_path)s, "
+        return ("<%(class_name)s: src_path=%(src_path)r, "
+                "dest_path=%(dest_path)r, "
                 "is_directory=%(is_directory)s>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path,
@@ -204,7 +204,7 @@ class FileDeletedEvent(FileSystemEvent):
                                                src_path=src_path)
 
     def __repr__(self):
-        return "<%(class_name)s: src_path=%(src_path)s>" %\
+        return "<%(class_name)s: src_path=%(src_path)r>" %\
                dict(class_name=self.__class__.__name__,
                     src_path=self.src_path)
 
@@ -218,7 +218,7 @@ class FileModifiedEvent(FileSystemEvent):
                                                 src_path=src_path)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s>"
+        return ("<%(class_name)s: src_path=%(src_path)r>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path))
 
@@ -232,7 +232,7 @@ class FileCreatedEvent(FileSystemEvent):
                                                src_path=src_path)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s>"
+        return ("<%(class_name)s: src_path=%(src_path)r>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path))
 
@@ -247,8 +247,8 @@ class FileMovedEvent(FileSystemMovedEvent):
                                              is_directory=False)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s, "
-                "dest_path=%(dest_path)s>"
+        return ("<%(class_name)s: src_path=%(src_path)r, "
+                "dest_path=%(dest_path)r>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path,
                           dest_path=self.dest_path))
@@ -267,7 +267,7 @@ class DirDeletedEvent(FileSystemEvent):
                                               is_directory=True)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s>"
+        return ("<%(class_name)s: src_path=%(src_path)r>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path))
 
@@ -284,7 +284,7 @@ class DirModifiedEvent(FileSystemEvent):
                                                is_directory=True)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s>"
+        return ("<%(class_name)s: src_path=%(src_path)r>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path))
 
@@ -299,7 +299,7 @@ class DirCreatedEvent(FileSystemEvent):
                                               is_directory=True)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s>"
+        return ("<%(class_name)s: src_path=%(src_path)r>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path))
 
@@ -314,8 +314,8 @@ class DirMovedEvent(FileSystemMovedEvent):
                                             is_directory=True)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)s, "
-                "dest_path=%(dest_path)s>"
+        return ("<%(class_name)s: src_path=%(src_path)r, "
+                "dest_path=%(dest_path)r>"
                 ) % (dict(class_name=self.__class__.__name__,
                           src_path=self.src_path,
                           dest_path=self.dest_path))
