@@ -180,7 +180,7 @@ class DirectorySnapshot(object):
     :type path:
         ``str``
     :param recursive:
-        ``True`` if the entired directory tree should be included in the
+        ``True`` if the entire directory tree should be included in the
         snapshot; ``False`` otherwise.
     :type recursive:
         ``bool``
