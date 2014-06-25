@@ -22,8 +22,6 @@ import struct
 import threading
 import ctypes
 from functools import reduce
-from watchdog.utils import unicode_paths
-from pathtools.path import absolute_path
 from ctypes import c_int, c_char_p, c_uint32
 from watchdog.utils import has_attribute, ctypes_find_library
 
@@ -154,6 +152,8 @@ class Inotify(object):
 
     :param path:
         The directory path for which we want an inotify object.
+    :type path:
+        :class:`bytes`
     :param recursive:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
@@ -170,7 +170,6 @@ class Inotify(object):
         self._wd_for_path = dict()
         self._path_for_wd = dict()
 
-        path = absolute_path(path)
         self._path = path
         self._event_mask = event_mask
         self._is_recursive = recursive
@@ -228,7 +227,6 @@ class Inotify(object):
             Path to begin monitoring.
         """
         with self._lock:
-            path = absolute_path(path)
             self._add_watch(path, self._event_mask)
 
     def remove_watch(self, path):
@@ -239,16 +237,16 @@ class Inotify(object):
             Path string for which the watch will be removed.
         """
         with self._lock:
-            path = absolute_path(path)
-            self._remove_watch(path)
+            wd = self._remove_watch_bookkeeping(path)
+            if inotify_rm_watch(self._inotify_fd, wd) == -1:
+                Inotify._raise_error()
 
     def close(self):
         """
         Closes the inotify instance and removes all associated watches.
         """
         with self._lock:
-            path = unicode_paths.encode(absolute_path(self._path))
-            wd = self._wd_for_path[path]
+            wd = self._wd_for_path[self._path]
             inotify_rm_watch(self._inotify_fd, wd)
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
@@ -265,7 +263,7 @@ class Inotify(object):
             for root, dirnames, filenames in os.walk(src_path):
                 for dirname in dirnames:
                     try:
-                        full_path = absolute_path(os.path.join(root, dirname))
+                        full_path = os.path.join(root, dirname)
                         wd_dir = self._add_watch(full_path, self._event_mask)
                         e = InotifyEvent(
                             wd_dir, InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR, 0, dirname, full_path)
@@ -273,8 +271,8 @@ class Inotify(object):
                     except OSError:
                         pass
                 for filename in filenames:
-                    full_path = absolute_path(os.path.join(root, filename))
-                    wd_parent_dir = self._wd_for_path[absolute_path(os.path.dirname(full_path))]
+                    full_path = os.path.join(root, filename)
+                    wd_parent_dir = self._wd_for_path[os.path.dirname(full_path)]
                     e = InotifyEvent(
                         wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
                     events.append(e)
@@ -293,8 +291,8 @@ class Inotify(object):
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
                 if wd == -1:
                     continue
-                wd_path = unicode_paths.encode(self._path_for_wd[wd])
-                src_path = absolute_path(os.path.join(wd_path, name))
+                wd_path = self._path_for_wd[wd]
+                src_path = os.path.join(wd_path, name) if name else wd_path #avoid trailing slash
                 inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
                 if inotify_event.is_moved_from:
@@ -306,7 +304,7 @@ class Inotify(object):
                         del self._wd_for_path[move_src_path]
                         self._wd_for_path[inotify_event.src_path] = moved_wd
                         self._path_for_wd[moved_wd] = inotify_event.src_path
-                    src_path = absolute_path(os.path.join(wd_path, name))
+                    src_path = os.path.join(wd_path, name)
                     inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
                 if inotify_event.is_ignored:
@@ -348,14 +346,13 @@ class Inotify(object):
         :param mask:
             Event bit mask.
         """
-        path = unicode_paths.encode(path)
         if not os.path.isdir(path):
             raise OSError('Path is not a directory')
         self._add_watch(path, mask)
         if recursive:
             for root, dirnames, _ in os.walk(path):
                 for dirname in dirnames:
-                    full_path = absolute_path(os.path.join(root, dirname))
+                    full_path = os.path.join(root, dirname)
                     if os.path.islink(full_path):
                         continue
                     self._add_watch(full_path, mask)
@@ -370,7 +367,7 @@ class Inotify(object):
         :param mask:
             Event bit mask.
         """
-        wd = inotify_add_watch(self._inotify_fd, unicode_paths.encode(path), mask)
+        wd = inotify_add_watch(self._inotify_fd, path, mask)
         if wd == -1:
             Inotify._raise_error()
         self._wd_for_path[path] = wd
@@ -381,17 +378,6 @@ class Inotify(object):
         wd = self._wd_for_path.pop(path)
         del self._path_for_wd[wd]
         return wd
-
-    def _remove_watch(self, path):
-        """
-        Removes a watch for the given path.
-
-        :param path:
-            Path to remove the watch for.
-        """
-        wd = self._remove_watch_bookkeeping(path)
-        if inotify_rm_watch(self._inotify_fd, wd) == -1:
-            Inotify._raise_error()
 
     @staticmethod
     def _raise_error():

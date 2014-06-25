@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import unicode_literals
 import os
 import random
 import pytest
@@ -39,7 +40,7 @@ def test_move_from(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffer(p('dir1'))
+    inotify = InotifyBuffer(p('dir1').encode())
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_from
@@ -53,7 +54,7 @@ def test_move_to(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffer(p('dir2'))
+    inotify = InotifyBuffer(p('dir2').encode())
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_to
@@ -67,11 +68,11 @@ def test_move_internal(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffer(p(''), recursive=True)
+    inotify = InotifyBuffer(p('').encode(), recursive=True)
     mv(p('dir1', 'a'), p('dir2', 'b'))
     frm, to = wait_for_move_event(inotify.read_event)
-    assert frm.src_path.decode() == p('dir1', 'a')
-    assert to.src_path.decode() == p('dir2', 'b')
+    assert frm.src_path == p('dir1', 'a').encode()
+    assert to.src_path == p('dir2', 'b').encode()
     inotify.close()
     
 
@@ -84,7 +85,7 @@ def test_move_internal_batch(p):
     for f in files:
         touch(p('dir1', f))
 
-    inotify = InotifyBuffer(p(''), recursive=True)
+    inotify = InotifyBuffer(p('').encode(), recursive=True)
 
     random.shuffle(files)
     for f in files:
