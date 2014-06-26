@@ -94,9 +94,7 @@ supported:
 
 Linux 2.6+
     Linux kernel version 2.6 and later come with an API called inotify_
-    that programs can use to monitor file system events. |project_name| can
-    use this feature by relying on a third party library for python
-    called PyInotify_. (Future releases may remove this dependency.)
+    that programs can use to monitor file system events.
 
 
 Mac OS X
