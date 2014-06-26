@@ -61,8 +61,6 @@ using.
 +---------------------+-------------+-------------+-------------+-------------+
 | pathtools_          |     Yes     |     Yes     |     Yes     |     Yes     |
 +---------------------+-------------+-------------+-------------+-------------+
-| a lot of luck       |     Yes     |             |             |             |
-+---------------------+-------------+-------------+-------------+-------------+
 
 
 Installing Dependencies
@@ -95,6 +93,13 @@ supported:
 Linux 2.6+
     Linux kernel version 2.6 and later come with an API called inotify_
     that programs can use to monitor file system events.
+
+    .. NOTE:: On most systems the maximum number of watches that can be
+              created per user is limited to ``8192``. |project_name| needs one
+              per directory to monitor. To change this limit, edit
+              ``/etc/sysctl.conf`` and add::
+
+                  fs.inotify.max_user_watches=16384
 
 
 Mac OS X
@@ -138,11 +143,9 @@ _`BSD Unix variants`
 
 
 Windows Vista and later
-    The Windows API on Windows XP provides the ReadDirectoryChangesW_
-    function, which operates in either synchronous or asynchronous mode.
-    |project_name| currently contains implementation for the synchronous
-    approach and use additional API functionality only available in Windows
-    Vista and later.
+    The Windows API provides the ReadDirectoryChangesW_. |project_name|
+    currently contains implementation for a synchronous approach requiring
+    additional API functionality only available in Windows Vista and later.
 
     .. NOTE:: Since renaming is not the same operation as movement
               on Windows, |project_name| tries hard to convert renames to
@@ -153,19 +156,11 @@ Windows Vista and later
               in order to successfully queue movement events for
               files and directories within it.
 
+    .. NOTE:: Since the Windows API does not provide information about whether
+              an object is a file or a directory, delete events for directories
+              may be reported as a file deleted event.
+
 OS Independent Polling
     |project_name| also includes a fallback-implementation that polls
     watched directories for changes by periodically comparing snapshots
     of the directory tree.
-
-    .. NOTE:: Windows caveats again.
-
-              Because Windows has no concept of ``inodes`` as Unix-y
-              platforms do, there is no current reliable way of determining
-              file/directory movement on Windows without help from the
-              Windows API.
-
-              You can use hashing for only those files in which you are
-              interested in your event handlers to determine
-              this, although it is rather slow. |project_name| does not
-              attempt to handle this on Windows. It is left to your discretion.
