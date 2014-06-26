@@ -39,7 +39,6 @@ except ImportError:
 from argh import arg, alias, ArghParser
 from watchdog.version import VERSION_STRING
 from watchdog.utils import load_class
-from pathtools.path import absolute_path, parent_dir_path
 
 
 logging.basicConfig(level=logging.INFO)
@@ -144,8 +143,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
         for name, value in list(trick.items()):
             TrickClass = load_class(name)
             handler = TrickClass(**value)
-            trick_pathname = absolute_path(
-                getattr(handler, 'source_directory', None) or pathname)
+            trick_pathname = getattr(handler, 'source_directory', None) or pathname
             observer.schedule(handler, trick_pathname, recursive)
 
 
@@ -192,7 +190,9 @@ def tricks_from(args):
         if CONFIG_KEY_PYTHON_PATH in config:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
 
-        dir_path = parent_dir_path(tricks_file)
+        dir_path = os.path.dirname(tricks_file)
+        if not dir_path:
+            dir_path = os.path.relpath(os.getcwd())
         schedule_tricks(observer, tricks, dir_path, args.recursive)
         observer.start()
         observers.append(observer)
