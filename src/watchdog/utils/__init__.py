@@ -22,17 +22,6 @@
 :synopsis: Utility classes and functions.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 
-Functions
----------
-
-.. autofunction:: has_attribute
-
-.. autofunction:: load_class
-
-.. autofunction:: load_module
-
-.. autofunction:: read_text_file
-
 Classes
 -------
 .. autoclass:: DaemonThread
