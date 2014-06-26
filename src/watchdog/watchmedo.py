@@ -44,9 +44,6 @@ from pathtools.path import absolute_path, parent_dir_path
 
 logging.basicConfig(level=logging.INFO)
 
-CURRENT_DIR = absolute_path(os.getcwd())
-DEFAULT_TRICKS_FILE_NAME = 'tricks.yaml'
-DEFAULT_TRICKS_FILE_PATH = os.path.join(CURRENT_DIR, DEFAULT_TRICKS_FILE_NAME)
 CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
 
