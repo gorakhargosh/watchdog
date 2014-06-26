@@ -21,7 +21,6 @@ from tests import unittest
 
 from utils import list_attributes
 from watchdog.utils import has_attribute
-from pathtools.path import absolute_path
 from pathtools.patterns import filter_paths
 
 from watchdog.events import (
