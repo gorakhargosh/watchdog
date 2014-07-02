@@ -236,11 +236,11 @@ class DirectorySnapshot(object):
         """
         return set(self._stat_info.keys())
     
-    def path(self, inode):
+    def path(self, id):
         """
-        Returns path for inode. None if inode is unknown to this snapshot.
+        Returns path for id. None if id is unknown to this snapshot.
         """
-        return self._inode_to_path.get(inode)
+        return self._inode_to_path.get(id)
     
     def inode(self, path):
         """ Returns an id for path. """
