@@ -36,7 +36,7 @@ except ImportError:
     except ImportError:
         from io import StringIO
 
-from argh import arg, alias, ArghParser
+from argh import arg, aliases, ArghParser, expects_obj
 from watchdog.version import VERSION_STRING
 from watchdog.utils import load_class
 
@@ -147,7 +147,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
             observer.schedule(handler, trick_pathname, recursive)
 
 
-@alias('tricks')
+@aliases('tricks')
 @arg('files',
      nargs='*',
      help='perform tricks from given file')
@@ -162,6 +162,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 @arg('--recursive',
      default=True,
      help='recursively monitor paths')
+@expects_obj
 def tricks_from(args):
     """
     Subcommand to execute tricks from a tricks configuration file.
@@ -208,7 +209,7 @@ def tricks_from(args):
         o.join()
 
 
-@alias('generate-tricks-yaml')
+@aliases('generate-tricks-yaml')
 @arg('trick_paths',
      nargs='*',
      help='Dotted paths for all the tricks you want to generate')
@@ -225,6 +226,7 @@ if not specified, prints to standard output')
      default=False,
      help='if --append-to-file is not specified, produces output for \
 appending instead of a complete tricks yaml file.')
+@expects_obj
 def tricks_generate_yaml(args):
     """
     Subcommand to generate Yaml configuration for tricks named on the command
@@ -311,6 +313,7 @@ def tricks_generate_yaml(args):
 @arg('--debug-force-inotify',
      default=False,
      help='[debug] forces Linux inotify(7)')
+@expects_obj
 def log(args):
     """
     Subcommand to log file system events to the console.
@@ -415,6 +418,7 @@ Example option usage::
      default=False,
      help="Ignore events that occur while command is still being executed " \
           "to avoid multiple simultaneous instances")
+@expects_obj
 def shell_command(args):
     """
     Subcommand to execute shell commands in response to file system events.
@@ -494,6 +498,7 @@ try to interpret them.
      default=10.0,
      help='when stopping, kill the subprocess after the specified timeout '
           '(default 10)')
+@expects_obj
 def auto_restart(args):
     """
     Subcommand to start a long-running subprocess and restart it
