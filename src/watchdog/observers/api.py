@@ -259,6 +259,7 @@ class BaseObserver(EventDispatcher):
         del self._emitter_for_watch[emitter.watch]
         self._emitters.remove(emitter)
         emitter.stop()
+        emitter.join()
 
     def _get_emitter_for_watch(self, watch):
         return self._emitter_for_watch[watch]
@@ -266,6 +267,8 @@ class BaseObserver(EventDispatcher):
     def _clear_emitters(self):
         for emitter in self._emitters:
             emitter.stop()
+        for emitter in self._emitters:
+            emitter.join()
         self._emitters.clear()
         self._emitter_for_watch.clear()
 
