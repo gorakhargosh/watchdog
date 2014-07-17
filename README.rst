@@ -162,6 +162,13 @@ Fork the `repository`_ on GitHub and send a pull request, or file an issue
 ticket at the `issue tracker`_. For general help and questions use the official
 `mailing list`_ or ask on `stackoverflow`_ with tag `python-watchdog`.
 
+Create and activate your virtual environment, then::
+
+    pip install pytest
+    pip install -e .
+    py.tests tests
+
+
 Supported Platforms
 -------------------
 * Linux 2.6 (inotify)

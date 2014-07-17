@@ -20,10 +20,12 @@ import random
 import pytest
 from tests import tmpdir, p  # pytest magic
 from .shell import mkdir, touch, mv
+from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
 pytestmark = pytest.mark.skipif(not platform.is_linux(), reason="")
 if platform.is_linux():
+    from watchdog.observers.inotify import InotifyEmitter
     from watchdog.observers.inotify_buffer import InotifyBuffer
 
 
@@ -100,3 +102,23 @@ def test_move_internal_batch(p):
         assert frm.name == to.name
         i += 1
     inotify.close()
+
+
+def test_close_clean(tmpdir):
+    """
+    On InotifyBuffer.close() InotifyBuffer.read_event() is un-blocked so that
+    Inotify thread waiting for it can be closed.
+
+    This is also a test for Inotify.queue_events handling of STOP_EVENT and
+    InotifyBuffer.close() is test as side effect of Inotify.stop()
+    """
+    watch = ObservedWatch(path=tmpdir, recursive=False)
+    emitter = InotifyEmitter([], watch)
+    inotify_buffer = emitter._inotify
+    # Remove delay to speed up test.
+    inotify_buffer.delay = 0
+    emitter.start()
+
+    emitter.stop()
+    emitter.join(1)
+    assert not emitter.isAlive()

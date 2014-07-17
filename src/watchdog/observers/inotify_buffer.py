@@ -21,6 +21,8 @@ from collections import deque
 from watchdog.utils import DaemonThread
 from .inotify_c import Inotify
 
+STOP_EVENT = object()
+
 
 class _Worker(DaemonThread):
     """
@@ -94,6 +96,9 @@ class InotifyBuffer(object):
         self._worker.stop()
         self._inotify.close()
         self._worker.join()
+        # Add the stop event to unblock the read_event which waits for
+        # events in the queue... even after inotify buffer is closed.
+        self._put(STOP_EVENT)
 
     def _put(self, elem):
         self._lock.acquire()
