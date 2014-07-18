@@ -60,9 +60,8 @@ class InotifyBuffer(object):
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         self._queue = deque()
-        self._inotify = Inotify(path, recursive)
-        self._worker = _Worker(self._inotify, self)
-        self._worker.start()
+        self._inotify = None
+        self._worker = None
 
     def read_event(self):
         """
@@ -92,10 +91,22 @@ class InotifyBuffer(object):
             finally:
                 self._lock.release()
 
+    def start(self):
+        """
+        Start reading inotify events.
+        """
+        self._inotify = Inotify(path, recursive)
+        self._worker = _Worker(self._inotify, self)
+        self._worker.start()
+
     def close(self):
+        if not self._worker:
+            return
+
         self._worker.stop()
         self._inotify.close()
         self._worker.join()
+
         # Add the stop event to unblock the read_event which waits for
         # events in the queue... even after inotify buffer is closed.
         self._put(STOP_EVENT)

@@ -123,6 +123,10 @@ class InotifyEmitter(EventEmitter):
             return path
         return unicode_paths.decode(path)
 
+    def run(self):
+        self._inotify.start()
+        return EventEmitter.run(self)
+
     def on_thread_stop(self):
         self._inotify.close()
 

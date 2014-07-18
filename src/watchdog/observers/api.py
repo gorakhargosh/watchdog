@@ -326,7 +326,8 @@ class BaseObserver(EventDispatcher):
                                               watch=watch,
                                               timeout=self.timeout)
                 self._add_emitter(emitter)
-                emitter.start()
+                if self.isAlive():
+                    emitter.start()
             self._watches.add(watch)
         return watch
 
@@ -410,3 +411,9 @@ class BaseObserver(EventDispatcher):
             # queue is empty.
             pass
         event_queue.task_done()
+
+    def run(self):
+        for emitter in self._emitters:
+            if not emitter.isAlive():
+                emitter.start()
+        return EventDispatcher.run(self)
