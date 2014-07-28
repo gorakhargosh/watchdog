@@ -48,20 +48,6 @@ path_1 = '/path/xyz'
 path_2 = '/path/abc'
 
 
-class TestFileSystemMovedEvent(unittest.TestCase):
-
-    def test___init__(self):
-        event = FileSystemMovedEvent(path_1, path_2, True)
-        self.assertEqual(event.src_path, path_1)
-        self.assertEqual(event.dest_path, path_2)
-        self.assertEqual(event.event_type, EVENT_TYPE_MOVED)
-        self.assertEqual(event.is_directory, True)
-
-    def test_dest_path(self):
-        event = FileSystemMovedEvent(path_1, path_2, True)
-        self.assertEqual(path_2, event.dest_path)
-
-
 class TestFileDeletedEvent(unittest.TestCase):
 
     def test___init__(self):
