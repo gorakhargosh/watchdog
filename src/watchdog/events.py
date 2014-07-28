@@ -100,7 +100,6 @@ EVENT_TYPE_MODIFIED = 'modified'
 
 
 class FileSystemEvent(object):
-
     """
     Immutable type that represents a file system event that is triggered
     when a change occurs on the monitored file system.
@@ -109,10 +108,13 @@ class FileSystemEvent(object):
     can be used as keys in dictionaries or be added to sets.
     """
 
-    def __init__(self, event_type, src_path, is_directory=False):
+    event_type = None
+    """The type of the event as a string."""
+
+    def __init__(self, src_path, is_directory=False):
         self._src_path = src_path
         self._is_directory = is_directory
-        self._event_type = event_type
+
 
     @property
     def is_directory(self):
@@ -123,11 +125,6 @@ class FileSystemEvent(object):
     def src_path(self):
         """Source path of the file system object that triggered this event."""
         return self._src_path
-
-    @property
-    def event_type(self):
-        """The type of the event as a string."""
-        return self._event_type
 
     def __str__(self):
         return self.__repr__()
@@ -158,16 +155,14 @@ class FileSystemEvent(object):
 
 
 class FileSystemMovedEvent(FileSystemEvent):
-
     """
     File system event representing any kind of file system movement.
     """
 
-    def __init__(self, src_path, dest_path, is_directory):
-        super(FileSystemMovedEvent, self).__init__(event_type=EVENT_TYPE_MOVED,
-                                                   src_path=src_path,
-                                                   is_directory=is_directory)
+    event_type = EVENT_TYPE_MOVED
 
+    def __init__(self, src_path, dest_path, is_directory):
+        super(FileSystemMovedEvent, self).__init__(src_path, is_directory)
         self._dest_path = dest_path
 
     @property
@@ -194,12 +189,12 @@ class FileSystemMovedEvent(FileSystemEvent):
 
 
 class FileDeletedEvent(FileSystemEvent):
-
     """File system event representing file deletion on the file system."""
 
+    event_type = EVENT_TYPE_DELETED
+
     def __init__(self, src_path):
-        super(FileDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED,
-                                               src_path=src_path)
+        super(FileDeletedEvent, self).__init__(src_path)
 
     def __repr__(self):
         return "<%(class_name)s: src_path=%(src_path)r>" %\
@@ -208,12 +203,12 @@ class FileDeletedEvent(FileSystemEvent):
 
 
 class FileModifiedEvent(FileSystemEvent):
-
     """File system event representing file modification on the file system."""
 
+    event_type = EVENT_TYPE_MODIFIED
+
     def __init__(self, src_path):
-        super(FileModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED,
-                                                src_path=src_path)
+        super(FileModifiedEvent, self).__init__(src_path)
 
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)r>"
@@ -222,12 +217,12 @@ class FileModifiedEvent(FileSystemEvent):
 
 
 class FileCreatedEvent(FileSystemEvent):
-
     """File system event representing file creation on the file system."""
 
+    event_type = EVENT_TYPE_CREATED
+
     def __init__(self, src_path):
-        super(FileCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED,
-                                               src_path=src_path)
+        super(FileCreatedEvent, self).__init__(src_path)
 
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)r>"
@@ -236,7 +231,6 @@ class FileCreatedEvent(FileSystemEvent):
 
 
 class FileMovedEvent(FileSystemMovedEvent):
-
     """File system event representing file movement on the file system."""
 
     def __init__(self, src_path, dest_path):
@@ -256,12 +250,12 @@ class FileMovedEvent(FileSystemMovedEvent):
 
 
 class DirDeletedEvent(FileSystemEvent):
-
     """File system event representing directory deletion on the file system."""
 
+    event_type = EVENT_TYPE_DELETED
+
     def __init__(self, src_path):
-        super(DirDeletedEvent, self).__init__(event_type=EVENT_TYPE_DELETED,
-                                              src_path=src_path,
+        super(DirDeletedEvent, self).__init__(src_path=src_path,
                                               is_directory=True)
 
     def __repr__(self):
@@ -271,14 +265,14 @@ class DirDeletedEvent(FileSystemEvent):
 
 
 class DirModifiedEvent(FileSystemEvent):
-
     """
     File system event representing directory modification on the file system.
     """
 
+    event_type = EVENT_TYPE_MODIFIED
+
     def __init__(self, src_path):
-        super(DirModifiedEvent, self).__init__(event_type=EVENT_TYPE_MODIFIED,
-                                               src_path=src_path,
+        super(DirModifiedEvent, self).__init__(src_path=src_path,
                                                is_directory=True)
 
     def __repr__(self):
@@ -288,12 +282,12 @@ class DirModifiedEvent(FileSystemEvent):
 
 
 class DirCreatedEvent(FileSystemEvent):
-
     """File system event representing directory creation on the file system."""
 
+    event_type = EVENT_TYPE_CREATED
+
     def __init__(self, src_path):
-        super(DirCreatedEvent, self).__init__(event_type=EVENT_TYPE_CREATED,
-                                              src_path=src_path,
+        super(DirCreatedEvent, self).__init__(src_path=src_path,
                                               is_directory=True)
 
     def __repr__(self):
@@ -303,7 +297,6 @@ class DirCreatedEvent(FileSystemEvent):
 
 
 class DirMovedEvent(FileSystemMovedEvent):
-
     """File system event representing directory movement on the file system."""
 
     def __init__(self, src_path, dest_path):
