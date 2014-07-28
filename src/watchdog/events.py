@@ -230,8 +230,7 @@ class FileMovedEvent(FileSystemMovedEvent):
     """File system event representing file movement on the file system."""
 
     def __init__(self, src_path, dest_path):
-        super(FileMovedEvent, self).__init__(src_path=src_path,
-                                             dest_path=dest_path)
+        super(FileMovedEvent, self).__init__(src_path, dest_path)
 
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)r, "
@@ -251,7 +250,7 @@ class DirDeletedEvent(FileSystemEvent):
     is_directory = True
 
     def __init__(self, src_path):
-        super(DirDeletedEvent, self).__init__(src_path=src_path)
+        super(DirDeletedEvent, self).__init__(src_path)
 
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)r>"
@@ -268,7 +267,7 @@ class DirModifiedEvent(FileSystemEvent):
     is_directory = True
 
     def __init__(self, src_path):
-        super(DirModifiedEvent, self).__init__(src_path=src_path)
+        super(DirModifiedEvent, self).__init__(src_path)
 
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)r>"
@@ -283,7 +282,7 @@ class DirCreatedEvent(FileSystemEvent):
     is_directory = True
 
     def __init__(self, src_path):
-        super(DirCreatedEvent, self).__init__(src_path=src_path)
+        super(DirCreatedEvent, self).__init__(src_path)
 
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)r>"
@@ -297,8 +296,7 @@ class DirMovedEvent(FileSystemMovedEvent):
     is_directory = True
 
     def __init__(self, src_path, dest_path):
-        super(DirMovedEvent, self).__init__(src_path=src_path,
-                                            dest_path=dest_path)
+        super(DirMovedEvent, self).__init__(src_path, dest_path)
 
     def __repr__(self):
         return ("<%(class_name)s: src_path=%(src_path)r, "
