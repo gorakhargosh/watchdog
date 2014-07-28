@@ -185,7 +185,7 @@ class FileSystemMovedEvent(FileSystemEvent):
                           is_directory=self.is_directory))
 
 
-        # File events.
+# File events.
 
 
 class FileDeletedEvent(FileSystemEvent):
@@ -246,7 +246,7 @@ class FileMovedEvent(FileSystemMovedEvent):
                           dest_path=self.dest_path))
 
 
-        # Directory events.
+# Directory events.
 
 
 class DirDeletedEvent(FileSystemEvent):
@@ -313,8 +313,8 @@ class DirMovedEvent(FileSystemMovedEvent):
 
 
 class FileSystemEventHandler(object):
-
-    """Base file system event handler that you can override methods from.
+    """
+    Base file system event handler that you can override methods from.
     """
 
     def dispatch(self, event):
@@ -382,7 +382,6 @@ class FileSystemEventHandler(object):
 
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
-
     """
     Matches given patterns with file paths associated with occurring events.
     """
@@ -462,7 +461,6 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 
 
 class RegexMatchingEventHandler(FileSystemEventHandler):
-
     """
     Matches given regexes with file paths associated with occurring events.
     """
@@ -546,7 +544,6 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
 
 
 class LoggingEventHandler(FileSystemEventHandler):
-
     """Logs all the events captured."""
 
     def on_moved(self, event):
@@ -576,8 +573,10 @@ class LoggingEventHandler(FileSystemEventHandler):
 
 
 class LoggingFileSystemEventHandler(LoggingEventHandler):
-
-    """For backwards-compatibility. Please use :class:`LoggingEventHandler` instead."""
+    """
+    For backwards-compatibility. Please use :class:`LoggingEventHandler`
+    instead.
+    """
 
 
 def generate_sub_moved_events(src_dir_path, dest_dir_path):
