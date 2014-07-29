@@ -122,11 +122,8 @@ def _errcheck_dword(value, func, args):
         raise ctypes.WinError()
     return args
 
-try:
-    ReadDirectoryChangesW = ctypes.windll.kernel32.ReadDirectoryChangesW
-except AttributeError:
-    raise ImportError("ReadDirectoryChangesW is not available")
 
+ReadDirectoryChangesW = ctypes.windll.kernel32.ReadDirectoryChangesW
 ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
 ReadDirectoryChangesW.errcheck = _errcheck_bool
 ReadDirectoryChangesW.argtypes = (

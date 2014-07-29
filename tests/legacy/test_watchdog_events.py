@@ -48,74 +48,6 @@ path_1 = '/path/xyz'
 path_2 = '/path/abc'
 
 
-class TestFileSystemEvent(unittest.TestCase):
-
-    def test___eq__(self):
-        event1 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
-        event2 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
-        self.assertTrue(event1.__eq__(event2))
-
-    def test___hash__(self):
-        event1 = FileSystemEvent(EVENT_TYPE_DELETED, path_1, False)
-        event2 = FileSystemEvent(EVENT_TYPE_DELETED, path_1, False)
-        event3 = FileSystemEvent(EVENT_TYPE_DELETED, path_2, False)
-        self.assertEqual(event1.__hash__(), event2.__hash__())
-        self.assertNotEqual(event1.__hash__(), event3.__hash__())
-
-    def test___init__(self):
-        event = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
-        self.assertEqual(event.src_path, path_1)
-        self.assertEqual(event.event_type, EVENT_TYPE_MODIFIED)
-        self.assertEqual(event.is_directory, True)
-
-    def test___ne__(self):
-        event1 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
-        event2 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_2, True)
-        self.assertTrue(event1.__ne__(event2))
-
-    def test_event_type(self):
-        event1 = FileSystemEvent(EVENT_TYPE_DELETED, path_1, False)
-        event2 = FileSystemEvent(EVENT_TYPE_CREATED, path_2, True)
-        self.assertEqual(EVENT_TYPE_DELETED, event1.event_type)
-        self.assertEqual(EVENT_TYPE_CREATED, event2.event_type)
-
-    def test_is_directory(self):
-        event1 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
-        event2 = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, False)
-        self.assertTrue(event1.is_directory)
-        self.assertFalse(event2.is_directory)
-
-    def test_src_path(self):
-        event1 = FileSystemEvent(EVENT_TYPE_CREATED, path_1, True)
-        event2 = FileSystemEvent(EVENT_TYPE_CREATED, path_2, False)
-        self.assertEqual(path_1, event1.src_path)
-        self.assertEqual(path_2, event2.src_path)
-
-    def test_behavior_readonly_public_attributes(self):
-        event = FileSystemEvent(EVENT_TYPE_MODIFIED, path_1, True)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
-
-
-class TestFileSystemMovedEvent(unittest.TestCase):
-
-    def test___init__(self):
-        event = FileSystemMovedEvent(path_1, path_2, True)
-        self.assertEqual(event.src_path, path_1)
-        self.assertEqual(event.dest_path, path_2)
-        self.assertEqual(event.event_type, EVENT_TYPE_MOVED)
-        self.assertEqual(event.is_directory, True)
-
-    def test_dest_path(self):
-        event = FileSystemMovedEvent(path_1, path_2, True)
-        self.assertEqual(path_2, event.dest_path)
-
-    def test_behavior_readonly_public_attributes(self):
-        event = FileSystemMovedEvent(path_2, path_1, True)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
-
-
 class TestFileDeletedEvent(unittest.TestCase):
 
     def test___init__(self):
@@ -123,12 +55,6 @@ class TestFileDeletedEvent(unittest.TestCase):
         self.assertEqual(path_1, event.src_path)
         self.assertEqual(EVENT_TYPE_DELETED, event.event_type)
         self.assertFalse(event.is_directory)
-
-    # Behavior tests.
-    def test_behavior_readonly_public_attributes(self):
-        event = FileDeletedEvent(path_1)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
 
     # Inherited properties.
     def test_is_directory(self):
@@ -144,12 +70,6 @@ class TestFileModifiedEvent(unittest.TestCase):
         self.assertEqual(EVENT_TYPE_MODIFIED, event.event_type)
         self.assertFalse(event.is_directory)
 
-    # Behavior
-    def test_behavior_readonly_public_attributes(self):
-        event = FileModifiedEvent(path_1)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
-
     # Inherited Properties
     def test_is_directory(self):
         event1 = FileModifiedEvent(path_1)
@@ -164,11 +84,6 @@ class TestFileCreatedEvent(unittest.TestCase):
         self.assertEqual(EVENT_TYPE_CREATED, event.event_type)
         self.assertFalse(event.is_directory)
 
-    def test_behavior_readonly_public_attributes(self):
-        event = FileCreatedEvent(path_1)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
-
 
 class TestFileMovedEvent(unittest.TestCase):
 
@@ -179,11 +94,6 @@ class TestFileMovedEvent(unittest.TestCase):
         self.assertEqual(EVENT_TYPE_MOVED, event.event_type)
         self.assertFalse(event.is_directory)
 
-    def test_behavior_readonly_public_attributes(self):
-        event = FileMovedEvent(path_1, path_2)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
-
 
 class TestDirDeletedEvent(unittest.TestCase):
 
@@ -192,11 +102,6 @@ class TestDirDeletedEvent(unittest.TestCase):
         self.assertEqual(path_1, event.src_path)
         self.assertEqual(EVENT_TYPE_DELETED, event.event_type)
         self.assertTrue(event.is_directory)
-
-    def test_behavior_readonly_public_attributes(self):
-        event = DirDeletedEvent(path_1)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
 class TestDirModifiedEvent(unittest.TestCase):
@@ -207,11 +112,6 @@ class TestDirModifiedEvent(unittest.TestCase):
         self.assertEqual(EVENT_TYPE_MODIFIED, event.event_type)
         self.assertTrue(event.is_directory)
 
-    def test_behavior_readonly_public_attributes(self):
-        event = DirModifiedEvent(path_1)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
-
 
 class TestDirCreatedEvent(unittest.TestCase):
 
@@ -220,11 +120,6 @@ class TestDirCreatedEvent(unittest.TestCase):
         self.assertEqual(path_1, event.src_path)
         self.assertEqual(EVENT_TYPE_CREATED, event.event_type)
         self.assertTrue(event.is_directory)
-
-    def test_behavior_readonly_public_attributes(self):
-        event = DirCreatedEvent(path_1)
-        for prop in list_attributes(event):
-            self.assertRaises(AttributeError, setattr, event, prop, None)
 
 
 class TestFileSystemEventHandler(unittest.TestCase):

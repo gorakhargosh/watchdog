@@ -32,7 +32,7 @@ libc = ctypes.CDLL(libc_string, use_errno=True)
 if (not has_attribute(libc, 'inotify_init') or
         not has_attribute(libc, 'inotify_add_watch') or
         not has_attribute(libc, 'inotify_rm_watch')):
-    raise ImportError("Unsupported libc version found: %s" % libc_string)
+    raise AttributeError("Unsupported libc version found: %s" % libc_string)
 
 inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
     ("inotify_add_watch", libc))

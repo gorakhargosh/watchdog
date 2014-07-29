@@ -20,8 +20,8 @@ import time
 import pytest
 import logging
 from tests import Queue
-from tests import tmpdir, p  # pytest magic
-from .shell import mkdir, touch, mv, rm
+from functools import partial
+from .shell import mkdir, touch, mv, rm, mkdtemp
 from watchdog.utils import platform
 from watchdog.utils.unicode_paths import str_cls
 from watchdog.events import *
@@ -36,21 +36,32 @@ elif platform.is_darwin():
 logging.basicConfig(level=logging.DEBUG)
 
 
-def _setup_emitter(path):
+def setup_function(function):
+    global p, event_queue
+    tmpdir = os.path.realpath(mkdtemp())
+    p = partial(os.path.join, tmpdir)
     event_queue = Queue()
 
+
+def start_watching(path=None):
+    path = p('') if path is None else path
+    global emitter
+    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
     if platform.is_darwin():
         # FSEvents will report old evens (like create for mkdtemp in test
         # setup. Waiting for a considerable time seems to 'flush' the events.
         time.sleep(10)
-
-    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
     emitter.start()
-    return event_queue, emitter
 
 
-def test_create(p):
-    event_queue, emitter = _setup_emitter(p(''))
+def teardown_function(function):
+    emitter.stop()
+    emitter.join()
+    rm(p(''), recursive=True)
+
+
+def test_create():
+    start_watching()
     open(p('a'), 'a').close()
 
     event = event_queue.get(timeout=5)[0]
@@ -61,12 +72,10 @@ def test_create(p):
     assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
     assert isinstance(event, DirModifiedEvent)
 
-    emitter.stop()
 
-
-def test_delete(p):
+def test_delete():
     touch(p('a'))
-    event_queue, emitter = _setup_emitter(p(''))
+    start_watching()
     rm(p('a'))
 
     event = event_queue.get(timeout=5)[0]
@@ -77,26 +86,22 @@ def test_delete(p):
     assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
     assert isinstance(event, DirModifiedEvent)
 
-    emitter.stop()
 
-
-def test_modify(p):
+def test_modify():
     touch(p('a'))
-    event_queue, emitter = _setup_emitter(p(''))
+    start_watching()
     touch(p('a'))
 
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
     assert isinstance(event, FileModifiedEvent)
 
-    emitter.stop()
 
-
-def test_move(p):
+def test_move():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
-    event_queue, emitter = _setup_emitter(p(''))
+    start_watching()
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
@@ -113,43 +118,37 @@ def test_move(p):
     assert event.src_path == p('dir2')
     assert isinstance(event, DirModifiedEvent)
 
-    emitter.stop()
 
-
-def test_move_to(p):
+def test_move_to():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
-    event_queue, emitter = _setup_emitter(p('dir2'))
+    start_watching(p('dir2'))
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileCreatedEvent)
     assert event.src_path == p('dir2', 'b')
 
-    emitter.stop()
 
-
-def test_move_from(p):
+def test_move_from():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
-    event_queue, emitter = _setup_emitter(p('dir1'))
+    start_watching(p('dir1'))
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileDeletedEvent)
     assert event.src_path == p('dir1', 'a')
 
-    emitter.stop()
 
-
-def test_separate_consecutive_moves(p):
+def test_separate_consecutive_moves():
     mkdir(p('dir1'))
     touch(p('dir1', 'a'))
     touch(p('b'))
 
-    event_queue, emitter = _setup_emitter(p('dir1'))
+    start_watching(p('dir1'))
 
     mv(p('dir1', 'a'), p('c'))
     mv(p('b'), p('dir1', 'd'))
@@ -166,35 +165,24 @@ def test_separate_consecutive_moves(p):
 
     assert isinstance(event_queue.get(timeout=5)[0], DirModifiedEvent)
 
-    emitter.stop()
-
 
 @pytest.mark.skipif(platform.is_linux(), reason="bug. inotify will deadlock")
-def test_delete_self(p):
+def test_delete_self():
     mkdir(p('dir1'))
-    event_queue, emitter = _setup_emitter(p('dir1'))
+    start_watching(p('dir1'))
     rm(p('dir1'), True)
     event_queue.get(timeout=5)[0]
-    emitter.stop()
 
 
-def test_passing_unicode_should_give_unicode(p):
-    path = p('')
-
-    event_queue = Queue()
-    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
-    emitter.start()
+def test_passing_unicode_should_give_unicode():
+    start_watching(p(''))
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, str_cls)
 
 
-def test_passing_bytes_should_give_bytes(p):
-    path = p('').encode()
-
-    event_queue = Queue()
-    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
-    emitter.start()
+def test_passing_bytes_should_give_bytes():
+    start_watching(p('').encode())
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, bytes)
