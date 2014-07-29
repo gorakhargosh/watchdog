@@ -103,6 +103,6 @@ class TestBaseObserver(unittest.TestCase):
         watch = observer.schedule(handler, '/foobar', True)
         observer.event_queue.put((FileModifiedEvent('/foobar'), watch))
         observer.start()
-        time.sleep(1)
+
         observer.unschedule_all()
         observer.stop()

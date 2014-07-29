@@ -16,6 +16,8 @@
 # limitations under the License.
 
 import os
+import threading
+import unittest
 import pytest
 from . import shell
 from sys import version_info
@@ -50,3 +52,15 @@ def p(tmpdir, *args):
     with the provided arguments.
     """
     return partial(os.path.join, tmpdir)
+
+
+class WatchdogTestCase(unittest.TestCase):
+    """
+    Test case for watchdog tests.
+    """
+
+    def tearDown(self):
+        # Check that we don't have unstopped threads.
+        active_thread = threading.enumerate()
+        self.assertEqual([threading.currentThread()], active_thread)
+        super(WatchdogTestCase, self).tearDown()

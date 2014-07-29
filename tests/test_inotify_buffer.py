@@ -17,6 +17,7 @@
 from __future__ import unicode_literals
 import os
 import random
+import time
 import pytest
 from tests import tmpdir, p  # pytest magic
 from .shell import mkdir, touch, mv
@@ -36,13 +37,23 @@ def wait_for_move_event(read_event):
             return event
 
 
+def make_inotify_buffer(path, recursive=False, delay=0.5):
+    return InotifyBuffer(path.encode(), recursive=recursive, delay=delay)
+
+
+def start_inotify_buffer(path, recursive=False):
+    inotify = make_inotify_buffer(path, recursive=recursive)
+    inotify.start()
+    return inotify
+
+
 @pytest.mark.timeout(5)
 def test_move_from(p):
     mkdir(p('dir1'))
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffer(p('dir1').encode())
+    inotify = start_inotify_buffer(p('dir1'))
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_from
@@ -56,7 +67,7 @@ def test_move_to(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffer(p('dir2').encode())
+    inotify = start_inotify_buffer(p('dir2'))
     mv(p('dir1', 'a'), p('dir2', 'b'))
     event = wait_for_move_event(inotify.read_event)
     assert event.is_moved_to
@@ -70,13 +81,13 @@ def test_move_internal(p):
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
 
-    inotify = InotifyBuffer(p('').encode(), recursive=True)
+    inotify = start_inotify_buffer(p(''), recursive=True)
     mv(p('dir1', 'a'), p('dir2', 'b'))
     frm, to = wait_for_move_event(inotify.read_event)
     assert frm.src_path == p('dir1', 'a').encode()
     assert to.src_path == p('dir2', 'b').encode()
     inotify.close()
-    
+
 
 @pytest.mark.timeout(10)
 def test_move_internal_batch(p):
@@ -87,7 +98,7 @@ def test_move_internal_batch(p):
     for f in files:
         touch(p('dir1', f))
 
-    inotify = InotifyBuffer(p('').encode(), recursive=True)
+    inotify = start_inotify_buffer(p(''), recursive=True)
 
     random.shuffle(files)
     for f in files:
@@ -102,6 +113,18 @@ def test_move_internal_batch(p):
         assert frm.name == to.name
         i += 1
     inotify.close()
+
+
+@pytest.mark.timeout(5)
+def test_ignore_before_start(p):
+    """
+    It will ignore events created before start.
+    """
+    inotify = make_inotify_buffer(p(''), delay=0)
+
+    touch(p('a'))
+
+    assert 0 == len(inotify._queue)
 
 
 def test_close_clean(tmpdir):
