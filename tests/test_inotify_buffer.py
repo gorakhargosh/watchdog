@@ -114,9 +114,6 @@ def test_close_clean(tmpdir):
     """
     watch = ObservedWatch(path=tmpdir, recursive=False)
     emitter = InotifyEmitter([], watch)
-    inotify_buffer = emitter._inotify
-    # Remove delay to speed up test.
-    inotify_buffer.delay = 0
     emitter.start()
 
     emitter.stop()
