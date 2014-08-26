@@ -51,6 +51,7 @@ Classes
 
 from __future__ import with_statement
 import threading
+import time
 from watchdog.utils import DaemonThread
 from watchdog.utils.compat import queue
 from watchdog.utils.bricks import SkipRepeatsQueue
@@ -153,6 +154,21 @@ class EventEmitter(DaemonThread):
         """
         return self._watch
 
+    @property
+    def ready(self):
+        """
+        True when emitter is active and ready to listen for events.
+        """
+        return True
+
+    def start(self):
+        """
+        Start emitter in blocking mode waiting for it to be ready.
+        """
+        super(EventEmitter, self).start()
+        while not self.ready:
+            time.sleep(0.01)
+
     def queue_event(self, event):
         """
         Queues a single event.
@@ -250,6 +266,7 @@ class BaseObserver(EventDispatcher):
         self._handlers = dict()
         self._emitters = set()
         self._emitter_for_watch = dict()
+        self._ready = False
 
     def _add_emitter(self, emitter):
         self._emitter_for_watch[emitter.watch] = emitter
@@ -258,19 +275,19 @@ class BaseObserver(EventDispatcher):
     def _remove_emitter(self, emitter):
         del self._emitter_for_watch[emitter.watch]
         self._emitters.remove(emitter)
-        emitter.stop()
-        emitter.join()
+
+        # We might remove an emitter, before starting it, so there is no
+        # need to join the thread
+        if emitter.isAlive():
+            emitter.stop()
+            emitter.join()
 
     def _get_emitter_for_watch(self, watch):
         return self._emitter_for_watch[watch]
 
     def _clear_emitters(self):
-        for emitter in self._emitters:
-            emitter.stop()
-        for emitter in self._emitters:
-            emitter.join()
-        self._emitters.clear()
-        self._emitter_for_watch.clear()
+        for emitter in self._emitters.copy():
+            self._remove_emitter(emitter)
 
     def _add_handler_for_watch(self, event_handler, watch):
         try:
@@ -287,6 +304,16 @@ class BaseObserver(EventDispatcher):
     def _remove_handler_for_watch(self, handler, watch):
         handlers = self._get_handlers_for_watch(watch)
         handlers.remove(handler)
+
+    def _start_emitter(self, emitter):
+        """
+        Start emitter and wait for it to become ready.
+        """
+        # Don't start when it was already started.
+        if emitter.isAlive():
+            return
+
+        emitter.start()
 
     def schedule(self, event_handler, path, recursive=False):
         """
@@ -326,7 +353,12 @@ class BaseObserver(EventDispatcher):
                                               watch=watch,
                                               timeout=self.timeout)
                 self._add_emitter(emitter)
-                emitter.start()
+                # We only start the emitter if main thread is already
+                # running.
+                if self.isAlive():
+                    self._start_emitter(emitter)
+            # Here to help with testing.
+            watch._emitter = emitter
             self._watches.add(watch)
         return watch
 
@@ -410,3 +442,25 @@ class BaseObserver(EventDispatcher):
             # queue is empty.
             pass
         event_queue.task_done()
+
+    @property
+    def ready(self):
+        """
+        True when observer is active and listening for events.
+        """
+        return self._ready
+
+    def start_blocking(self):
+        """
+        Start observer and wait for it to start listening for changes.
+        """
+        self.start()
+        while not self.ready:
+            time.sleep(0.01)
+
+    def run(self):
+        with self._lock:
+            for emitter in self._emitters:
+                self._start_emitter(emitter)
+        self._ready = True
+        return EventDispatcher.run(self)

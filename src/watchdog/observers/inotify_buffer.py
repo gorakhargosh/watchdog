@@ -55,14 +55,15 @@ class InotifyBuffer(object):
     A wrapper for `Inotify` that keeps events in memory for `delay` seconds.
     IN_MOVED_FROM and IN_MOVED_TO events are paired during this time.
     """
-    def __init__(self, path, recursive=False):
-        self.delay = 0.5
+    def __init__(self, path, recursive=False, delay=0.5):
+        self.delay = delay
+        self._path = path
+        self._recursive = recursive
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         self._queue = deque()
-        self._inotify = Inotify(path, recursive)
-        self._worker = _Worker(self._inotify, self)
-        self._worker.start()
+        self._inotify = None
+        self._worker = None
 
     def read_event(self):
         """
@@ -91,6 +92,18 @@ class InotifyBuffer(object):
                     return head
             finally:
                 self._lock.release()
+
+    def start(self):
+        """
+        Start reading inotify events.
+        """
+        self._inotify = Inotify(self._path, self._recursive)
+        self._worker = _Worker(self._inotify, self)
+        self._worker.start()
+
+    @property
+    def ready(self):
+        return self._inotify is not None
 
     def close(self):
         self._worker.stop()

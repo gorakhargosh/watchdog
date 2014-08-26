@@ -43,10 +43,19 @@ def setup_function(function):
     event_queue = Queue()
 
 
-def start_watching(path=None):
+def make_emitter(path=None):
+    """
+    Create the default emitter, return it and set it as global to be
+    available in teardown_function.
+    """
     path = p('') if path is None else path
     global emitter
     emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
+    return emitter
+
+
+def start_watching(path=None):
+    emitter = make_emitter(path)
     if platform.is_darwin():
         # FSEvents will report old evens (like create for mkdtemp in test
         # setup. Waiting for a considerable time seems to 'flush' the events.
@@ -186,3 +195,21 @@ def test_passing_bytes_should_give_bytes():
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, bytes)
+
+
+def test_ignore_events_before_start():
+    """
+    It will ignore events occurring on the FS before start is called.
+    """
+    emitter = make_emitter(p(''))
+    touch(p('a'))
+
+    assert event_queue.empty()
+
+    # Now we start the emitter and after this we should see events.
+    emitter.start()
+    touch(p('b'))
+
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, FileCreatedEvent)
+    assert event.src_path == p('b')
