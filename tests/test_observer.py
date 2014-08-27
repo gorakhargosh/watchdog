@@ -40,7 +40,6 @@ def test_schedule_should_start_emitter_if_running(observer):
     assert emitter.is_alive()
 
 
-@pytest.mark.xfail()
 def test_schedule_should_not_start_emitter_if_not_running(observer):
     observer.schedule(None, '')
     (emitter,) = observer._emitters

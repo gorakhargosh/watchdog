@@ -259,7 +259,10 @@ class BaseObserver(EventDispatcher):
         del self._emitter_for_watch[emitter.watch]
         self._emitters.remove(emitter)
         emitter.stop()
-        emitter.join()
+        try:
+            emitter.join()
+        except RuntimeError:
+            pass
 
     def _get_emitter_for_watch(self, watch):
         return self._emitter_for_watch[watch]
@@ -268,7 +271,10 @@ class BaseObserver(EventDispatcher):
         for emitter in self._emitters:
             emitter.stop()
         for emitter in self._emitters:
-            emitter.join()
+            try:
+                emitter.join()
+            except RuntimeError:
+                pass
         self._emitters.clear()
         self._emitter_for_watch.clear()
 
@@ -287,6 +293,11 @@ class BaseObserver(EventDispatcher):
     def _remove_handler_for_watch(self, handler, watch):
         handlers = self._get_handlers_for_watch(watch)
         handlers.remove(handler)
+
+    def start(self):
+        for emitter in self._emitters:
+            emitter.start()
+        super(BaseObserver, self).start()
 
     def schedule(self, event_handler, path, recursive=False):
         """
@@ -326,7 +337,8 @@ class BaseObserver(EventDispatcher):
                                               watch=watch,
                                               timeout=self.timeout)
                 self._add_emitter(emitter)
-                emitter.start()
+                if self.is_alive():
+                    emitter.start()
             self._watches.add(watch)
         return watch
 
