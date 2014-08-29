@@ -21,18 +21,20 @@ from collections import deque
 from watchdog.utils import DaemonThread
 from .inotify_c import Inotify
 
+__all__ = ['InotifyBuffer']
+
 STOP_EVENT = object()
 
 
-class _Worker(DaemonThread):
+class Worker(DaemonThread):
     """
-    Thread that reads events from `inotify` and writes to `queue`.
+    Thread that reads events from `inotify` and writes to an InotifyBuffer.
     """
 
-    def __init__(self, inotify, queue):
+    def __init__(self, inotify, buffer):
         DaemonThread.__init__(self)
         self._read_events = inotify.read_events
-        self._queue = queue
+        self._buffer = buffer
 
     def run(self):
         while self.should_keep_running():
@@ -40,14 +42,14 @@ class _Worker(DaemonThread):
             for inotify_event in inotify_events:
                 logging.debug("worker: in event %s", inotify_event)
                 if inotify_event.is_moved_to:
-                    from_event = self._queue._catch(inotify_event.cookie)
+                    from_event = self._buffer._catch(inotify_event.cookie)
                     if from_event:
-                        self._queue._put((from_event, inotify_event))
+                        self._buffer._put((from_event, inotify_event))
                     else:
                         logging.debug("worker: could not find maching move_from event")
-                        self._queue._put(inotify_event)
+                        self._buffer._put(inotify_event)
                 else:
-                    self._queue._put(inotify_event)
+                    self._buffer._put(inotify_event)
 
 
 class InotifyBuffer(object):
@@ -61,7 +63,7 @@ class InotifyBuffer(object):
         self._not_empty = threading.Condition(self._lock)
         self._queue = deque()
         self._inotify = Inotify(path, recursive)
-        self._worker = _Worker(self._inotify, self)
+        self._worker = Worker(self._inotify, self)
         self._worker.start()
 
     def read_event(self):
@@ -96,17 +98,17 @@ class InotifyBuffer(object):
         self._worker.stop()
         self._inotify.close()
         self._worker.join()
-        # Add the stop event to unblock the read_event which waits for
-        # events in the queue... even after inotify buffer is closed.
+        # Interrupt thread calling `self.read_event`
         self._put(STOP_EVENT)
 
-    def _put(self, elem):
+    def _put(self, event):
         self._lock.acquire()
-        self._queue.append((elem, time.time()))
+        self._queue.append((event, time.time()))
         self._not_empty.notify()
         self._lock.release()
 
     def _catch(self, cookie):
+        """ Remove and return the MOVE_FROM event matching `cookie`. """
         self._lock.acquire()
         ret = None
         for i, elem in enumerate(self._queue):
