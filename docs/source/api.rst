@@ -16,6 +16,35 @@ API Reference
 ========================
 
 .. automodule:: watchdog.observers.api
+    :synopsis: Classes useful to observer implementers.
+
+    Immutables
+    ----------
+    .. autoclass:: ObservedWatch
+       :members:
+       :show-inheritance:
+
+
+    Collections
+    -----------
+    .. autoclass:: EventQueue
+       :members:
+       :show-inheritance:
+
+    Classes
+    -------
+    .. autoclass:: EventEmitter
+       :members:
+       :show-inheritance:
+
+    .. autoclass:: EventDispatcher
+       :members:
+       :show-inheritance:
+
+    .. autoclass:: BaseObserver
+       :members:
+       :show-inheritance:
+
 
 
 `watchdog.observers`

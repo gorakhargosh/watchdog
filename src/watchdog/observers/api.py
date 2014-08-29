@@ -16,39 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.observers.api
-:synopsis: Classes useful to observer implementers.
-:author: yesudeep@google.com (Yesudeep Mangalapilly)
-
-Immutables
-----------
-.. autoclass:: ObservedWatch
-   :members:
-   :show-inheritance:
-
-
-Collections
------------
-.. autoclass:: EventQueue
-   :members:
-   :show-inheritance:
-
-Classes
--------
-.. autoclass:: EventEmitter
-   :members:
-   :show-inheritance:
-
-.. autoclass:: EventDispatcher
-   :members:
-   :show-inheritance:
-
-.. autoclass:: BaseObserver
-   :members:
-   :show-inheritance:
-"""
-
 from __future__ import with_statement
 import threading
 from watchdog.utils import BaseThread
@@ -61,7 +28,6 @@ DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
 
 # Collection classes
 class EventQueue(SkipRepeatsQueue):
-
     """Thread-safe event queue based on a special queue that skips adding
     the same event (:class:`FileSystemEvent`) multiple times consecutively.
     Thus avoiding dispatching multiple event handling
@@ -71,7 +37,6 @@ class EventQueue(SkipRepeatsQueue):
 
 
 class ObservedWatch(object):
-
     """An scheduled watch.
 
     :param path:
@@ -237,7 +202,6 @@ class EventDispatcher(BaseThread):
 
 
 class BaseObserver(EventDispatcher):
-
     """Base observer."""
 
     def __init__(self, emitter_class, timeout=DEFAULT_OBSERVER_TIMEOUT):
