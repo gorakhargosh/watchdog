@@ -57,8 +57,10 @@ class InotifyBuffer(object):
     A wrapper for `Inotify` that keeps events in memory for `delay` seconds.
     IN_MOVED_FROM and IN_MOVED_TO events are paired during this time.
     """
+
+    delay = 0.5
+
     def __init__(self, path, recursive=False):
-        self.delay = 0.5
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         self._queue = deque()
