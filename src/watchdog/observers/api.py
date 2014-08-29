@@ -264,9 +264,6 @@ class BaseObserver(EventDispatcher):
         except RuntimeError:
             pass
 
-    def _get_emitter_for_watch(self, watch):
-        return self._emitter_for_watch[watch]
-
     def _clear_emitters(self):
         for emitter in self._emitters:
             emitter.stop()
@@ -279,20 +276,12 @@ class BaseObserver(EventDispatcher):
         self._emitter_for_watch.clear()
 
     def _add_handler_for_watch(self, event_handler, watch):
-        try:
-            self._handlers[watch].add(event_handler)
-        except KeyError:
-            self._handlers[watch] = set([event_handler])
-
-    def _get_handlers_for_watch(self, watch):
-        return self._handlers[watch]
+        if watch not in self._handlers:
+            self._handlers[watch] = set()
+        self._handlers[watch].add(event_handler)
 
     def _remove_handlers_for_watch(self, watch):
         del self._handlers[watch]
-
-    def _remove_handler_for_watch(self, handler, watch):
-        handlers = self._get_handlers_for_watch(watch)
-        handlers.remove(handler)
 
     def start(self):
         for emitter in self._emitters:
@@ -330,7 +319,7 @@ class BaseObserver(EventDispatcher):
                 # If we have an emitter for this watch already, we don't create a
                 # new emitter. Instead we add the handler to the event
                 # object.
-                emitter = self._get_emitter_for_watch(watch)
+                emitter = self._emitter_for_watch[watch]
             except KeyError:
                 # Create a new emitter and start it.
                 emitter = self._emitter_class(event_queue=self.event_queue,
@@ -376,7 +365,7 @@ class BaseObserver(EventDispatcher):
             :class:`ObservedWatch`
         """
         with self._lock:
-            self._remove_handler_for_watch(event_handler, watch)
+            self._handlers[watch].remove(event_handler)
 
     def unschedule(self, watch):
         """Unschedules a watch.
@@ -388,13 +377,10 @@ class BaseObserver(EventDispatcher):
             :class:`ObservedWatch`
         """
         with self._lock:
-            try:
-                emitter = self._get_emitter_for_watch(watch)
-                self._remove_handlers_for_watch(watch)
-                self._remove_emitter(emitter)
-                self._watches.remove(watch)
-            except KeyError:
-                raise
+            emitter = self._emitter_for_watch[watch]
+            del self._handlers[watch]
+            self._remove_emitter(emitter)
+            self._watches.remove(watch)
 
     def unschedule_all(self):
         """Unschedules all watches and detaches all associated event
@@ -409,7 +395,7 @@ class BaseObserver(EventDispatcher):
 
     def _dispatch_event(self, event, watch):
         with self._lock:
-            for handler in self._get_handlers_for_watch(watch):
+            for handler in self._handlers[watch]:
                 handler.dispatch(event)
 
     def dispatch_events(self, event_queue, timeout):
