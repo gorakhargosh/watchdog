@@ -315,13 +315,9 @@ class BaseObserver(EventDispatcher):
         with self._lock:
             watch = ObservedWatch(path, recursive)
             self._add_handler_for_watch(event_handler, watch)
-            try:
-                # If we have an emitter for this watch already, we don't create a
-                # new emitter. Instead we add the handler to the event
-                # object.
-                emitter = self._emitter_for_watch[watch]
-            except KeyError:
-                # Create a new emitter and start it.
+
+            # If we don't have an emitter for this watch already, create it.
+            if self._emitter_for_watch.get(watch) is None:
                 emitter = self._emitter_class(event_queue=self.event_queue,
                                               watch=watch,
                                               timeout=self.timeout)
