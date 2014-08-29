@@ -51,7 +51,7 @@ Classes
 
 from __future__ import with_statement
 import threading
-from watchdog.utils import DaemonThread
+from watchdog.utils import BaseThread
 from watchdog.utils.compat import queue
 from watchdog.utils.bricks import SkipRepeatsQueue
 
@@ -113,10 +113,9 @@ class ObservedWatch(object):
 
 
 # Observer classes
-class EventEmitter(DaemonThread):
-
+class EventEmitter(BaseThread):
     """
-    Producer daemon thread base class subclassed by event emitters
+    Producer thread base class subclassed by event emitters
     that generate events and populate a queue with them.
 
     :param event_queue:
@@ -134,7 +133,7 @@ class EventEmitter(DaemonThread):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        DaemonThread.__init__(self)
+        BaseThread.__init__(self)
         self._event_queue = event_queue
         self._watch = watch
         self._timeout = timeout
@@ -184,10 +183,9 @@ class EventEmitter(DaemonThread):
             pass
 
 
-class EventDispatcher(DaemonThread):
-
+class EventDispatcher(BaseThread):
     """
-    Consumer daemon thread base class subclassed by event observer threads
+    Consumer thread base class subclassed by event observer threads
     that dispatch events from an event queue to appropriate event handlers.
 
     :param timeout:
@@ -197,7 +195,7 @@ class EventDispatcher(DaemonThread):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        DaemonThread.__init__(self)
+        BaseThread.__init__(self)
         self._event_queue = EventQueue()
         self._timeout = timeout
 

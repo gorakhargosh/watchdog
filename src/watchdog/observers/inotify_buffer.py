@@ -18,7 +18,7 @@ import time
 import logging
 import threading
 from collections import deque
-from watchdog.utils import DaemonThread
+from watchdog.utils import BaseThread
 from .inotify_c import Inotify
 
 __all__ = ['InotifyBuffer']
@@ -26,13 +26,13 @@ __all__ = ['InotifyBuffer']
 STOP_EVENT = object()
 
 
-class Worker(DaemonThread):
+class Worker(BaseThread):
     """
     Thread that reads events from `inotify` and writes to an InotifyBuffer.
     """
 
     def __init__(self, inotify, buffer):
-        DaemonThread.__init__(self)
+        BaseThread.__init__(self)
         self._read_events = inotify.read_events
         self._buffer = buffer
 
