@@ -71,7 +71,7 @@ from __future__ import with_statement
 
 import os
 import threading
-from .inotify_buffer import InotifyBuffer, STOP_EVENT
+from .inotify_buffer import InotifyBuffer
 
 from watchdog.observers.api import (
     EventEmitter,
@@ -129,10 +129,8 @@ class InotifyEmitter(EventEmitter):
     def queue_events(self, timeout):
         with self._lock:
             event = self._inotify.read_event()
-
-            if event is STOP_EVENT:
+            if event is None:
                 return
-
             if isinstance(event, tuple):
                 move_from, move_to = event
                 src_path = self._decode_path(move_from.src_path)

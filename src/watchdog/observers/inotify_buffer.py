@@ -23,12 +23,10 @@ from .inotify_c import Inotify
 
 __all__ = ['InotifyBuffer']
 
-STOP_EVENT = object()
-
 
 class Worker(BaseThread):
     """
-    Thread that reads events from `inotify` and writes to an InotifyBuffer.
+    Thread that reads events from `inotify` and writes to InotifyBuffer.
     """
 
     def __init__(self, inotify, buffer):
@@ -64,20 +62,25 @@ class InotifyBuffer(object):
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         self._queue = deque()
+        self._closed = False
         self._inotify = Inotify(path, recursive)
         self._worker = Worker(self._inotify, self)
         self._worker.start()
 
     def read_event(self):
-        """
-        Returns a single event or a tuple of from/to events in case of a
-        paired move event.
+        """Returns a single event or a tuple of from/to events in case of a
+        paired move event. If this buffer has been closed, immediately return
+        None.
         """
         while True:
-            # wait for queue
+            # wait for event to be added to queue
             self._not_empty.acquire()
-            while len(self._queue) == 0:
+            while len(self._queue) == 0 and not self._closed:
                 self._not_empty.wait()
+
+            if self._closed:
+                self._not_empty.release()
+                return None
             head, insert_time = self._queue[0]
             self._not_empty.release()
 
@@ -87,7 +90,7 @@ class InotifyBuffer(object):
                 time.sleep(time_left)
                 time_left = insert_time + self.delay - time.time()
 
-            # return if event is still here
+            # return event if it's still in the queue
             self._lock.acquire()
             try:
                 if len(self._queue) > 0 and self._queue[0][0] is head:
@@ -100,8 +103,11 @@ class InotifyBuffer(object):
         self._worker.stop()
         self._inotify.close()
         self._worker.join()
-        # Interrupt thread calling `self.read_event`
-        self._put(STOP_EVENT)
+        self._closed = True
+        # Interrupt the blocking _not_empty.wait() call in read_event
+        self._not_empty.acquire()
+        self._not_empty.notify()
+        self._not_empty.release()
 
     def _put(self, event):
         self._lock.acquire()
