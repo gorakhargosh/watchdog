@@ -14,119 +14,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import logging
-import threading
-from collections import deque
 from watchdog.utils import BaseThread
-from .inotify_c import Inotify
-
-__all__ = ['InotifyBuffer']
-
-
-class Worker(BaseThread):
-    """
-    Thread that reads events from `inotify` and writes to InotifyBuffer.
-    """
-
-    def __init__(self, inotify, buffer):
-        BaseThread.__init__(self)
-        self._read_events = inotify.read_events
-        self._buffer = buffer
-
-    def run(self):
-        while self.should_keep_running():
-            inotify_events = self._read_events()
-            for inotify_event in inotify_events:
-                logging.debug("worker: in event %s", inotify_event)
-                if inotify_event.is_moved_to:
-                    from_event = self._buffer._catch(inotify_event.cookie)
-                    if from_event:
-                        self._buffer._put((from_event, inotify_event))
-                    else:
-                        logging.debug("worker: could not find maching move_from event")
-                        self._buffer._put(inotify_event)
-                else:
-                    self._buffer._put(inotify_event)
+from watchdog.utils.delayed_queue import DelayedQueue
+from watchdog.observers.inotify_c import Inotify
 
 
-class InotifyBuffer(object):
-    """
-    A wrapper for `Inotify` that keeps events in memory for `delay` seconds.
-    IN_MOVED_FROM and IN_MOVED_TO events are paired during this time.
+class InotifyBuffer(BaseThread):
+    """A wrapper for `Inotify` that holds events for `delay` seconds. During
+    this time, IN_MOVED_FROM and IN_MOVED_TO events are paired.
     """
 
     delay = 0.5
 
     def __init__(self, path, recursive=False):
-        self._lock = threading.Lock()
-        self._not_empty = threading.Condition(self._lock)
-        self._queue = deque()
-        self._closed = False
+        BaseThread.__init__(self)
+        self._queue = DelayedQueue(self.delay)
         self._inotify = Inotify(path, recursive)
-        self._worker = Worker(self._inotify, self)
-        self._worker.start()
+        self.start()
 
     def read_event(self):
         """Returns a single event or a tuple of from/to events in case of a
         paired move event. If this buffer has been closed, immediately return
         None.
         """
-        while True:
-            # wait for event to be added to queue
-            self._not_empty.acquire()
-            while len(self._queue) == 0 and not self._closed:
-                self._not_empty.wait()
+        return self._queue.get()
 
-            if self._closed:
-                self._not_empty.release()
-                return None
-            head, insert_time = self._queue[0]
-            self._not_empty.release()
-
-            # wait for delay
-            time_left = insert_time + self.delay - time.time()
-            while time_left > 0:
-                time.sleep(time_left)
-                time_left = insert_time + self.delay - time.time()
-
-            # return event if it's still in the queue
-            self._lock.acquire()
-            try:
-                if len(self._queue) > 0 and self._queue[0][0] is head:
-                    self._queue.popleft()
-                    return head
-            finally:
-                self._lock.release()
+    def on_thread_stop(self):
+        self._inotify.close()
+        self._queue.close()
 
     def close(self):
-        self._worker.stop()
-        self._inotify.close()
-        self._worker.join()
-        self._closed = True
-        # Interrupt the blocking _not_empty.wait() call in read_event
-        self._not_empty.acquire()
-        self._not_empty.notify()
-        self._not_empty.release()
+        self.stop()
+        self.join()
 
-    def _put(self, event):
-        self._lock.acquire()
-        self._queue.append((event, time.time()))
-        self._not_empty.notify()
-        self._lock.release()
+    def run(self):
+        """Read event from `inotify` and add them to `queue`. When reading a
+        IN_MOVE_TO event, remove the previous added matching IN_MOVE_FROM event
+        and add them back to the queue as a tuple.
+        """
+        while self.should_keep_running():
+            inotify_events = self._inotify.read_events()
+            for inotify_event in inotify_events:
+                logging.debug("InotifyBuffer: in event %s", inotify_event)
+                if inotify_event.is_moved_to:
 
-    def _catch(self, cookie):
-        """ Remove and return the MOVE_FROM event matching `cookie`. """
-        self._lock.acquire()
-        ret = None
-        for i, elem in enumerate(self._queue):
-            event, _ = elem
-            try:
-                if event.is_moved_from and event.cookie == cookie:
-                    ret = event
-                    del self._queue[i]
-                    break
-            except AttributeError:
-                pass
-        self._lock.release()
-        return ret
+                    def matching_from_event(event):
+                        return (not isinstance(event, tuple) and event.is_moved_from
+                                and event.cookie == inotify_event.cookie)
+
+                    from_event = self._queue.remove(matching_from_event)
+                    if from_event is not None:
+                        self._queue.put((from_event, inotify_event))
+                    else:
+                        logging.debug("InotifyBuffer: could not find matching move_from event")
+                        self._queue.put(inotify_event)
+                else:
+                    self._queue.put(inotify_event)
+

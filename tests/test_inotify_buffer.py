@@ -104,6 +104,13 @@ def test_move_internal_batch(p):
     inotify.close()
 
 
+def test_close_should_terminate_thread(p):
+    inotify = InotifyBuffer(p('').encode(), recursive=True)
+    assert inotify.is_alive()
+    inotify.close()
+    assert not inotify.is_alive()
+
+
 def test_close_clean(tmpdir):
     """
     On InotifyBuffer.close() InotifyBuffer.read_event() is un-blocked so that
