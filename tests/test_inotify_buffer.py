@@ -109,20 +109,3 @@ def test_close_should_terminate_thread(p):
     assert inotify.is_alive()
     inotify.close()
     assert not inotify.is_alive()
-
-
-def test_close_clean(tmpdir):
-    """
-    On InotifyBuffer.close() InotifyBuffer.read_event() is un-blocked so that
-    Inotify thread waiting for it can be closed.
-
-    This is also a test for Inotify.queue_events handling of STOP_EVENT and
-    InotifyBuffer.close() is test as side effect of Inotify.stop()
-    """
-    watch = ObservedWatch(path=tmpdir, recursive=False)
-    emitter = InotifyEmitter([], watch)
-    emitter.start()
-
-    emitter.stop()
-    emitter.join(1)
-    assert not emitter.isAlive()
