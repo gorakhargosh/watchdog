@@ -56,8 +56,9 @@ def start_watching(path=None):
 
 def teardown_function(function):
     emitter.stop()
-    emitter.join()
+    emitter.join(5)
     rm(p(''), recursive=True)
+    assert not emitter.is_alive()
 
 
 def test_create():
