@@ -245,6 +245,11 @@ class BaseObserver(EventDispatcher):
     def _remove_handlers_for_watch(self, watch):
         del self._handlers[watch]
 
+    @property
+    def emitters(self):
+        """Returns event emitter created by this observer."""
+        return self._emitters
+
     def start(self):
         for emitter in self._emitters:
             emitter.start()

@@ -36,27 +36,27 @@ def observer(request):
 def test_schedule_should_start_emitter_if_running(observer):
     observer.start()
     observer.schedule(None, '')
-    (emitter,) = observer._emitters
+    (emitter,) = observer.emitters
     assert emitter.is_alive()
 
 
 def test_schedule_should_not_start_emitter_if_not_running(observer):
     observer.schedule(None, '')
-    (emitter,) = observer._emitters
+    (emitter,) = observer.emitters
     assert not emitter.is_alive()
 
 
 def test_start_should_start_emitter(observer):
     observer.schedule(None, '')
     observer.start()
-    (emitter,) = observer._emitters
+    (emitter,) = observer.emitters
     assert emitter.is_alive()
 
 
 def test_stop_should_stop_emitter(observer):
     observer.schedule(None, '')
     observer.start()
-    (emitter,) = observer._emitters
+    (emitter,) = observer.emitters
     assert emitter.is_alive()
     observer.stop()
     observer.join()
