@@ -59,4 +59,6 @@ def test_stop_should_stop_emitter(observer):
     (emitter,) = observer._emitters
     assert emitter.is_alive()
     observer.stop()
+    observer.join()
+    assert not observer.is_alive()
     assert not emitter.is_alive()
