@@ -281,8 +281,12 @@ def get_directory_handle(path):
 def close_directory_handle(handle):
     try:
         CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
+        CloseHandle(handle)       # close directory handle
     except WindowsError:
-        return
+        try:
+            CloseHandle(handle)   # close directory handle
+        except:
+            return
 
 
 def read_directory_changes(handle, recursive):
