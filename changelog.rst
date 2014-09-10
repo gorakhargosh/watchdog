@@ -3,6 +3,13 @@
 API changes
 -----------
 
+0.8.2
+~~~~~
+
+ - ``Emitter``s are no longer started on schedule if ``Observer`` is not
+   already running.
+
+
 0.8.0
 ~~~~~
 
