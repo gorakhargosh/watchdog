@@ -77,9 +77,6 @@ class PollingEmitter(EventEmitter):
         self._snapshot = self._take_snapshot()
 
     def queue_events(self, timeout):
-        if not self._snapshot:
-            self._snapshot = self._take_snapshot()
-
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
         if self.stopped_event.wait(timeout):
