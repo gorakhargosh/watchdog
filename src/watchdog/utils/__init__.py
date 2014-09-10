@@ -107,6 +107,19 @@ class BaseThread(threading.Thread):
         self._stopped_event.set()
         self.on_thread_stop()
 
+    def on_thread_start(self):
+        """Override this method instead of :meth:`start()`. :meth:`start()`
+        calls this method.
+
+        This method is called right before this thread is started and this
+        object’s run() method is invoked.
+        """
+        pass
+
+    def start(self):
+        self.on_thread_start()
+        threading.Thread.start(self)
+
 
 def load_module(module_name):
     """Imports a module given its name and returns a handle to it."""

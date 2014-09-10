@@ -114,14 +114,11 @@ class InotifyEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self._inotify = InotifyBuffer(unicode_paths.encode(watch.path),
-                                      watch.is_recursive)
+        self._inotify = None
 
-    def _decode_path(self, path):
-        """ Decode path only if unicode string was passed to this emitter. """
-        if isinstance(self.watch.path, bytes):
-            return path
-        return unicode_paths.decode(path)
+    def on_thread_start(self):
+        path = unicode_paths.encode(self.watch.path)
+        self._inotify = InotifyBuffer(path, self.watch.is_recursive)
 
     def on_thread_stop(self):
         self._inotify.close()
@@ -169,6 +166,12 @@ class InotifyEmitter(EventEmitter):
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+
+    def _decode_path(self, path):
+        """ Decode path only if unicode string was passed to this emitter. """
+        if isinstance(self.watch.path, bytes):
+            return path
+        return unicode_paths.decode(path)
 
 
 class InotifyObserver(BaseObserver):

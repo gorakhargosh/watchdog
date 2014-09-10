@@ -64,7 +64,10 @@ class WindowsApiEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self._handle = get_directory_handle(watch.path)
+        self._handle = None
+
+    def on_thread_start(self):
+        self._handle = get_directory_handle(self.watch.path)
 
     def on_thread_stop(self):
         close_directory_handle(self._handle)
