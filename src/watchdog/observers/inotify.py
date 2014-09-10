@@ -121,7 +121,8 @@ class InotifyEmitter(EventEmitter):
         self._inotify = InotifyBuffer(path, self.watch.is_recursive)
 
     def on_thread_stop(self):
-        self._inotify.close()
+        if self._inotify:
+            self._inotify.close()
 
     def queue_events(self, timeout):
         with self._lock:

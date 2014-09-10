@@ -70,7 +70,8 @@ class WindowsApiEmitter(EventEmitter):
         self._handle = get_directory_handle(self.watch.path)
 
     def on_thread_stop(self):
-        close_directory_handle(self._handle)
+        if self._handle:
+            close_directory_handle(self._handle)
 
     def queue_events(self, timeout):
         winapi_events = read_events(self._handle, self.watch.is_recursive)
