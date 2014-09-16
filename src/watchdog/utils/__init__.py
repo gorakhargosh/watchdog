@@ -34,6 +34,7 @@ import os
 import sys
 import threading
 import watchdog.utils.platform
+from watchdog.utils.compat import Event
 from collections import namedtuple
 
 
@@ -81,7 +82,7 @@ class BaseThread(threading.Thread):
             self.daemon = True
         else:
             self.setDaemon(True)
-        self._stopped_event = threading.Event()
+        self._stopped_event = Event()
 
         if not has_attribute(self._stopped_event, 'is_set'):
             self._stopped_event.is_set = self._stopped_event.isSet
