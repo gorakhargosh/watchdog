@@ -59,7 +59,7 @@ response to events:
     watchmedo shell-command \
         --patterns="*.py;*.txt" \
         --recursive \
-        --command='echo "${watch_src_path}"' \
+        --command='echo "$WATCH_SRC_PATH"' \
         .
 
 Please see the help information for these commands by typing:
