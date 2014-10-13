@@ -67,8 +67,8 @@ class FSEventsEmitter(EventEmitter):
         ``float``
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+    def __init__(self, observer, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+        EventEmitter.__init__(self, observer, watch, timeout)
         self._lock = threading.Lock()
         self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
 

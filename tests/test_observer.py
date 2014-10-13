@@ -16,7 +16,9 @@
 
 from __future__ import unicode_literals
 
+import time
 import pytest
+from watchdog.events import FileModifiedEvent, FileSystemEventHandler
 from watchdog.observers.api import EventEmitter, BaseObserver
 
 
@@ -62,3 +64,25 @@ def test_stop_should_stop_emitter(observer):
     observer.join()
     assert not observer.is_alive()
     assert not emitter.is_alive()
+
+
+@pytest.mark.timeout(timeout=2, method='thread')
+def test_stop_should_work_in_event_handler(observer):
+    global HANDLER_RAN
+    HANDLER_RAN = False
+
+    class MyEventHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            observer.stop()
+            global HANDLER_RAN
+            HANDLER_RAN = True
+
+    observer.schedule(MyEventHandler(), '/path')
+    observer.start()
+
+    event = FileModifiedEvent('/src_path')
+    (emitter,) = observer.emitters
+    emitter.queue_event(event)
+
+    time.sleep(0.5)
+    assert HANDLER_RAN

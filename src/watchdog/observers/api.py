@@ -97,9 +97,9 @@ class EventEmitter(BaseThread):
         ``float``
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+    def __init__(self, observer, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         BaseThread.__init__(self)
-        self._event_queue = event_queue
+        self._observer = observer
         self._watch = watch
         self._timeout = timeout
 
@@ -109,6 +109,13 @@ class EventEmitter(BaseThread):
         Blocking timeout for reading events.
         """
         return self._timeout
+
+    @property
+    def observer(self):
+        """
+        The observer associated with this emitter.
+        """
+        return self._observer
 
     @property
     def watch(self):
@@ -127,7 +134,8 @@ class EventEmitter(BaseThread):
             An instance of :class:`watchdog.events.FileSystemEvent`
             or a subclass.
         """
-        self._event_queue.put((event, self.watch))
+        handlers = self.observer.handlers[self.watch]
+        self._observer.event_queue.put((event, handlers))
 
     def queue_events(self, timeout):
         """Override this method to populate the event queue with events
@@ -250,6 +258,11 @@ class BaseObserver(EventDispatcher):
         """Returns event emitter created by this observer."""
         return self._emitters
 
+    @property
+    def handlers(self):
+        """Returns handlers currently scheduled on this observer."""
+        return self._handlers
+
     def start(self):
         for emitter in self._emitters:
             emitter.start()
@@ -285,7 +298,7 @@ class BaseObserver(EventDispatcher):
 
             # If we don't have an emitter for this watch already, create it.
             if self._emitter_for_watch.get(watch) is None:
-                emitter = self._emitter_class(event_queue=self.event_queue,
+                emitter = self._emitter_class(observer=self,
                                               watch=watch,
                                               timeout=self.timeout)
                 self._add_emitter(emitter)
@@ -356,15 +369,14 @@ class BaseObserver(EventDispatcher):
     def on_thread_stop(self):
         self.unschedule_all()
 
-    def _dispatch_event(self, event, watch):
-        with self._lock:
-            for handler in self._handlers[watch]:
-                handler.dispatch(event)
+    def _dispatch_event(self, event, handlers):
+        for handler in handlers:
+            handler.dispatch(event)
 
     def dispatch_events(self, event_queue, timeout):
-        event, watch = event_queue.get(block=True, timeout=timeout)
+        event, handlers = event_queue.get(block=True, timeout=timeout)
         try:
-            self._dispatch_event(event, watch)
+            self._dispatch_event(event, handlers)
         except KeyError:
             # All handlers for the watch have already been removed. We cannot
             # lock properly here, because `event_queue.get` blocks whenever the
