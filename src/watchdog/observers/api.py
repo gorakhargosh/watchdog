@@ -247,7 +247,7 @@ class BaseObserver(EventDispatcher):
 
     @property
     def emitters(self):
-        """Returns event emitter created by this observer."""
+        """Returns event emitters created by this observer."""
         return self._emitters
 
     def start(self):
@@ -359,7 +359,12 @@ class BaseObserver(EventDispatcher):
     def _dispatch_event(self, event, watch):
         with self._lock:
             for handler in self._handlers[watch]:
-                handler.dispatch(event)
+
+                class HandlerThread(threading.Thread):
+                    def run(self):
+                        handler.dispatch(event)
+
+                HandlerThread().start()
 
     def dispatch_events(self, event_queue, timeout):
         event, watch = event_queue.get(block=True, timeout=timeout)
