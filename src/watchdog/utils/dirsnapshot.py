@@ -44,6 +44,7 @@ Classes
 
 """
 
+import errno
 import os
 from stat import S_ISDIR
 from watchdog.utils import platform
@@ -208,7 +209,16 @@ class DirectorySnapshot(object):
         self._inode_to_path[(st.st_ino, st.st_dev)] = path
 
         def walk(root):
-            paths = [os.path.join(root, name) for name in listdir(root)]
+            try:
+                paths = [os.path.join(root, name) for name in listdir(root)]
+            except OSError as e:
+                # Directory may have been deleted between finding it in the directory
+                # list of its parent and trying to delete its contents. If this
+                # happens we treat it as empty.
+                if e.errno == errno.ENOENT:
+                    return
+                else:
+                    raise
             entries = []
             for p in paths:
                 try:
