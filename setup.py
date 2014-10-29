@@ -67,7 +67,10 @@ if get_platform().startswith('macosx'):
 class PyTest(TestCommand):
     def finalize_options(self):
         TestCommand.finalize_options(self)
-        self.test_args = [ '--cov=' + SRC_DIR, 'tests' ]
+        self.test_args = [
+            '--cov=' + SRC_DIR,
+            '--cov-report=term-missing',
+            'tests']
         self.test_suite = True
     def run_tests(self):
         import pytest
