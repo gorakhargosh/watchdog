@@ -19,6 +19,8 @@ from watchdog.utils import BaseThread
 from watchdog.utils.delayed_queue import DelayedQueue
 from watchdog.observers.inotify_c import Inotify
 
+logger = logging.getLogger(__name__)
+
 
 class InotifyBuffer(BaseThread):
     """A wrapper for `Inotify` that holds events for `delay` seconds. During
@@ -56,7 +58,7 @@ class InotifyBuffer(BaseThread):
         while self.should_keep_running():
             inotify_events = self._inotify.read_events()
             for inotify_event in inotify_events:
-                logging.debug("InotifyBuffer: in event %s", inotify_event)
+                logger.debug("in-event %s", inotify_event)
                 if inotify_event.is_moved_to:
 
                     def matching_from_event(event):
@@ -67,7 +69,7 @@ class InotifyBuffer(BaseThread):
                     if from_event is not None:
                         self._queue.put((from_event, inotify_event))
                     else:
-                        logging.debug("InotifyBuffer: could not find matching move_from event")
+                        logger.debug("could not find matching move_from event")
                         self._queue.put(inotify_event)
                 else:
                     self._queue.put(inotify_event)
