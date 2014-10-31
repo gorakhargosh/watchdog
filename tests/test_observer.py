@@ -26,7 +26,6 @@ def observer(request):
     def finalizer():
         try:
             observer.stop()
-            observer.join(5)
         except:
             pass
     request.addfinalizer(finalizer)
