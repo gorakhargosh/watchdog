@@ -207,7 +207,7 @@ class BaseObserver(EventDispatcher):
     def __init__(self, emitter_class, timeout=DEFAULT_OBSERVER_TIMEOUT):
         EventDispatcher.__init__(self, timeout)
         self._emitter_class = emitter_class
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._watches = set()
         self._handlers = dict()
         self._emitters = set()
@@ -356,18 +356,14 @@ class BaseObserver(EventDispatcher):
     def on_thread_stop(self):
         self.unschedule_all()
 
-    def _dispatch_event(self, event, watch):
-        with self._lock:
-            for handler in self._handlers[watch]:
-                handler.dispatch(event)
-
     def dispatch_events(self, event_queue, timeout):
         event, watch = event_queue.get(block=True, timeout=timeout)
-        try:
-            self._dispatch_event(event, watch)
-        except KeyError:
-            # All handlers for the watch have already been removed. We cannot
-            # lock properly here, because `event_queue.get` blocks whenever the
-            # queue is empty.
-            pass
+
+        with self._lock:
+            # To allow unschedule/stop and safe removal of event handlers
+            # within event handlers itself, check if the handler is still
+            # registered after every dispatch.
+            for handler in list(self._handlers.get(watch, [])):
+                if handler in self._handlers.get(watch, []):
+                    handler.dispatch(event)
         event_queue.task_done()
