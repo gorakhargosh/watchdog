@@ -19,13 +19,12 @@ import os
 import time
 import pytest
 import logging
-from tests import Queue
 from functools import partial
 from .shell import mkdir, touch, mv, rm, mkdtemp
 from watchdog.utils import platform
 from watchdog.utils.unicode_paths import str_cls
+from watchdog.observers.api import BaseObserver
 from watchdog.events import *
-from watchdog.observers.api import ObservedWatch
 
 pytestmark = pytest.mark.skipif(not platform.is_linux() and not platform.is_darwin(), reason="")
 if platform.is_linux():
@@ -37,16 +36,18 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def setup_function(function):
-    global p, event_queue
+    global p, observer, event_queue
     tmpdir = os.path.realpath(mkdtemp())
     p = partial(os.path.join, tmpdir)
-    event_queue = Queue()
+    observer = BaseObserver(emitter_class=Emitter)
+    event_queue = observer.event_queue
 
 
 def start_watching(path=None):
     path = p('') if path is None else path
+    watch = observer.schedule(FileSystemEventHandler, path, recursive=True)
     global emitter
-    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
+    emitter = Emitter(observer, watch)
     if platform.is_darwin():
         # FSEvents will report old evens (like create for mkdtemp in test
         # setup. Waiting for a considerable time seems to 'flush' the events.

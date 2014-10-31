@@ -24,10 +24,13 @@ from watchdog.observers.api import (
     EventEmitter,
     ObservedWatch,
     EventDispatcher,
-    EventQueue
 )
 
-from watchdog.events import LoggingEventHandler, FileModifiedEvent
+from watchdog.events import (
+    LoggingEventHandler,
+    FileModifiedEvent,
+    FileSystemEventHandler
+)
 
 
 class TestObservedWatch(unittest.TestCase):
@@ -61,9 +64,10 @@ class TestObservedWatch(unittest.TestCase):
 class TestEventEmitter(unittest.TestCase):
 
     def test___init__(self):
-        event_queue = EventQueue()
-        watch = ObservedWatch('/foobar', True)
-        event_emitter = EventEmitter(event_queue, watch, timeout=1)
+        observer = BaseObserver(emitter_class=EventEmitter)
+        watch = observer.schedule(FileSystemEventHandler, '/foobar', True)
+
+        event_emitter = EventEmitter(observer, watch, timeout=1)
         event_emitter.queue_event(FileModifiedEvent('/foobar/blah'))
 
 

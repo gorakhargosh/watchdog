@@ -18,7 +18,6 @@
 
 
 import os
-import sys
 from tests import unittest
 
 try:
@@ -46,7 +45,8 @@ from watchdog.events import (
     DirDeletedEvent
 )
 
-from watchdog.observers.api import ObservedWatch
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers.api import BaseObserver
 from watchdog.observers.polling import PollingEmitter as Emitter
 
 
@@ -64,9 +64,10 @@ def p(*args):
 class TestPollingEmitter(unittest.TestCase):
 
     def setUp(self):
-        self.event_queue = queue.Queue()
-        self.watch = ObservedWatch(temp_dir, True)
-        self.emitter = Emitter(self.event_queue, self.watch, timeout=0.2)
+        self.observer = BaseObserver(emitter_class=Emitter)
+        self.watch = self.observer.schedule(
+            FileSystemEventHandler, temp_dir, True)
+        self.emitter = Emitter(self.observer, self.watch, timeout=0.2)
 
     def teardown(self):
         pass
@@ -135,7 +136,7 @@ class TestPollingEmitter(unittest.TestCase):
         got = set()
         while True:
             try:
-                event, _ = self.event_queue.get_nowait()
+                event, _ = self.observer.event_queue.get_nowait()
                 got.add(event)
             except queue.Empty:
                 break

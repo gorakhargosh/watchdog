@@ -65,9 +65,9 @@ class PollingEmitter(EventEmitter):
     system changes.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
+    def __init__(self, observer, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
                  stat=default_stat, listdir=os.listdir):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        EventEmitter.__init__(self, observer, watch, timeout)
         self._snapshot = None
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
