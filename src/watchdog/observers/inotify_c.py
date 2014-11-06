@@ -21,18 +21,41 @@ import errno
 import struct
 import threading
 import ctypes
+import ctypes.util
 from functools import reduce
 from ctypes import c_int, c_char_p, c_uint32
-from watchdog.utils import has_attribute, ctypes_find_library
+from watchdog.utils import has_attribute
 
 
-libc_string = ctypes_find_library('c', 'libc.so')
-libc = ctypes.CDLL(libc_string, use_errno=True)
+class UnsupportedLibc(Exception):
+    pass
 
-if (not has_attribute(libc, 'inotify_init') or
-        not has_attribute(libc, 'inotify_add_watch') or
-        not has_attribute(libc, 'inotify_rm_watch')):
-    raise AttributeError("Unsupported libc version found: %s" % libc_string)
+
+def _load_libc():
+    libc_path = None
+    try:
+        libc_path = ctypes.util.find_library('c')
+    except (OSError, IOError):
+        # Note: find_library will on some platforms raise these undocumented
+        # errors, e.g.on android IOError "No usable temporary directory found"
+        # will be raised.
+        pass
+
+    if libc_path is not None:
+        return ctypes.CDLL(libc_path)
+
+    # Fallbacks
+    try:
+        return ctypes.CDLL('libc.so')
+    except (OSError, IOError):
+        return ctypes.CDLL('libc.so.6')
+
+libc = _load_libc()
+
+if not has_attribute(libc, 'inotify_init') or \
+        not has_attribute(libc, 'inotify_add_watch') or \
+        not has_attribute(libc, 'inotify_rm_watch'):
+    raise UnsupportedLibc("Unsupported libc version found: %s" % libc._name)
 
 inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
     ("inotify_add_watch", libc))
@@ -42,15 +65,6 @@ inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
 
 inotify_init = ctypes.CFUNCTYPE(c_int, use_errno=True)(
     ("inotify_init", libc))
-
-try:
-    inotify_init1 = ctypes.CFUNCTYPE(c_int, c_int, use_errno=True)(
-        ("inotify_init1", libc))
-except AttributeError:
-    def inotify_init1(flags):
-        raise AttributeError(
-            "No such symbol inotify_init1 in libc. Non-blocking inotify is "
-            "only provided by Linux 2.6.27 and newer.")
 
 
 class InotifyConstants(object):

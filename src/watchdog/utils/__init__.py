@@ -46,20 +46,6 @@ else:
     stat = os.stat
 
 
-def ctypes_find_library(name, default):
-    """Finds a dynamic library."""
-    try:
-        import ctypes.util
-    except ImportError:
-        raise RuntimeError('ctypes not available on this system')
-    module_path = None
-    try:
-        module_path = ctypes.util.find_library(name)
-    except (OSError, IOError):
-        module_path = default
-    return module_path
-
-
 def has_attribute(ob, attribute):
     """
     :func:`hasattr` swallows exceptions. :func:`has_attribute` tests a Python object for the
