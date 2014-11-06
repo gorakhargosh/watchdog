@@ -17,6 +17,8 @@
 from __future__ import unicode_literals
 
 import pytest
+from watchdog.events import FileSystemEventHandler, FileModifiedEvent
+from watchdog.utils.compat import Event
 from watchdog.observers.api import EventEmitter, BaseObserver
 
 
@@ -61,3 +63,24 @@ def test_stop_should_stop_emitter(observer):
     observer.join()
     assert not observer.is_alive()
     assert not emitter.is_alive()
+
+
+def test_unschedule_self(observer):
+    """
+    Tests that unscheduling a watch from within an event handler correctly
+    correctly unregisters emitter and handler without deadlocking.
+    """
+    class EventHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            observer.unschedule(watch)
+            unschedule_finished.set()
+
+    unschedule_finished = Event()
+    watch = observer.schedule(EventHandler(), '')
+    observer.start()
+
+    (emitter,) = observer.emitters
+    emitter.queue_event(FileModifiedEvent(''))
+
+    assert unschedule_finished.wait()
+    assert len(observer.emitters) == 0
