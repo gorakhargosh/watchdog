@@ -293,6 +293,7 @@ class Inotify(object):
                     events.append(e)
             return events
 
+        event_buffer = None
         while True:
             try:
                 event_buffer = os.read(self._inotify_fd, event_buffer_size)
