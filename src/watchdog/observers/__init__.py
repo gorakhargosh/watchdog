@@ -56,9 +56,13 @@ Class          Platforms                        Note
 
 import warnings
 from watchdog.utils import platform
+from watchdog.utils import UnsupportedLibc
 
 if platform.is_linux():
-    from .inotify import InotifyObserver as Observer
+    try:
+        from .inotify import InotifyObserver as Observer
+    except UnsupportedLibc:
+        from .polling import PollingObserver as Observer
 
 elif platform.is_darwin():
     # FIXME: catching too broad. Error prone

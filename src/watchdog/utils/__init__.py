@@ -59,6 +59,10 @@ def has_attribute(ob, attribute):
     return getattr(ob, attribute, None) is not None
 
 
+class UnsupportedLibc(Exception):
+    pass
+
+
 class BaseThread(threading.Thread):
     """ Convenience class for creating stoppable threads. """
 
