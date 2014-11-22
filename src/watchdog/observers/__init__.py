@@ -61,11 +61,16 @@ if platform.is_linux():
     from .inotify import InotifyObserver as Observer
 
 elif platform.is_darwin():
+    # FIXME: catching too broad. Error prone
     try:
         from .fsevents import FSEventsObserver as Observer
     except:
-        from .kqueue import KqueueObserver as Observer
-        warnings.warn("Failed to import fsevents. Fall back to kqueue")
+        try:
+            from .kqueue import KqueueObserver as Observer
+            warnings.warn("Failed to import fsevents. Fall back to kqueue")
+        except:
+            from .polling import PollingObserver as Observer
+            warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
 
 elif platform.is_bsd():
     from .kqueue import KqueueObserver as Observer
