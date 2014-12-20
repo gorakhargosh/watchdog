@@ -39,7 +39,7 @@ except ImportError:
 from argh import arg, aliases, ArghParser, expects_obj
 from watchdog.version import VERSION_STRING
 from watchdog.utils import load_class
-
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -418,6 +418,11 @@ Example option usage::
      default=False,
      help="Ignore events that occur while command is still being executed " \
           "to avoid multiple simultaneous instances")
+@arg('--polling',
+     dest='polling',
+     default=os.environ.get('WATCHDOG_POLLING', False),
+     help='force usage of PollingObserver, can also be set using a none empty'
+          'value for environment variable WATCHDOG_POLLING')
 @expects_obj
 def shell_command(args):
     """
@@ -426,7 +431,11 @@ def shell_command(args):
     :param args:
         Command line argument options.
     """
-    from watchdog.observers import Observer
+    if args.polling:
+        from watchdog.observers.polling import PollingObserver as Observer
+    else:
+        from watchdog.observers import Observer
+
     from watchdog.tricks import ShellCommandTrick
 
     if not args.command:
