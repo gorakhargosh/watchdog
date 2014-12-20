@@ -41,11 +41,13 @@ from watchdog.version import VERSION_STRING
 from watchdog.utils import load_class
 import os
 
+
 logging.basicConfig(level=logging.INFO)
 
 CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
 
+FORCE_POLLING = True if os.environ.get('WATCHMEDO_FORCE_POLLING', False) else False
 
 def path_split(pathname_spec, separator=os.path.sep):
     """
@@ -114,6 +116,10 @@ def observe_with(observer, event_handler, pathnames, recursive):
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
     """
+    if FORCE_POLLING:
+        from watchdog.observers.polling import PollingObserver
+        observer = PollingObserver
+
     for pathname in set(pathnames):
         observer.schedule(event_handler, pathname, recursive)
     observer.start()
@@ -170,12 +176,17 @@ def tricks_from(args):
     :param args:
         Command line argument options.
     """
-    from watchdog.observers import Observer
+    if FORCE_POLLING:
+        from watchdog.observers.polling import PollingObserver
+        observer_class = PollingObserver
+    else:
+        from watchdog.observers import Observer
+        observer_class = Observer
 
     add_to_sys_path(path_split(args.python_path))
     observers = []
     for tricks_file in args.files:
-        observer = Observer(timeout=args.timeout)
+        observer = observer_class(timeout=args.timeout)
 
         if not os.path.exists(tricks_file):
             raise IOError("cannot find tricks file: %s" % tricks_file)
@@ -418,11 +429,6 @@ Example option usage::
      default=False,
      help="Ignore events that occur while command is still being executed " \
           "to avoid multiple simultaneous instances")
-@arg('--polling',
-     dest='polling',
-     default=os.environ.get('WATCHDOG_POLLING', False),
-     help='force usage of PollingObserver, can also be set using a none empty'
-          'value for environment variable WATCHDOG_POLLING')
 @expects_obj
 def shell_command(args):
     """
@@ -431,11 +437,7 @@ def shell_command(args):
     :param args:
         Command line argument options.
     """
-    if args.polling:
-        from watchdog.observers.polling import PollingObserver as Observer
-    else:
-        from watchdog.observers import Observer
-
+    from watchdog.observers import Observer
     from watchdog.tricks import ShellCommandTrick
 
     if not args.command:
