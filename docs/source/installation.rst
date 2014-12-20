@@ -163,4 +163,6 @@ Windows Vista and later
 OS Independent Polling
     |project_name| also includes a fallback-implementation that polls
     watched directories for changes by periodically comparing snapshots
-    of the directory tree.
+    of the directory tree. You can enforce this behavior for ``watchmedo``
+    by setting the environment variable WATCHMEDO_FORCE_POLLING to a non
+    empty value.
