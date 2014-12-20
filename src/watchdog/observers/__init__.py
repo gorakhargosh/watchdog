@@ -61,7 +61,8 @@ from watchdog.utils import UnsupportedLibc
 
 if os.environ.get('WATCHMEDO_FORCE_POLLING', False):
     from .polling import PollingObserver as Observer
-if platform.is_linux():
+
+elif platform.is_linux():
     try:
         from .inotify import InotifyObserver as Observer
     except UnsupportedLibc:
