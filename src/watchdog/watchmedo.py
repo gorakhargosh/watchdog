@@ -39,7 +39,6 @@ except ImportError:
 from argh import arg, aliases, ArghParser, expects_obj
 from watchdog.version import VERSION_STRING
 from watchdog.utils import load_class
-import os
 
 
 logging.basicConfig(level=logging.INFO)
@@ -47,7 +46,6 @@ logging.basicConfig(level=logging.INFO)
 CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
 
-FORCE_POLLING = True if os.environ.get('WATCHMEDO_FORCE_POLLING', False) else False
 
 def path_split(pathname_spec, separator=os.path.sep):
     """
@@ -116,10 +114,6 @@ def observe_with(observer, event_handler, pathnames, recursive):
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
     """
-    if FORCE_POLLING:
-        from watchdog.observers.polling import PollingObserver
-        observer = PollingObserver
-
     for pathname in set(pathnames):
         observer.schedule(event_handler, pathname, recursive)
     observer.start()
@@ -176,17 +170,12 @@ def tricks_from(args):
     :param args:
         Command line argument options.
     """
-    if FORCE_POLLING:
-        from watchdog.observers.polling import PollingObserver
-        observer_class = PollingObserver
-    else:
-        from watchdog.observers import Observer
-        observer_class = Observer
+    from watchdog.observers import Observer
 
     add_to_sys_path(path_split(args.python_path))
     observers = []
     for tricks_file in args.files:
-        observer = observer_class(timeout=args.timeout)
+        observer = Observer(timeout=args.timeout)
 
         if not os.path.exists(tricks_file):
             raise IOError("cannot find tricks file: %s" % tricks_file)
