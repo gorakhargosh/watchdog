@@ -9,7 +9,7 @@ include docs/*.xml
 include docs/Makefile
 include docs/make.bat
 recursive-include docs/source *
-recursive-include tests *
+recursive-include tests *.py
 #global-exclude .DS_Store
 #global-exclude Thumbs.db
 #global-exclude Desktop.ini
