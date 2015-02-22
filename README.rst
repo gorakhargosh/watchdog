@@ -166,7 +166,7 @@ Create and activate your virtual environment, then::
 
     pip install pytest
     pip install -e .
-    py.tests tests
+    py.test tests
 
 
 Supported Platforms
