@@ -82,7 +82,7 @@ class DirectorySnapshotDiff(object):
         for path in set(deleted):
             inode = ref.inode(path)
             new_path = snapshot.path(inode)
-            if new_path:
+            if new_path and ref.mtime(path) == snapshot.mtime(new_path):
                 # file is not deleted but moved
                 deleted.remove(path)
                 moved.add((path, new_path))
@@ -90,7 +90,7 @@ class DirectorySnapshotDiff(object):
         for path in set(created):
             inode = snapshot.inode(path)
             old_path = ref.path(inode)
-            if old_path:
+            if old_path and ref.mtime(old_path) == snapshot.mtime(path):
                 created.remove(path)
                 moved.add((old_path, path))
         
