@@ -30,7 +30,7 @@
 .. _inotify-tools: http://github.com/rvoicilas/inotify-tools
 .. _jnotify: http://jnotify.sourceforge.net/
 .. _LibYAML: http://pyyaml.org/wiki/LibYAML
-.. _nose: http://somethingaboutorange.com/mrl/projects/nose/0.11.2/
+.. _nose: http://nose.readthedocs.org/en/latest/
 .. _pip: http://pypi.python.org/pypi/pip
 .. _pnotify: http://mark.heily.com/pnotify
 .. _pyfilesystem: http://code.google.com/p/pyfilesystem
