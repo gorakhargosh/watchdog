@@ -86,25 +86,43 @@ class FSEventsEmitter(EventEmitter):
             events = new_snapshot - self.snapshot
             self.snapshot = new_snapshot
 
-            # Files.
-            for src_path in events.files_deleted:
-                self.queue_event(FileDeletedEvent(src_path))
-            for src_path in events.files_modified:
-                self.queue_event(FileModifiedEvent(src_path))
-            for src_path in events.files_created:
-                self.queue_event(FileCreatedEvent(src_path))
-            for src_path, dest_path in events.files_moved:
-                self.queue_event(FileMovedEvent(src_path, dest_path))
-
-            # Directories.
-            for src_path in events.dirs_deleted:
-                self.queue_event(DirDeletedEvent(src_path))
-            for src_path in events.dirs_modified:
-                self.queue_event(DirModifiedEvent(src_path))
-            for src_path in events.dirs_created:
-                self.queue_event(DirCreatedEvent(src_path))
-            for src_path, dest_path in events.dirs_moved:
-                self.queue_event(DirMovedEvent(src_path, dest_path))
+            for _, path_tuple in events.change_list.items():
+                for ((src_path, dst_path), e_type) in path_tuple:
+                    if e_type == 'CR':
+                        self.queue_event(FileCreatedEvent(src_path))
+                    elif e_type == 'CR_D':
+                        self.queue_event(DirCreatedEvent(src_path))
+                    elif e_type == 'MV':
+                        self.queue_event(FileMovedEvent(src_path, dst_path))
+                    elif e_type == 'MV_D':
+                        self.queue_event(DirMovedEvent(src_path, dst_path))
+                    elif e_type == 'DL':
+                        self.queue_event(FileDeletedEvent(src_path))
+                    elif e_type == 'DL_D':
+                        self.queue_event(DirDeletedEvent(src_path))
+                    elif e_type == 'MD':
+                        self.queue_event(FileModifiedEvent(src_path))
+                    elif e_type == 'MD_D':
+                        self.queue_event(DirModifiedEvent(src_path))
+            # # Files.
+            # for src_path in events.files_deleted:
+            #     self.queue_event(FileDeletedEvent(src_path))
+            # for src_path in events.files_modified:
+            #     self.queue_event(FileModifiedEvent(src_path))
+            # for src_path in events.files_created:
+            #     self.queue_event(FileCreatedEvent(src_path))
+            # for src_path, dest_path in events.files_moved:
+            #     self.queue_event(FileMovedEvent(src_path, dest_path))
+            #
+            # # Directories.
+            # for src_path in events.dirs_deleted:
+            #     self.queue_event(DirDeletedEvent(src_path))
+            # for src_path in events.dirs_modified:
+            #     self.queue_event(DirModifiedEvent(src_path))
+            # for src_path in events.dirs_created:
+            #     self.queue_event(DirCreatedEvent(src_path))
+            # for src_path, dest_path in events.dirs_moved:
+            #     self.queue_event(DirMovedEvent(src_path, dest_path))
 
     def run(self):
         try:

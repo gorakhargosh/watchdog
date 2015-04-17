@@ -49,6 +49,7 @@ import os
 from stat import S_ISDIR
 from watchdog.utils import platform
 from watchdog.utils import stat as default_stat
+import collections
 
 
 class DirectorySnapshotDiff(object):
@@ -105,17 +106,39 @@ class DirectorySnapshotDiff(object):
         for (old_path, new_path) in moved:
             if ref.mtime(old_path) != snapshot.mtime(new_path):
                 modified.add(old_path)
-        
-        self._dirs_created = [path for path in created if snapshot.isdir(path)]
-        self._dirs_deleted = [path for path in deleted if ref.isdir(path)]
-        self._dirs_modified = [path for path in modified if ref.isdir(path)]
-        self._dirs_moved = [(frm, to) for (frm, to) in moved if ref.isdir(frm)]
-        
-        self._files_created = list(created - set(self._dirs_created))
-        self._files_deleted = list(deleted - set(self._dirs_deleted))
-        self._files_modified = list(modified - set(self._dirs_modified))
-        self._files_moved = list(moved - set(self._dirs_moved))
-    
+
+        _change_list = dict()
+        self.collect_mtime(_change_list, created, snapshot, 'CR')
+        self.collect_mtime(_change_list, modified, snapshot, 'MD')
+        self.collect_mtime(_change_list, deleted, ref, 'DL')
+        self.collect_mtime(_change_list, moved, ref, 'MV')
+        self.change_list = collections.OrderedDict(sorted(_change_list.items()))
+
+        # self._dirs_created = [path for path in created if snapshot.isdir(path)]
+        # self._dirs_deleted = [path for path in deleted if ref.isdir(path)]
+        # self._dirs_modified = [path for path in modified if ref.isdir(path)]
+        # self._dirs_moved = [(frm, to) for (frm, to) in moved if ref.isdir(frm)]
+        #
+        # self._files_created = list(created - set(self._dirs_created))
+        # self._files_deleted = list(deleted - set(self._dirs_deleted))
+        # self._files_modified = list(modified - set(self._dirs_modified))
+        # self._files_moved = list(moved - set(self._dirs_moved))
+
+    @staticmethod
+    def collect_mtime(_change_list, path_set, snapshot, e_type):
+        for path in path_set:
+            if isinstance(path, tuple):
+                p = path[0]
+            else:
+                p = path
+                path = (path, None)
+            mtime = snapshot.mtime(p)
+            if mtime not in _change_list:
+                _change_list[mtime] = []
+            if snapshot.isdir(p):
+                e_type += '_D'
+            _change_list[mtime].append((path, e_type))
+
     @property
     def files_created(self):
         """List of files that were created."""
