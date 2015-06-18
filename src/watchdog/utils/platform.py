@@ -24,15 +24,14 @@ PLATFORM_LINUX = 'linux'
 PLATFORM_BSD = 'bsd'
 PLATFORM_DARWIN = 'darwin'
 PLATFORM_UNKNOWN = 'unknown'
-
 def get_platform_name():
-    if 'win' in sys.platform:
+    if sys.platform.startswith("win"):
         return PLATFORM_WINDOWS
-    elif 'darwin' in sys.platform:
+    elif sys.platform.startswith('darwin'):
         return PLATFORM_DARWIN
-    elif 'linux' in sys.platform:
+    elif sys.platform.startswith('linux'):
         return PLATFORM_LINUX
-    elif 'bsd' in sys.platform:
+    elif 'bsd' in sys.platform: 
         return PLATFORM_BSD
     else:
         return PLATFORM_UNKNOWN
