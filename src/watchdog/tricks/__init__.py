@@ -144,7 +144,6 @@ class AutoRestartTrick(Trick):
         self.process = None
 
     def start(self):
-
         self.process = subprocess.Popen(self.command, preexec_fn=os.setsid)
 
     def stop(self):
