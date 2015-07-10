@@ -138,13 +138,14 @@ class AutoRestartTrick(Trick):
                  kill_after=10):
         super(AutoRestartTrick, self).__init__(
             patterns, ignore_patterns, ignore_directories)
-        self.command = ['setsid'] + command
+        self.command = command
         self.stop_signal = stop_signal
         self.kill_after = kill_after
         self.process = None
 
     def start(self):
-        self.process = subprocess.Popen(self.command)
+
+        self.process = subprocess.Popen(self.command, preexec_fn=os.setsid)
 
     def stop(self):
         if self.process is None:
