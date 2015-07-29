@@ -79,19 +79,24 @@ class ShellCommandTrick(Trick):
 
     def __init__(self, shell_command=None, patterns=None, ignore_patterns=None,
                  ignore_directories=False, wait_for_process=False,
-                 drop_during_process=False):
+                 drop_during_process=False, terminate_on_event=False):
         super(ShellCommandTrick, self).__init__(patterns, ignore_patterns,
                                                 ignore_directories)
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
         self.process = None
+        self.terminate_on_event = terminate_on_event
 
     def on_any_event(self, event):
         from string import Template
 
         if self.drop_during_process and self.process and self.process.poll() is None:
             return
+
+        if self.process and self.terminate_on_event:
+            # TODO hit this with more of a sledge hammer, like autorestarttrick.stop
+            self.process.terminate()
 
         if event.is_directory:
             object_type = 'directory'

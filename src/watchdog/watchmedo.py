@@ -418,6 +418,11 @@ Example option usage::
      default=False,
      help="Ignore events that occur while command is still being executed " \
           "to avoid multiple simultaneous instances")
+@arg('-t', '--terminate',
+     dest='terminate_on_event',
+     action='store_true',
+     default=False,
+     help="Kill currently running commands upon new event.")
 @expects_obj
 def shell_command(args):
     """
@@ -439,6 +444,7 @@ def shell_command(args):
                                 ignore_patterns=ignore_patterns,
                                 ignore_directories=args.ignore_directories,
                                 wait_for_process=args.wait_for_process,
+                                terminate_on_event=args.terminate_on_event,
                                 drop_during_process=args.drop_during_process)
     observer = Observer(timeout=args.timeout)
     observe_with(observer, handler, args.directories, args.recursive)
