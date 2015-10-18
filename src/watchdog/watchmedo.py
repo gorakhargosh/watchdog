@@ -418,6 +418,9 @@ Example option usage::
      default=False,
      help="Ignore events that occur while command is still being executed " \
           "to avoid multiple simultaneous instances")
+@arg('--debug-force-polling',
+     default=False,
+     help='[debug] forces polling')
 @expects_obj
 def shell_command(args):
     """
@@ -426,11 +429,15 @@ def shell_command(args):
     :param args:
         Command line argument options.
     """
-    from watchdog.observers import Observer
     from watchdog.tricks import ShellCommandTrick
 
     if not args.command:
         args.command = None
+
+    if args.debug_force_polling:
+        from watchdog.observers.polling import PollingObserver as Observer
+    else:
+        from watchdog.observers import Observer
 
     patterns, ignore_patterns = parse_patterns(args.patterns,
                                                args.ignore_patterns)
