@@ -73,13 +73,16 @@ class WindowsApiEmitter(EventEmitter):
         if self._handle:
             close_directory_handle(self._handle)
 
+    def _read_events(self):
+        return read_events(self._handle, self.watch.is_recursive)
+
     def queue_events(self, timeout):
-        winapi_events = read_events(self._handle, self.watch.is_recursive)
+        winapi_events = self._read_events()
         with self._lock:
             last_renamed_src_path = ""
             for winapi_event in winapi_events:
                 src_path = os.path.join(self.watch.path, winapi_event.src_path)
-                
+
                 if winapi_event.is_renamed_old:
                     last_renamed_src_path = src_path
                 elif winapi_event.is_renamed_new:
