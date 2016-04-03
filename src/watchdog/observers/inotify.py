@@ -145,9 +145,7 @@ class InotifyEmitter(EventEmitter):
                 return
 
             src_path = self._decode_path(event.src_path)
-            print("inside event creator");
             if event.is_moved_to:
-                print("inside is moved to");
                 if (full_events):
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
                     self.queue_event(cls(None, src_path))
@@ -172,7 +170,6 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_moved_from and full_events:
-                print("inside moved from event")
                 cls = DireMovedEvent if event.is_directory else FileMovedEvent
                 self.queue_event(cls(src_path, None))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
