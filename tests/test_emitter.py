@@ -32,6 +32,7 @@ if platform.is_linux():
     from watchdog.observers.inotify import InotifyEmitter as Emitter
 elif platform.is_darwin():
     from watchdog.observers.fsevents2 import FSEventsEmitter as Emitter
+from watchdog.observers.inotify import InotifyFullEmitter
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -43,10 +44,14 @@ def setup_function(function):
     event_queue = Queue()
 
 
-def start_watching(path=None):
+def start_watching(path=None, use_full_emitter=False):
     path = p('') if path is None else path
     global emitter
-    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
+    if platform.is_linux() and use_full_emitter:
+        emitter = InotifyFullEmitter(event_queue, ObservedWatch(path, recursive=True))
+    else:
+        emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
+
     if platform.is_darwin():
         # FSEvents will report old evens (like create for mkdtemp in test
         # setup. Waiting for a considerable time seems to 'flush' the events.
@@ -131,6 +136,16 @@ def test_move_to():
     assert isinstance(event, FileCreatedEvent)
     assert event.src_path == p('dir2', 'b')
 
+def test_move_to_full():
+    mkdir(p('dir1'))
+    mkdir(p('dir2'))
+    touch(p('dir1', 'a'))
+    start_watching(p('dir2'), use_full_emitter=True)
+    mv(p('dir1', 'a'), p('dir2', 'b'))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, FileMovedEvent)
+    assert event.dest_path == p('dir2', 'b')
+    assert event.src_path == None #Should equal none since the path was not watched
 
 def test_move_from():
     mkdir(p('dir1'))
@@ -142,7 +157,17 @@ def test_move_from():
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileDeletedEvent)
     assert event.src_path == p('dir1', 'a')
-
+ 
+def test_move_from_full():
+    mkdir(p('dir1'))
+    mkdir(p('dir2'))
+    touch(p('dir1', 'a'))
+    start_watching(p('dir1'), use_full_emitter=True)
+    mv(p('dir1', 'a'), p('dir2', 'b'))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, FileMovedEvent)
+    assert event.src_path == p('dir1', 'a')
+    assert event.dest_path == None #Should equal None since path not watched
 
 def test_separate_consecutive_moves():
     mkdir(p('dir1'))
