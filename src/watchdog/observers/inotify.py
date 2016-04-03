@@ -124,7 +124,9 @@ class InotifyEmitter(EventEmitter):
         if self._inotify:
             self._inotify.close()
 
-    def queue_events(self, timeout):
+    def queue_events(self, timeout, full_events=False):
+        #If "full_events" is true, then the method will report unmatched move events as seperate events
+        #This behavior is by default only called by a InotifyFullEmitter
         with self._lock:
             event = self._inotify.read_event()
             if event is None:
@@ -143,9 +145,15 @@ class InotifyEmitter(EventEmitter):
                 return
 
             src_path = self._decode_path(event.src_path)
+            print("inside event creator");
             if event.is_moved_to:
-                cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
-                self.queue_event(cls(src_path))
+                print("inside is moved to");
+                if (full_events):
+                    cls = DirMovedEvent if event.is_directory else FileMovedEvent
+                    self.queue_event(cls(None, src_path))
+                else:
+                    cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                    self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 if event.is_directory and self.watch.is_recursive:
                     for sub_event in generate_sub_created_events(src_path):
@@ -159,9 +167,14 @@ class InotifyEmitter(EventEmitter):
             elif event.is_delete_self:
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(src_path))
-            elif event.is_delete or event.is_moved_from:
+            elif event.is_delete or (event.is_moved_from and not full_events):
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(src_path))
+                self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+            elif event.is_moved_from and full_events:
+                print("inside moved from event")
+                cls = DireMovedEvent if event.is_directory else FileMovedEvent
+                self.queue_event(cls(src_path, None))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_create:
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
@@ -175,12 +188,37 @@ class InotifyEmitter(EventEmitter):
         return unicode_paths.decode(path)
 
 
+class InotifyFullEmitter(InotifyEmitter):
+    """
+    inotify(7)-based event emitter. By default this class produces move events even if they are not matched
+    Such move events will have a ``None`` value for the unmatched part.
+
+    :param event_queue:
+        The event queue to fill with events.
+    :param watch:
+        A watch object representing the directory to monitor.
+    :type watch:
+        :class:`watchdog.observers.api.ObservedWatch`
+    :param timeout:
+        Read events blocking timeout (in seconds).
+    :type timeout:
+        ``float``
+    """
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+        InotifyEmitter.__init__(self, event_queue, watch, timeout)
+        
+    def queue_events(self, timeout, events=True):
+        super().queue_events(timeout, full_events=events)
+
 class InotifyObserver(BaseObserver):
     """
     Observer thread that schedules watching directories and dispatches
     calls to event handlers.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=InotifyEmitter,
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
+        if (generate_full_events):
+            BaseObserver.__init__(self, emitter_class=InotifyFullEmitter, timeout=timeout)
+        else:
+            BaseObserver.__init__(self, emitter_class=InotifyEmitter,
                               timeout=timeout)
