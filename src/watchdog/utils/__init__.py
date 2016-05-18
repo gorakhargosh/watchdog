@@ -35,7 +35,6 @@ import sys
 import threading
 from watchdog.utils import platform
 from watchdog.utils.compat import Event
-from collections import namedtuple
 
 
 if sys.version_info[0] == 2 and platform.is_windows():
