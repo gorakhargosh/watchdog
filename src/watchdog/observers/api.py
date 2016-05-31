@@ -365,5 +365,12 @@ class BaseObserver(EventDispatcher):
             # registered after every dispatch.
             for handler in list(self._handlers.get(watch, [])):
                 if handler in self._handlers.get(watch, []):
-                    handler.dispatch(event)
+                    try:
+                        # to prevent user code kill the consumer thread of watchdog
+                        handler.dispatch(event)
+                    except Exception as e:
+                        import traceback
+                        print(e)
+                        traceback.print_exc()
+
         event_queue.task_done()
