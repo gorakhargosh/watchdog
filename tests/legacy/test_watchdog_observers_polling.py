@@ -141,3 +141,32 @@ class TestPollingEmitter(unittest.TestCase):
                 break
 
         self.assertEqual(expected, got)
+
+    def test_delete_watched_dir(self):
+        SLEEP_TIME = 0.4
+        self.emitter.start()
+        rm(p(''), recursive=True)
+        sleep(SLEEP_TIME)
+        self.emitter.stop()
+
+        # What we need here for the tests to pass is a collection type
+        # that is:
+        #   * unordered
+        #   * non-unique
+        # A multiset! Python's collections.Counter class seems appropriate.
+        expected = set(
+            [
+
+                DirDeletedEvent(os.path.dirname(p(''))),
+            ]
+        )
+
+        got = set()
+        while True:
+            try:
+                event, _ = self.event_queue.get_nowait()
+                got.add(event)
+            except queue.Empty:
+                break
+
+        self.assertEqual(expected, got)
