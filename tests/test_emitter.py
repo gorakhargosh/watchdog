@@ -20,7 +20,6 @@ import time
 import pytest
 import logging
 from tests import Queue
-import queue
 from functools import partial
 from .shell import mkdir, touch, mv, rm, mkdtemp
 from watchdog.utils import platform
@@ -32,7 +31,7 @@ if platform.is_linux():
     from watchdog.observers.inotify import InotifyEmitter as Emitter
     from watchdog.observers.inotify import InotifyFullEmitter
 elif platform.is_darwin():
-    from watchdog.observers.fsevents2 import FSEventsEmitter as Emitter
+    from watchdog.observers.fsevents import FSEventsEmitter as Emitter
 elif platform.is_windows():
     from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
 
@@ -69,6 +68,7 @@ def teardown_function(function):
     emitter.join(5)
     rm(p(''), recursive=True)
     assert not emitter.is_alive()
+
 
 def test_create():
     start_watching()
@@ -141,6 +141,7 @@ def test_move():
         assert event.src_path in [p('dir2'), p('dir1')]
         assert isinstance(event, DirModifiedEvent)
 
+
 def test_move_to():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -151,6 +152,7 @@ def test_move_to():
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileCreatedEvent)
     assert event.src_path == p('dir2', 'b')
+
 
 @pytest.mark.skipif(platform.is_windows(),
                     reason="Windows doesn't use the full emitter in tests")
@@ -166,6 +168,7 @@ def test_move_to_full():
     assert event.dest_path == p('dir2', 'b')
     assert event.src_path == None #Should equal none since the path was not watched
 
+
 def test_move_from():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -176,6 +179,7 @@ def test_move_from():
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileDeletedEvent)
     assert event.src_path == p('dir1', 'a')
+
 
 @pytest.mark.skipif(platform.is_windows(),
                     reason="Windows doesn't use the full emitter in tests")
@@ -189,6 +193,7 @@ def test_move_from_full():
     assert isinstance(event, FileMovedEvent)
     assert event.src_path == p('dir1', 'a')
     assert event.dest_path == None #Should equal None since path not watched
+
 
 def test_separate_consecutive_moves():
     mkdir(p('dir1'))
@@ -216,6 +221,7 @@ def test_separate_consecutive_moves():
     if not platform.is_windows():
         assert isinstance(event_queue.get(timeout=5)[0], DirModifiedEvent)
 
+
 def test_move_file_to_renamed_dir():
     start_watching()
     mkdir(p('dir1'))
@@ -237,12 +243,13 @@ def test_move_file_to_renamed_dir():
 
     # TODO: fix windows event observer to not mash up the move incorrectly
     # Currently, the file move into dir2 is showing a src of dir1, but it never
-    # lived there. The event_queue contains the remaining events that describe the
-    # file delete from the root and the creation in dir2
+    # lived there. The event_queue contains the remaining events that describe
+    # the file delete from the root and the creation in dir2
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
     assert event.dst_path == p('dir2', 'a')
     assert isinstance(event, FileMovedEvent)
+
 
 @pytest.mark.skipif(platform.is_linux(), reason="bug. inotify will deadlock")
 @pytest.mark.skipif(platform.is_windows(),
