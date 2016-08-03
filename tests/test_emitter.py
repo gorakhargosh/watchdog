@@ -230,25 +230,33 @@ def test_move_file_to_renamed_dir():
     mv(p('a'), p('dir2','a'))
 
     event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1')
     assert isinstance(event, DirCreatedEvent)
+    assert event.src_path == p('dir1')
 
     event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
     assert isinstance(event, FileCreatedEvent)
+    assert event.src_path == p('a')
 
     event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
     assert isinstance(event, FileModifiedEvent)
+    assert event.src_path == p('a')
+
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirMovedEvent)
+    assert event.src_path == p('dir1')
+    assert event.dest_path == p('dir2')
 
     # TODO: fix windows event observer to not mash up the move incorrectly
     # Currently, the file move into dir2 is showing a src of dir1, but it never
     # lived there. The event_queue contains the remaining events that describe
     # the file delete from the root and the creation in dir2
     event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, FileDeletedEvent)
     assert event.src_path == p('a')
-    assert event.dst_path == p('dir2', 'a')
-    assert isinstance(event, FileMovedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, FileCreatedEvent)
+    assert event.src_path == p('dir2', 'a')
 
 
 @pytest.mark.skipif(platform.is_linux(), reason="bug. inotify will deadlock")
