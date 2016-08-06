@@ -590,10 +590,12 @@ def generate_sub_moved_events(src_dir_path, dest_dir_path):
         for directory in directories:
             full_path = os.path.join(root, directory)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
+            # TODO - add in info saying this is a synthesized event?
             yield DirMovedEvent(renamed_path, full_path)
         for filename in filenames:
             full_path = os.path.join(root, filename)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
+            # TODO - add in info saying this is a synthesized?
             yield FileMovedEvent(renamed_path, full_path)
 
 
