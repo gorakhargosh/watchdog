@@ -114,6 +114,9 @@ class FileSystemEvent(object):
     is_directory = False
     """True if event was emitted for a directory; False otherwise."""
 
+    is_synthetic = False
+    """True if event was synthesized; False otherwise."""
+
     def __init__(self, src_path):
         self._src_path = src_path
 
@@ -590,11 +593,15 @@ def generate_sub_moved_events(src_dir_path, dest_dir_path):
         for directory in directories:
             full_path = os.path.join(root, directory)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
-            yield DirMovedEvent(renamed_path, full_path)
+            event = DirMovedEvent(renamed_path, full_path)
+            event.is_synthetic = True
+            yield event
         for filename in filenames:
             full_path = os.path.join(root, filename)
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
-            yield FileMovedEvent(renamed_path, full_path)
+            event = FileMovedEvent(renamed_path, full_path)
+            event.is_synthetic = True
+            yield event
 
 
 def generate_sub_created_events(src_dir_path):
