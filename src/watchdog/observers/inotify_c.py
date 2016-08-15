@@ -248,7 +248,8 @@ class Inotify(object):
             Path string for which the watch will be removed.
         """
         with self._lock:
-            wd = self._remove_watch_bookkeeping(path)
+            wd = self._wd_for_path.pop(path)
+            del self._path_for_wd[wd]
             if inotify_rm_watch(self._inotify_fd, wd) == -1:
                 Inotify._raise_error()
 
@@ -322,7 +323,9 @@ class Inotify(object):
 
                 if inotify_event.is_ignored:
                     # Clean up book-keeping for deleted watches.
-                    self._remove_watch_bookkeeping(src_path)
+                    path = self._path_for_wd.pop(wd)
+                    if self._wd_for_path[path] == wd:
+                        del self._wd_for_path[path]
                     continue
 
                 event_list.append(inotify_event)
@@ -385,11 +388,6 @@ class Inotify(object):
             Inotify._raise_error()
         self._wd_for_path[path] = wd
         self._path_for_wd[wd] = path
-        return wd
-
-    def _remove_watch_bookkeeping(self, path):
-        wd = self._wd_for_path.pop(path)
-        del self._path_for_wd[wd]
         return wd
 
     @staticmethod
