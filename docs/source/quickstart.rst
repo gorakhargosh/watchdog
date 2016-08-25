@@ -32,7 +32,6 @@ The following example program will monitor the current directory recursively for
 file system changes and simply log them to the console::
 
     import sys
-    import time
     import logging
     from watchdog.observers import Observer
     from watchdog.events import LoggingEventHandler
@@ -47,8 +46,8 @@ file system changes and simply log them to the console::
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
         try:
-            while True:
-                time.sleep(1)
+            while observer.isAlive():
+                observer.join(1)
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
