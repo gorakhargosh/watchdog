@@ -55,7 +55,8 @@ class InotifyBuffer(BaseThread):
         IN_MOVE_TO event, remove the previous added matching IN_MOVE_FROM event
         and add them back to the queue as a tuple.
         """
-        while self.should_keep_running():
+        deleted_self = False
+        while self.should_keep_running() and not deleted_self:
             inotify_events = self._inotify.read_events()
             for inotify_event in inotify_events:
                 logger.debug("in-event %s", inotify_event)
@@ -74,3 +75,7 @@ class InotifyBuffer(BaseThread):
                 else:
                     self._queue.put(inotify_event)
 
+                if inotify_event.is_delete_self and \
+                        inotify_event.src_path == self._inotify.path:
+                    # Deleted the watched directory, stop watching for events
+                    deleted_self = True
