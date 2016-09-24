@@ -162,9 +162,6 @@ class InotifyEmitter(EventEmitter):
             elif event.is_modify:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
                 self.queue_event(cls(src_path))
-            elif event.is_delete_self:
-                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
-                self.queue_event(cls(src_path))
             elif event.is_delete or (event.is_moved_from and not full_events):
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(src_path))

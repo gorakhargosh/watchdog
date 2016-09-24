@@ -35,6 +35,7 @@ elif platform.is_darwin():
 from watchdog.observers.inotify import InotifyFullEmitter
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def setup_function(function):
@@ -217,6 +218,7 @@ def test_fast_subdirectory_creation_deletion():
                      DirDeletedEvent: sub_dir}
     for unused in range(times * 4):
         event = event_queue.get(timeout=5)[0]
+        logger.debug(event)
         etype = type(event)
         count[etype] += 1
         assert event.src_path == etype_for_dir[etype]
