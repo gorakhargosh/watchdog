@@ -6,13 +6,27 @@ python:
   - 3.2
   - 3.3
   - 3.4
+  - 3.5
+  - nightly
   - pypy
+  - pypy3
+
+before_install:
+  - SED_GET_PY='s/[^0-9]//g;s/.//3g;2s/.*/py/;1!G;h;$!d;s/y.2./y/;s/y.3./y3/'
+  - PY=$(python -V 2>&1 | sed "$SED_GET_PY")
+  - test $PY == 32 && TOX='virtualenv<14 tox' || TOX=tox
+  - export TOXENV=py$PY
 
 install:
-  - python setup.py install
+  - pip install $TOX
+  - tox --notest
 
 script:
-  - python setup.py test
+  - tox
 
 notifications:
     email: false
+
+matrix:
+    allow_failures:
+      - python: nightly
