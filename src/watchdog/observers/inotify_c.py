@@ -32,7 +32,7 @@ def _load_libc():
     libc_path = None
     try:
         libc_path = ctypes.util.find_library('c')
-    except (OSError, IOError):
+    except (OSError, IOError, RuntimeError):
         # Note: find_library will on some platforms raise these undocumented
         # errors, e.g.on android IOError "No usable temporary directory found"
         # will be raised.
