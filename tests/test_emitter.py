@@ -35,6 +35,7 @@ elif platform.is_darwin():
 from watchdog.observers.inotify import InotifyFullEmitter
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def setup_function(function):
@@ -198,6 +199,34 @@ def test_delete_self():
     start_watching(p('dir1'))
     rm(p('dir1'), True)
     event_queue.get(timeout=5)[0]
+
+
+def test_fast_subdirectory_creation_deletion():
+    root_dir = p('dir1')
+    sub_dir = p('dir1', 'subdir1')
+    times = 30
+    mkdir(root_dir)
+    start_watching(root_dir)
+    for unused in range(times):
+        mkdir(sub_dir)
+        rm(sub_dir, True)
+    count = {DirCreatedEvent: 0,
+             DirModifiedEvent: 0,
+             DirDeletedEvent: 0}
+    etype_for_dir = {DirCreatedEvent: sub_dir,
+                     DirModifiedEvent: root_dir,
+                     DirDeletedEvent: sub_dir}
+    for unused in range(times * 4):
+        event = event_queue.get(timeout=5)[0]
+        logger.debug(event)
+        etype = type(event)
+        count[etype] += 1
+        assert event.src_path == etype_for_dir[etype]
+        assert count[DirCreatedEvent] >= count[DirDeletedEvent]
+        assert count[DirCreatedEvent] + count[DirDeletedEvent] >= count[DirModifiedEvent]
+    assert count == {DirCreatedEvent: times,
+                     DirModifiedEvent: times * 2,
+                     DirDeletedEvent: times}
 
 
 def test_passing_unicode_should_give_unicode():
