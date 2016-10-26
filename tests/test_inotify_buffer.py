@@ -19,7 +19,7 @@ import os
 import random
 import pytest
 from tests import tmpdir, p  # pytest magic
-from .shell import mkdir, touch, mv
+from .shell import mkdir, touch, mv, rm
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
@@ -101,6 +101,19 @@ def test_move_internal_batch(p):
         assert os.path.dirname(to.src_path).endswith(b'/dir2')
         assert frm.name == to.name
         i += 1
+    inotify.close()
+
+
+@pytest.mark.timeout(5)
+def test_delete_watched_directory(p):
+    mkdir(p('dir'))
+    inotify = InotifyBuffer(p('dir').encode())
+    rm(p('dir'), recursive=True)
+
+    # Wait for the event to be picked up
+    inotify.read_event()
+
+    # Ensure InotifyBuffer shuts down cleanly without raising an exception
     inotify.close()
 
 

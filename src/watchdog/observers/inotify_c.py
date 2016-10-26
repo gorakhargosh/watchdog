@@ -258,8 +258,9 @@ class Inotify(object):
         Closes the inotify instance and removes all associated watches.
         """
         with self._lock:
-            wd = self._wd_for_path[self._path]
-            inotify_rm_watch(self._inotify_fd, wd)
+            if self._path in self._wd_for_path:
+                wd = self._wd_for_path[self._path]
+                inotify_rm_watch(self._inotify_fd, wd)
             os.close(self._inotify_fd)
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
