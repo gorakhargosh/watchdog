@@ -88,7 +88,15 @@ class PollingEmitter(EventEmitter):
 
             # Get event diff between fresh snapshot and previous snapshot.
             # Update snapshot.
-            new_snapshot = self._take_snapshot()
+            try:
+                new_snapshot = self._take_snapshot()
+            except OSError as e:
+                self.queue_event(DirDeletedEvent(self.watch.path))
+                self.stop()
+                return
+            except Exception as e:
+                raise e
+
             events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
             self._snapshot = new_snapshot
 
