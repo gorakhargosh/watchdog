@@ -41,10 +41,17 @@ def name(item):
     return item.__name__
 
 
-def is_classmethod(instancemethod):
+def is_classmethod(instancemethod, klass):
     " Determine if an instancemethod is a classmethod. "
-    return instancemethod.__self__ is not None
+    return inspect.ismethod(instancemethod) and instancemethod.__self__ is klass
 
+def is_static_method(method, klass):
+    """Returns True if method is an instance method of klass."""
+    for c in klass.mro():
+        if name(method) in c.__dict__:
+            return isinstance(c.__dict__[name(method)], staticmethod)
+    else:
+        return False
 
 def is_class_private_name(name):
     " Determine if a name is a class private name. "
@@ -115,20 +122,24 @@ def echo_instancemethod(klass, method, write=sys.stdout.write):
     never_echo = "__str__", "__repr__",  # Avoid recursion printing method calls
     if mname in never_echo:
         pass
-    elif is_classmethod(method):
+    elif is_classmethod(method, klass):
         setattr(klass, mname, classmethod(echo(method.__func__, write)))
     else:
         setattr(klass, mname, echo(method, write))
-
 
 def echo_class(klass, write=sys.stdout.write):
     """ Echo calls to class methods and static functions
     """
     for _, method in inspect.getmembers(klass, inspect.ismethod):
+        #In python 3 only class methods are returned here, but in python2 instance methods are too.
         echo_instancemethod(klass, method, write)
     for _, fn in inspect.getmembers(klass, inspect.isfunction):
-        setattr(klass, name(fn), staticmethod(echo(fn, write)))
-
+        if is_static_method(fn, klass):
+            setattr(klass, name(fn), staticmethod(echo(fn, write)))
+        else:
+            #It's not a class or a static method, so it must be an instance method.
+            #This should only be called in python 3, because in python 3 instance methods are considered functions.
+            echo_instancemethod(klass, fn, write)
 
 def echo_module(mod, write=sys.stdout.write):
     """ Echo calls to functions and methods in a module.
