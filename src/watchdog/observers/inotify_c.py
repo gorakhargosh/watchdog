@@ -304,7 +304,7 @@ class Inotify(object):
         with self._lock:
             event_list = []
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
-                if wd == -1:
+                if wd == -1 or wd not in self._path_for_wd:
                     continue
                 wd_path = self._path_for_wd[wd]
                 src_path = os.path.join(wd_path, name) if name else wd_path #avoid trailing slash
