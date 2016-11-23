@@ -88,8 +88,6 @@ class ShellCommandTrick(Trick):
         self.process = None
 
     def on_any_event(self, event):
-        from string import Template
-
         if self.drop_during_process and self.process and self.process.poll() is None:
             return
 
@@ -98,26 +96,24 @@ class ShellCommandTrick(Trick):
         else:
             object_type = 'file'
 
-        context = {
-            'watch_src_path': event.src_path,
-            'watch_dest_path': '',
-            'watch_event_type': event.event_type,
-            'watch_object': object_type,
-        }
+        env = os.environ.copy()
+        env.update({
+            'WATCH_SRC_PATH': event.src_path,
+            'WATCH_EVENT_TYPE': event.event_type,
+            'WATCH_OBJECT': object_type,
+        })
+        if has_attribute(event, 'dest_path'):
+            env['WATCH_DEST_PATH'] = event.dest_path
 
         if self.shell_command is None:
-            if has_attribute(event, 'dest_path'):
-                context.update({'dest_path': event.dest_path})
-                command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
+            if 'WATCH_DEST_PATH' in env:
+                command = 'echo "$WATCH_EVENT_TYPE $WATCH_OBJECT from $WATCH_SRC_PATH to $WATCH_DEST_PATH"'
             else:
-                command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
+                command = 'echo "$WATCH_EVENT_TYPE $WATCH_OBJECT $WATCH_SRC_PATH"'
         else:
-            if has_attribute(event, 'dest_path'):
-                context.update({'watch_dest_path': event.dest_path})
             command = self.shell_command
 
-        command = Template(command).safe_substitute(**context)
-        self.process = subprocess.Popen(command, shell=True)
+        self.process = subprocess.Popen(command, shell=True, env=env)
         if self.wait_for_process:
             self.process.wait()
 
