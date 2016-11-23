@@ -55,10 +55,14 @@ Class          Platforms                        Note
 """
 
 import warnings
+import os
 from watchdog.utils import platform
 from watchdog.utils import UnsupportedLibc
 
-if platform.is_linux():
+if os.environ.get('WATCHDOG_FORCE_POLLING', False):
+    from .polling import PollingObserver as Observer
+
+elif platform.is_linux():
     try:
         from .inotify import InotifyObserver as Observer
     except UnsupportedLibc:

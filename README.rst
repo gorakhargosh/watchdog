@@ -62,6 +62,12 @@ response to events:
         --command='echo "${watch_src_path}"' \
         .
 
+You can enforce usage of the PollingObserver by setting the environment
+variable WATCHDOG_FORCE_POLLING to an non empty value. This is for example usable
+if you are in an environment where the default observer will not work. For example
+when you are monitoring files on a shared folder inside a virtual machine where
+the host file change events doesn't propagate to the guest.
+
 Please see the help information for these commands by typing:
 
 .. code-block:: bash
