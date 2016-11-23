@@ -54,11 +54,24 @@ Class          Platforms                        Note
 
 """
 
+import os
 import warnings
 from watchdog.utils import platform
 from watchdog.utils import UnsupportedLibc
 
-if platform.is_linux():
+OBSERVER = os.environ.get('WATCHDOG_OBSERVER')
+
+# an observer can explicitly be configured with the WATCHDOG_OBSERVER
+# environment variable in dotted path form, just like an import, e.g.
+# watchdog.observers.polling.PollingObserver
+if OBSERVER:
+    import importlib
+
+    module_path, class_name = OBSERVER.rsplit('.', 1)
+    module = importlib.import_module(module_path)
+
+    Observer = getattr(module, class_name)
+elif platform.is_linux():
     try:
         from .inotify import InotifyObserver as Observer
     except UnsupportedLibc:
