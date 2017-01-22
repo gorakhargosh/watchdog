@@ -49,9 +49,9 @@ def start_watching(path=None, use_full_emitter=False):
     path = p('') if path is None else path
     global emitter
     if platform.is_linux() and use_full_emitter:
-        emitter = InotifyFullEmitter(event_queue, ObservedWatch(path, recursive=True))
+        emitter = InotifyFullEmitter(event_queue, ObservedWatch(path, recursive=True, follow=False))
     else:
-        emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
+        emitter = Emitter(event_queue, ObservedWatch(path, recursive=True, follow=False))
 
     if platform.is_darwin():
         # FSEvents will report old evens (like create for mkdtemp in test

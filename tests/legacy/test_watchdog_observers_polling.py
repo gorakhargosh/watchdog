@@ -65,7 +65,7 @@ class TestPollingEmitter(unittest.TestCase):
 
     def setUp(self):
         self.event_queue = queue.Queue()
-        self.watch = ObservedWatch(temp_dir, True)
+        self.watch = ObservedWatch(temp_dir, True, False)
         self.emitter = Emitter(self.event_queue, self.watch, timeout=0.2)
 
     def teardown(self):

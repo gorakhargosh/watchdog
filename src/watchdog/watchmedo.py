@@ -101,7 +101,7 @@ def parse_patterns(patterns_spec, ignore_patterns_spec, separator=';'):
     return (patterns, ignore_patterns)
 
 
-def observe_with(observer, event_handler, pathnames, recursive):
+def observe_with(observer, event_handler, pathnames, recursive, follow):
     """
     Single observer thread with a scheduled path and event handler.
 
@@ -113,9 +113,11 @@ def observe_with(observer, event_handler, pathnames, recursive):
         A list of pathnames to monitor.
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
+    :param follow:
+        ``True`` to traverse symbolic links; ``False`` otherwise.
     """
     for pathname in set(pathnames):
-        observer.schedule(event_handler, pathname, recursive)
+        observer.schedule(event_handler, pathname, recursive, follow)
     observer.start()
     try:
         while True:
@@ -125,7 +127,7 @@ def observe_with(observer, event_handler, pathnames, recursive):
     observer.join()
 
 
-def schedule_tricks(observer, tricks, pathname, recursive):
+def schedule_tricks(observer, tricks, pathname, recursive, follow):
     """
     Schedules tricks with the specified observer and for the given watch
     path.
@@ -138,13 +140,15 @@ def schedule_tricks(observer, tricks, pathname, recursive):
         A path name which should be watched.
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
+    :param follow:
+        ``True`` to traverse symbolic links; ``False`` otherwise.
     """
     for trick in tricks:
         for name, value in list(trick.items()):
             TrickClass = load_class(name)
             handler = TrickClass(**value)
             trick_pathname = getattr(handler, 'source_directory', None) or pathname
-            observer.schedule(handler, trick_pathname, recursive)
+            observer.schedule(handler, trick_pathname, recursive, follow)
 
 
 @aliases('tricks')
@@ -162,6 +166,9 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 @arg('--recursive',
      default=True,
      help='recursively monitor paths')
+@arg('--follow',
+     default=False,
+     help='traverse symbolic links')
 @expects_obj
 def tricks_from(args):
     """
@@ -194,7 +201,7 @@ def tricks_from(args):
         dir_path = os.path.dirname(tricks_file)
         if not dir_path:
             dir_path = os.path.relpath(os.getcwd())
-        schedule_tricks(observer, tricks, dir_path, args.recursive)
+        schedule_tricks(observer, tricks, dir_path, args.recursive, args.follow)
         observer.start()
         observers.append(observer)
 
@@ -287,6 +294,11 @@ def tricks_generate_yaml(args):
      dest='recursive',
      default=False,
      help='monitors the directories recursively')
+@arg('-f',
+     '--follow',
+     dest='follow',
+     default=False,
+     help='follow symbolic links')
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -351,7 +363,7 @@ def log(args):
     # on which it is running.
         from watchdog.observers import Observer
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
+    observe_with(observer, handler, args.directories, args.recursive, args.follow)
 
 
 @arg('directories',
@@ -402,6 +414,11 @@ Example option usage::
      dest='recursive',
      default=False,
      help='monitors the directories recursively')
+@arg('-f',
+     '--follow',
+     dest='follow',
+     default=False,
+     help='follow symbolic links')
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -491,6 +508,11 @@ try to interpret them.
      dest='recursive',
      default=False,
      help='monitors the directories recursively')
+@arg('-f',
+     '--follow',
+     dest='follow',
+     default=False,
+     help='follow symbolic links')
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -547,7 +569,7 @@ def auto_restart(args):
                                kill_after=args.kill_after)
     handler.start()
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
+    observe_with(observer, handler, args.directories, args.recursive, args.follow)
     handler.stop()
 
 
