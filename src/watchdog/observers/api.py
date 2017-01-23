@@ -208,7 +208,6 @@ class EventDispatcher(BaseThread):
             except queue.Empty:
                 continue
 
-
 class BaseObserver(EventDispatcher):
     """Base observer."""
 
@@ -220,6 +219,7 @@ class BaseObserver(EventDispatcher):
         self._handlers = dict()
         self._emitters = set()
         self._emitter_for_watch = dict()
+        self.started = False
 
     def _add_emitter(self, emitter):
         self._emitter_for_watch[emitter.watch] = emitter
@@ -261,7 +261,23 @@ class BaseObserver(EventDispatcher):
     def start(self):
         for emitter in self._emitters:
             emitter.start()
-        super(BaseObserver, self).start()
+
+        if len(self._handlers) > 0:
+           super(BaseObserver, self).start()
+
+        self.started=True
+
+    def join(self):
+        self.started=False
+        if len(self._handlers) > 0:
+           super(BaseObserver, self).join()
+
+    def is_alive(self):
+        if len(self._handlers) > 0:
+           return super(BaseObserver, self).is_alive()
+        else:
+           return self.started 
+
 
     def schedule(self, event_handler, path, recursive=False, follow=False):
         """
@@ -294,7 +310,8 @@ class BaseObserver(EventDispatcher):
         """
         with self._lock:
             watch = ObservedWatch(path, recursive, follow)
-            self._add_handler_for_watch(event_handler, watch)
+            if event_handler is not None:
+               self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
             if self._emitter_for_watch.get(watch) is None:
