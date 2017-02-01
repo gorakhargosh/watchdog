@@ -115,7 +115,12 @@ class FileSystemEvent(object):
     """True if event was emitted for a directory; False otherwise."""
 
     is_synthetic = False
-    """True if event was synthesized; False otherwise."""
+    """
+    True if event was synthesized; False otherwise.
+
+    These are move events that weren't actually broadcast by the OS, but
+    are presumed to have happened based on other, actual events.
+    """
 
     def __init__(self, src_path):
         self._src_path = src_path
