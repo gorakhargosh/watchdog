@@ -500,6 +500,9 @@ try to interpret them.
      dest='signal',
      default='SIGINT',
      help='stop the subprocess with this signal (default SIGINT)')
+@arg('--debug-force-polling',
+     default=False,
+     help='[debug] forces polling')
 @arg('--kill-after',
      dest='kill_after',
      default=10.0,
@@ -514,7 +517,12 @@ def auto_restart(args):
     :param args:
         Command line argument options.
     """
-    from watchdog.observers import Observer
+
+    if args.debug_force_polling:
+        from watchdog.observers.polling import PollingObserver as Observer
+    else:
+        from watchdog.observers import Observer
+
     from watchdog.tricks import AutoRestartTrick
     import signal
     import re
