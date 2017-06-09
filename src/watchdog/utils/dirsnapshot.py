@@ -229,7 +229,7 @@ class DirectorySnapshot(object):
                 yield _
             if recursive:
                 for path, st in entries:
-                    if S_ISDIR(st.st_mode):
+                    if S_ISDIR(st.st_mode) and os.access(path, os.R_OK):
                         for _ in walk(path):
                             yield _
 
