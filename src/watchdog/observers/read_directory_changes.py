@@ -19,7 +19,6 @@
 
 from __future__ import with_statement
 
-import ctypes
 import threading
 import os.path
 import time
@@ -79,7 +78,7 @@ class WindowsApiEmitter(EventEmitter):
             last_renamed_src_path = ""
             for winapi_event in winapi_events:
                 src_path = os.path.join(self.watch.path, winapi_event.src_path)
-                
+
                 if winapi_event.is_renamed_old:
                     last_renamed_src_path = src_path
                 elif winapi_event.is_renamed_new:
