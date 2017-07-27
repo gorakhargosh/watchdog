@@ -59,7 +59,9 @@ class BY_HANDLE_FILE_INFORMATION(ctypes.Structure):
                 ('nFileIndexLow', ctypes.wintypes.DWORD)]
 
 
-CreateFile = ctypes.windll.kernel32.CreateFileW
+kernel32 = ctypes.WinDLL("kernel32")
+
+CreateFile = kernel32.CreateFileW
 CreateFile.restype = ctypes.wintypes.HANDLE
 CreateFile.argtypes = (
     ctypes.c_wchar_p,
@@ -71,14 +73,14 @@ CreateFile.argtypes = (
     ctypes.wintypes.HANDLE,
 )
 
-GetFileInformationByHandle = ctypes.windll.kernel32.GetFileInformationByHandle
+GetFileInformationByHandle = kernel32.GetFileInformationByHandle
 GetFileInformationByHandle.restype = ctypes.wintypes.BOOL
 GetFileInformationByHandle.argtypes = (
     ctypes.wintypes.HANDLE,
     ctypes.wintypes.POINTER(BY_HANDLE_FILE_INFORMATION),
 )
 
-CloseHandle = ctypes.windll.kernel32.CloseHandle
+CloseHandle = kernel32.CloseHandle
 CloseHandle.restype = ctypes.wintypes.BOOL
 CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)
 

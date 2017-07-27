@@ -118,7 +118,9 @@ def _errcheck_dword(value, func, args):
     return args
 
 
-ReadDirectoryChangesW = ctypes.windll.kernel32.ReadDirectoryChangesW
+kernel32 = ctypes.WinDLL("kernel32")
+
+ReadDirectoryChangesW = kernel32.ReadDirectoryChangesW
 ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
 ReadDirectoryChangesW.errcheck = _errcheck_bool
 ReadDirectoryChangesW.argtypes = (
@@ -132,7 +134,7 @@ ReadDirectoryChangesW.argtypes = (
     LPVOID  # FileIOCompletionRoutine # lpCompletionRoutine
 )
 
-CreateFileW = ctypes.windll.kernel32.CreateFileW
+CreateFileW = kernel32.CreateFileW
 CreateFileW.restype = ctypes.wintypes.HANDLE
 CreateFileW.errcheck = _errcheck_handle
 CreateFileW.argtypes = (
@@ -145,13 +147,13 @@ CreateFileW.argtypes = (
     ctypes.wintypes.HANDLE  # hTemplateFile
 )
 
-CloseHandle = ctypes.windll.kernel32.CloseHandle
+CloseHandle = kernel32.CloseHandle
 CloseHandle.restype = ctypes.wintypes.BOOL
 CloseHandle.argtypes = (
     ctypes.wintypes.HANDLE,  # hObject
 )
 
-CancelIoEx = ctypes.windll.kernel32.CancelIoEx
+CancelIoEx = kernel32.CancelIoEx
 CancelIoEx.restype = ctypes.wintypes.BOOL
 CancelIoEx.errcheck = _errcheck_bool
 CancelIoEx.argtypes = (
@@ -159,7 +161,7 @@ CancelIoEx.argtypes = (
     ctypes.POINTER(OVERLAPPED)  # lpOverlapped
 )
 
-CreateEvent = ctypes.windll.kernel32.CreateEventW
+CreateEvent = kernel32.CreateEventW
 CreateEvent.restype = ctypes.wintypes.HANDLE
 CreateEvent.errcheck = _errcheck_handle
 CreateEvent.argtypes = (
@@ -169,14 +171,14 @@ CreateEvent.argtypes = (
     ctypes.wintypes.LPCWSTR,  # lpName
 )
 
-SetEvent = ctypes.windll.kernel32.SetEvent
+SetEvent = kernel32.SetEvent
 SetEvent.restype = ctypes.wintypes.BOOL
 SetEvent.errcheck = _errcheck_bool
 SetEvent.argtypes = (
     ctypes.wintypes.HANDLE,  # hEvent
 )
 
-WaitForSingleObjectEx = ctypes.windll.kernel32.WaitForSingleObjectEx
+WaitForSingleObjectEx = kernel32.WaitForSingleObjectEx
 WaitForSingleObjectEx.restype = ctypes.wintypes.DWORD
 WaitForSingleObjectEx.errcheck = _errcheck_dword
 WaitForSingleObjectEx.argtypes = (
@@ -185,7 +187,7 @@ WaitForSingleObjectEx.argtypes = (
     ctypes.wintypes.BOOL,  # bAlertable
 )
 
-CreateIoCompletionPort = ctypes.windll.kernel32.CreateIoCompletionPort
+CreateIoCompletionPort = kernel32.CreateIoCompletionPort
 CreateIoCompletionPort.restype = ctypes.wintypes.HANDLE
 CreateIoCompletionPort.errcheck = _errcheck_handle
 CreateIoCompletionPort.argtypes = (
@@ -195,7 +197,7 @@ CreateIoCompletionPort.argtypes = (
     ctypes.wintypes.DWORD,  # NumberOfConcurrentThreads
 )
 
-GetQueuedCompletionStatus = ctypes.windll.kernel32.GetQueuedCompletionStatus
+GetQueuedCompletionStatus = kernel32.GetQueuedCompletionStatus
 GetQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
 GetQueuedCompletionStatus.errcheck = _errcheck_bool
 GetQueuedCompletionStatus.argtypes = (
@@ -206,7 +208,7 @@ GetQueuedCompletionStatus.argtypes = (
     ctypes.wintypes.DWORD,  # dwMilliseconds
 )
 
-PostQueuedCompletionStatus = ctypes.windll.kernel32.PostQueuedCompletionStatus
+PostQueuedCompletionStatus = kernel32.PostQueuedCompletionStatus
 PostQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
 PostQueuedCompletionStatus.errcheck = _errcheck_bool
 PostQueuedCompletionStatus.argtypes = (
@@ -250,7 +252,7 @@ WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
 
 BUFFER_SIZE = 2048
 
-    
+
 def _parse_event_buffer(readBuffer, nBytes):
     results = []
     while nBytes > 0:
@@ -313,27 +315,27 @@ class WinAPINativeEvent(object):
     def __init__(self, action, src_path):
         self.action = action
         self.src_path = src_path
-    
+
     @property
     def is_added(self):
         return self.action == FILE_ACTION_CREATED
-    
+
     @property
     def is_removed(self):
         return self.action == FILE_ACTION_REMOVED
-    
+
     @property
     def is_modified(self):
         return self.action == FILE_ACTION_MODIFIED
-    
+
     @property
     def is_renamed_old(self):
         return self.action == FILE_ACTION_RENAMED_OLD_NAME
-    
+
     @property
     def is_renamed_new(self):
         return self.action == FILE_ACTION_RENAMED_NEW_NAME
-    
+
     def __repr__(self):
         return ("<WinAPINativeEvent: action=%d, src_path=%r>" % (self.action, self.src_path))
 
