@@ -158,7 +158,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
      '--timeout',
      dest='timeout',
      default=1.0,
-     help='use this as the polling interval/blocking timeout')
+     help='use this as the polling interval/blocking timeout (in seconds)')
 @arg('--recursive',
      default=True,
      help='recursively monitor paths')
