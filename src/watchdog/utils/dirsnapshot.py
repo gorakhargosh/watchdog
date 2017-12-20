@@ -218,8 +218,9 @@ class DirectorySnapshot(object):
             except OSError as e:
                 # Directory may have been deleted between finding it in the directory
                 # list of its parent and trying to delete its contents. If this
-                # happens we treat it as empty.
-                if e.errno == errno.ENOENT:
+                # happens we treat it as empty. Likewise if the directory was replaced
+                # with a file of the same name (less likely, but possible).
+                if e.errno == errno.ENOENT or e.errno == errno.ENOTDIR:
                     return
                 else:
                     raise
