@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import time
-from .shell import mkdir, touch, mv
+from .shell import mkdir, touch, mv, rm
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
 from watchdog.utils import platform
@@ -105,3 +106,19 @@ def test_detect_modify_for_moved_files(p):
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
     assert diff.files_moved == [(p('a'), p('b'))]
     assert diff.files_modified == [p('a')]
+
+def test_replace_dir_with_file(p):
+    # Replace a dir with a file of the same name just before the normal listdir
+    # call and ensure it doesn't cause an exception
+
+    def listdir_fcn(path):
+        if path == p("root", "dir"):
+            rm(path, recursive=True)
+            touch(path)
+        return os.listdir(path)
+
+    mkdir(p('root'))
+    mkdir(p('root', 'dir'))
+
+    # Should NOT raise an OSError (ENOTDIR)
+    DirectorySnapshot(p('root'), listdir=listdir_fcn)
