@@ -46,7 +46,7 @@ Classes
 
 import errno
 import os
-from stat import S_ISDIR
+from stat import S_ISDIR, S_IMODE
 from watchdog.utils import platform
 from watchdog.utils import stat as default_stat
 
@@ -99,7 +99,8 @@ class DirectorySnapshotDiff(object):
         modified = set()
         for path in ref.paths & snapshot.paths:
             if ref.inode(path) == snapshot.inode(path):
-                if ref.mtime(path) != snapshot.mtime(path):
+                if ref.mtime(path) != snapshot.mtime(path) or \
+                   ref.mode(path) != snapshot.mode(path):
                     modified.add(path)
         
         for (old_path, new_path) in moved:
@@ -262,6 +263,9 @@ class DirectorySnapshot(object):
     
     def mtime(self, path):
         return self._stat_info[path].st_mtime
+
+    def mode(self, path):
+        return S_IMODE(self._stat_info[path].st_mode)
     
     def stat_info(self, path):
         """
