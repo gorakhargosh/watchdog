@@ -45,7 +45,19 @@ def _load_libc():
     try:
         return ctypes.CDLL('libc.so')
     except (OSError, IOError):
+        pass
+
+    try:
         return ctypes.CDLL('libc.so.6')
+    except (OSError, IOError):
+        pass
+
+    # uClibc
+    try:
+        return ctypes.CDLL('libc.so.0')
+    except (OSError, IOError) as err:
+        raise err
+
 
 libc = _load_libc()
 
