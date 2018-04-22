@@ -204,7 +204,7 @@ It creates backup files and then swaps them in to replace
 the files you are editing on the disk. This means that
 if you use Vim to edit your files, the on-modified events
 for those files will not be triggered by watchdog.
-You may need to configure Vim to appropriately to disable
+You may need to configure Vim appropriately to disable
 this feature.
 
 
