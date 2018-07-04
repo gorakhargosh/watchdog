@@ -113,7 +113,7 @@ class WindowsApiEmitter(EventEmitter):
                     isdir = os.path.isdir(src_path)
                     cls = DirCreatedEvent if isdir else FileCreatedEvent
                     self.queue_event(cls(src_path))
-                    if isdir:
+                    if isdir and self.watch.is_recursive:
                         # If a directory is moved from outside the watched folder to inside it
                         # we only get a created directory event out of it, not any events for its children
                         # so use the same hack as for file moves to get the child events
