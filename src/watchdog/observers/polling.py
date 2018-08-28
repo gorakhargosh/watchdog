@@ -90,12 +90,10 @@ class PollingEmitter(EventEmitter):
             # Update snapshot.
             try:
                 new_snapshot = self._take_snapshot()
-            except OSError as e:
+            except OSError:
                 self.queue_event(DirDeletedEvent(self.watch.path))
                 self.stop()
                 return
-            except Exception as e:
-                raise e
 
             events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
             self._snapshot = new_snapshot

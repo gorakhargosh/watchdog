@@ -137,7 +137,7 @@ class FSEventsEmitter(EventEmitter):
                                 callback,
                                 self.pathnames)
             _fsevents.read_events(self)
-        except Exception as e:
+        except:
             pass
 
 
