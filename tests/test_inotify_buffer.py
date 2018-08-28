@@ -18,7 +18,6 @@ from __future__ import unicode_literals
 import os
 import random
 import pytest
-from tests import tmpdir, p  # pytest magic
 from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
 

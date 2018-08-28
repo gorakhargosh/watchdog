@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import time
-from tests import tmpdir, p  # pytest magic
 from .shell import mkdir, touch, mv
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff

@@ -14,14 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-import pytest
-from . import shell
 from sys import version_info
-from functools import partial
-
-__all__ = ['unittest', 'Queue', 'tmpdir', 'p']
 
 if version_info < (2, 7):
     import unittest2 as unittest
@@ -33,20 +26,4 @@ try:
 except ImportError:
     from queue import Queue  # Python 3
 
-
-@pytest.fixture()
-def tmpdir(request):
-    path = os.path.realpath(shell.mkdtemp())
-    def finalizer():
-        shell.rm(path, recursive=True)
-    request.addfinalizer(finalizer)
-    return path
-
-
-@pytest.fixture()
-def p(tmpdir, *args):
-    """
-    Convenience function to join the temporary directory path
-    with the provided arguments.
-    """
-    return partial(os.path.join, tmpdir)
+__all__ = ["unittest", "Queue"]
