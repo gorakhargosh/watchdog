@@ -167,7 +167,7 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_moved_from and full_events:
-                cls = DireMovedEvent if event.is_directory else FileMovedEvent
+                cls = DirMovedEvent if event.is_directory else FileMovedEvent
                 self.queue_event(cls(src_path, None))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_create:
