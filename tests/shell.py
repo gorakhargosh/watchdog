@@ -28,7 +28,6 @@ import os.path
 import tempfile
 import shutil
 import errno
-import time
 
 
 # def tree(path='.', show_files=False):

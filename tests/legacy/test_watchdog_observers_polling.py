@@ -18,7 +18,6 @@
 
 
 import os
-import sys
 from tests import unittest
 
 try:

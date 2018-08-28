@@ -71,7 +71,6 @@ from FSEvents import (
     kFSEventStreamEventFlagItemFinderInfoMod,
     kFSEventStreamEventFlagItemChangeOwner,
     kFSEventStreamEventFlagItemXattrMod,
-    kFSEventStreamEventFlagItemIsFile,
     kFSEventStreamEventFlagItemIsDir,
     kFSEventStreamEventFlagItemIsSymlink,
 )

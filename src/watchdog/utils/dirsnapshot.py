@@ -47,7 +47,6 @@ Classes
 import errno
 import os
 from stat import S_ISDIR
-from watchdog.utils import platform
 from watchdog.utils import stat as default_stat
 
 

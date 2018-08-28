@@ -19,14 +19,12 @@
 
 from __future__ import with_statement
 
-import ctypes
 import threading
 import os.path
 import time
 
 from watchdog.events import (
     DirCreatedEvent,
-    DirDeletedEvent,
     DirMovedEvent,
     DirModifiedEvent,
     FileCreatedEvent,

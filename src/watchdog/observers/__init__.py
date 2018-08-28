@@ -90,3 +90,5 @@ elif platform.is_windows():
 
 else:
     from .polling import PollingObserver as Observer
+
+__all__ = ["Observer"]

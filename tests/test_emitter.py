@@ -24,7 +24,15 @@ from functools import partial
 from .shell import mkdir, touch, mv, rm, mkdtemp
 from watchdog.utils import platform
 from watchdog.utils.unicode_paths import str_cls
-from watchdog.events import *
+from watchdog.events import (
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileCreatedEvent,
+    FileMovedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirCreatedEvent,
+)
 from watchdog.observers.api import ObservedWatch
 
 pytestmark = pytest.mark.skipif(not platform.is_linux() and not platform.is_darwin(), reason="")

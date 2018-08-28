@@ -39,7 +39,6 @@
 from __future__ import with_statement
 
 import ctypes.wintypes
-import struct
 from functools import reduce
 
 try:
