@@ -81,7 +81,11 @@ tests_require=['pytest', 'pytest-cov', 'pytest-timeout >=0.3']
 if sys.version_info < (2, 7, 0):
     tests_require.append('unittest2')
 
-install_requires = ['PyYAML >=3.10', 'argh >=0.24.1', 'pathtools >=0.1.1']
+install_requires = [
+    "PyYAML<3.13" if sys.version_info[:2] == (3, 2) else "PyYAML>=3.10",
+    "argh>=0.24.1",
+    "pathtools>=0.1.1",
+]
 if sys.version_info < (2, 7, 0):
     # argparse is merged into Python 2.7 in the Python 2x series
     # and Python 3.2 in the Python 3x series.

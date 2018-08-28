@@ -8,20 +8,25 @@ python:
   - 3.4
   - 3.5
   - 3.6
-  - 3.7
+  - 3.7-dev
   - pypy
   - pypy3
 
 before_install:
   - SED_GET_PY='s/[^0-9]//g;s/.//3g;2s/.*/py/;1!G;h;$!d;s/y.2./y/;s/y.3./y3/'
   - PY=$(python -V 2>&1 | sed "$SED_GET_PY")
-  - TOX=tox
-  - test $PY != 32 || TOX='virtualenv<14 tox<3'
-  - test $PY != 33 -a $PY != 26 || TOX='virtualenv<15.2 tox<3'
   - export TOXENV=py$PY
+  # On Travis CI environments for Python 2.6 and 3.2, pip is broken
+  - GET_PIP_URL=https://bootstrap.pypa.io/${PY::1}.${PY:1}/get-pip.py
+  - if [[ "26 32" =~ $PY ]] ; then python <(curl -fsSL "$GET_PIP_URL") ; fi
+  - DEPS_TABLE=([26]='virtualenv<16 tox<3'
+                [32]='virtualenv<14 tox<3'
+                [33]='virtualenv<15.2 tox<3')
+  - DEPS=${DEPS_TABLE[$PY]:-'tox'}
 
 install:
-  - pip install $TOX
+  - pip install --upgrade $DEPS
+  - pip list # Helpful when debugging
   - tox --notest
 
 script:
