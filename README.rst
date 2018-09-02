@@ -168,6 +168,8 @@ Create and activate your virtual environment, then::
     pip install -e .
     py.test tests
 
+If you are making a substantial change, add an entry to the "Unreleased" section
+of the `changelog`_.
 
 Supported Platforms
 -------------------
@@ -255,6 +257,7 @@ to do:
 .. _mailing list: http://groups.google.com/group/watchdog-python
 .. _repository: http://github.com/gorakhargosh/watchdog
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
+.. _changelog: https://https://github.com/gorakhargosh/watchdog/blob/master/changelog.rst
 
 .. _homebrew: http://mxcl.github.com/homebrew/
 .. _select_backport: http://pypi.python.org/pypi/select_backport
