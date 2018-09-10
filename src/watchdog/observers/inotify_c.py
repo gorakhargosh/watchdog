@@ -462,7 +462,7 @@ class InotifyEvent(object):
         self._wd = wd
         self._mask = mask
         self._cookie = cookie
-        self._name = name
+        self._name = name.decode()
         self._src_path = src_path
 
     @property
@@ -571,5 +571,6 @@ class InotifyEvent(object):
 
     def __repr__(self):
         mask_string = self._get_mask_string(self.mask)
-        s = "<InotifyEvent: src_path=%s, wd=%d, mask=%s, cookie=%d, name=%s>"
-        return s % (self.src_path, self.wd, mask_string, self.cookie, self.name)
+        s = '<%s: src_path=%r, wd=%d, mask=%s, cookie=%d, name=%s>'
+        return s % (type(self).__name__, self.src_path, self.wd, mask_string,
+                    self.cookie, self.name)
