@@ -65,7 +65,7 @@ if get_platform().startswith('macosx'):
                 '-fPIC',
 
                 # required w/Xcode 5.1+ and above because of '-mno-fused-madd'
-                '-Wno-error=unused-command-line-argument-hard-error-in-future'
+                '-Wno-error=unused-command-line-argument'
             ]
         ),
     ]

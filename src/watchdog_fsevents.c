@@ -535,7 +535,7 @@ static PyMethodDef watchdog_fsevents_methods[] =
 
     {"stop",         watchdog_stop,         METH_O,       watchdog_stop__doc__},
 
-    {NULL},
+    {NULL, NULL, 0, NULL},
 };
 
 
@@ -605,7 +605,11 @@ static struct PyModuleDef watchdog_fsevents_module = {
     MODULE_NAME,
     watchdog_fsevents_module__doc__,
     -1,
-    watchdog_fsevents_methods
+    watchdog_fsevents_methods,
+    NULL,  /* m_slots */
+    NULL,  /* m_traverse */
+    0,     /* m_clear */
+    NULL   /* m_free */
 };
 
 /**
