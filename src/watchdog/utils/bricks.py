@@ -37,7 +37,11 @@ Classes
 """
 
 import sys
-import collections
+try:
+    from collections.abc import MutableSet
+except ImportError:
+    from collections import MutableSet
+
 from .compat import queue
 
 class SkipRepeatsQueue(queue.Queue):
@@ -172,7 +176,7 @@ class OrderedSetQueue(queue.Queue):
 if sys.version_info >= (2, 6, 0):
     KEY, PREV, NEXT = list(range(3))
 
-    class OrderedSet(collections.MutableSet):
+    class OrderedSet(MutableSet):
 
         """
         Implementation based on a doubly-linked link and an internal dictionary.
