@@ -30,17 +30,6 @@
              only those directories which report changes and do a diff
              between two sub-DirectorySnapshots perhaps.
 
-.. ADMONITION:: About ``select.kqueue`` and Python versions
-
-    * Python 2.5 does not ship with ``select.kqueue``
-    * Python 2.6 ships with a broken ``select.kqueue`` that cannot take
-      multiple events in the event list passed to ``kqueue.control``.
-    * Python 2.7 ships with a working ``select.kqueue``
-      implementation.
-
-    I have backported the Python 2.7 implementation to Python 2.5 and 2.6
-    in the ``select_backport`` package available on PyPI.
-
 .. ADMONITION:: About OS X performance guidelines
 
     Quote from the `Mac OS X File System Performance Guidelines`_:
@@ -85,14 +74,7 @@ import errno
 import sys
 import stat
 import os
-
-# See the notes for this module in the documentation above ^.
-#import select
-# if not has_attribute(select, 'kqueue') or sys.version_info < (2, 7, 0):
-if sys.version_info < (2, 7, 0):
-    import select_backport as select
-else:
-    import select
+import select
 
 from pathtools.path import absolute_path
 

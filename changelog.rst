@@ -3,6 +3,12 @@
 API changes
 -----------
 
+0.10.0
+~~~~~~
+
+- Dropped support for Python 2.6, 3.2 and 3.3.
+  If you are still running one of these obsolete Python version, you have to keep using watchdog < 0.10.0.
+
 0.8.2
 ~~~~~
 

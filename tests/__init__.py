@@ -14,12 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from sys import version_info
-
-if version_info < (2, 7):
-    import unittest2 as unittest
-else:
-    import unittest
+import unittest
 
 try:
     from Queue import Queue  # Python 2
