@@ -1,21 +1,19 @@
 # coding: utf-8
 import logging
 import os
-import threading
-import time
 from functools import partial
 
 import pytest
 
 from watchdog.observers.api import ObservedWatch
-from watchdog.utils.compat import Empty, Queue
+from tests import Queue
 
 try:
     from watchdog.observers.fsevents import FSEventsEmitter
 except ImportError:
     pytestmark = pytest.mark.skip("macOS only.")
 
-from .shell import mkdir, mkdtemp, mv, rm, touch
+from .shell import mkdtemp, rm
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
