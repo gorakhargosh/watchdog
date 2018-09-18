@@ -71,7 +71,6 @@ from watchdog.utils import platform
 
 import threading
 import errno
-import sys
 import stat
 import os
 import select

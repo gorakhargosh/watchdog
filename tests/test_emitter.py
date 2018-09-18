@@ -35,12 +35,16 @@ from watchdog.events import (
 )
 from watchdog.observers.api import ObservedWatch
 
-pytestmark = pytest.mark.skipif(not platform.is_linux() and not platform.is_darwin(), reason="")
 if platform.is_linux():
-    from watchdog.observers.inotify import InotifyEmitter as Emitter
+    from watchdog.observers.inotify import (
+        InotifyEmitter as Emitter,
+        InotifyFullEmitter,
+    )
 elif platform.is_darwin():
+    pytestmark = pytest.mark.skip("FIXME: It is a matter of bad comparisons between bytes and str.")
     from watchdog.observers.fsevents2 import FSEventsEmitter as Emitter
-from watchdog.observers.inotify import InotifyFullEmitter
+else:
+    pytestmark = pytest.mark.skip("GNU/Linux and macOS only.")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -238,7 +242,7 @@ def test_fast_subdirectory_creation_deletion():
 
 
 def test_passing_unicode_should_give_unicode():
-    start_watching(p(''))
+    start_watching(str_cls(p("")))
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, str_cls)
