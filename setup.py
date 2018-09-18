@@ -90,6 +90,8 @@ install_requires = [
     "PyYAML>=3.10",
     "argh>=0.24.1",
     "pathtools>=0.1.1",
+    'pyobjc-framework-Cocoa>=4.2.2 ; sys_platform == "darwin"',
+    'pyobjc-framework-FSEvents>=4.2.2 ; sys_platform == "darwin"',
 ]
 
 with open('README.rst') as f:

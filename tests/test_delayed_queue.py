@@ -24,4 +24,5 @@ def test_get():
     inserted = time()
     q.get()
     elapsed = time() - inserted
-    assert 2.01 > elapsed > 1.99
+    # 2.10 instead of 2.05 for slow macOS slaves on Travis
+    assert 2.10 > elapsed > 1.99

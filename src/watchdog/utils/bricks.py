@@ -36,7 +36,6 @@ Classes
 
 """
 
-import sys
 try:
     from collections.abc import MutableSet
 except ImportError:
