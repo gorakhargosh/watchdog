@@ -61,6 +61,7 @@ if get_platform().startswith('macosx'):
                 '-std=c99',
                 '-pedantic',
                 '-Wall',
+                '-Werror',
                 '-Wextra',
                 '-fPIC',
 
