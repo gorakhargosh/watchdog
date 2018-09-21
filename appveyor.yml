@@ -4,6 +4,7 @@ cache:
   - '%LOCALAPPDATA%\pip\Cache'
 
 environment:
+  fast_finish: true
   matrix:
     - python: py27
       tox_env: py27
