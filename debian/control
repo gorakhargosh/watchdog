@@ -2,7 +2,7 @@ Source: python-watchdog
 Section: free
 Priority: extra
 Maintainer: Hannu Valtonen <hannu.valtonen@ohmu.fi>
-Build-Depends: cdbs, debhelper (>= 7.0.50~), python-support, python (>= 2.6), python-setuptools (>= 0.6.14 )
+Build-Depends: cdbs, debhelper (>= 7.0.50~), python-support, python (>= 2.7), python-setuptools (>= 0.6.14 )
 Standards-Version: 3.8.4
 
 Package: python-watchdog

@@ -1,32 +1,46 @@
 language: python
 
-python:
-  - 2.6
-  - 2.7
-  - 3.2
-  - 3.3
-  - 3.4
-  - 3.5
-  - 3.6
-  - 3.7-dev
-  - pypy
-  - pypy3
+matrix:
+  include:
+    - os: linux
+      python: "2.7"
+      env: TOXENV=py27
+    - os: linux
+      python: "3.4"
+      env: TOXENV=py34
+    - os: linux
+      python: "3.5"
+      env: TOXENV=py35
+    - os: linux
+      python: "3.6"
+      env: TOXENV=py36
+    - os: linux
+      python: "3.7-dev"  # No 3.7 yet
+      env: TOXENV=py37
+    - os: linux
+      python: "pypy"
+      env: TOXENV=pypy
+    - os: linux
+      python: "pypy3"
+      env: TOXENV=pypy3
+    - os: osx
+      language: generic
+      env:
+        - PYTHON_VERSION=2.7
+        - TOXENV=py27
+    - os: osx
+      language: generic
+      env:
+        - PYTHON_VERSION=3.6
+        - TOXENV=py36
 
 before_install:
-  - SED_GET_PY='s/[^0-9]//g;s/.//3g;2s/.*/py/;1!G;h;$!d;s/y.2./y/;s/y.3./y3/'
-  - PY=$(python -V 2>&1 | sed "$SED_GET_PY")
-  - export TOXENV=py$PY
-  # On Travis CI environments for Python 2.6 and 3.2, pip is broken
-  - GET_PIP_URL=https://bootstrap.pypa.io/${PY::1}.${PY:1}/get-pip.py
-  - if [[ "26 32" =~ $PY ]] ; then python <(curl -fsSL "$GET_PIP_URL") ; fi
-  - DEPS_TABLE=([26]='virtualenv<16 tox<3'
-                [32]='virtualenv<14 tox<3'
-                [33]='virtualenv<15.2 tox<3')
-  - DEPS=${DEPS_TABLE[$PY]:-'tox'}
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then chmod +x .travis/install.sh && .travis/install.sh; fi
+  - DEPS=tox
 
 install:
   - pip install --upgrade $DEPS
-  - pip list # Helpful when debugging
+  - pip list  # Helpful when debugging
   - tox --notest
 
 script:

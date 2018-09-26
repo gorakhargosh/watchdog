@@ -2,6 +2,7 @@ Watchdog
 ========
 Python API and shell utilities to monitor file system events.
 
+Works on Python 2.7 and 3.4+. If you want to use an old version of Python, you should stick with watchdog < 0.10.0.
 
 Example API Usage
 -----------------
@@ -117,7 +118,7 @@ Installing from PyPI using ``pip``:
     
 .. code-block:: bash
 
-    $ pip install watchdog
+    $ python -m pip install watchdog
 
 Installing from PyPI using ``easy_install``:
     
@@ -212,9 +213,8 @@ this feature.
 
 Dependencies
 ------------
-1. Python 2.6 or above.
+1. Python 2.7, 3.4 or above.
 2. pathtools_
-3. select_backport_ (select.kqueue replacement for 2.6 on BSD/Mac OS X)
 4. XCode_ (only on Mac OS X)
 5. PyYAML_ (only for ``watchmedo`` script)
 6. argh_ (only for ``watchmedo`` script)
@@ -260,7 +260,6 @@ to do:
 .. _changelog: https://https://github.com/gorakhargosh/watchdog/blob/master/changelog.rst
 
 .. _homebrew: http://mxcl.github.com/homebrew/
-.. _select_backport: http://pypi.python.org/pypi/select_backport
 .. _argh: http://pypi.python.org/pypi/argh
 .. _PyYAML: http://www.pyyaml.org/
 .. _XCode: http://developer.apple.com/technologies/tools/xcode.html

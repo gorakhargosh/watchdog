@@ -67,7 +67,6 @@ if not has_broken_dash_S and 'site' in sys.modules:
 # out any namespace packages from site-packages that might have been
 # loaded by .pth files.
 clean_path = sys.path[:]
-import site
 sys.path[:] = clean_path
 for k, v in list(sys.modules.items()):
     if k in ('setuptools', 'pkg_resources') or (
@@ -190,8 +189,8 @@ except ImportError:
     ez['use_setuptools'](**setup_args)
     if 'pkg_resources' in sys.modules:
         if sys.version_info[0] >= 3:
-            import imp
-            reload_ = imp.reload
+            import importlib
+            reload_ = importlib.reload
         else:
             reload_ = reload
 

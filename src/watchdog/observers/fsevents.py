@@ -73,8 +73,10 @@ class FSEventsEmitter(EventEmitter):
         self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
 
     def on_thread_stop(self):
-        _fsevents.remove_watch(self.watch)
-        _fsevents.stop(self)
+        if self.watch:
+            _fsevents.remove_watch(self.watch)
+            _fsevents.stop(self)
+            self._watch = None
 
     def queue_events(self, timeout):
         with self._lock:

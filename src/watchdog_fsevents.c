@@ -41,6 +41,7 @@ typedef int Py_ssize_t;
 #define G_RETURN_NULL_IF_NOT(condition) do{if(!(condition)){ return NULL; }}while(0)
 #define G_RETURN_IF(condition)          do{if((condition)){ return; }}while(0)
 #define G_RETURN_IF_NOT(condition)      do{if(!(condition)){ return; }}while(0)
+#define UNUSED(x)                       (void)(x)
 
 /* Error message definitions. */
 #define ERROR_CANNOT_CALL_CALLBACK "Unable to call Python callback."
@@ -140,6 +141,8 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
                                const FSEventStreamEventFlags  event_flags[],
                                const FSEventStreamEventId     event_ids[])
 {
+    UNUSED(stream_ref);
+    UNUSED(event_ids);
     size_t i = 0;
     PyObject *callback_result = NULL;
     PyObject *path = NULL;
@@ -333,6 +336,7 @@ PyDoc_STRVAR(watchdog_add_watch__doc__,
 static PyObject *
 watchdog_add_watch(PyObject *self, PyObject *args)
 {
+    UNUSED(self);
     FSEventStreamRef stream_ref = NULL;
     StreamCallbackInfo *stream_callback_info_ref = NULL;
     CFRunLoopRef run_loop_ref = NULL;
@@ -416,6 +420,7 @@ Blocking function that runs an event loop associated with an emitter thread.\n\n
 static PyObject *
 watchdog_read_events(PyObject *self, PyObject *args)
 {
+    UNUSED(self);
     CFRunLoopRef run_loop_ref = NULL;
     PyObject *emitter_thread = NULL;
     PyObject *value = NULL;
@@ -465,6 +470,7 @@ Removes a watch from the event loop.\n\n\
 static PyObject *
 watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
+    UNUSED(self);
     PyObject *value = PyDict_GetItem(watch_to_stream, watch);
     PyDict_DelItem(watch_to_stream, watch);
 
@@ -490,6 +496,7 @@ Stops running the event loop from the specified thread.\n\n\
 static PyObject *
 watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
+    UNUSED(self);
     PyObject *value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
 #if PY_MAJOR_VERSION >= 3
     CFRunLoopRef run_loop_ref = PyCapsule_GetPointer(value, NULL);
@@ -528,7 +535,7 @@ static PyMethodDef watchdog_fsevents_methods[] =
 
     {"stop",         watchdog_stop,         METH_O,       watchdog_stop__doc__},
 
-    {NULL},
+    {NULL, NULL, 0, NULL},
 };
 
 
@@ -598,7 +605,11 @@ static struct PyModuleDef watchdog_fsevents_module = {
     MODULE_NAME,
     watchdog_fsevents_module__doc__,
     -1,
-    watchdog_fsevents_methods
+    watchdog_fsevents_methods,
+    NULL,  /* m_slots */
+    NULL,  /* m_traverse */
+    0,     /* m_clear */
+    NULL   /* m_free */
 };
 
 /**

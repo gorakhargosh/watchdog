@@ -38,7 +38,6 @@
 .. _Python: http://python.org
 .. _pywin32: http://sourceforge.net/projects/pywin32/
 .. _PyYAML: http://www.pyyaml.org/
-.. _select_backport: http://pypi.python.org/pypi/select_backport/
 .. _sphinx: http://sphinx.pocoo.org/
 .. _treewalker: http://github.com/jbd/treewatcher
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471

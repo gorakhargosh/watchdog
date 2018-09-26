@@ -41,11 +41,7 @@ from __future__ import with_statement
 import ctypes.wintypes
 from functools import reduce
 
-try:
-    LPVOID = ctypes.wintypes.LPVOID
-except AttributeError:
-    # LPVOID wasn't defined in Py2.5, guess it was introduced in Py2.6
-    LPVOID = ctypes.c_void_p
+LPVOID = ctypes.wintypes.LPVOID
 
 # Invalid handle value.
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value

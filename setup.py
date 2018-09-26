@@ -17,7 +17,6 @@
 # limitations under the License.
 
 import sys
-import imp
 import os.path
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
@@ -28,7 +27,15 @@ from distutils.util import get_platform
 SRC_DIR = 'src'
 WATCHDOG_PKG_DIR = os.path.join(SRC_DIR, 'watchdog')
 
-version = imp.load_source('version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
+if sys.version_info >= (3, 5):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
+    version = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(version)
+else:
+    import imp
+    version = imp.load_source('version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
 
 ext_modules = []
 if get_platform().startswith('macosx'):
@@ -54,11 +61,12 @@ if get_platform().startswith('macosx'):
                 '-std=c99',
                 '-pedantic',
                 '-Wall',
+                '-Werror',
                 '-Wextra',
                 '-fPIC',
 
                 # required w/Xcode 5.1+ and above because of '-mno-fused-madd'
-                '-Wno-error=unused-command-line-argument-hard-error-in-future'
+                '-Wno-error=unused-command-line-argument'
             ]
         ),
     ]
@@ -78,23 +86,14 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 tests_require=['pytest', 'pytest-cov', 'pytest-timeout >=0.3']
-if sys.version_info < (2, 7, 0):
-    tests_require.append('unittest2')
 
 install_requires = [
-    "PyYAML<3.13" if sys.version_info[:2] == (3, 2) else "PyYAML>=3.10",
+    "PyYAML>=3.10",
     "argh>=0.24.1",
     "pathtools>=0.1.1",
+    'pyobjc-framework-Cocoa>=4.2.2 ; sys_platform == "darwin"',
+    'pyobjc-framework-FSEvents>=4.2.2 ; sys_platform == "darwin"',
 ]
-if sys.version_info < (2, 7, 0):
-    # argparse is merged into Python 2.7 in the Python 2x series
-    # and Python 3.2 in the Python 3x series.
-    install_requires.append('argparse >=1.1')
-    if any([key in sys.platform for key in ['bsd', 'darwin']]):
-        # Python 2.6 and below have the broken/non-existent kqueue implementations
-        # in the select module. This backported patch adds one from Python 2.7,
-        # which works.
-        install_requires.append('select_backport >=0.2')
 
 with open('README.rst') as f:
     readme = f.read()
@@ -135,11 +134,8 @@ setup(name="watchdog",
           'Operating System :: Microsoft :: Windows :: Windows NT/2000',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
-          'Programming Language :: Python :: 2.6',
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.2',
-          'Programming Language :: Python :: 3.3',
           'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
