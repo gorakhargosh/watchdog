@@ -1,5 +1,8 @@
 Watchdog
 ========
+
+[![Build Status: Windows](https://ci.appveyor.com/api/projects/status/gm3nd9f2uddakc66/branch/master?svg=true)](https://ci.appveyor.com/project/gorakhargosh/watchdog/branch/master)
+
 Python API and shell utilities to monitor file system events.
 
 Works on Python 2.7 and 3.4+. If you want to use an old version of Python, you should stick with watchdog < 0.10.0.

@@ -65,7 +65,7 @@ if platform.is_windows():
             pass
 
         def test___init__(self):
-            SLEEP_TIME = 1
+            SLEEP_TIME = 2
             self.emitter.start()
             sleep(SLEEP_TIME)
             mkdir(p('fromdir'))
