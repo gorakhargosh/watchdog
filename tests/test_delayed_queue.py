@@ -18,8 +18,7 @@ from time import time
 from watchdog.utils.delayed_queue import DelayedQueue
 
 
-
-def test_stalled_get():
+def test_delayed_get():
     q = DelayedQueue(2)
     q.put("", True)
     inserted = time()
@@ -28,7 +27,7 @@ def test_stalled_get():
     # 2.10 instead of 2.05 for slow macOS slaves on Travis
     assert 2.10 > elapsed > 1.99
 
-def test_unstalled_get():
+def test_nondelayed_get():
     q = DelayedQueue(2)
     q.put("", False)
     inserted = time()

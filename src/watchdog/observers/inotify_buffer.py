@@ -60,11 +60,13 @@ class InotifyBuffer(BaseThread):
                         and event.cookie == inotify_event.cookie)
 
             if inotify_event.is_moved_to:
+                # Check if move_from is already in the buffer
                 for index, event in enumerate(grouped):
                     if matching_from_event(event):
                         grouped[index] = (event, inotify_event)
                         break
                 else:
+                    # Check if move_from is in delayqueue already
                     from_event = self._queue.remove(matching_from_event)
                     if from_event is not None:
                         grouped.append((from_event, inotify_event))
@@ -85,6 +87,7 @@ class InotifyBuffer(BaseThread):
             inotify_events = self._inotify.read_events()
             grouped_events = self._group_events(inotify_events)
             for inotify_event in grouped_events:
+                # Only add delay for unmatched move_from events
                 delay = not isinstance(inotify_event, tuple) and inotify_event.is_moved_from
                 self._queue.put(inotify_event, delay)
 
