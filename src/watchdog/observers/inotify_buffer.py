@@ -50,6 +50,31 @@ class InotifyBuffer(BaseThread):
         self.stop()
         self.join()
 
+    def _group_events(self, event_list):
+        """Group any matching move events"""
+        grouped = []
+        for inotify_event in event_list:
+            logger.debug("in-event %s", inotify_event)
+            def matching_from_event(event):
+                return (not isinstance(event, tuple) and event.is_moved_from
+                        and event.cookie == inotify_event.cookie)
+
+            if inotify_event.is_moved_to:
+                for index, event in enumerate(grouped):
+                    if matching_from_event(event):
+                        grouped[index] = (event, inotify_event)
+                        break
+                else:
+                    from_event = self._queue.remove(matching_from_event)
+                    if from_event is not None:
+                        grouped.append((from_event, inotify_event))
+                    else:
+                        logger.debug("could not find matching move_from event")
+                        grouped.append(inotify_event)
+            else:
+                grouped.append(inotify_event)
+        return grouped
+
     def run(self):
         """Read event from `inotify` and add them to `queue`. When reading a
         IN_MOVE_TO event, remove the previous added matching IN_MOVE_FROM event
@@ -58,24 +83,12 @@ class InotifyBuffer(BaseThread):
         deleted_self = False
         while self.should_keep_running() and not deleted_self:
             inotify_events = self._inotify.read_events()
-            for inotify_event in inotify_events:
-                logger.debug("in-event %s", inotify_event)
-                if inotify_event.is_moved_to:
+            grouped_events = self._group_events(inotify_events)
+            for inotify_event in grouped_events:
+                delay = not isinstance(inotify_event, tuple) and inotify_event.is_moved_from
+                self._queue.put(inotify_event, delay)
 
-                    def matching_from_event(event):
-                        return (not isinstance(event, tuple) and event.is_moved_from
-                                and event.cookie == inotify_event.cookie)
-
-                    from_event = self._queue.remove(matching_from_event)
-                    if from_event is not None:
-                        self._queue.put((from_event, inotify_event))
-                    else:
-                        logger.debug("could not find matching move_from event")
-                        self._queue.put(inotify_event)
-                else:
-                    self._queue.put(inotify_event)
-
-                if inotify_event.is_delete_self and \
+                if not isinstance(inotify_event, tuple) and inotify_event.is_delete_self and \
                         inotify_event.src_path == self._inotify.path:
                     # Deleted the watched directory, stop watching for events
                     deleted_self = True
