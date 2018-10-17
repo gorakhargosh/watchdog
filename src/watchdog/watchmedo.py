@@ -47,7 +47,7 @@ CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
 
 
-def path_split(pathname_spec, separator=os.path.sep):
+def path_split(pathname_spec, separator=os.pathsep):
     """
     Splits a pathname specification separated by an OS-dependent separator.
 
@@ -153,7 +153,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
      help='perform tricks from given file')
 @arg('--python-path',
      default='.',
-     help='paths separated by %s to add to the python path' % os.path.sep)
+     help='paths separated by %s to add to the python path' % os.pathsep)
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -215,7 +215,7 @@ def tricks_from(args):
      help='Dotted paths for all the tricks you want to generate')
 @arg('--python-path',
      default='.',
-     help='paths separated by %s to add to the python path' % os.path.sep)
+     help='paths separated by %s to add to the python path' % os.pathsep)
 @arg('--append-to-file',
      default=None,
      help='appends the generated tricks YAML to a file; \
