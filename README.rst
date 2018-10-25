@@ -1,7 +1,10 @@
 Watchdog
 ========
 
-[![Build Status: Windows](https://ci.appveyor.com/api/projects/status/gm3nd9f2uddakc66/branch/master?svg=true)](https://ci.appveyor.com/project/gorakhargosh/watchdog/branch/master)
+.. image:: https://travis-ci.org/gorakhargosh/watchdog.svg?branch=master
+    :target: https://travis-ci.org/gorakhargosh/watchdog
+.. image:: https://ci.appveyor.com/api/projects/status/gm3nd9f2uddakc66/branch/master?svg=true
+    :target: https://ci.appveyor.com/project/gorakhargosh/watchdog/branch/master
 
 Python API and shell utilities to monitor file system events.
 
