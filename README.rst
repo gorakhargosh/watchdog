@@ -1,6 +1,8 @@
 Watchdog
 ========
 
+.. image:: https://travis-ci.org/gorakhargosh/watchdog.svg?branch=master
+    :target: https://travis-ci.org/gorakhargosh/watchdog
 .. image:: https://ci.appveyor.com/api/projects/status/gm3nd9f2uddakc66/branch/master?svg=true
     :target: https://ci.appveyor.com/project/gorakhargosh/watchdog/branch/master
 
