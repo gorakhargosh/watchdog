@@ -120,19 +120,13 @@ Please file enhancement requests at the `issue tracker`_.
 
 Installation
 ------------
-Installing from PyPI using ``pip``:
+Install from PyPI using ``pip``:
     
 .. code-block:: bash
 
     $ python -m pip install watchdog
 
-Installing from PyPI using ``easy_install``:
-    
-.. code-block:: bash
-
-    $ easy_install watchdog
-
-Installing from source:
+Install from source:
     
 .. code-block:: bash
 
