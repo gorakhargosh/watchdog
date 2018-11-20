@@ -37,11 +37,17 @@
 # new BSD license.
 
 from __future__ import with_statement
-
+import sys
 import ctypes.wintypes
+import time
+import logging
 from functools import reduce
 
-LPVOID = ctypes.wintypes.LPVOID
+try:
+    LPVOID = ctypes.wintypes.LPVOID
+except AttributeError:
+    # LPVOID wasn't defined in Py2.5, guess it was introduced in Py2.6
+    LPVOID = ctypes.c_void_p
 
 # Invalid handle value.
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
@@ -118,9 +124,7 @@ def _errcheck_dword(value, func, args):
     return args
 
 
-kernel32 = ctypes.WinDLL("kernel32")
-
-ReadDirectoryChangesW = kernel32.ReadDirectoryChangesW
+ReadDirectoryChangesW = ctypes.windll.kernel32.ReadDirectoryChangesW
 ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
 ReadDirectoryChangesW.errcheck = _errcheck_bool
 ReadDirectoryChangesW.argtypes = (
@@ -134,7 +138,7 @@ ReadDirectoryChangesW.argtypes = (
     LPVOID  # FileIOCompletionRoutine # lpCompletionRoutine
 )
 
-CreateFileW = kernel32.CreateFileW
+CreateFileW = ctypes.windll.kernel32.CreateFileW
 CreateFileW.restype = ctypes.wintypes.HANDLE
 CreateFileW.errcheck = _errcheck_handle
 CreateFileW.argtypes = (
@@ -147,13 +151,13 @@ CreateFileW.argtypes = (
     ctypes.wintypes.HANDLE  # hTemplateFile
 )
 
-CloseHandle = kernel32.CloseHandle
+CloseHandle = ctypes.windll.kernel32.CloseHandle
 CloseHandle.restype = ctypes.wintypes.BOOL
 CloseHandle.argtypes = (
     ctypes.wintypes.HANDLE,  # hObject
 )
 
-CancelIoEx = kernel32.CancelIoEx
+CancelIoEx = ctypes.windll.kernel32.CancelIoEx
 CancelIoEx.restype = ctypes.wintypes.BOOL
 CancelIoEx.errcheck = _errcheck_bool
 CancelIoEx.argtypes = (
@@ -161,7 +165,7 @@ CancelIoEx.argtypes = (
     ctypes.POINTER(OVERLAPPED)  # lpOverlapped
 )
 
-CreateEvent = kernel32.CreateEventW
+CreateEvent = ctypes.windll.kernel32.CreateEventW
 CreateEvent.restype = ctypes.wintypes.HANDLE
 CreateEvent.errcheck = _errcheck_handle
 CreateEvent.argtypes = (
@@ -171,14 +175,14 @@ CreateEvent.argtypes = (
     ctypes.wintypes.LPCWSTR,  # lpName
 )
 
-SetEvent = kernel32.SetEvent
+SetEvent = ctypes.windll.kernel32.SetEvent
 SetEvent.restype = ctypes.wintypes.BOOL
 SetEvent.errcheck = _errcheck_bool
 SetEvent.argtypes = (
     ctypes.wintypes.HANDLE,  # hEvent
 )
 
-WaitForSingleObjectEx = kernel32.WaitForSingleObjectEx
+WaitForSingleObjectEx = ctypes.windll.kernel32.WaitForSingleObjectEx
 WaitForSingleObjectEx.restype = ctypes.wintypes.DWORD
 WaitForSingleObjectEx.errcheck = _errcheck_dword
 WaitForSingleObjectEx.argtypes = (
@@ -187,7 +191,7 @@ WaitForSingleObjectEx.argtypes = (
     ctypes.wintypes.BOOL,  # bAlertable
 )
 
-CreateIoCompletionPort = kernel32.CreateIoCompletionPort
+CreateIoCompletionPort = ctypes.windll.kernel32.CreateIoCompletionPort
 CreateIoCompletionPort.restype = ctypes.wintypes.HANDLE
 CreateIoCompletionPort.errcheck = _errcheck_handle
 CreateIoCompletionPort.argtypes = (
@@ -197,7 +201,7 @@ CreateIoCompletionPort.argtypes = (
     ctypes.wintypes.DWORD,  # NumberOfConcurrentThreads
 )
 
-GetQueuedCompletionStatus = kernel32.GetQueuedCompletionStatus
+GetQueuedCompletionStatus = ctypes.windll.kernel32.GetQueuedCompletionStatus
 GetQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
 GetQueuedCompletionStatus.errcheck = _errcheck_bool
 GetQueuedCompletionStatus.argtypes = (
@@ -208,7 +212,7 @@ GetQueuedCompletionStatus.argtypes = (
     ctypes.wintypes.DWORD,  # dwMilliseconds
 )
 
-PostQueuedCompletionStatus = kernel32.PostQueuedCompletionStatus
+PostQueuedCompletionStatus = ctypes.windll.kernel32.PostQueuedCompletionStatus
 PostQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
 PostQueuedCompletionStatus.errcheck = _errcheck_bool
 PostQueuedCompletionStatus.argtypes = (
@@ -252,7 +256,7 @@ WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
 
 BUFFER_SIZE = 2048
 
-
+    
 def _parse_event_buffer(readBuffer, nBytes):
     results = []
     while nBytes > 0:
@@ -285,24 +289,63 @@ def close_directory_handle(handle):
         except:
             return
 
-
-def read_directory_changes(handle, recursive):
+#we added self param.  maybe delete it later?
+def read_directory_changes(self, handle, recursive, SecondsToWait=3):
     """Read changes to the directory using the specified directory handle.
 
     http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
     """
     event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
     nbytes = ctypes.wintypes.DWORD()
+    print("in read directory changes")
+    ee=None
+    #while True:
+    hitException =False
     try:
+        print("SUCCESS: file found before ReadDirectoryChangesW")
         ReadDirectoryChangesW(handle, ctypes.byref(event_buffer),
-                              len(event_buffer), recursive,
-                              WATCHDOG_FILE_NOTIFY_FLAGS,
-                              ctypes.byref(nbytes), None, None)
+                                len(event_buffer), recursive,
+                                WATCHDOG_FILE_NOTIFY_FLAGS,
+                                ctypes.byref(nbytes), None, None)
+        ee=None
+        print("SUCCESS: file found after ReadDirectoryChanges")
+
     except WindowsError as e:
+        print("FAIL: file not found")
+        self.file_not_found
+        #print("error raised")
+        hitException=True
         if e.winerror == ERROR_OPERATION_ABORTED:
             return [], 0
-        raise e
+        ee=e
 
+    if hitException==False:
+        print("hit exception")
+        #break
+    ''' 
+        SecondsToWait-=1
+        time.sleep(1)
+        if SecondsToWait>-10:
+            print("Seconds to Wait: "+str(SecondsToWait))
+        if SecondsToWait<1:
+            answer=input("Would you like to try again(y/n): ")
+            if answer=="y":
+                #added self param here
+                read_directory_changes(self, handle, recursive, 2)
+            elif answer=="n":
+                #added this here
+                #print(self)
+                #self._stopped_event.set()
+                break
+            else:
+                print("incorrect input. try again.")
+    '''
+    with open("testlogfile.log", "a") as logf:
+        logf.write("{0}--Error:{1}\n".format(time.asctime( time.localtime(time.time())),str(ee) ) )
+    #raise ee
+    #if ee!=None:
+     #   sys.exit()
+        
     # Python 2/3 compat
     try:
         int_class = long
@@ -315,32 +358,34 @@ class WinAPINativeEvent(object):
     def __init__(self, action, src_path):
         self.action = action
         self.src_path = src_path
-
+    
     @property
     def is_added(self):
         return self.action == FILE_ACTION_CREATED
-
+    
     @property
     def is_removed(self):
         return self.action == FILE_ACTION_REMOVED
-
+    
     @property
     def is_modified(self):
         return self.action == FILE_ACTION_MODIFIED
-
+    
     @property
     def is_renamed_old(self):
         return self.action == FILE_ACTION_RENAMED_OLD_NAME
-
+    
     @property
     def is_renamed_new(self):
         return self.action == FILE_ACTION_RENAMED_NEW_NAME
-
+    
     def __repr__(self):
         return ("<WinAPINativeEvent: action=%d, src_path=%r>" % (self.action, self.src_path))
 
-
-def read_events(handle, recursive):
-    buf, nbytes = read_directory_changes(handle, recursive)
+#maybe remove the self param?; we added that
+def read_events(self, handle, recursive):
+    print("read events called" +str(self))
+    #we added self here, too
+    buf, nbytes = read_directory_changes(self, handle, recursive)
     events = _parse_event_buffer(buf, nbytes)
     return [WinAPINativeEvent(action, path) for action, path in events]
