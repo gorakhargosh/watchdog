@@ -85,15 +85,15 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
-tests_require=['pytest', 'pytest-cov', 'pytest-timeout >=0.3']
-
+tests_require = ['pytest>=3.6.0', 'pytest-cov', 'pytest-timeout>=1.3.1']
 install_requires = [
-    "PyYAML>=3.10",
-    "argh>=0.24.1",
     "pathtools>=0.1.1",
     'pyobjc-framework-Cocoa>=4.2.2 ; sys_platform == "darwin"',
     'pyobjc-framework-FSEvents>=4.2.2 ; sys_platform == "darwin"',
 ]
+extras_require = {
+    'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
+}
 
 with open('README.rst') as f:
     readme = f.read()
@@ -151,6 +151,7 @@ setup(name="watchdog",
       packages=find_packages(SRC_DIR),
       include_package_data=True,
       install_requires=install_requires,
+      extras_require=extras_require,
       tests_require=tests_require,
       cmdclass={
           'build_ext': build_ext,
@@ -158,7 +159,7 @@ setup(name="watchdog",
       },
       ext_modules=ext_modules,
       entry_points={'console_scripts': [
-          'watchmedo = watchdog.watchmedo:main',
+          'watchmedo = watchdog.watchmedo:main [watchmedo]',
       ]},
       zip_safe=False
 )

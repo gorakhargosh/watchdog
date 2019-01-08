@@ -15,8 +15,10 @@ matrix:
       python: "3.6"
       env: TOXENV=py36
     - os: linux
-      python: "3.7-dev"  # No 3.7 yet
+      python: "3.7"
       env: TOXENV=py37
+      dist: xenial
+      sudo: true
     - os: linux
       python: "pypy"
       env: TOXENV=pypy
@@ -36,12 +38,10 @@ matrix:
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then chmod +x .travis/install.sh && .travis/install.sh; fi
-  - DEPS=tox
 
 install:
-  - pip install --upgrade $DEPS
-  - pip list  # Helpful when debugging
-  - tox --notest
+  - python -m pip install tox
+  - tox --notest  # Note: keep it!
 
 script:
   - tox

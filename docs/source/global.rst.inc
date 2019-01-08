@@ -19,7 +19,6 @@
 .. _CreateIoCompletionPort: http://msdn.microsoft.com/en-us/library/aa363862(v=VS.85).aspx
 
 .. _argh: http://pypi.python.org/pypi/argh
-.. _argparse: http://pypi.python.org/pypi/argparse
 .. _coverage: http://nedbatchelder.com/code/coverage/
 .. _file.monitor: http://github.com/pke/file.monitor
 .. _fsmonitor: http://github.com/shaurz/fsmonitor
