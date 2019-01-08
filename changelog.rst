@@ -8,6 +8,7 @@ API changes
 
 - Dropped support for Python 2.6, 3.2 and 3.3.
   If you are still running one of these obsolete Python version, you have to keep using watchdog < 0.10.0.
+- The ``watchmedo`` utility is no more installed by default but via the extra ``watchdog[watchmedo]``.
 
 0.8.2
 ~~~~~

@@ -42,7 +42,7 @@ as command-line arguments and logs events generated:
 
 Shell Utilities
 ---------------
-Watchdog comes with a utility script called ``watchmedo``.
+Watchdog comes with an *optional* utility script called ``watchmedo``.
 Please type ``watchmedo --help`` at the shell prompt to
 know more about this tool.
 
@@ -126,11 +126,17 @@ Install from PyPI using ``pip``:
 
     $ python -m pip install watchdog
 
+    # or to install the watchmedo utility:
+    $ python -m pip install watchdog[watchmedo]
+
 Install from source:
     
 .. code-block:: bash
 
-    $ python setup.py install
+    $ python -m pip install -e .
+
+    # or to install the watchmedo utility:
+    $ python -m pip install -e .[watchmedo]
 
 
 Installation Caveats
@@ -165,9 +171,9 @@ ticket at the `issue tracker`_. For general help and questions use the official
 
 Create and activate your virtual environment, then::
 
-    pip install pytest
-    pip install -e .
-    py.test tests
+    python -m pip install pytest
+    python -m pip install -e .[watchmedo]
+    python -m pytest tests
 
 
 Supported Platforms
