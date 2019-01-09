@@ -219,9 +219,9 @@ Dependencies
 ------------
 1. Python 2.7, 3.4 or above.
 2. pathtools_
-4. XCode_ (only on Mac OS X)
-5. PyYAML_ (only for ``watchmedo`` script)
-6. argh_ (only for ``watchmedo`` script)
+3. XCode_ (only on Mac OS X)
+4. PyYAML_ (only for ``watchmedo`` script)
+5. argh_ (only for ``watchmedo`` script)
 
 
 Licensing
