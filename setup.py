@@ -21,7 +21,6 @@ import os.path
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
-from setuptools.command.test import test as TestCommand
 from distutils.util import get_platform
 
 SRC_DIR = 'src'
@@ -71,21 +70,6 @@ if get_platform().startswith('macosx'):
         ),
     ]
 
-
-class PyTest(TestCommand):
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = [
-            '--cov=' + SRC_DIR,
-            '--cov-report=term-missing',
-            'tests']
-        self.test_suite = True
-    def run_tests(self):
-        import pytest
-        errno = pytest.main(self.test_args)
-        sys.exit(errno)
-
-tests_require = ['pytest>=3.6.0', 'pytest-cov', 'pytest-timeout>=1.3.1']
 install_requires = [
     "pathtools>=0.1.1",
     'pyobjc-framework-Cocoa>=4.2.2 ; sys_platform == "darwin"',
@@ -152,10 +136,8 @@ setup(name="watchdog",
       include_package_data=True,
       install_requires=install_requires,
       extras_require=extras_require,
-      tests_require=tests_require,
       cmdclass={
           'build_ext': build_ext,
-          'test': PyTest,
       },
       ext_modules=ext_modules,
       entry_points={'console_scripts': [
