@@ -26,11 +26,7 @@ def wait():
     Wait long enough for file/folder mtime to change. This is needed
     to be able to detected modifications.
     """
-    if platform.is_darwin() or platform.is_windows():
-         # on osx resolution of stat.mtime is only 1 second
-        time.sleep(1.5)
-    else:
-        time.sleep(0.5)
+    time.sleep(1.5)
 
 
 def test_move_to(p):
@@ -103,5 +99,7 @@ def test_detect_modify_for_moved_files(p):
     touch(p('a'))
     mv(p('a'), p('b'))
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
-    assert diff.files_moved == [(p('a'), p('b'))]
-    assert diff.files_modified == [p('a')]
+    assert diff.files_moved == []
+    assert diff.files_created == [p('b')]
+    assert diff.files_deleted == [p('a')]
+    assert diff.files_modified == []
