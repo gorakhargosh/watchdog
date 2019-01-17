@@ -179,9 +179,11 @@ class Inotify(object):
         :class:`bytes`
     :param recursive:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
+    :param follow:
+        ``True`` if symbolic links should be traversed; ``False`` otherwise.
     """
 
-    def __init__(self, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
+    def __init__(self, path, recursive=False, follow=False, event_mask=WATCHDOG_ALL_EVENTS):
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:
@@ -196,7 +198,8 @@ class Inotify(object):
         self._path = path
         self._event_mask = event_mask
         self._is_recursive = recursive
-        self._add_dir_watch(path, recursive, event_mask)
+        self._follow_links = follow
+        self._add_dir_watch(path, recursive, follow, event_mask)
         self._moved_from_events = dict()
 
     @property
@@ -363,7 +366,7 @@ class Inotify(object):
         return event_list
 
     # Non-synchronized methods.
-    def _add_dir_watch(self, path, recursive, mask):
+    def _add_dir_watch(self, path, recursive, follow, mask):
         """
         Adds a watch (optionally recursively) for the given directory path
         to monitor events specified by the mask.
@@ -372,19 +375,31 @@ class Inotify(object):
             Path to monitor
         :param recursive:
             ``True`` to monitor recursively.
+        :param follow:
+            ``True`` to traverse symbolic links
         :param mask:
             Event bit mask.
         """
         if not os.path.isdir(path):
             raise OSError('Path is not a directory')
-        self._add_watch(path, mask)
+
+        if os.path.islink(path):
+            if follow:
+                self._add_watch( path + bytearray( (os.sep + '.').encode('ascii')) , mask)
+            else:
+                raise OSError('monitoring a symlinked directory does not work.  Try \'follow\' option')
+        else:
+            self._add_watch(path, mask)
+
         if recursive:
             for root, dirnames, _ in os.walk(path):
                 for dirname in dirnames:
                     full_path = os.path.join(root, dirname)
                     if os.path.islink(full_path):
-                        continue
-                    self._add_watch(full_path, mask)
+                        if follow:
+                            self._add_watch( full_path + bytearray( (os.sep + '.').encode('ascii')) , mask)
+                    else:
+                        self._add_watch(full_path, mask)
 
     def _add_watch(self, path, mask):
         """

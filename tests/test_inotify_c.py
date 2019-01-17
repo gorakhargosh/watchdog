@@ -30,7 +30,7 @@ def watching(path=None, use_full_emitter=False):
     path = p('') if path is None else path
     global emitter
     Emitter = InotifyFullEmitter if use_full_emitter else InotifyEmitter
-    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
+    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True, follow=False))
     emitter.start()
     yield
     emitter.stop()

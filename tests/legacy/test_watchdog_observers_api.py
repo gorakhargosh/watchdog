@@ -33,28 +33,28 @@ from watchdog.events import LoggingEventHandler, FileModifiedEvent
 class TestObservedWatch(unittest.TestCase):
 
     def test___eq__(self):
-        watch1 = ObservedWatch('/foobar', True)
-        watch2 = ObservedWatch('/foobar', True)
-        watch_ne1 = ObservedWatch('/foo', True)
-        watch_ne2 = ObservedWatch('/foobar', False)
+        watch1 = ObservedWatch('/foobar', True, False)
+        watch2 = ObservedWatch('/foobar', True, False)
+        watch_ne1 = ObservedWatch('/foo', True, False)
+        watch_ne2 = ObservedWatch('/foobar', False, False)
 
         self.assertTrue(watch1.__eq__(watch2))
         self.assertFalse(watch1.__eq__(watch_ne1))
         self.assertFalse(watch1.__eq__(watch_ne2))
 
     def test___ne__(self):
-        watch1 = ObservedWatch('/foobar', True)
-        watch2 = ObservedWatch('/foobar', True)
-        watch_ne1 = ObservedWatch('/foo', True)
-        watch_ne2 = ObservedWatch('/foobar', False)
+        watch1 = ObservedWatch('/foobar', True, False)
+        watch2 = ObservedWatch('/foobar', True, False)
+        watch_ne1 = ObservedWatch('/foo', True, False)
+        watch_ne2 = ObservedWatch('/foobar', False, False)
 
         self.assertFalse(watch1.__ne__(watch2))
         self.assertTrue(watch1.__ne__(watch_ne1))
         self.assertTrue(watch1.__ne__(watch_ne2))
 
     def test___repr__(self):
-        observed_watch = ObservedWatch('/foobar', True)
-        self.assertEqual('<ObservedWatch: path=' + '/foobar' + ', is_recursive=True>',
+        observed_watch = ObservedWatch('/foobar', True, False)
+        self.assertEqual('<ObservedWatch: path=' + '/foobar' + ', is_recursive=True' + ', does_follow_links=False>',
                          observed_watch.__repr__())
 
 
@@ -62,7 +62,7 @@ class TestEventEmitter(unittest.TestCase):
 
     def test___init__(self):
         event_queue = EventQueue()
-        watch = ObservedWatch('/foobar', True)
+        watch = ObservedWatch('/foobar', True, False)
         event_emitter = EventEmitter(event_queue, watch, timeout=1)
         event_emitter.queue_event(FileModifiedEvent('/foobar/blah'))
 
@@ -71,7 +71,7 @@ class TestEventDispatcher(unittest.TestCase):
 
     def test_dispatch_event(self):
         event = FileModifiedEvent('/foobar')
-        watch = ObservedWatch('/path', True)
+        watch = ObservedWatch('/path', True, False)
 
         class TestableEventDispatcher(EventDispatcher):
 

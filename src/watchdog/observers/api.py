@@ -43,11 +43,14 @@ class ObservedWatch(object):
         Path string.
     :param recursive:
         ``True`` if watch is recursive; ``False`` otherwise.
+    :param follow:
+        ``True`` if watch should traverse symbolic links; ``False`` otherwise.
     """
 
-    def __init__(self, path, recursive):
+    def __init__(self, path, recursive, follow=False):
         self._path = path
         self._is_recursive = recursive
+        self._follow_links = follow
 
     @property
     def path(self):
@@ -60,8 +63,13 @@ class ObservedWatch(object):
         return self._is_recursive
 
     @property
+    def does_follow_links(self):
+        """Determines whether subdirectories are watched for the path."""
+        return self._follow_links
+
+    @property
     def key(self):
-        return self.path, self.is_recursive
+        return self.path, self.is_recursive, self.does_follow_links
 
     def __eq__(self, watch):
         return self.key == watch.key
@@ -73,8 +81,8 @@ class ObservedWatch(object):
         return hash(self.key)
 
     def __repr__(self):
-        return "<ObservedWatch: path=%s, is_recursive=%s>" % (
-            self.path, self.is_recursive)
+        return "<ObservedWatch: path=%s, is_recursive=%s, does_follow_links=%s>" % (
+            self.path, self.is_recursive, self.does_follow_links)
 
 
 # Observer classes
@@ -200,7 +208,6 @@ class EventDispatcher(BaseThread):
             except queue.Empty:
                 continue
 
-
 class BaseObserver(EventDispatcher):
     """Base observer."""
 
@@ -212,6 +219,7 @@ class BaseObserver(EventDispatcher):
         self._handlers = dict()
         self._emitters = set()
         self._emitter_for_watch = dict()
+        self.started = False
 
     def _add_emitter(self, emitter):
         self._emitter_for_watch[emitter.watch] = emitter
@@ -253,9 +261,25 @@ class BaseObserver(EventDispatcher):
     def start(self):
         for emitter in self._emitters:
             emitter.start()
-        super(BaseObserver, self).start()
 
-    def schedule(self, event_handler, path, recursive=False):
+        if len(self._handlers) > 0:
+           super(BaseObserver, self).start()
+
+        self.started=True
+
+    def join(self):
+        self.started=False
+        if len(self._handlers) > 0:
+           super(BaseObserver, self).join()
+
+    def is_alive(self):
+        if len(self._handlers) > 0:
+           return super(BaseObserver, self).is_alive()
+        else:
+           return self.started 
+
+
+    def schedule(self, event_handler, path, recursive=False, follow=False):
         """
         Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
@@ -275,13 +299,19 @@ class BaseObserver(EventDispatcher):
             traversed recursively; ``False`` otherwise.
         :type recursive:
             ``bool``
+        :param follow:
+            ``True`` symbolic links will be traversed and the destinations
+            processed; ``False`` otherwise.
+        :type follow:
+            ``bool``
         :return:
             An :class:`ObservedWatch` object instance representing
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive)
-            self._add_handler_for_watch(event_handler, watch)
+            watch = ObservedWatch(path, recursive, follow)
+            if event_handler is not None:
+               self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
             if self._emitter_for_watch.get(watch) is None:
