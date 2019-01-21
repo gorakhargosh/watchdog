@@ -3,7 +3,8 @@ from __future__ import unicode_literals
 
 from watchdog import watchmedo
 import pytest
-import yaml
+from yaml.constructor import ConstructorError
+from yaml.scanner import ScannerError
 import os
 
 
@@ -36,7 +37,8 @@ def test_load_config_invalid(tmpdir):
         ).format(critical_dir)
         f.write(content)
 
-    with pytest.raises(yaml.constructor.ConstructorError):
+    # PyYAML get_single_data() raises different exceptions for Linux and Windows
+    with pytest.raises((ConstructorError, ScannerError)):
         watchmedo.load_config(yaml_file)
 
     assert not os.path.exists(critical_dir)
