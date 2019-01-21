@@ -39,6 +39,8 @@ nbproject/
 .coverage
 htmlcov/
 .tox/
+.cache/
+.pytest_cache/
 
 # From virtualenv.
 include/
