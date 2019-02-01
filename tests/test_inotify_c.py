@@ -156,6 +156,8 @@ def test_raise_error(monkeypatch):
     assert "Unknown error -1" in str(exc.value)
 
 
+@pytest.mark.skipif(not platform.is_linux(),
+                    reason="Testing with inotify messages (Linux only)")
 def test_non_ascii_path():
     """
     Inotify can construct an event for a path containing non-ASCII.
