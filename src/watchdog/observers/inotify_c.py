@@ -453,9 +453,9 @@ class InotifyEvent(object):
     :param cookie:
         Event cookie
     :param name:
-        Event name.
+        Base name of the event source path.
     :param src_path:
-        Event source path
+        Full event source path.
     """
 
     def __init__(self, wd, mask, cookie, name, src_path):
