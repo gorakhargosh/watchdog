@@ -462,7 +462,7 @@ class InotifyEvent(object):
         self._wd = wd
         self._mask = mask
         self._cookie = cookie
-        self._name = name.decode()
+        self._name = name
         self._src_path = src_path
 
     @property
