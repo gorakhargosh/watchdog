@@ -171,7 +171,7 @@ ticket at the `issue tracker`_. For general help and questions use the official
 
 Create and activate your virtual environment, then::
 
-    python -m pip install pytest
+    python -m pip install pytest pytest-cov
     python -m pip install -e .[watchmedo]
     python -m pytest tests
 
