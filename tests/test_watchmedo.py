@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from watchdog import watchmedo
 import pytest
+# Skip if import PyYAML failed. PyYAML missing possible because
+# watchdog installed without watchmedo. See Installation section 
+# in README.rst
+yaml = pytest.importorskip('yaml')
+from watchdog import watchmedo
 from yaml.constructor import ConstructorError
 from yaml.scanner import ScannerError
 import os
