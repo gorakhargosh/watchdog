@@ -168,3 +168,5 @@ def test_non_ascii_path():
         event, _ = event_queue.get(timeout=5)
         assert isinstance(event.src_path, type(u""))
         assert event.src_path == path
+        # Just make sure it doesn't raise an exception.
+        assert repr(event)
