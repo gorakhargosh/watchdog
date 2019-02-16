@@ -21,7 +21,6 @@ import os.path
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
-from setuptools.command.test import test as TestCommand
 from distutils.util import get_platform
 
 SRC_DIR = 'src'
@@ -71,29 +70,14 @@ if get_platform().startswith('macosx'):
         ),
     ]
 
-
-class PyTest(TestCommand):
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = [
-            '--cov=' + SRC_DIR,
-            '--cov-report=term-missing',
-            'tests']
-        self.test_suite = True
-    def run_tests(self):
-        import pytest
-        errno = pytest.main(self.test_args)
-        sys.exit(errno)
-
-tests_require=['pytest', 'pytest-cov', 'pytest-timeout >=0.3']
-
 install_requires = [
-    "PyYAML>=3.10",
-    "argh>=0.24.1",
     "pathtools>=0.1.1",
     'pyobjc-framework-Cocoa>=4.2.2 ; sys_platform == "darwin"',
     'pyobjc-framework-FSEvents>=4.2.2 ; sys_platform == "darwin"',
 ]
+extras_require = {
+    'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
+}
 
 with open('README.rst') as f:
     readme = f.read()
@@ -151,14 +135,13 @@ setup(name="watchdog",
       packages=find_packages(SRC_DIR),
       include_package_data=True,
       install_requires=install_requires,
-      tests_require=tests_require,
+      extras_require=extras_require,
       cmdclass={
           'build_ext': build_ext,
-          'test': PyTest,
       },
       ext_modules=ext_modules,
       entry_points={'console_scripts': [
-          'watchmedo = watchdog.watchmedo:main',
+          'watchmedo = watchdog.watchmedo:main [watchmedo]',
       ]},
       zip_safe=False
 )

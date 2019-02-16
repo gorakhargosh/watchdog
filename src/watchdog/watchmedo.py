@@ -47,7 +47,7 @@ CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
 
 
-def path_split(pathname_spec, separator=os.path.sep):
+def path_split(pathname_spec, separator=os.pathsep):
     """
     Splits a pathname specification separated by an OS-dependent separator.
 
@@ -85,7 +85,7 @@ def load_config(tricks_file_pathname):
     f = open(tricks_file_pathname, 'rb')
     content = f.read()
     f.close()
-    config = yaml.load(content)
+    config = yaml.safe_load(content)
     return config
 
 
@@ -153,12 +153,12 @@ def schedule_tricks(observer, tricks, pathname, recursive):
      help='perform tricks from given file')
 @arg('--python-path',
      default='.',
-     help='paths separated by %s to add to the python path' % os.path.sep)
+     help='paths separated by %s to add to the python path' % os.pathsep)
 @arg('--interval',
      '--timeout',
      dest='timeout',
      default=1.0,
-     help='use this as the polling interval/blocking timeout')
+     help='use this as the polling interval/blocking timeout (in seconds)')
 @arg('--recursive',
      default=True,
      help='recursively monitor paths')
@@ -215,7 +215,7 @@ def tricks_from(args):
      help='Dotted paths for all the tricks you want to generate')
 @arg('--python-path',
      default='.',
-     help='paths separated by %s to add to the python path' % os.path.sep)
+     help='paths separated by %s to add to the python path' % os.pathsep)
 @arg('--append-to-file',
      default=None,
      help='appends the generated tricks YAML to a file; \
@@ -500,6 +500,9 @@ try to interpret them.
      dest='signal',
      default='SIGINT',
      help='stop the subprocess with this signal (default SIGINT)')
+@arg('--debug-force-polling',
+     default=False,
+     help='[debug] forces polling')
 @arg('--kill-after',
      dest='kill_after',
      default=10.0,
@@ -514,7 +517,12 @@ def auto_restart(args):
     :param args:
         Command line argument options.
     """
-    from watchdog.observers import Observer
+
+    if args.debug_force_polling:
+        from watchdog.observers.polling import PollingObserver as Observer
+    else:
+        from watchdog.observers import Observer
+
     from watchdog.tricks import AutoRestartTrick
     import signal
     import re

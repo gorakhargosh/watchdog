@@ -48,6 +48,10 @@ import errno
 import os
 from stat import S_ISDIR
 from watchdog.utils import stat as default_stat
+try:
+    from os import scandir
+except ImportError:
+    from os import listdir as scandir
 
 
 class DirectorySnapshotDiff(object):
@@ -193,13 +197,13 @@ class DirectorySnapshot(object):
         A function with the signature ``walker_callback(path, stat_info)``
         which will be called for every entry in the directory tree.
     :param listdir:
-        Use custom listdir function. See ``os.listdir`` for details.
+        Use custom listdir function. For details see ``os.scandir`` if available, else ``os.listdir``.
     """
     
     def __init__(self, path, recursive=True,
                  walker_callback=(lambda p, s: None),
                  stat=default_stat,
-                 listdir=os.listdir):
+                 listdir=scandir):
         self._stat_info = {}
         self._inode_to_path = {}
         
@@ -209,12 +213,14 @@ class DirectorySnapshot(object):
 
         def walk(root):
             try:
-                paths = [os.path.join(root, name) for name in listdir(root)]
+                paths = [os.path.join(root, entry if isinstance(entry, str) else entry.name)
+                         for entry in listdir(root)]
             except OSError as e:
                 # Directory may have been deleted between finding it in the directory
                 # list of its parent and trying to delete its contents. If this
-                # happens we treat it as empty.
-                if e.errno == errno.ENOENT:
+                # happens we treat it as empty. Likewise if the directory was replaced
+                # with a file of the same name (less likely, but possible).
+                if e.errno == errno.ENOENT or e.errno == errno.ENOTDIR:
                     return
                 else:
                     raise

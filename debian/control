@@ -7,5 +7,5 @@ Standards-Version: 3.8.4
 
 Package: python-watchdog
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, python-argparse (>= 1.1), python-yaml (>= 3.09), python-argh (>= 0.14.2), python-pathtools (>= 0.1.1)
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-yaml (>= 3.09), python-argh (>= 0.14.2), python-pathtools (>= 0.1.1)
 Description: Python Watchdog library for monitoring different directories

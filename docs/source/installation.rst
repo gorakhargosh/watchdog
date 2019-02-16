@@ -15,7 +15,10 @@ Installing from PyPI using pip
 
 .. parsed-literal::
 
-    $ pip install |project_name|
+    $ python -m pip install |project_name|
+
+    # or to install the watchmedo utility:
+    $ python -m pip install |project_name|[watchmedo]
 
 Installing from source tarballs
 -------------------------------
@@ -25,7 +28,10 @@ Installing from source tarballs
     $ wget -c http://pypi.python.org/packages/source/w/watchdog/watchdog-|project_version|.tar.gz
     $ tar zxvf |project_name|-|project_version|.tar.gz
     $ cd |project_name|-|project_version|
-    $ python setup.py install
+    $ python -m pip install -e .
+
+    # or to install the watchmedo utility:
+    $ python -m pip install -e .[watchmedo]
 
 Installing from the code repository
 -----------------------------------
@@ -34,7 +40,10 @@ Installing from the code repository
 
     $ git clone --recursive git://github.com/gorakhargosh/watchdog.git
     $ cd watchdog
-    $ python setup.py install
+    $ python -m pip install -e.
+
+    # or to install the watchmedo utility:
+    $ python -m pip install -e.[watchmedo]
 
 .. _installation-dependencies:
 
@@ -50,15 +59,20 @@ using.
 +=====================+=============+=============+=============+=============+
 | XCode_              |             |             |     Yes     |             |
 +---------------------+-------------+-------------+-------------+-------------+
+| pathtools_          |     Yes     |     Yes     |     Yes     |     Yes     |
++---------------------+-------------+-------------+-------------+-------------+
+
+The following is a list of dependencies you need based on the operating system you are
+using the ``watchmedo`` utility.
+
++---------------------+-------------+-------------+-------------+-------------+
+| Operating system    |   Windows   |  Linux 2.6  | Mac OS X/   |     BSD     |
+| Dependency (row)    |             |             |   Darwin    |             |
++=====================+=============+=============+=============+=============+
 | PyYAML_             |     Yes     |     Yes     |     Yes     |     Yes     |
 +---------------------+-------------+-------------+-------------+-------------+
 | argh_               |     Yes     |     Yes     |     Yes     |     Yes     |
 +---------------------+-------------+-------------+-------------+-------------+
-| argparse_           |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
-| pathtools_          |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
-
 
 Installing Dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~

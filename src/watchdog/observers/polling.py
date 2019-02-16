@@ -35,7 +35,6 @@ Classes
 """
 
 from __future__ import with_statement
-import os
 import threading
 from functools import partial
 from watchdog.utils import stat as default_stat
@@ -58,6 +57,11 @@ from watchdog.events import (
     FileModifiedEvent
 )
 
+try:
+    from os import scandir
+except ImportError:
+    from os import listdir as scandir
+
 
 class PollingEmitter(EventEmitter):
     """
@@ -66,7 +70,7 @@ class PollingEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
-                 stat=default_stat, listdir=os.listdir):
+                 stat=default_stat, listdir=scandir):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._snapshot = None
         self._lock = threading.Lock()

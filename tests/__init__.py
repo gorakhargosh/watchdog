@@ -17,8 +17,8 @@
 import unittest
 
 try:
-    from Queue import Queue  # Python 2
+    from Queue import Queue, Empty  # Python 2
 except ImportError:
-    from queue import Queue  # Python 3
+    from queue import Queue, Empty  # Python 3
 
-__all__ = ["unittest", "Queue"]
+__all__ = ["unittest", "Queue", "Empty"]

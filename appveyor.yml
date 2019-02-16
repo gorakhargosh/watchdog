@@ -1,0 +1,45 @@
+build: off
+
+cache:
+  - '%LOCALAPPDATA%\pip\Cache'
+
+environment:
+  fast_finish: true
+  matrix:
+    - python: py27
+      tox_env: py27
+      python_path: c:\python27
+    - python: py27-x64
+      tox_env: py27
+      python_path: c:\python27-x64
+    - python: py34
+      tox_env: py34
+      python_path: c:\python34
+    - python: py34-x64
+      tox_env: py34
+      python_path: c:\python34-x64
+    - python: py35
+      tox_env: py35
+      python_path: c:\python35
+    - python: py35-x64
+      tox_env: py35
+      python_path: c:\python35-x64
+    - python: py36
+      tox_env: py36
+      python_path: c:\python36
+    - python: py36-x64
+      tox_env: py36
+      python_path: c:\python36-x64
+    - python: py37
+      tox_env: py37
+      python_path: c:\python37
+    - python: py37-x64
+      tox_env: py37
+      python_path: c:\python37-x64
+
+install:
+  - SET "PATH=%python_path%;%python_path%\Scripts;%PATH%"
+  - pip install tox
+
+test_script:
+  tox -e %tox_env%

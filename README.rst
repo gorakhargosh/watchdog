@@ -1,5 +1,11 @@
 Watchdog
 ========
+
+.. image:: https://travis-ci.org/gorakhargosh/watchdog.svg?branch=master
+    :target: https://travis-ci.org/gorakhargosh/watchdog
+.. image:: https://ci.appveyor.com/api/projects/status/gm3nd9f2uddakc66/branch/master?svg=true
+    :target: https://ci.appveyor.com/project/gorakhargosh/watchdog/branch/master
+
 Python API and shell utilities to monitor file system events.
 
 Works on Python 2.7 and 3.4+. If you want to use an old version of Python, you should stick with watchdog < 0.10.0.
@@ -36,7 +42,7 @@ as command-line arguments and logs events generated:
 
 Shell Utilities
 ---------------
-Watchdog comes with a utility script called ``watchmedo``.
+Watchdog comes with an *optional* utility script called ``watchmedo``.
 Please type ``watchmedo --help`` at the shell prompt to
 know more about this tool.
 
@@ -114,23 +120,23 @@ Please file enhancement requests at the `issue tracker`_.
 
 Installation
 ------------
-Installing from PyPI using ``pip``:
+Install from PyPI using ``pip``:
     
 .. code-block:: bash
 
     $ python -m pip install watchdog
 
-Installing from PyPI using ``easy_install``:
+    # or to install the watchmedo utility:
+    $ python -m pip install watchdog[watchmedo]
+
+Install from source:
     
 .. code-block:: bash
 
-    $ easy_install watchdog
+    $ python -m pip install -e .
 
-Installing from source:
-    
-.. code-block:: bash
-
-    $ python setup.py install
+    # or to install the watchmedo utility:
+    $ python -m pip install -e .[watchmedo]
 
 
 Installation Caveats
@@ -165,9 +171,9 @@ ticket at the `issue tracker`_. For general help and questions use the official
 
 Create and activate your virtual environment, then::
 
-    pip install pytest
-    pip install -e .
-    py.test tests
+    python -m pip install pytest pytest-cov
+    python -m pip install -e .[watchmedo]
+    python -m pytest tests
 
 If you are making a substantial change, add an entry to the "Unreleased" section
 of the `changelog`_.
@@ -207,7 +213,7 @@ It creates backup files and then swaps them in to replace
 the files you are editing on the disk. This means that
 if you use Vim to edit your files, the on-modified events
 for those files will not be triggered by watchdog.
-You may need to configure Vim to appropriately to disable
+You may need to configure Vim appropriately to disable
 this feature.
 
 
@@ -215,9 +221,9 @@ Dependencies
 ------------
 1. Python 2.7, 3.4 or above.
 2. pathtools_
-4. XCode_ (only on Mac OS X)
-5. PyYAML_ (only for ``watchmedo`` script)
-6. argh_ (only for ``watchmedo`` script)
+3. XCode_ (only on Mac OS X)
+4. PyYAML_ (only for ``watchmedo`` script)
+5. argh_ (only for ``watchmedo`` script)
 
 
 Licensing
