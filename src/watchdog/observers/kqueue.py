@@ -608,7 +608,7 @@ class KqueueEmitter(EventEmitter):
 
         try:
             dest_path = absolute_path(
-                new_snapshot.path_for_inode(ref_stat_info.st_ino))
+                new_snapshot.path(ref_stat_info.st_ino))
             if is_directory:
                 event = DirMovedEvent(src_path, dest_path)
                 # TODO: Do we need to fire moved events for the items
