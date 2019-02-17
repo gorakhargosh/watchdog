@@ -18,6 +18,7 @@ API changes
 - Fixed  a race condition crash when a directory is swapped for a file. 
 - Fixed the way we re-raise ``OSError``.
 - Fixed the path separator used in watchmedo. 
+- Remove emitters which failed to start.
 - We now generate sub created events only if ``recursive=True``.
 - Security fix in watchmedo: use ``yaml.safe_load()`` instead of ``yaml.load()``
 - Use ``scandir`` to save memory.

@@ -65,12 +65,14 @@ def event_queue():
 @pytest.fixture
 def emitter(event_queue):
     watch = ObservedWatch(temp_dir, True)
-    yield Emitter(event_queue, watch, timeout=0.2)
+    em = Emitter(event_queue, watch, timeout=0.2)
+    em.start()
+    yield em
+    em.stop()
 
 
 def test___init__(event_queue, emitter):
     SLEEP_TIME = 0.4
-    emitter.start()
 
     sleep(SLEEP_TIME)
     mkdir(p('project'))
@@ -165,7 +167,6 @@ def test___init__(event_queue, emitter):
 def test_delete_watched_dir(event_queue, emitter):
     SLEEP_TIME = 0.4
 
-    emitter.start()
     rm(p(''), recursive=True)
 
     sleep(SLEEP_TIME)

@@ -59,13 +59,13 @@ def event_queue():
 @pytest.fixture
 def emitter(event_queue):
     watch = ObservedWatch(temp_dir, True)
-    yield WindowsApiEmitter(event_queue, watch, timeout=0.2)
+    em = WindowsApiEmitter(event_queue, watch, timeout=0.2)
+    yield em
+    em.stop()
 
 
-def test___init__():
+def test___init__(event_queue, emitter):
     SLEEP_TIME = 2
-
-    emitter.start()
 
     sleep(SLEEP_TIME)
     mkdir(p('fromdir'))
@@ -81,10 +81,10 @@ def test___init__():
     #   * unordered
     #   * non-unique
     # A multiset! Python's collections.Counter class seems appropriate.
-    expected = {[
+    expected = {
         DirCreatedEvent(p('fromdir')),
         DirMovedEvent(p('fromdir'), p('todir')),
-    ]}
+    }
 
     got = set()
 
