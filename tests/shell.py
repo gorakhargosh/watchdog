@@ -24,6 +24,7 @@
 
 from __future__ import with_statement
 
+import os
 import os.path
 import tempfile
 import shutil
@@ -71,7 +72,7 @@ def rm(path, recursive=False):
         # else:
         #    os.rmdir(path)
         else:
-            raise OSError("rm: %s: is a directory." % path)
+            raise OSError(errno.EISDIR, os.strerror(errno.EISDIR), path)
     else:
         os.remove(path)
 

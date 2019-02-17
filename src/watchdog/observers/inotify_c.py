@@ -376,7 +376,7 @@ class Inotify(object):
             Event bit mask.
         """
         if not os.path.isdir(path):
-            raise OSError('Path is not a directory')
+            raise OSError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path)
         self._add_watch(path, mask)
         if recursive:
             for root, dirnames, _ in os.walk(path):
@@ -410,11 +410,11 @@ class Inotify(object):
         """
         err = ctypes.get_errno()
         if err == errno.ENOSPC:
-            raise OSError("inotify watch limit reached")
+            raise OSError(errno.ENOSPC, "inotify watch limit reached")
         elif err == errno.EMFILE:
-            raise OSError("inotify instance limit reached")
+            raise OSError(errno.EMFILE, "inotify instance limit reached")
         else:
-            raise OSError(os.strerror(err))
+            raise OSError(err, os.strerror(err))
 
     @staticmethod
     def _parse_event_buffer(event_buffer):
