@@ -125,8 +125,8 @@ class InotifyEmitter(EventEmitter):
             self._inotify.close()
 
     def queue_events(self, timeout, full_events=False):
-        #If "full_events" is true, then the method will report unmatched move events as seperate events
-        #This behavior is by default only called by a InotifyFullEmitter
+        # If "full_events" is true, then the method will report unmatched move events as seperate events
+        # This behavior is by default only called by a InotifyFullEmitter
         with self._lock:
             event = self._inotify.read_event()
             if event is None:
@@ -146,7 +146,7 @@ class InotifyEmitter(EventEmitter):
 
             src_path = self._decode_path(event.src_path)
             if event.is_moved_to:
-                if (full_events):
+                if full_events:
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
                     self.queue_event(cls(None, src_path))
                 else:

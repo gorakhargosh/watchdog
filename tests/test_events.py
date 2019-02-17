@@ -41,12 +41,14 @@ def test_file_deleted_event():
     assert path_1 == event.src_path
     assert EVENT_TYPE_DELETED == event.event_type
     assert not event.is_directory
+    assert not event.is_synthetic
 
 
 def test_file_delete_event_is_directory():
     # Inherited properties.
-    event1 = FileDeletedEvent(path_1)
-    assert not event1.is_directory
+    event = FileDeletedEvent(path_1)
+    assert not event.is_directory
+    assert not event.is_synthetic
 
 
 def test_file_modified_event():
@@ -54,12 +56,14 @@ def test_file_modified_event():
     assert path_1 == event.src_path
     assert EVENT_TYPE_MODIFIED == event.event_type
     assert not event.is_directory
+    assert not event.is_synthetic
 
 
 def test_file_modified_event_is_directory():
     # Inherited Properties
-    event1 = FileModifiedEvent(path_1)
-    assert not event1.is_directory
+    event = FileModifiedEvent(path_1)
+    assert not event.is_directory
+    assert not event.is_synthetic
 
 
 def test_file_created_event():
@@ -67,6 +71,7 @@ def test_file_created_event():
     assert path_1 == event.src_path
     assert EVENT_TYPE_CREATED == event.event_type
     assert not event.is_directory
+    assert not event.is_synthetic
 
 
 def test_file_moved_event():
@@ -75,6 +80,7 @@ def test_file_moved_event():
     assert path_2 == event.dest_path
     assert EVENT_TYPE_MOVED == event.event_type
     assert not event.is_directory
+    assert not event.is_synthetic
 
 
 def test_dir_deleted_event():
@@ -82,6 +88,7 @@ def test_dir_deleted_event():
     assert path_1 == event.src_path
     assert EVENT_TYPE_DELETED == event.event_type
     assert event.is_directory
+    assert not event.is_synthetic
 
 
 def test_dir_modified_event():
@@ -89,6 +96,7 @@ def test_dir_modified_event():
     assert path_1 == event.src_path
     assert EVENT_TYPE_MODIFIED == event.event_type
     assert event.is_directory
+    assert not event.is_synthetic
 
 
 def test_dir_created_event():
@@ -96,6 +104,7 @@ def test_dir_created_event():
     assert path_1 == event.src_path
     assert EVENT_TYPE_CREATED == event.event_type
     assert event.is_directory
+    assert not event.is_synthetic
 
 
 def test_file_system_event_handler_dispatch():
@@ -139,4 +148,5 @@ def test_file_system_event_handler_dispatch():
     handler = TestableEventHandler()
 
     for event in all_events:
+        assert not event.is_synthetic
         handler.dispatch(event)

@@ -24,6 +24,7 @@ API changes
 - ``WindowsApiEmitter`` made easier to subclass.
 - Use separate ctypes DLL instances on Windows.
 - Added ``--debug-force-polling`` arguments to watchmedo.
+- Identify synthesized events with ``is_synthetic`` attribute.
 - Refactored tests to use pytest.
 - General code clean-up.
 
