@@ -1,18 +1,19 @@
 # coding: utf-8
+
+import pytest
+from watchdog.utils import platform
+
+if not platform.is_darwin():
+    pytest.skip("macOS only.", allow_module_level=True)
+
 import logging
 import os
 from functools import partial
 
-import pytest
-
 from watchdog.observers.api import ObservedWatch
-from tests import Queue
+from watchdog.observers.fsevents import FSEventsEmitter
 
-try:
-    from watchdog.observers.fsevents import FSEventsEmitter
-except ImportError:
-    pytestmark = pytest.mark.skip("macOS only.")
-
+from . import Queue
 from .shell import mkdtemp, rm
 
 logging.basicConfig(level=logging.DEBUG)

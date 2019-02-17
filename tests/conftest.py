@@ -1,12 +1,13 @@
 from functools import partial
 import os
 import pytest
-from tests import shell
+from . import shell
 
 
 @pytest.fixture()
 def tmpdir(request):
     path = os.path.realpath(shell.mkdtemp())
+
     def finalizer():
         shell.rm(path, recursive=True)
     request.addfinalizer(finalizer)

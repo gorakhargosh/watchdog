@@ -15,15 +15,19 @@
 # limitations under the License.
 
 from __future__ import unicode_literals
-import os
-import random
+
 import pytest
-from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
 
-pytestmark = pytest.mark.skipif(not platform.is_linux(), reason="")
-if platform.is_linux():
-    from watchdog.observers.inotify_buffer import InotifyBuffer
+if not platform.is_linux():
+    pytest.skip("GNU/Linux only.", allow_module_level=True)
+
+import os
+import random
+
+from watchdog.observers.inotify_buffer import InotifyBuffer
+
+from .shell import mkdir, touch, mv, rm
 
 
 def wait_for_move_event(read_event):

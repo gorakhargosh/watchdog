@@ -16,68 +16,68 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tests import unittest
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 
-class TestSkipRepeatsQueue(unittest.TestCase):
+def test_basic_queue():
+    q = SkipRepeatsQueue()
 
-    def test_basic_queue(self):
-        q = SkipRepeatsQueue()
+    e1 = (2, 'fred')
+    e2 = (2, 'george')
+    e3 = (4, 'sally')
 
-        e1 = (2, 'fred')
-        e2 = (2, 'george')
-        e3 = (4, 'sally')
+    q.put(e1)
+    q.put(e2)
+    q.put(e3)
 
-        q.put(e1)
-        q.put(e2)
-        q.put(e3)
+    assert e1 == q.get()
+    assert e2 == q.get()
+    assert e3 == q.get()
+    assert q.empty()
 
-        self.assertEqual(e1, q.get())
-        self.assertEqual(e2, q.get())
-        self.assertEqual(e3, q.get())
-        self.assertTrue(q.empty())
 
-    def test_allow_nonconsecutive(self):
-        q = SkipRepeatsQueue()
+def test_allow_nonconsecutive():
+    q = SkipRepeatsQueue()
 
-        e1 = (2, 'fred')
-        e2 = (2, 'george')
+    e1 = (2, 'fred')
+    e2 = (2, 'george')
 
-        q.put(e1)
-        q.put(e2)
-        q.put(e1)       # repeat the first entry
+    q.put(e1)
+    q.put(e2)
+    q.put(e1)       # repeat the first entry
 
-        self.assertEqual(e1, q.get())
-        self.assertEqual(e2, q.get())
-        self.assertEqual(e1, q.get())
-        self.assertTrue(q.empty())
+    assert e1 == q.get()
+    assert e2 == q.get()
+    assert e1 == q.get()
+    assert q.empty()
 
-    def test_prevent_consecutive(self):
-        q = SkipRepeatsQueue()
 
-        e1 = (2, 'fred')
-        e2 = (2, 'george')
+def test_prevent_consecutive():
+    q = SkipRepeatsQueue()
 
-        q.put(e1)
-        q.put(e1)       # repeat the first entry (this shouldn't get added)
-        q.put(e2)
+    e1 = (2, 'fred')
+    e2 = (2, 'george')
 
-        self.assertEqual(e1, q.get())
-        self.assertEqual(e2, q.get())
-        self.assertTrue(q.empty())
+    q.put(e1)
+    q.put(e1)  # repeat the first entry (this shouldn't get added)
+    q.put(e2)
 
-    def test_consecutives_allowed_across_empties(self):
-        q = SkipRepeatsQueue()
+    assert e1 == q.get()
+    assert e2 == q.get()
+    assert q.empty()
 
-        e1 = (2, 'fred')
 
-        q.put(e1)
-        q.put(e1)       # repeat the first entry (this shouldn't get added)
+def test_consecutives_allowed_across_empties():
+    q = SkipRepeatsQueue()
 
-        self.assertEqual(e1, q.get())
-        self.assertTrue(q.empty())
+    e1 = (2, 'fred')
 
-        q.put(e1)       # this repeat is allowed because 'last' added is now gone from queue
-        self.assertEqual(e1, q.get())
-        self.assertTrue(q.empty())
+    q.put(e1)
+    q.put(e1)   # repeat the first entry (this shouldn't get added)
+
+    assert e1 == q.get()
+    assert q.empty()
+
+    q.put(e1)  # this repeat is allowed because 'last' added is now gone from queue
+    assert e1 == q.get()
+    assert q.empty()

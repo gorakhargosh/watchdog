@@ -1,17 +1,16 @@
 from __future__ import unicode_literals
 
 import pytest
-
 from watchdog.utils import platform
 
 if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
+import contextlib
 import ctypes
 import errno
-import os
 import logging
-import contextlib
+import os
 from functools import partial
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
