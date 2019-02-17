@@ -84,3 +84,11 @@ def test_unschedule_self(observer):
 
     assert unschedule_finished.wait()
     assert len(observer.emitters) == 0
+
+
+def test_schedule_after_unschedule_all(observer):
+    observer.start()
+    observer.schedule(None, '')
+
+    observer.unschedule_all()
+    observer.schedule(None, '')
