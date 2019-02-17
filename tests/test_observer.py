@@ -22,16 +22,18 @@ from watchdog.utils.compat import Event
 from watchdog.observers.api import EventEmitter, BaseObserver
 
 
-@pytest.fixture()
-def observer(request):
-    observer = BaseObserver(EventEmitter)
-    def finalizer():
-        try:
-            observer.stop()
-        except:
-            pass
-    request.addfinalizer(finalizer)
-    return observer
+@pytest.fixture
+def observer():
+    obs = BaseObserver(EventEmitter)
+    yield obs
+    obs.stop()
+
+
+@pytest.fixture
+def observer2():
+    obs = BaseObserver(EventEmitter)
+    yield obs
+    obs.stop()
 
 
 def test_schedule_should_start_emitter_if_running(observer):
@@ -89,6 +91,20 @@ def test_unschedule_self(observer):
 def test_schedule_after_unschedule_all(observer):
     observer.start()
     observer.schedule(None, '')
+    assert len(observer.emitters) == 1
 
     observer.unschedule_all()
+    assert len(observer.emitters) == 0
+
     observer.schedule(None, '')
+    assert len(observer.emitters) == 1
+
+
+def test_2_observers_on_the_same_path(observer, observer2):
+    assert observer is not observer2
+
+    observer.schedule(None, '')
+    assert len(observer.emitters) == 1
+
+    observer2.schedule(None, '')
+    assert len(observer2.emitters) == 1
