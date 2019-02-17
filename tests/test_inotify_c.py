@@ -1,17 +1,26 @@
 from __future__ import unicode_literals
-import os
+
 import pytest
+
+from watchdog.utils import platform
+
+if not platform.is_linux():
+    pytest.skip("GNU/Linux only.", allow_module_level=True)
+
+import ctypes
+import errno
+import os
 import logging
 import contextlib
-from tests import Queue
 from functools import partial
-from .shell import rm, mkdtemp
-from watchdog.utils import platform
+
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.api import ObservedWatch
+from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
+from watchdog.observers.inotify_c import Inotify
 
-if platform.is_linux():
-    from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
+from . import Queue
+from .shell import mkdtemp, rm
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -39,11 +48,12 @@ def watching(path=None, use_full_emitter=False):
 
 def teardown_function(function):
     rm(p(''), recursive=True)
-    assert not emitter.is_alive()
+    try:
+        assert not emitter.is_alive()
+    except NameError:
+        pass
 
 
-@pytest.mark.skipif(not platform.is_linux(),
-                    reason="Testing with inotify messages (Linux only)")
 def test_late_double_deletion(monkeypatch):
     inotify_fd = type(str("FD"), (object,), {})() # Empty object
     inotify_fd.last = 0
@@ -69,6 +79,7 @@ def test_late_double_deletion(monkeypatch):
     )
 
     os_read_bkp = os.read
+
     def fakeread(fd, length):
         if fd is inotify_fd:
             result, fd.buf = fd.buf[:length], fd.buf[length:]
@@ -76,6 +87,7 @@ def test_late_double_deletion(monkeypatch):
         return os_read_bkp(fd, length)
 
     os_close_bkp = os.close
+
     def fakeclose(fd):
         if fd is not inotify_fd:
             os_close_bkp(fd)
@@ -112,6 +124,34 @@ def test_late_double_deletion(monkeypatch):
             assert isinstance(event, DirModifiedEvent)
             assert event.src_path == p('').rstrip(os.path.sep)
 
-    assert inotify_fd.last == 3 # Number of directories
-    assert inotify_fd.buf == b"" # Didn't miss any event
-    assert inotify_fd.wds == [2, 3] # Only 1 is removed explicitly
+    assert inotify_fd.last == 3  # Number of directories
+    assert inotify_fd.buf == b""  # Didn't miss any event
+    assert inotify_fd.wds == [2, 3]  # Only 1 is removed explicitly
+
+
+def test_raise_error(monkeypatch):
+    func = Inotify._raise_error
+
+    monkeypatch.setattr(ctypes, "get_errno", lambda: errno.ENOSPC)
+    with pytest.raises(OSError) as exc:
+        func()
+    assert exc.value.errno == errno.ENOSPC
+    assert "inotify watch limit reached" in str(exc.value)
+
+    monkeypatch.setattr(ctypes, "get_errno", lambda: errno.EMFILE)
+    with pytest.raises(OSError) as exc:
+        func()
+    assert exc.value.errno == errno.EMFILE
+    assert "inotify instance limit reached" in str(exc.value)
+
+    monkeypatch.setattr(ctypes, "get_errno", lambda: errno.ENOENT)
+    with pytest.raises(OSError) as exc:
+        func()
+    assert exc.value.errno == errno.ENOENT
+    assert "No such file or directory" in str(exc.value)
+
+    monkeypatch.setattr(ctypes, "get_errno", lambda: -1)
+    with pytest.raises(OSError) as exc:
+        func()
+    assert exc.value.errno == -1
+    assert "Unknown error -1" in str(exc.value)
