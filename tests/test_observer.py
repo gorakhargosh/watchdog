@@ -115,3 +115,30 @@ def test_2_observers_on_the_same_path(observer, observer2):
 
     observer2.schedule(None, '')
     assert len(observer2.emitters) == 1
+
+
+def test_start_failure_should_not_prevent_further_try(monkeypatch, observer):
+    observer.schedule(None, '')
+    emitters = observer.emitters
+    assert len(emitters) == 1
+
+    # Make the emitter to fail on start()
+
+    def mocked_start():
+        raise OSError()
+
+    emitter = next(iter(emitters))
+    monkeypatch.setattr(emitter, "start", mocked_start)
+    with pytest.raises(OSError):
+        observer.start()
+    # The emitter should be removed from the list
+    assert len(observer.emitters) == 0
+
+    # Restoring the original behavior should work like there never be emitters
+    monkeypatch.undo()
+    observer.start()
+    assert len(observer.emitters) == 0
+
+    # Re-schduling the watch should work
+    observer.schedule(None, '')
+    assert len(observer.emitters) == 1

@@ -248,8 +248,12 @@ class BaseObserver(EventDispatcher):
         return self._emitters
 
     def start(self):
-        for emitter in self._emitters:
-            emitter.start()
+        for emitter in self._emitters.copy():
+            try:
+                emitter.start()
+            except Exception:
+                self._remove_emitter(emitter)
+                raise
         super(BaseObserver, self).start()
 
     def schedule(self, event_handler, path, recursive=False):
