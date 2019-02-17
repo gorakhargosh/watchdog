@@ -28,7 +28,7 @@ def wait():
     to be able to detected modifications.
     """
     if platform.is_darwin() or platform.is_windows():
-         # on osx resolution of stat.mtime is only 1 second
+        # on macOS resolution of stat.mtime is only 1 second
         time.sleep(1.5)
     else:
         time.sleep(0.5)
@@ -106,6 +106,7 @@ def test_detect_modify_for_moved_files(p):
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
     assert diff.files_moved == [(p('a'), p('b'))]
     assert diff.files_modified == [p('a')]
+
 
 def test_replace_dir_with_file(p):
     # Replace a dir with a file of the same name just before the normal listdir

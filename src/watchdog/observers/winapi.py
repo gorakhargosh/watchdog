@@ -337,7 +337,8 @@ class WinAPINativeEvent(object):
         return self.action == FILE_ACTION_RENAMED_NEW_NAME
 
     def __repr__(self):
-        return ("<WinAPINativeEvent: action=%d, src_path=%r>" % (self.action, self.src_path))
+        return ("<%s: action=%d, src_path=%r>" % (
+                type(self).__name__, self.action, self.src_path))
 
 
 def read_events(handle, recursive):

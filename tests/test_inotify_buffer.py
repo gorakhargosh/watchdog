@@ -77,7 +77,7 @@ def test_move_internal(p):
     assert frm.src_path == p('dir1', 'a').encode()
     assert to.src_path == p('dir2', 'b').encode()
     inotify.close()
-    
+
 
 @pytest.mark.timeout(10)
 def test_move_internal_batch(p):

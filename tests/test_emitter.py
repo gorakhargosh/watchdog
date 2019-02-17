@@ -209,7 +209,7 @@ def test_move_from_full():
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileMovedEvent)
     assert event.src_path == p('dir1', 'a')
-    assert event.dest_path == None  # Should equal None since path not watched
+    assert event.dest_path is None  # Should equal None since path not watched
 
 
 def test_separate_consecutive_moves():
@@ -241,8 +241,8 @@ def test_separate_consecutive_moves():
 
 @pytest.mark.skipif(platform.is_linux(), reason="bug. inotify will deadlock")
 @pytest.mark.skipif(platform.is_windows(), reason="""
-WindowsError: [Error 5] 
-access denied when trying delete directory dir1, because them opened by test 
+WindowsError: [Error 5]
+access denied when trying delete directory dir1, because them opened by test
 via start_watching.""")
 def test_delete_self():
     mkdir(p('dir1'))
@@ -262,7 +262,7 @@ def test_fast_subdirectory_creation_deletion():
     times = 30
     mkdir(root_dir)
     start_watching(root_dir)
-    for unused in range(times):
+    for _ in range(times):
         mkdir(sub_dir)
         rm(sub_dir, True)
     count = {DirCreatedEvent: 0,
@@ -271,7 +271,7 @@ def test_fast_subdirectory_creation_deletion():
     etype_for_dir = {DirCreatedEvent: sub_dir,
                      DirModifiedEvent: root_dir,
                      DirDeletedEvent: sub_dir}
-    for unused in range(times * 4):
+    for _ in range(times * 4):
         event = event_queue.get(timeout=5)[0]
         logger.debug(event)
         etype = type(event)

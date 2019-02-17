@@ -73,8 +73,8 @@ class ObservedWatch(object):
         return hash(self.key)
 
     def __repr__(self):
-        return "<ObservedWatch: path=%s, is_recursive=%s>" % (
-            self.path, self.is_recursive)
+        return "<%s: path=%s, is_recursive=%s>" % (
+            type(self).__name__, self.path, self.is_recursive)
 
 
 # Observer classes
