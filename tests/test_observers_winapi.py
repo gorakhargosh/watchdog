@@ -81,10 +81,11 @@ def test___init__():
     #   * unordered
     #   * non-unique
     # A multiset! Python's collections.Counter class seems appropriate.
-    expected = set([
-                    DirCreatedEvent(p('fromdir')),
-                    DirMovedEvent(p('fromdir'), p('todir')),
-                    ])
+    expected = {[
+        DirCreatedEvent(p('fromdir')),
+        DirMovedEvent(p('fromdir'), p('todir')),
+    ]}
+
     got = set()
 
     while True:

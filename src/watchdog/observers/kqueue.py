@@ -376,8 +376,8 @@ class KeventDescriptor(object):
         return hash(self.key)
 
     def __repr__(self):
-        return "<KeventDescriptor: path=%s, is_directory=%s>"\
-            % (self.path, self.is_directory)
+        return "<%s: path=%s, is_directory=%s>"\
+            % (type(self).__name__, self.path, self.is_directory)
 
 
 class KqueueEmitter(EventEmitter):

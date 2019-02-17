@@ -166,8 +166,9 @@ class NativeEvent(object):
         return "Unknown"
 
     def __repr__(self):
-        s ="<NativeEvent: path=%s, type=%s, is_dir=%s, flags=%s, id=%s>"
-        return s % (repr(self.path), self._event_type, self.is_directory, hex(self.flags), self.event_id)
+        s ="<%s: path=%s, type=%s, is_dir=%s, flags=%s, id=%s>"
+        return s % (type(self).__name__, repr(self.path),self._event_type,
+                    self.is_directory, hex(self.flags), self.event_id)
 
 
 class FSEventsEmitter(EventEmitter):

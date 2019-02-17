@@ -106,34 +106,32 @@ def test___init__(event_queue, emitter):
     #   * unordered
     #   * non-unique
     # A multiset! Python's collections.Counter class seems appropriate.
-    expected = set(
-        [
-            DirModifiedEvent(p()),
-            DirCreatedEvent(p('project')),
+    expected = {
+        DirModifiedEvent(p()),
+        DirCreatedEvent(p('project')),
 
-            DirModifiedEvent(p('project')),
-            DirCreatedEvent(p('project', 'blah')),
+        DirModifiedEvent(p('project')),
+        DirCreatedEvent(p('project', 'blah')),
 
-            FileCreatedEvent(p('afile')),
-            DirModifiedEvent(p()),
+        FileCreatedEvent(p('afile')),
+        DirModifiedEvent(p()),
 
-            FileCreatedEvent(p('fromfile')),
-            DirModifiedEvent(p()),
+        FileCreatedEvent(p('fromfile')),
+        DirModifiedEvent(p()),
 
-            DirModifiedEvent(p()),
-            FileModifiedEvent(p('afile')),
+        DirModifiedEvent(p()),
+        FileModifiedEvent(p('afile')),
 
-            DirModifiedEvent(p('project')),
+        DirModifiedEvent(p('project')),
 
-            DirModifiedEvent(p()),
-            FileDeletedEvent(p('project', 'tofile')),
-            DirDeletedEvent(p('project', 'boo')),
-            DirDeletedEvent(p('project')),
+        DirModifiedEvent(p()),
+        FileDeletedEvent(p('project', 'tofile')),
+        DirDeletedEvent(p('project', 'boo')),
+        DirDeletedEvent(p('project')),
 
-            DirModifiedEvent(p()),
-            FileDeletedEvent(p('afile')),
-        ]
-    )
+        DirModifiedEvent(p()),
+        FileDeletedEvent(p('afile')),
+    }
 
     expected.add(FileMovedEvent(p('fromfile'), p('project', 'tofile')))
     expected.add(DirMovedEvent(p('project', 'blah'), p('project', 'boo')))
@@ -164,11 +162,9 @@ def test_delete_watched_dir(event_queue, emitter):
     #   * unordered
     #   * non-unique
     # A multiset! Python's collections.Counter class seems appropriate.
-    expected = set(
-        [
-            DirDeletedEvent(os.path.dirname(p(''))),
-        ]
-    )
+    expected = {
+        DirDeletedEvent(os.path.dirname(p(''))),
+    }
 
     got = set()
 

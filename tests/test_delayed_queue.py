@@ -35,5 +35,3 @@ def test_nondelayed_get():
     elapsed = time() - inserted
     # Far less than 1 second
     assert elapsed < 1
-
-
