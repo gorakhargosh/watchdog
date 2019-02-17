@@ -19,8 +19,8 @@ import os
 import time
 import pytest
 import logging
-from tests import Queue, Empty
 from functools import partial
+from . import Queue, Empty
 from .shell import mkdir, touch, mv, rm, mkdtemp
 from watchdog.utils import platform
 from watchdog.utils.unicode_paths import str_cls
@@ -47,8 +47,6 @@ elif platform.is_windows():
     from watchdog.observers.read_directory_changes import (
         WindowsApiEmitter as Emitter
     )
-else:
-    pytestmark = pytest.mark.skip("GNU/Linux, macOS and Windows only.")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

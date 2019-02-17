@@ -14,11 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import unittest
-
 try:
-    from Queue import Queue, Empty  # Python 2
-except ImportError:
     from queue import Queue, Empty  # Python 3
+except ImportError:
+    from Queue import Queue, Empty  # Python 2
 
-__all__ = ["unittest", "Queue", "Empty"]
+__all__ = ["Queue", "Empty"]

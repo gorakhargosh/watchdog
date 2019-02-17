@@ -6,10 +6,12 @@ import pytest
 # watchdog installed without watchmedo. See Installation section 
 # in README.rst
 yaml = pytest.importorskip('yaml')
+
+import os
+
 from watchdog import watchmedo
 from yaml.constructor import ConstructorError
 from yaml.scanner import ScannerError
-import os
 
 
 def test_load_config_valid(tmpdir):
