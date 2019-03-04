@@ -27,6 +27,8 @@ from ctypes import c_int, c_char_p, c_uint32
 from watchdog.utils import has_attribute
 from watchdog.utils import UnsupportedLibc
 
+# Active inotify watchers
+_watchers = set()
 
 def _load_libc():
     libc_path = None
@@ -264,15 +266,18 @@ class Inotify(object):
             del self._path_for_wd[wd]
             if inotify_rm_watch(self._inotify_fd, wd) == -1:
                 Inotify._raise_error()
+            _watchers.remove(path)
 
     def close(self):
         """
         Closes the inotify instance and removes all associated watches.
         """
         with self._lock:
-            if self._path in self._wd_for_path:
-                wd = self._wd_for_path[self._path]
+            for path, wd in list(self._wd_for_path.items()):
                 inotify_rm_watch(self._inotify_fd, wd)
+                _watchers.remove(path)
+                self._wd_for_path.pop(path, None)
+                self._path_for_wd.pop(wd, None)
             os.close(self._inotify_fd)
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
@@ -318,7 +323,10 @@ class Inotify(object):
             for wd, mask, cookie, name in Inotify._parse_event_buffer(event_buffer):
                 if wd == -1:
                     continue
-                wd_path = self._path_for_wd[wd]
+                try:
+                    wd_path = self._path_for_wd[wd]
+                except KeyError:
+                    continue
                 src_path = os.path.join(wd_path, name) if name else wd_path #avoid trailing slash
                 inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
@@ -339,6 +347,8 @@ class Inotify(object):
                     path = self._path_for_wd.pop(wd)
                     if self._wd_for_path[path] == wd:
                         del self._wd_for_path[path]
+                        inotify_rm_watch(self._inotify_fd, wd)
+                        _watchers.remove(path)
                     continue
 
                 event_list.append(inotify_event)
@@ -399,6 +409,7 @@ class Inotify(object):
         wd = inotify_add_watch(self._inotify_fd, path, mask)
         if wd == -1:
             Inotify._raise_error()
+        _watchers.add(path)
         self._wd_for_path[path] = wd
         self._path_for_wd[wd] = path
         return wd

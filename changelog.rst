@@ -10,6 +10,7 @@ API changes
   If you are still running one of these obsolete Python version, you have to keep using Watchdog <= 0.10.0.
 - The ``watchmedo`` utility is no more installed by default but via the extra ``watchdog[watchmedo]``.
 - Fixed thread leaks in tests.
+- Fixed Inotify watchers leaks.
 - Fixed several Python 3 warnings.
 - Fixed a bug when calling ``FSEventsEmitter.stop()`` twice.
 - Fixed missing field initializers  and unused parameters in ``watchdog_fsevents.c``.

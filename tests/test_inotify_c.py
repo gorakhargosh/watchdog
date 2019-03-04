@@ -125,7 +125,7 @@ def test_late_double_deletion(monkeypatch):
 
     assert inotify_fd.last == 3  # Number of directories
     assert inotify_fd.buf == b""  # Didn't miss any event
-    assert inotify_fd.wds == [2, 3]  # Only 1 is removed explicitly
+    assert inotify_fd.wds == [2]  # 1 is removed explicitly, 3 is removed implicitely
 
 
 def test_raise_error(monkeypatch):

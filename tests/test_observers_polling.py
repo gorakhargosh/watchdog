@@ -64,7 +64,10 @@ def event_queue():
 @pytest.fixture
 def emitter(event_queue):
     watch = ObservedWatch(temp_dir, True)
-    yield Emitter(event_queue, watch, timeout=0.2)
+    em = Emitter(event_queue, watch, timeout=0.2)
+    yield em
+    em.stop()
+    em.join()
 
 
 def test___init__(event_queue, emitter):

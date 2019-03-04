@@ -4,6 +4,7 @@ import sys
 import threading
 import pytest
 from . import shell
+from watchdog.utils.platform import is_linux
 
 
 @pytest.fixture()
@@ -37,3 +38,17 @@ def no_thread_leaks():
     main = threading.main_thread()
     assert not [th for th in threading._dangling
                 if th is not main and th.is_alive()]
+
+
+@pytest.fixture(autouse=True)
+def no_inotify_watcher_leaks():
+    """Fail on Inotify watcher leak."""
+
+    yield
+
+    if not is_linux():
+        return
+
+    import watchdog.observers.inotify_c
+
+    assert not watchdog.observers.inotify_c._watchers
