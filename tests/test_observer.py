@@ -27,13 +27,20 @@ def observer():
     obs = BaseObserver(EventEmitter)
     yield obs
     obs.stop()
-
+    try:
+        obs.join()
+    except RuntimeError:
+        pass
 
 @pytest.fixture
 def observer2():
     obs = BaseObserver(EventEmitter)
     yield obs
     obs.stop()
+    try:
+        obs.join()
+    except RuntimeError:
+        pass
 
 
 def test_schedule_should_start_emitter_if_running(observer):

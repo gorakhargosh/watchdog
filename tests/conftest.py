@@ -1,5 +1,7 @@
 from functools import partial
 import os
+import sys
+import threading
 import pytest
 from . import shell
 
@@ -7,11 +9,8 @@ from . import shell
 @pytest.fixture()
 def tmpdir(request):
     path = os.path.realpath(shell.mkdtemp())
-
-    def finalizer():
-        shell.rm(path, recursive=True)
-    request.addfinalizer(finalizer)
-    return path
+    yield path
+    shell.rm(path, recursive=True)
 
 
 @pytest.fixture()
@@ -21,3 +20,20 @@ def p(tmpdir, *args):
     with the provided arguments.
     """
     return partial(os.path.join, tmpdir)
+
+
+@pytest.fixture(autouse=True)
+def no_thread_leaks():
+    """
+    Fail on thread leak.
+    We do not use pytest-threadleak because it is not reliable.
+    """
+
+    yield
+
+    if sys.version_info < (3,):
+        return
+
+    main = threading.main_thread()
+    assert not [th for th in threading._dangling
+                if th is not main and th.is_alive()]

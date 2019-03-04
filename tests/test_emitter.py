@@ -21,7 +21,7 @@ import pytest
 import logging
 from functools import partial
 from . import Queue, Empty
-from .shell import mkdir, touch, mv, rm, mkdtemp
+from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
 from watchdog.utils.unicode_paths import str_cls
 from watchdog.events import (
@@ -52,11 +52,17 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def setup_function(function):
-    global p, event_queue
-    tmpdir = os.path.realpath(mkdtemp())
+@pytest.fixture(autouse=True)
+def setup_teardown(tmpdir):
+    global p, emitter, event_queue
     p = partial(os.path.join, tmpdir)
     event_queue = Queue()
+
+    yield
+
+    emitter.stop()
+    emitter.join(5)
+    assert not emitter.is_alive()
 
 
 def start_watching(path=None, use_full_emitter=False, recursive=True):
@@ -72,13 +78,6 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
         # setup. Waiting for a considerable time seems to 'flush' the events.
         time.sleep(10)
     emitter.start()
-
-
-def teardown_function(function):
-    emitter.stop()
-    emitter.join(5)
-    rm(p(''), recursive=True)
-    assert not emitter.is_alive()
 
 
 def test_create():
