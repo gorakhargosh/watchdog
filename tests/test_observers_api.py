@@ -103,3 +103,4 @@ def test_observer_basic():
     time.sleep(1)
     observer.unschedule_all()
     observer.stop()
+    observer.join()

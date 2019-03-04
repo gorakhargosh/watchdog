@@ -141,11 +141,8 @@ class EventEmitter(BaseThread):
         """
 
     def run(self):
-        try:
-            while self.should_keep_running():
-                self.queue_events(self.timeout)
-        finally:
-            pass
+        while self.should_keep_running():
+            self.queue_events(self.timeout)
 
 
 class EventDispatcher(BaseThread):
