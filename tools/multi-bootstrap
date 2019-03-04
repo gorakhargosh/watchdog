@@ -1,9 +1,0 @@
-#!/bin/sh
-# Utility script that sets up the development environment for me
-# with one command.
-
-python2.7 bootstrap.py
-bin/buildout
-mv bin bin27
-
-ln -s bin27 bin
