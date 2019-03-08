@@ -26,6 +26,7 @@ from functools import reduce
 from ctypes import c_int, c_char_p, c_uint32
 from watchdog.utils import has_attribute
 from watchdog.utils import UnsupportedLibc
+from watchdog.utils.unicode_paths import decode
 
 
 def _load_libc():
@@ -573,4 +574,4 @@ class InotifyEvent(object):
         mask_string = self._get_mask_string(self.mask)
         s = '<%s: src_path=%r, wd=%d, mask=%s, cookie=%d, name=%s>'
         return s % (type(self).__name__, self.src_path, self.wd, mask_string,
-                    self.cookie, self.name)
+                    self.cookie, decode(self.name))
