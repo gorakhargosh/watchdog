@@ -37,3 +37,21 @@ def no_thread_leaks():
     main = threading.main_thread()
     assert not [th for th in threading._dangling
                 if th is not main and th.is_alive()]
+
+
+@pytest.fixture(autouse=True)
+def no_warnings(recwarn):
+    """Fail on warning."""
+
+    yield
+
+    warnings = []
+    for warning in recwarn:  # pragma: no cover
+        message = str(warning.message)
+        if (
+            "Not importing directory" in message
+            or "Using or importing the ABCs" in message
+        ):
+            continue
+        warnings.append("{w.filename}:{w.lineno} {w.message}".format(w=warning))
+    assert not warnings
