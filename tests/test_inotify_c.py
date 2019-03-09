@@ -154,3 +154,17 @@ def test_raise_error(monkeypatch):
         func()
     assert exc.value.errno == -1
     assert "Unknown error -1" in str(exc.value)
+
+
+def test_non_ascii_path():
+    """
+    Inotify can construct an event for a path containing non-ASCII.
+    """
+    path = p(u"\N{SNOWMAN}")
+    with watching(p('')):
+        os.mkdir(path)
+        event, _ = event_queue.get(timeout=5)
+        assert isinstance(event.src_path, type(u""))
+        assert event.src_path == path
+        # Just make sure it doesn't raise an exception.
+        assert repr(event)
