@@ -41,7 +41,8 @@ from .shell import (
     mkdtemp,
     touch,
     rm,
-    mv
+    mv,
+    msize
 )
 
 
@@ -99,6 +100,12 @@ def test___init__(event_queue, emitter):
     rm(p('afile'))
 
     sleep(SLEEP_TIME)
+    msize(p('bfile'))
+
+    sleep(SLEEP_TIME)
+    rm(p('bfile'))
+
+    sleep(SLEEP_TIME)
     emitter.stop()
 
     # What we need here for the tests to pass is a collection type
@@ -131,6 +138,13 @@ def test___init__(event_queue, emitter):
 
         DirModifiedEvent(p()),
         FileDeletedEvent(p('afile')),
+
+        DirModifiedEvent(p()),
+        FileCreatedEvent(p('bfile')),
+        FileModifiedEvent(p('bfile')),
+
+        DirModifiedEvent(p()),
+        FileDeletedEvent(p('bfile')),
     }
 
     expected.add(FileMovedEvent(p('fromfile'), p('project', 'tofile')))
