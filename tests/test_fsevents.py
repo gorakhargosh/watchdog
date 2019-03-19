@@ -8,8 +8,11 @@ if not platform.is_darwin():
 
 import logging
 import os
+import time
 from functools import partial
+from os import mkdir, rmdir
 
+from watchdog.observers import Observer
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.fsevents import FSEventsEmitter
 
@@ -41,6 +44,17 @@ def start_watching(path=None, use_full_emitter=False):
     emitter.start()
 
 
+@pytest.fixture
+def observer():
+    obs = Observer()
+    yield obs
+    obs.stop()
+    try:
+        obs.join()
+    except RuntimeError:
+        pass
+
+
 def test_remove_watch_twice():
     """
 ValueError: PyCapsule_GetPointer called with invalid PyCapsule object
@@ -63,3 +77,25 @@ E       SystemError: <built-in function remove_watch> returned a result with an 
     emitter.stop()
     # This is allowed to call several times .stop()
     emitter.stop()
+
+
+def test_unschedule_removed_folder(observer):
+    """
+TypeError: PyCObject_AsVoidPtr called with null pointer
+The above exception was the direct cause of the following exception:
+
+def on_thread_stop(self):
+    if self.watch:
+        _fsevents.remove_watch(self.watch)
+E       SystemError: <built-in function stop> returned a result with an error set
+
+(FSEvents.framework) FSEventStreamStop(): failed assertion 'streamRef != NULL'
+(FSEvents.framework) FSEventStreamInvalidate(): failed assertion 'streamRef != NULL'
+(FSEvents.framework) FSEventStreamRelease(): failed assertion 'streamRef != NULL'
+    """
+    a = p("a")
+    mkdir(a)
+    w = observer.schedule(event_queue, a, recursive=False)
+    rmdir(a)
+    time.sleep(0.1)
+    observer.unschedule(w)
