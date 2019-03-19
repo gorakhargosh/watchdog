@@ -503,6 +503,7 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
 #else
     CFRunLoopRef run_loop_ref = PyCObject_AsVoidPtr(value);
 #endif
+    G_RETURN_NULL_IF(PyErr_Occurred());
 
     /* Stop the run loop. */
     if (G_IS_NOT_NULL(run_loop_ref))
