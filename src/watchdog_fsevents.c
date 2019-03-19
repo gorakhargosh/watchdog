@@ -498,6 +498,10 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     UNUSED(self);
     PyObject *value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
+    if (G_IS_NULL(value)) {
+      goto success;
+    }
+
 #if PY_MAJOR_VERSION >= 3
     CFRunLoopRef run_loop_ref = PyCapsule_GetPointer(value, NULL);
 #else
@@ -511,6 +515,7 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
         CFRunLoopStop(run_loop_ref);
     }
 
+ success:
     Py_INCREF(Py_None);
     return Py_None;
 }
