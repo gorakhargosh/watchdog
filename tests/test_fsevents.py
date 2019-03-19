@@ -47,6 +47,7 @@ def start_watching(path=None, use_full_emitter=False):
 @pytest.fixture
 def observer():
     obs = Observer()
+    obs.start()
     yield obs
     obs.stop()
     try:
