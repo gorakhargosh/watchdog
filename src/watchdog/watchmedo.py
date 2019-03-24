@@ -525,13 +525,12 @@ def auto_restart(args):
 
     from watchdog.tricks import AutoRestartTrick
     import signal
-    import re
 
     if not args.directories:
         args.directories = ['.']
 
     # Allow either signal name or number.
-    if re.match('^SIG[A-Z]+$', args.signal):
+    if args.signal.startswith("SIG"):
         stop_signal = getattr(signal, args.signal)
     else:
         stop_signal = int(args.signal)
