@@ -82,11 +82,8 @@ def load_config(tricks_file_pathname):
     :returns:
         A dictionary of configuration information.
     """
-    f = open(tricks_file_pathname, 'rb')
-    content = f.read()
-    f.close()
-    config = yaml.safe_load(content)
-    return config
+    with open(tricks_file_pathname, 'rb') as f:
+        return yaml.safe_load(f.read())
 
 
 def parse_patterns(patterns_spec, ignore_patterns_spec, separator=';'):
@@ -256,9 +253,8 @@ def tricks_generate_yaml(args):
     else:
         if not os.path.exists(args.append_to_file):
             content = header + content
-        output = open(args.append_to_file, 'ab')
-        output.write(content)
-        output.close()
+        with open(args.append_to_file, 'ab') as output:
+            output.write(content)
 
 
 @arg('directories',
