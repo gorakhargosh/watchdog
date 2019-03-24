@@ -29,6 +29,7 @@ API changes
 - Identify synthesized events with ``is_synthetic`` attribute.
 - Refactored tests to use pytest.
 - General code clean-up.
+- Watchmedo: Handle all available signals.
 
 
 `0.9.0 <https://github.com/gorakhargosh/watchdog/compare/v0.8.3...v0.9.0>`_ - 2018-08-28
