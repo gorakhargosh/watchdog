@@ -32,6 +32,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
+    DirMovedEvent
 )
 from watchdog.observers.api import ObservedWatch
 
@@ -322,3 +323,57 @@ def test_recursive_off():
 
     with pytest.raises(Empty):
         event_queue.get(timeout=5)
+
+
+def test_renaming_top_level_directory():
+    start_watching()
+
+    mkdir(p('a'))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirCreatedEvent)
+    assert event.src_path == p('a')
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirModifiedEvent)
+    assert event.src_path == p()
+
+    mkdir(p('a', 'b'))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirCreatedEvent)
+    assert event.src_path == p('a', 'b')
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirModifiedEvent)
+    assert event.src_path == p('a')
+
+    mv(p('a'), p('a2'))
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('a')
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirModifiedEvent)
+    assert event.src_path == p()
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirModifiedEvent)
+    assert event.src_path == p()
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirMovedEvent)
+    assert event.src_path == p('a', 'b')
+
+    open(p('a2', 'b', 'c'), 'a').close()
+
+    # DirModifiedEvent may emitted, but sometimes after waiting time is out.
+    events = []
+    while True:
+        events.append(event_queue.get(timeout=5)[0])
+        if event_queue.empty():
+            break
+
+    assert len(events) > 1
+    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent)) for e in events])
+
+    for event in events:
+        if isinstance(event, FileCreatedEvent):
+            assert event.src_path == p('a2', 'b', 'c')
+        elif isinstance(event, FileMovedEvent):
+            assert event.dest_path == p('a2', 'b', 'c')
+            assert event.src_path == p('a', 'b', 'c')
+        elif isinstance(event, DirModifiedEvent):
+            assert event.src_path == p('a2', 'b')
