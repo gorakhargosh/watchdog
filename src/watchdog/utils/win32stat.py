@@ -85,7 +85,7 @@ CloseHandle.restype = ctypes.wintypes.BOOL
 CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)
 
 
-StatResult = namedtuple('StatResult', 'st_dev st_ino st_mode st_mtime')
+StatResult = namedtuple('StatResult', 'st_dev st_ino st_mode st_mtime st_size')
 
 def _to_mode(attr):
     m = 0
@@ -121,5 +121,6 @@ def stat(path):
     return StatResult(st_dev=info.dwVolumeSerialNumber,
                       st_ino=(info.nFileIndexHigh << 32) + info.nFileIndexLow,
                       st_mode=_to_mode(info.dwFileAttributes),
-                      st_mtime=_to_unix_time(info.ftLastWriteTime)
+                      st_mtime=_to_unix_time(info.ftLastWriteTime),
+                      st_size=(info.nFileSizeHigh << 32) + info.nFileSizeLow
                       )
