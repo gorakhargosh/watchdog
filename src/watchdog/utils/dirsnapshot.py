@@ -220,7 +220,7 @@ class DirectorySnapshot(object):
                 # list of its parent and trying to delete its contents. If this
                 # happens we treat it as empty. Likewise if the directory was replaced
                 # with a file of the same name (less likely, but possible).
-                if e.errno == errno.ENOENT or e.errno == errno.ENOTDIR:
+                if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
                     return
                 else:
                     raise
