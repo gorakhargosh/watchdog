@@ -67,6 +67,7 @@ def emitter(event_queue):
 def test___init__(event_queue, emitter):
     SLEEP_TIME = 2
 
+    emitter.start()
     sleep(SLEEP_TIME)
     mkdir(p('fromdir'))
 
