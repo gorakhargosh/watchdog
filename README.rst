@@ -14,7 +14,7 @@ Example API Usage
 -----------------
 A simple program that uses watchdog to monitor directories specified
 as command-line arguments and logs events generated:
-    
+
 .. code-block:: python
 
     import sys
@@ -49,7 +49,7 @@ know more about this tool.
 Here is how you can log the current directory recursively
 for events related only to ``*.py`` and ``*.txt`` files while
 ignoring all directory events:
-    
+
 .. code-block:: bash
 
     watchmedo log \
@@ -60,7 +60,7 @@ ignoring all directory events:
 
 You can use the ``shell-command`` subcommand to execute shell commands in
 response to events:
-    
+
 .. code-block:: bash
 
     watchmedo shell-command \
@@ -85,7 +85,7 @@ classes are augmented with a few additional features that regular event handlers
 don't need.
 
 An example ``tricks.yaml`` file:
-    
+
 .. code-block:: yaml
 
     tricks:
@@ -121,7 +121,7 @@ Please file enhancement requests at the `issue tracker`_.
 Installation
 ------------
 Install from PyPI using ``pip``:
-    
+
 .. code-block:: bash
 
     $ python -m pip install watchdog
@@ -130,7 +130,7 @@ Install from PyPI using ``pip``:
     $ python -m pip install watchdog[watchmedo]
 
 Install from source:
-    
+
 .. code-block:: bash
 
     $ python -m pip install -e .
@@ -152,7 +152,7 @@ to install LibYAML:
 
 On Linux, use your favorite package manager to install LibYAML. Here's how you
 do it on Ubuntu:
-    
+
 .. code-block:: bash
 
     $ sudo aptitude install libyaml-dev
@@ -215,6 +215,16 @@ if you use Vim to edit your files, the on-modified events
 for those files will not be triggered by watchdog.
 You may need to configure Vim appropriately to disable
 this feature.
+
+
+About using watchdog with CIFS
+------------------------------
+When you want to watch changes in CIFS, you need to explicitly tell watchdog to
+use `PollingObserver', that is, instead of letting watchdog decide an
+appropriate observer like in the example above, do
+'''
+from watchdog.observers.polling import PollingObserver as Observer
+'''
 
 
 Dependencies
