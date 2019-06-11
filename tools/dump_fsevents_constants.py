@@ -39,6 +39,7 @@ def write_constants_to_file(filename):
     with open(filename, 'wb') as f:
         f.write(content)
 
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         output_file = sys.argv[1]

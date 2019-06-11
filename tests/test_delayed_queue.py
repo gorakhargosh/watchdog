@@ -27,6 +27,7 @@ def test_delayed_get():
     # 2.10 instead of 2.05 for slow macOS slaves on Travis
     assert 2.10 > elapsed > 1.99
 
+
 def test_nondelayed_get():
     q = DelayedQueue(2)
     q.put("", False)

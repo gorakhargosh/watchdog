@@ -19,8 +19,8 @@ from __future__ import unicode_literals
 import pytest
 from watchdog.utils import platform
 
-if not platform.is_linux():
-    pytest.skip("GNU/Linux only.", allow_module_level=True)
+if not platform.is_linux():  # noqa
+    pytest.skip("GNU/Linux only.", allow_module_level=True)  # noqa
 
 import os
 import random

@@ -78,6 +78,7 @@ def test_move_replace(p):
     assert diff.files_deleted == [p('dir2', 'b')]
     assert diff.files_created == []
 
+
 def test_dir_modify_on_create(p):
     ref = DirectorySnapshot(p(''))
     wait()

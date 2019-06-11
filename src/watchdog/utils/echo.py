@@ -45,6 +45,7 @@ def is_classmethod(instancemethod, klass):
     " Determine if an instancemethod is a classmethod. "
     return inspect.ismethod(instancemethod) and instancemethod.__self__ is klass
 
+
 def is_static_method(method, klass):
     """Returns True if method is an instance method of klass."""
     for c in klass.mro():
@@ -52,6 +53,7 @@ def is_static_method(method, klass):
             return isinstance(c.__dict__[name(method)], staticmethod)
     else:
         return False
+
 
 def is_class_private_name(name):
     " Determine if a name is a class private name. "
@@ -127,19 +129,21 @@ def echo_instancemethod(klass, method, write=sys.stdout.write):
     else:
         setattr(klass, mname, echo(method, write))
 
+
 def echo_class(klass, write=sys.stdout.write):
     """ Echo calls to class methods and static functions
     """
     for _, method in inspect.getmembers(klass, inspect.ismethod):
-        #In python 3 only class methods are returned here, but in python2 instance methods are too.
+        # In python 3 only class methods are returned here, but in python2 instance methods are too.
         echo_instancemethod(klass, method, write)
     for _, fn in inspect.getmembers(klass, inspect.isfunction):
         if is_static_method(fn, klass):
             setattr(klass, name(fn), staticmethod(echo(fn, write)))
         else:
-            #It's not a class or a static method, so it must be an instance method.
-            #This should only be called in python 3, because in python 3 instance methods are considered functions.
+            # It's not a class or a static method, so it must be an instance method.
+            # This should only be called in python 3, because in python 3 instance methods are considered functions.
             echo_instancemethod(klass, fn, write)
+
 
 def echo_module(mod, write=sys.stdout.write):
     """ Echo calls to functions and methods in a module.
@@ -148,6 +152,7 @@ def echo_module(mod, write=sys.stdout.write):
         setattr(mod, fname, echo(fn, write))
     for _, klass in inspect.getmembers(mod, inspect.isclass):
         echo_class(klass, write)
+
 
 if __name__ == "__main__":
     import doctest

@@ -320,7 +320,7 @@ class Inotify(object):
                 if wd == -1:
                     continue
                 wd_path = self._path_for_wd[wd]
-                src_path = os.path.join(wd_path, name) if name else wd_path #avoid trailing slash
+                src_path = os.path.join(wd_path, name) if name else wd_path  # avoid trailing slash
                 inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
                 if inotify_event.is_moved_from:
@@ -344,8 +344,8 @@ class Inotify(object):
 
                 event_list.append(inotify_event)
 
-                if (self.is_recursive and inotify_event.is_directory and
-                        inotify_event.is_create):
+                if (self.is_recursive and inotify_event.is_directory
+                        and inotify_event.is_create):
 
                     # TODO: When a directory from another part of the
                     # filesystem is moved into a watched directory, this
@@ -543,8 +543,8 @@ class InotifyEvent(object):
         # It looks like the kernel does not provide this information for
         # IN_DELETE_SELF and IN_MOVE_SELF. In this case, assume it's a dir.
         # See also: https://github.com/seb-m/pyinotify/blob/2c7e8f8/python2/pyinotify.py#L897
-        return (self.is_delete_self or self.is_move_self or
-                self._mask & InotifyConstants.IN_ISDIR > 0)
+        return (self.is_delete_self or self.is_move_self
+                or self._mask & InotifyConstants.IN_ISDIR > 0)
 
     @property
     def key(self):

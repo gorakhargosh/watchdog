@@ -19,7 +19,7 @@
 import pytest
 from watchdog.utils import platform
 
-if not platform.is_windows():
+if not platform.is_windows():  # noqa
     pytest.skip("Windows only.", allow_module_level=True)
 
 import os.path

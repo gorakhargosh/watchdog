@@ -38,6 +38,7 @@ def get_platform_name():
     else:
         return PLATFORM_UNKNOWN
 
+
 __platform__ = get_platform_name()
 
 

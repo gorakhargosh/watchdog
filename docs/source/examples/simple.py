@@ -10,6 +10,7 @@ from watchdog.observers import Observer
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 class MyEventHandler(FileSystemEventHandler):
     def catch_all_handler(self, event):
         logging.debug(event)
@@ -25,6 +26,7 @@ class MyEventHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         self.catch_all_handler(event)
+
 
 path = sys.argv[1]
 
