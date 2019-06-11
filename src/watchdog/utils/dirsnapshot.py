@@ -235,9 +235,16 @@ class DirectorySnapshot(object):
                 yield _
             if recursive:
                 for path, st in entries:
-                    if S_ISDIR(st.st_mode):
-                        for _ in walk(path):
-                            yield _
+                    try:
+                        if S_ISDIR(st.st_mode):
+                            for _ in walk(path):
+                                yield _
+                    except (IOError, OSError) as e:
+                        # IOError for Python 2
+                        # OSError for Python 3
+                        # (should be only PermissionError when dropping Python 2 support)
+                        if e.errno != errno.EACCES:
+                            raise
 
         for p, st in walk(path):
             i = (st.st_ino, st.st_dev)
