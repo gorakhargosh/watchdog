@@ -31,6 +31,7 @@ from watchdog.events import (
     FileMovedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
+    DirMovedEvent,
     DirCreatedEvent,
 )
 from watchdog.observers.api import ObservedWatch
@@ -326,3 +327,37 @@ def test_recursive_off():
 
     with pytest.raises(Empty):
         event_queue.get(timeout=5)
+
+
+def test_move_nested_subdirectories():
+    mkdir(p('dir1/dir2/dir3'), parents=True)
+    touch(p('dir1/dir2/dir3', 'a'))
+    start_watching(p(''))
+    mv(p('dir1/dir2'), p('dir2'))
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1', 'dir2')
+    assert isinstance(event, DirMovedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1')
+    assert isinstance(event, DirModifiedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert p(event.src_path, '') == p('')
+    assert isinstance(event, DirModifiedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1/dir2/dir3')
+    assert isinstance(event, DirMovedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1/dir2/dir3', 'a')
+    assert isinstance(event, FileMovedEvent)
+
+    # The src_path should be correct for the moved file.
+    touch(p('dir2/dir3', 'a'))
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir2/dir3', 'a')
+    assert isinstance(event, FileModifiedEvent)
