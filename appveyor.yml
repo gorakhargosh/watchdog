@@ -33,7 +33,7 @@ environment:
 
 install:
   - SET "PATH=%python_path%;%python_path%\Scripts;%PATH%"
-  - pip install tox
+  - pip install tox -U --force-reinstall
 
 test_script:
   tox -e %tox_env%
