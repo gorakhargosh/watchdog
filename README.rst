@@ -220,11 +220,10 @@ this feature.
 About using watchdog with CIFS
 ------------------------------
 When you want to watch changes in CIFS, you need to explicitly tell watchdog to
-use `PollingObserver', that is, instead of letting watchdog decide an
-appropriate observer like in the example above, do
-'''
-from watchdog.observers.polling import PollingObserver as Observer
-'''
+use ``PollingObserver``, that is, instead of letting watchdog decide an
+appropriate observer like in the example above, do::
+
+    from watchdog.observers.polling import PollingObserver as Observer
 
 
 Dependencies
