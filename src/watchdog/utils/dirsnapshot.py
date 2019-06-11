@@ -69,17 +69,17 @@ class DirectorySnapshotDiff(object):
     :type snapshot:
         :class:`DirectorySnapshot`
     """
-    
+
     def __init__(self, ref, snapshot):
         created = snapshot.paths - ref.paths
         deleted = ref.paths - snapshot.paths
-        
+
         # check that all unchanged paths have the same inode
         for path in ref.paths & snapshot.paths:
             if ref.inode(path) != snapshot.inode(path):
                 created.add(path)
                 deleted.add(path)
-        
+
         # find moved paths
         moved = set()
         for path in set(deleted):
@@ -89,14 +89,14 @@ class DirectorySnapshotDiff(object):
                 # file is not deleted but moved
                 deleted.remove(path)
                 moved.add((path, new_path))
-        
+
         for path in set(created):
             inode = snapshot.inode(path)
             old_path = ref.path(inode)
             if old_path:
                 created.remove(path)
                 moved.add((old_path, path))
-        
+
         # find modified paths
         # first check paths that have not moved
         modified = set()
@@ -104,21 +104,21 @@ class DirectorySnapshotDiff(object):
             if ref.inode(path) == snapshot.inode(path):
                 if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
                     modified.add(path)
-        
+
         for (old_path, new_path) in moved:
             if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(old_path) != snapshot.size(new_path):
                 modified.add(old_path)
-        
+
         self._dirs_created = [path for path in created if snapshot.isdir(path)]
         self._dirs_deleted = [path for path in deleted if ref.isdir(path)]
         self._dirs_modified = [path for path in modified if ref.isdir(path)]
         self._dirs_moved = [(frm, to) for (frm, to) in moved if ref.isdir(frm)]
-        
+
         self._files_created = list(created - set(self._dirs_created))
         self._files_deleted = list(deleted - set(self._dirs_deleted))
         self._files_modified = list(modified - set(self._dirs_modified))
         self._files_moved = list(moved - set(self._dirs_moved))
-    
+
     @property
     def files_created(self):
         """List of files that were created."""
@@ -175,6 +175,7 @@ class DirectorySnapshotDiff(object):
         """
         return self._dirs_created
 
+
 class DirectorySnapshot(object):
     """
     A snapshot of stat information of files in a directory.
@@ -193,20 +194,20 @@ class DirectorySnapshot(object):
     :param stat:
         Use custom stat function that returns a stat structure for path.
         Currently only st_dev, st_ino, st_mode and st_mtime are needed.
-        
+
         A function with the signature ``walker_callback(path, stat_info)``
         which will be called for every entry in the directory tree.
     :param listdir:
         Use custom listdir function. For details see ``os.scandir`` if available, else ``os.listdir``.
     """
-    
+
     def __init__(self, path, recursive=True,
                  walker_callback=(lambda p, s: None),
                  stat=default_stat,
                  listdir=scandir):
         self._stat_info = {}
         self._inode_to_path = {}
-        
+
         st = stat(path)
         self._stat_info[path] = st
         self._inode_to_path[(st.st_ino, st.st_dev)] = path
@@ -250,27 +251,27 @@ class DirectorySnapshot(object):
         Set of file/directory paths in the snapshot.
         """
         return set(self._stat_info.keys())
-    
+
     def path(self, id):
         """
         Returns path for id. None if id is unknown to this snapshot.
         """
         return self._inode_to_path.get(id)
-    
+
     def inode(self, path):
         """ Returns an id for path. """
         st = self._stat_info[path]
         return (st.st_ino, st.st_dev)
-    
+
     def isdir(self, path):
         return S_ISDIR(self._stat_info[path].st_mode)
-    
+
     def mtime(self, path):
         return self._stat_info[path].st_mtime
 
     def size(self, path):
         return self._stat_info[path].st_size
-    
+
     def stat_info(self, path):
         """
         Returns a stat information object for the specified path from
@@ -294,9 +295,9 @@ class DirectorySnapshot(object):
             A :class:`DirectorySnapshotDiff` object.
         """
         return DirectorySnapshotDiff(previous_dirsnap, self)
-    
+
     def __str__(self):
         return self.__repr__()
-    
+
     def __repr__(self):
         return str(self._stat_info)

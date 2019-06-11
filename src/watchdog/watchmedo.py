@@ -343,8 +343,8 @@ def log(args):
     elif args.debug_force_fsevents:
         from watchdog.observers.fsevents import FSEventsObserver as Observer
     else:
-    # Automatically picks the most appropriate observer for the platform
-    # on which it is running.
+        # Automatically picks the most appropriate observer for the platform
+        # on which it is running.
         from watchdog.observers import Observer
     observer = Observer(timeout=args.timeout)
     observe_with(observer, handler, args.directories, args.recursive)
@@ -412,7 +412,7 @@ Example option usage::
      dest='drop_during_process',
      action='store_true',
      default=False,
-     help="Ignore events that occur while command is still being executed " \
+     help="Ignore events that occur while command is still being executed "
           "to avoid multiple simultaneous instances")
 @arg('--debug-force-polling',
      default=False,

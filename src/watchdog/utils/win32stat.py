@@ -87,6 +87,7 @@ CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)
 
 StatResult = namedtuple('StatResult', 'st_dev st_ino st_mode st_mtime st_size')
 
+
 def _to_mode(attr):
     m = 0
     if (attr & FILE_ATTRIBUTE_DIRECTORY):
@@ -99,18 +100,22 @@ def _to_mode(attr):
         m |= 0o666
     return m
 
+
 def _to_unix_time(ft):
     t = (ft.dwHighDateTime) << 32 | ft.dwLowDateTime
     return (t / 10000000) - 11644473600
 
+
 def stat(path):
     hfile = CreateFile(path,
-            FILE_READ_ATTRIBUTES,
-            0,
-            None,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
-            None)
+                       FILE_READ_ATTRIBUTES,
+                       0,
+                       None,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL
+                       | FILE_FLAG_BACKUP_SEMANTICS
+                       | FILE_FLAG_OPEN_REPARSE_POINT,
+                       None)
     if hfile == INVALID_HANDLE_VALUE:
         raise ctypes.WinError()
     info = BY_HANDLE_FILE_INFORMATION()

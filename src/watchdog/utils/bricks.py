@@ -38,6 +38,7 @@ Classes
 
 from .compat import queue
 
+
 class SkipRepeatsQueue(queue.Queue):
 
     """Thread-safe implementation of an special queue where a

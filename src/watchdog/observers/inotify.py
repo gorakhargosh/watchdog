@@ -200,9 +200,10 @@ class InotifyFullEmitter(InotifyEmitter):
     """
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         InotifyEmitter.__init__(self, event_queue, watch, timeout)
-        
+
     def queue_events(self, timeout, events=True):
         InotifyEmitter.queue_events(self, timeout, full_events=events)
+
 
 class InotifyObserver(BaseObserver):
     """
@@ -215,4 +216,4 @@ class InotifyObserver(BaseObserver):
             BaseObserver.__init__(self, emitter_class=InotifyFullEmitter, timeout=timeout)
         else:
             BaseObserver.__init__(self, emitter_class=InotifyEmitter,
-                              timeout=timeout)
+                                  timeout=timeout)

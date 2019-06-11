@@ -2,10 +2,11 @@
 from __future__ import unicode_literals
 
 import pytest
+
 # Skip if import PyYAML failed. PyYAML missing possible because
-# watchdog installed without watchmedo. See Installation section 
+# watchdog installed without watchmedo. See Installation section
 # in README.rst
-yaml = pytest.importorskip('yaml')
+yaml = pytest.importorskip('yaml')  # noqa
 
 import os
 

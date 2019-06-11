@@ -3,7 +3,7 @@
 import pytest
 from watchdog.utils import platform
 
-if not platform.is_darwin():
+if not platform.is_darwin():  # noqa
     pytest.skip("macOS only.", allow_module_level=True)
 
 import logging

@@ -32,6 +32,7 @@ def observer():
     except RuntimeError:
         pass
 
+
 @pytest.fixture
 def observer2():
     obs = BaseObserver(EventEmitter)

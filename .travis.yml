@@ -15,7 +15,10 @@ matrix:
       python: "3.7"
       env: TOXENV=py37
       dist: xenial
-      sudo: true
+    - os: linux
+      python: "3.8-dev"
+      env: TOXENV=py38
+      dist: xenial
     - os: linux
       python: "pypy"
       env: TOXENV=pypy
@@ -30,8 +33,8 @@ matrix:
     - os: osx
       language: generic
       env:
-        - PYTHON_VERSION=3.6
-        - TOXENV=py36
+        - PYTHON_VERSION=3.7
+        - TOXENV=py37
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then chmod +x .travis/install.sh && .travis/install.sh; fi
@@ -44,4 +47,4 @@ script:
   - tox
 
 notifications:
-    email: false
+  email: false

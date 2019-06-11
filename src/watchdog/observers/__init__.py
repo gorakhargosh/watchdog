@@ -28,7 +28,7 @@ Classes
    :members:
    :show-inheritance:
    :inherited-members:
-   
+
 Observer thread that schedules watching directories and dispatches
 calls to event handlers.
 

@@ -62,7 +62,8 @@ Collections and Utility Classes
    :members:
    :show-inheritance:
 
-.. _Mac OS X File System Performance Guidelines: http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
+.. _Mac OS X File System Performance Guidelines:
+    http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
 
 """
 
@@ -114,13 +115,13 @@ else:
 WATCHDOG_KQ_FILTER = select.KQ_FILTER_VNODE
 WATCHDOG_KQ_EV_FLAGS = select.KQ_EV_ADD | select.KQ_EV_ENABLE | select.KQ_EV_CLEAR
 WATCHDOG_KQ_FFLAGS = (
-    select.KQ_NOTE_DELETE |
-    select.KQ_NOTE_WRITE |
-    select.KQ_NOTE_EXTEND |
-    select.KQ_NOTE_ATTRIB |
-    select.KQ_NOTE_LINK |
-    select.KQ_NOTE_RENAME |
-    select.KQ_NOTE_REVOKE
+    select.KQ_NOTE_DELETE
+    | select.KQ_NOTE_WRITE
+    | select.KQ_NOTE_EXTEND
+    | select.KQ_NOTE_ATTRIB
+    | select.KQ_NOTE_LINK
+    | select.KQ_NOTE_RENAME
+    | select.KQ_NOTE_REVOKE
 )
 
 # Flag tests.
@@ -460,7 +461,7 @@ class KqueueEmitter(EventEmitter):
                 # and then quickly deleted before we could open
                 # a descriptor for it. Therefore, simply queue a sequence
                 # of created and deleted events for the path.
-                #path = absolute_path(path)
+                # path = absolute_path(path)
                 # if is_directory:
                 #    self.queue_event(DirCreatedEvent(path))
                 #    self.queue_event(DirDeletedEvent(path))

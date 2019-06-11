@@ -55,6 +55,7 @@ class InotifyBuffer(BaseThread):
         grouped = []
         for inotify_event in event_list:
             logger.debug("in-event %s", inotify_event)
+
             def matching_from_event(event):
                 return (not isinstance(event, tuple) and event.is_moved_from
                         and event.cookie == inotify_event.cookie)
