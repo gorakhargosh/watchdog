@@ -17,8 +17,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import with_statement
-
 import threading
 import os.path
 import time
@@ -72,7 +70,7 @@ class WindowsApiEmitter(EventEmitter):
             close_directory_handle(self._handle)
 
     def _read_events(self):
-        return read_events(self._handle, self.watch.is_recursive)
+        return read_events(self._handle, self.watch.path, self.watch.is_recursive)
 
     def queue_events(self, timeout):
         winapi_events = self._read_events()
@@ -123,6 +121,8 @@ class WindowsApiEmitter(EventEmitter):
                             self.queue_event(sub_created_event)
                 elif winapi_event.is_removed:
                     self.queue_event(FileDeletedEvent(src_path))
+                elif winapi_event.is_removed_self:
+                    self.stop()
 
 
 class WindowsApiObserver(BaseObserver):
