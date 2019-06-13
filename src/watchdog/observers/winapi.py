@@ -36,8 +36,6 @@
 # Portions of this code were taken from pyfilesystem, which uses the above
 # new BSD license.
 
-from __future__ import with_statement
-
 import ctypes.wintypes
 from functools import reduce
 
@@ -46,7 +44,7 @@ LPVOID = ctypes.wintypes.LPVOID
 # Invalid handle value.
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
-# File notification contants.
+# File notification constants.
 FILE_NOTIFY_CHANGE_FILE_NAME = 0x01
 FILE_NOTIFY_CHANGE_DIR_NAME = 0x02
 FILE_NOTIFY_CHANGE_ATTRIBUTES = 0x04
@@ -64,17 +62,21 @@ FILE_SHARE_WRITE = 0x02
 FILE_SHARE_DELETE = 0x04
 OPEN_EXISTING = 3
 
+VOLUME_NAME_NT = 0x02
+
 # File action constants.
 FILE_ACTION_CREATED = 1
 FILE_ACTION_DELETED = 2
 FILE_ACTION_MODIFIED = 3
 FILE_ACTION_RENAMED_OLD_NAME = 4
 FILE_ACTION_RENAMED_NEW_NAME = 5
+FILE_ACTION_DELETED_SELF = 0xFFFE
 FILE_ACTION_OVERFLOW = 0xFFFF
 
 # Aliases
 FILE_ACTION_ADDED = FILE_ACTION_CREATED
 FILE_ACTION_REMOVED = FILE_ACTION_DELETED
+FILE_ACTION_REMOVED_SELF = FILE_ACTION_DELETED_SELF
 
 THREAD_TERMINATE = 0x0001
 
@@ -219,6 +221,17 @@ PostQueuedCompletionStatus.argtypes = (
 )
 
 
+GetFinalPathNameByHandleW = kernel32.GetFinalPathNameByHandleW
+GetFinalPathNameByHandleW.restype = ctypes.wintypes.DWORD
+GetFinalPathNameByHandleW.errcheck = _errcheck_dword
+GetFinalPathNameByHandleW.argtypes = (
+    ctypes.wintypes.HANDLE,  # hFile
+    ctypes.wintypes.LPWSTR,  # lpszFilePath
+    ctypes.wintypes.DWORD,  # cchFilePath
+    ctypes.wintypes.DWORD,  # DWORD
+)
+
+
 class FILE_NOTIFY_INFORMATION(ctypes.Structure):
     _fields_ = [("NextEntryOffset", ctypes.wintypes.DWORD),
                 ("Action", ctypes.wintypes.DWORD),
@@ -270,6 +283,25 @@ def _parse_event_buffer(readBuffer, nBytes):
     return results
 
 
+def _is_observed_path_deleted(handle, path):
+    # Comparison of observed path and actual path, returned by
+    # GetFinalPathNameByHandleW. If directory moved to the trash bin, or
+    # deleted, actual path will not be equal to observed path.
+    buff = ctypes.create_unicode_buffer(BUFFER_SIZE)
+    GetFinalPathNameByHandleW(handle, buff, BUFFER_SIZE, VOLUME_NAME_NT)
+    return buff.value != path
+
+
+def _generate_observed_path_deleted_event():
+    # Create synthetic event for notify that observed directory is deleted
+    path = ctypes.create_unicode_buffer('.')
+    event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value)
+    event_size = ctypes.sizeof(event)
+    buff = ctypes.create_string_buffer(BUFFER_SIZE)
+    ctypes.memmove(buff, ctypes.addressof(event), event_size)
+    return buff, event_size
+
+
 def get_directory_handle(path):
     """Returns a Windows handle to the specified directory path."""
     return CreateFileW(path, FILE_LIST_DIRECTORY, WATCHDOG_FILE_SHARE_FLAGS,
@@ -287,7 +319,7 @@ def close_directory_handle(handle):
             return
 
 
-def read_directory_changes(handle, recursive):
+def read_directory_changes(handle, path, recursive):
     """Read changes to the directory using the specified directory handle.
 
     http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
@@ -302,6 +334,11 @@ def read_directory_changes(handle, recursive):
     except WindowsError as e:
         if e.winerror == ERROR_OPERATION_ABORTED:
             return [], 0
+
+        # Handle the case when the root path is deleted
+        if _is_observed_path_deleted(handle, path):
+            return _generate_observed_path_deleted_event()
+
         raise e
 
     # Python 2/3 compat
@@ -337,12 +374,16 @@ class WinAPINativeEvent(object):
     def is_renamed_new(self):
         return self.action == FILE_ACTION_RENAMED_NEW_NAME
 
+    @property
+    def is_removed_self(self):
+        return self.action == FILE_ACTION_REMOVED_SELF
+
     def __repr__(self):
         return ("<%s: action=%d, src_path=%r>" % (
                 type(self).__name__, self.action, self.src_path))
 
 
-def read_events(handle, recursive):
-    buf, nbytes = read_directory_changes(handle, recursive)
+def read_events(handle, path, recursive):
+    buf, nbytes = read_directory_changes(handle, path, recursive)
     events = _parse_event_buffer(buf, nbytes)
-    return [WinAPINativeEvent(action, path) for action, path in events]
+    return [WinAPINativeEvent(action, src_path) for action, src_path in events]
