@@ -386,4 +386,4 @@ class WinAPINativeEvent(object):
 def read_events(handle, path, recursive):
     buf, nbytes = read_directory_changes(handle, path, recursive)
     events = _parse_event_buffer(buf, nbytes)
-    return [WinAPINativeEvent(action, path) for action, path in events]
+    return [WinAPINativeEvent(action, src_path) for action, src_path in events]
