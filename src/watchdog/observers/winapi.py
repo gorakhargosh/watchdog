@@ -335,6 +335,7 @@ def read_directory_changes(handle, path, recursive):
         if e.winerror == ERROR_OPERATION_ABORTED:
             return [], 0
 
+        # Handle the case when the root path is deleted
         if _is_observed_path_deleted(handle, path):
             return _generate_observed_path_deleted_event()
 

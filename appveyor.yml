@@ -12,12 +12,6 @@ environment:
     - python: py27-x64
       tox_env: py27
       python_path: c:\python27-x64
-    - python: py34
-      tox_env: py34
-      python_path: c:\python34
-    - python: py34-x64
-      tox_env: py34
-      python_path: c:\python34-x64
     - python: py35
       tox_env: py35
       python_path: c:\python35
@@ -39,7 +33,7 @@ environment:
 
 install:
   - SET "PATH=%python_path%;%python_path%\Scripts;%PATH%"
-  - pip install tox
+  - pip install tox -U --force-reinstall
 
 test_script:
   tox -e %tox_env%
