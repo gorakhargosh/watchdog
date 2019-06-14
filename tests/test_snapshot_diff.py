@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import os
 import time
 from .shell import mkdir, touch, mv, rm
@@ -124,3 +125,34 @@ def test_replace_dir_with_file(p):
 
     # Should NOT raise an OSError (ENOTDIR)
     DirectorySnapshot(p('root'), listdir=listdir_fcn)
+
+
+def test_permission_error(monkeypatch, p):
+    # Test that unreadable folders are not raising exceptions
+    mkdir(p('a', 'b', 'c'), parents=True)
+
+    ref = DirectorySnapshot(p(''))
+
+    def walk(self, root):
+        """Generate a permission error on folder "a/b"."""
+        # Generate the permission error
+        if root.startswith(p('a', 'b')):
+            raise OSError(errno.EACCES, os.strerror(errno.EACCES))
+
+        # Mimic the original method
+        for entry in walk_orig(self, root):
+            yield entry
+
+    walk_orig = DirectorySnapshot.walk
+    monkeypatch.setattr(DirectorySnapshot, "walk", walk)
+
+    # Should NOT raise an OSError (EACCES)
+    new_snapshot = DirectorySnapshot(p(''))
+
+    monkeypatch.undo()
+
+    diff = DirectorySnapshotDiff(ref, new_snapshot)
+    assert repr(diff)
+
+    # Children of a/b/ are no more accessible and so removed in the new snapshot
+    assert diff.dirs_deleted == [(p('a', 'b', 'c'))]

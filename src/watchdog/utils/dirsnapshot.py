@@ -119,6 +119,26 @@ class DirectorySnapshotDiff(object):
         self._files_modified = list(modified - set(self._dirs_modified))
         self._files_moved = list(moved - set(self._dirs_moved))
 
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        fmt = (
+            '<{0} files(created={1}, deleted={2}, modified={3}, moved={4}),'
+            ' folders(created={5}, deleted={6}, modified={7}, moved={8})>'
+        )
+        return fmt.format(
+            type(self).__name__,
+            len(self._files_created),
+            len(self._files_deleted),
+            len(self._files_modified),
+            len(self._files_moved),
+            len(self._dirs_created),
+            len(self._dirs_deleted),
+            len(self._dirs_modified),
+            len(self._dirs_moved)
+        )
+
     @property
     def files_created(self):
         """List of files that were created."""
@@ -205,6 +225,11 @@ class DirectorySnapshot(object):
                  walker_callback=(lambda p, s: None),
                  stat=default_stat,
                  listdir=scandir):
+        self.recursive = recursive
+        self.walker_callback = walker_callback
+        self.stat = stat
+        self.listdir = listdir
+
         self._stat_info = {}
         self._inode_to_path = {}
 
@@ -212,38 +237,47 @@ class DirectorySnapshot(object):
         self._stat_info[path] = st
         self._inode_to_path[(st.st_ino, st.st_dev)] = path
 
-        def walk(root):
-            try:
-                paths = [os.path.join(root, entry if isinstance(entry, str) else entry.name)
-                         for entry in listdir(root)]
-            except OSError as e:
-                # Directory may have been deleted between finding it in the directory
-                # list of its parent and trying to delete its contents. If this
-                # happens we treat it as empty. Likewise if the directory was replaced
-                # with a file of the same name (less likely, but possible).
-                if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
-                    return
-                else:
-                    raise
-            entries = []
-            for p in paths:
-                try:
-                    entries.append((p, stat(p)))
-                except OSError:
-                    continue
-            for _ in entries:
-                yield _
-            if recursive:
-                for path, st in entries:
-                    if S_ISDIR(st.st_mode):
-                        for _ in walk(path):
-                            yield _
-
-        for p, st in walk(path):
+        for p, st in self.walk(path):
             i = (st.st_ino, st.st_dev)
             self._inode_to_path[i] = p
             self._stat_info[p] = st
             walker_callback(p, st)
+
+    def walk(self, root):
+        try:
+            paths = [os.path.join(root, entry if isinstance(entry, str) else entry.name)
+                     for entry in self.listdir(root)]
+        except OSError as e:
+            # Directory may have been deleted between finding it in the directory
+            # list of its parent and trying to delete its contents. If this
+            # happens we treat it as empty. Likewise if the directory was replaced
+            # with a file of the same name (less likely, but possible).
+            if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
+                return
+            else:
+                raise
+
+        entries = []
+        for p in paths:
+            try:
+                entry = (p, self.stat(p))
+                entries.append(entry)
+                yield entry
+            except OSError:
+                continue
+
+        if self.recursive:
+            for path, st in entries:
+                try:
+                    if S_ISDIR(st.st_mode):
+                        for entry in self.walk(path):
+                            yield entry
+                except (IOError, OSError) as e:
+                    # IOError for Python 2
+                    # OSError for Python 3
+                    # (should be only PermissionError when dropping Python 2 support)
+                    if e.errno != errno.EACCES:
+                        raise
 
     @property
     def paths(self):
