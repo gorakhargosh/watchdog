@@ -325,6 +325,8 @@ def test_recursive_off():
         event_queue.get(timeout=5)
 
 
+@pytest.mark.skipif(platform.is_windows(),
+                    reason="Windows create another set of events for this test")
 def test_renaming_top_level_directory():
     start_watching()
 
@@ -353,6 +355,7 @@ def test_renaming_top_level_directory():
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, DirModifiedEvent)
     assert event.src_path == p()
+
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, DirMovedEvent)
     assert event.src_path == p('a', 'b')
@@ -366,7 +369,6 @@ def test_renaming_top_level_directory():
         if event_queue.empty():
             break
 
-    assert len(events) > 1
     assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent)) for e in events])
 
     for event in events:
@@ -377,3 +379,54 @@ def test_renaming_top_level_directory():
             assert event.src_path == p('a', 'b', 'c')
         elif isinstance(event, DirModifiedEvent):
             assert event.src_path == p('a2', 'b')
+
+
+@pytest.mark.skipif(platform.is_linux(),
+                    reason="Linux create another set of events for this test")
+def test_renaming_top_level_directory_on_windows():
+    start_watching()
+
+    mkdir(p('a'))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirCreatedEvent)
+    assert event.src_path == p('a')
+
+    mkdir(p('a', 'b'))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirCreatedEvent)
+    assert event.src_path == p('a', 'b')
+
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirCreatedEvent)
+    assert event.src_path == p('a', 'b')
+
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirModifiedEvent)
+    assert event.src_path == p('a')
+
+    mv(p('a'), p('a2'))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event, DirMovedEvent)
+    assert event.src_path == p('a', 'b')
+
+    open(p('a2', 'b', 'c'), 'a').close()
+
+    events = []
+    while True:
+        events.append(event_queue.get(timeout=5)[0])
+        if event_queue.empty():
+            break
+
+    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirMovedEvent, DirModifiedEvent)) for e in events])
+
+    for event in events:
+        if isinstance(event, FileCreatedEvent):
+            assert event.src_path == p('a2', 'b', 'c')
+        elif isinstance(event, FileMovedEvent):
+            assert event.dest_path == p('a2', 'b', 'c')
+            assert event.src_path == p('a', 'b', 'c')
+        elif isinstance(event, DirMovedEvent):
+            assert event.dest_path == p('a2')
+            assert event.src_path == p('a')
+        elif isinstance(event, DirModifiedEvent):
+            assert event.dest_path == p('a2', 'b')
