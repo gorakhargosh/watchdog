@@ -429,4 +429,80 @@ def test_renaming_top_level_directory_on_windows():
             assert event.dest_path == p('a2')
             assert event.src_path == p('a')
         elif isinstance(event, DirModifiedEvent):
-            assert event.dest_path == p('a2', 'b')
+            assert event.src_path == p('a2', 'b')
+
+
+@pytest.mark.skipif(platform.is_windows(),
+                    reason="Windows create another set of events for this test")
+def test_move_nested_subdirectories():
+    mkdir(p('dir1/dir2/dir3'), parents=True)
+    touch(p('dir1/dir2/dir3', 'a'))
+    start_watching(p(''))
+    mv(p('dir1/dir2'), p('dir2'))
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1', 'dir2')
+    assert isinstance(event, DirMovedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1')
+    assert isinstance(event, DirModifiedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert p(event.src_path, '') == p('')
+    assert isinstance(event, DirModifiedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1/dir2/dir3')
+    assert isinstance(event, DirMovedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1/dir2/dir3', 'a')
+    assert isinstance(event, FileMovedEvent)
+
+    touch(p('dir2/dir3', 'a'))
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir2/dir3', 'a')
+    assert isinstance(event, FileModifiedEvent)
+
+
+@pytest.mark.skipif(platform.is_linux(),
+                    reason="Linux create another set of events for this test")
+def test_move_nested_subdirectories_on_windows():
+    mkdir(p('dir1/dir2/dir3'), parents=True)
+    touch(p('dir1/dir2/dir3', 'a'))
+    start_watching(p(''))
+    mv(p('dir1/dir2'), p('dir2'))
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1', 'dir2')
+    assert isinstance(event, FileDeletedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir2')
+    assert isinstance(event, DirCreatedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir2', 'dir3')
+    assert isinstance(event, DirCreatedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir2', 'dir3', 'a')
+    assert isinstance(event, FileCreatedEvent)
+
+    touch(p('dir2/dir3', 'a'))
+
+    events = []
+    while True:
+        events.append(event_queue.get(timeout=5)[0])
+        if event_queue.empty():
+            break
+
+    assert all([isinstance(e, (FileModifiedEvent, DirModifiedEvent)) for e in events])
+
+    for event in events:
+        if isinstance(event, FileModifiedEvent):
+            assert event.src_path == p('dir2', 'dir3', 'a')
+        elif isinstance(event, DirModifiedEvent):
+            assert event.src_path in [p('dir2'), p('dir2', 'dir3')]
