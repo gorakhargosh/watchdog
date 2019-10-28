@@ -475,6 +475,12 @@ class KqueueEmitter(EventEmitter):
                 # eg. .git/index.lock when running tig operations.
                 # I don't fully understand this at the moment.
                 pass
+            elif e.errno == errno.EOPNOTSUPP:
+                # Probably dealing with the socket or special file
+                # mounted through a file system that does not support
+                # access to it (e.g. NFS). On BSD systems look at
+                # EOPNOTSUPP in man 2 open.
+                pass
             else:
                 # All other errors are propagated.
                 raise
