@@ -1,6 +1,5 @@
 from functools import partial
 import os
-import sys
 import threading
 import pytest
 from . import shell
@@ -28,15 +27,8 @@ def no_thread_leaks():
     Fail on thread leak.
     We do not use pytest-threadleak because it is not reliable.
     """
-
     yield
-
-    if sys.version_info < (3,):
-        return
-
-    main = threading.main_thread()
-    assert not [th for th in threading._dangling
-                if th is not main and th.is_alive()]
+    assert threading.active_count() == 1  # Only the main thread
 
 
 @pytest.fixture(autouse=True)
