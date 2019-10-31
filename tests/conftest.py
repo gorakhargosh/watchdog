@@ -1,4 +1,5 @@
 from functools import partial
+import gc
 import os
 import threading
 import pytest
@@ -28,6 +29,7 @@ def no_thread_leaks():
     We do not use pytest-threadleak because it is not reliable.
     """
     yield
+    gc.collect()  # Clear the stuff from other function-level fixtures
     assert threading.active_count() == 1  # Only the main thread
 
 
