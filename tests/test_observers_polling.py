@@ -69,6 +69,7 @@ def emitter(event_queue):
     em.start()
     yield em
     em.stop()
+    em.join(5)
 
 
 def test___init__(event_queue, emitter):
