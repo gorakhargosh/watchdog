@@ -267,7 +267,7 @@ to do:
 .. _source code: http://github.com/gorakhargosh/watchdog
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _Apache License, version 2.0: http://www.apache.org/licenses/LICENSE-2.0
-.. _documentation: http://packages.python.org/watchdog/
+.. _documentation: https://watchdog.readthedocs.io/
 .. _stackoverflow: http://stackoverflow.com/questions/tagged/python-watchdog
 .. _mailing list: http://groups.google.com/group/watchdog-python
 .. _repository: http://github.com/gorakhargosh/watchdog
