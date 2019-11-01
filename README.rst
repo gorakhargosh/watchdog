@@ -270,7 +270,7 @@ to do:
 .. _mailing list: http://groups.google.com/group/watchdog-python
 .. _repository: http://github.com/gorakhargosh/watchdog
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
-.. _changelog: https://https://github.com/gorakhargosh/watchdog/blob/master/changelog.rst
+.. _changelog: https://github.com/gorakhargosh/watchdog/blob/master/changelog.rst
 
 .. _homebrew: http://mxcl.github.com/homebrew/
 .. _argh: http://pypi.python.org/pypi/argh
