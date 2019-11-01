@@ -81,6 +81,12 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
     emitter.start()
 
 
+def rerun_filter(exc, *args):
+    time.sleep(5)
+    return issubclass(exc[0], Empty) and platform.is_windows()
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_create():
     start_watching()
     open(p('a'), 'a').close()
@@ -95,6 +101,7 @@ def test_create():
         assert isinstance(event, DirModifiedEvent)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_delete():
     touch(p('a'))
     start_watching()
@@ -110,6 +117,7 @@ def test_delete():
         assert isinstance(event, DirModifiedEvent)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_modify():
     touch(p('a'))
     start_watching()
@@ -120,6 +128,7 @@ def test_modify():
     assert isinstance(event, FileModifiedEvent)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_move():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -150,6 +159,7 @@ def test_move():
         assert isinstance(event, DirModifiedEvent)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_move_to():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -181,6 +191,7 @@ def test_move_to_full():
     assert event.src_path is None  # Should equal None since the path was not watched
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_move_from():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -212,6 +223,7 @@ def test_move_from_full():
     assert event.dest_path is None  # Should equal None since path not watched
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_separate_consecutive_moves():
     mkdir(p('dir1'))
     touch(p('dir1', 'a'))
@@ -239,6 +251,7 @@ def test_separate_consecutive_moves():
         assert isinstance(event, DirModifiedEvent)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_delete_self():
     mkdir(p('dir1'))
     start_watching(p('dir1'))
@@ -280,6 +293,7 @@ def test_fast_subdirectory_creation_deletion():
                      DirDeletedEvent: times}
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode():
     start_watching(str_cls(p("")))
     touch(p('a'))
@@ -297,6 +311,7 @@ def test_passing_bytes_should_give_bytes():
     assert isinstance(event.src_path, bytes)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_recursive_on():
     mkdir(p('dir1', 'dir2', 'dir3'), True)
     start_watching()
@@ -316,6 +331,7 @@ def test_recursive_on():
         assert isinstance(event, FileModifiedEvent)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_recursive_off():
     mkdir(p('dir1'))
     start_watching(recursive=False)
@@ -381,6 +397,7 @@ def test_renaming_top_level_directory():
             assert event.src_path == p('a2', 'b')
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 @pytest.mark.skipif(platform.is_linux(),
                     reason="Linux create another set of events for this test")
 def test_renaming_top_level_directory_on_windows():
@@ -467,6 +484,7 @@ def test_move_nested_subdirectories():
     assert isinstance(event, FileModifiedEvent)
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 @pytest.mark.skipif(platform.is_linux(),
                     reason="Linux create another set of events for this test")
 def test_move_nested_subdirectories_on_windows():
