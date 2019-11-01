@@ -42,9 +42,12 @@ def no_warnings(recwarn):
     warnings = []
     for warning in recwarn:  # pragma: no cover
         message = str(warning.message)
+        filename = warning.filename
         if (
             "Not importing directory" in message
             or "Using or importing the ABCs" in message
+            or "dns.hash module will be removed in future versions" in message
+            or ("eventlet" in filename and "eventlet" in filename)
         ):
             continue
         warnings.append("{w.filename}:{w.lineno} {w.message}".format(w=warning))

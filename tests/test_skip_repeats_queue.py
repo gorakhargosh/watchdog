@@ -16,10 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 from watchdog.utils.bricks import SkipRepeatsQueue
 
+from .markers import cpython_only
 
-def test_basic_queue():
+
+def basic_actions():
     q = SkipRepeatsQueue()
 
     e1 = (2, 'fred')
@@ -34,6 +37,10 @@ def test_basic_queue():
     assert e2 == q.get()
     assert e3 == q.get()
     assert q.empty()
+
+
+def test_basic_queue():
+    basic_actions()
 
 
 def test_allow_nonconsecutive():
@@ -81,3 +88,14 @@ def test_consecutives_allowed_across_empties():
     q.put(e1)  # this repeat is allowed because 'last' added is now gone from queue
     assert e1 == q.get()
     assert q.empty()
+
+
+@cpython_only
+def test_eventlet_monkey_patching():
+    try:
+        import eventlet
+    except ImportError:
+        pytest.skip("eventlet not installed")
+
+    eventlet.monkey_patch()
+    basic_actions()

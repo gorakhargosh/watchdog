@@ -39,7 +39,7 @@ Classes
 from .compat import queue
 
 
-class SkipRepeatsQueue(queue.Queue):
+class SkipRepeatsQueue(queue.Queue, object):
 
     """Thread-safe implementation of an special queue where a
     put of the last-item put'd will be dropped.
@@ -83,12 +83,12 @@ class SkipRepeatsQueue(queue.Queue):
     """
 
     def _init(self, maxsize):
-        queue.Queue._init(self, maxsize)
+        super(SkipRepeatsQueue, self)._init(maxsize)
         self._last_item = None
 
     def _put(self, item):
         if item != self._last_item:
-            queue.Queue._put(self, item)
+            super(SkipRepeatsQueue, self)._put(item)
             self._last_item = item
         else:
             # `put` increments `unfinished_tasks` even if we did not put
@@ -96,7 +96,7 @@ class SkipRepeatsQueue(queue.Queue):
             self.unfinished_tasks -= 1
 
     def _get(self):
-        item = queue.Queue._get(self)
+        item = super(SkipRepeatsQueue, self)._get()
         if item is self._last_item:
             self._last_item = None
         return item
