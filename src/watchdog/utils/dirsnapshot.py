@@ -75,9 +75,11 @@ class DirectorySnapshotDiff(object):
         deleted = ref.paths - snapshot.paths
 
         if ignore_device:
-            def get_inode(directory, full_path): return directory.inode(full_path)[0]
+            def get_inode(directory, full_path):
+                return directory.inode(full_path)[0]
         else:
-            def get_inode(directory, full_path): return directory.inode(full_path)
+            def get_inode(directory, full_path):
+                return directory.inode(full_path)
 
         # check that all unchanged paths have the same inode
         for path in ref.paths & snapshot.paths:
