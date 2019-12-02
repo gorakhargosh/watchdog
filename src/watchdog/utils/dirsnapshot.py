@@ -68,6 +68,16 @@ class DirectorySnapshotDiff(object):
         with the reference snapshot.
     :type snapshot:
         :class:`DirectorySnapshot`
+    :param ignore_device:
+        A boolean indicating whether to ignore the device id or not.
+        By default, a file may be uniquely identified by a combination of its first
+        inode and its device id. The problem is that the device id may (or may not)
+        change between system boots. This problem would cause the DirectorySnapshotDiff
+        to think a file has been deleted and created again but it would be the
+        exact same file.
+        Set to True only if you are sure you will always use the same device.
+    :type ignore_device:
+        :class:`bool`
     """
 
     def __init__(self, ref, snapshot, ignore_device=False):
