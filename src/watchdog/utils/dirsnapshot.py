@@ -68,15 +68,32 @@ class DirectorySnapshotDiff(object):
         with the reference snapshot.
     :type snapshot:
         :class:`DirectorySnapshot`
+    :param ignore_device:
+        A boolean indicating whether to ignore the device id or not.
+        By default, a file may be uniquely identified by a combination of its first
+        inode and its device id. The problem is that the device id may (or may not)
+        change between system boots. This problem would cause the DirectorySnapshotDiff
+        to think a file has been deleted and created again but it would be the
+        exact same file.
+        Set to True only if you are sure you will always use the same device.
+    :type ignore_device:
+        :class:`bool`
     """
 
-    def __init__(self, ref, snapshot):
+    def __init__(self, ref, snapshot, ignore_device=False):
         created = snapshot.paths - ref.paths
         deleted = ref.paths - snapshot.paths
 
+        if ignore_device:
+            def get_inode(directory, full_path):
+                return directory.inode(full_path)[0]
+        else:
+            def get_inode(directory, full_path):
+                return directory.inode(full_path)
+
         # check that all unchanged paths have the same inode
         for path in ref.paths & snapshot.paths:
-            if ref.inode(path) != snapshot.inode(path):
+            if get_inode(ref, path) != get_inode(snapshot, path):
                 created.add(path)
                 deleted.add(path)
 
@@ -101,7 +118,7 @@ class DirectorySnapshotDiff(object):
         # first check paths that have not moved
         modified = set()
         for path in ref.paths & snapshot.paths:
-            if ref.inode(path) == snapshot.inode(path):
+            if get_inode(ref, path) == get_inode(snapshot, path):
                 if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
                     modified.add(path)
 

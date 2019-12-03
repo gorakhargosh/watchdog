@@ -156,3 +156,37 @@ def test_permission_error(monkeypatch, p):
 
     # Children of a/b/ are no more accessible and so removed in the new snapshot
     assert diff.dirs_deleted == [(p('a', 'b', 'c'))]
+
+
+def test_ignore_device(monkeypatch, p):
+    # Create a file and take a snapshot.
+    touch(p('file'))
+    ref = DirectorySnapshot(p(''))
+    wait()
+
+    def inode(self, path):
+        # This function will always return a different device_id,
+        # even for the same file.
+        result = inode_orig(self, path)
+        inode.times += 1
+        return result[0], result[1] + inode.times
+    inode.times = 0
+
+    # Set the custom inode function.
+    inode_orig = DirectorySnapshot.inode
+    monkeypatch.setattr(DirectorySnapshot, 'inode', inode)
+
+    # If we make the diff of the same directory, since by default the
+    # DirectorySnapshotDiff compares the snapshots using the device_id (and it will
+    # be different), it thinks that the same file has been deleted and created again.
+    snapshot = DirectorySnapshot(p(''))
+    diff_with_device = DirectorySnapshotDiff(ref, snapshot)
+    assert diff_with_device.files_deleted == [(p('file'))]
+    assert diff_with_device.files_created == [(p('file'))]
+
+    # Otherwise, if we choose to ignore the device, the file will not be detected as
+    # deleted and re-created.
+    snapshot = DirectorySnapshot(p(''))
+    diff_without_device = DirectorySnapshotDiff(ref, snapshot, ignore_device=True)
+    assert diff_without_device.files_deleted == []
+    assert diff_without_device.files_created == []
