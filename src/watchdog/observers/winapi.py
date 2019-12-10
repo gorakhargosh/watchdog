@@ -295,7 +295,7 @@ def _is_observed_path_deleted(handle, path):
 def _generate_observed_path_deleted_event():
     # Create synthetic event for notify that observed directory is deleted
     path = ctypes.create_unicode_buffer('.')
-    event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value)
+    event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
     event_size = ctypes.sizeof(event)
     buff = ctypes.create_string_buffer(BUFFER_SIZE)
     ctypes.memmove(buff, ctypes.addressof(event), event_size)
