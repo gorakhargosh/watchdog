@@ -226,31 +226,27 @@ class DirectorySnapshot(object):
         snapshot; ``False`` otherwise.
     :type recursive:
         ``bool``
-    :param walker_callback:
-        .. deprecated:: 0.7.2
     :param stat:
         Use custom stat function that returns a stat structure for path.
         Currently only st_dev, st_ino, st_mode and st_mtime are needed.
 
-        A function with the signature ``walker_callback(path, stat_info)``
-        which will be called for every entry in the directory tree.
+        A function taking a ``path`` as argument which will be called
+        for every entry in the directory tree.
     :param listdir:
         Use custom listdir function. For details see ``os.scandir`` if available, else ``os.listdir``.
     """
 
     def __init__(self, path, recursive=True,
-                 walker_callback=(lambda p, s: None),
                  stat=default_stat,
                  listdir=scandir):
         self.recursive = recursive
-        self.walker_callback = walker_callback
         self.stat = stat
         self.listdir = listdir
 
         self._stat_info = {}
         self._inode_to_path = {}
 
-        st = stat(path)
+        st = self.stat(path)
         self._stat_info[path] = st
         self._inode_to_path[(st.st_ino, st.st_dev)] = path
 
@@ -258,7 +254,6 @@ class DirectorySnapshot(object):
             i = (st.st_ino, st.st_dev)
             self._inode_to_path[i] = p
             self._stat_info[p] = st
-            walker_callback(p, st)
 
     def walk(self, root):
         try:

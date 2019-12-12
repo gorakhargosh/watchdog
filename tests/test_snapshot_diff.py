@@ -16,11 +16,14 @@
 
 import errno
 import os
+import pickle
 import time
-from .shell import mkdir, touch, mv, rm
+
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
 from watchdog.utils import platform
+
+from .shell import mkdir, touch, mv, rm
 
 
 def wait():
@@ -33,6 +36,13 @@ def wait():
         time.sleep(1.5)
     else:
         time.sleep(0.5)
+
+
+def test_pickle(p):
+    """It should be possible to pickle a snapshot."""
+    mkdir(p('dir1'))
+    snasphot = DirectorySnapshot(p('dir1'))
+    pickle.dumps(snasphot)
 
 
 def test_move_to(p):
