@@ -13,6 +13,8 @@ Breaking Changes
 
 - Dropped support for Python 2.6, 3.2 and 3.3
 - Emitters that failed to start are now removed
+- [snapshot] Removed the deprecated ``walker_callback`` argument,
+  use ``stat`` instead
 - [watchmedo] The utility is no more installed by default but via the extra
   ``watchdog[watchmedo]``
 

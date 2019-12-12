@@ -435,12 +435,14 @@ class KqueueEmitter(EventEmitter):
         # A collection of KeventDescriptor.
         self._descriptors = KeventDescriptorSet()
 
-        def walker_callback(path, stat_info, self=self):
+        def custom_stat(path, self=self):
+            stat_info = stat(path)
             self._register_kevent(path, stat.S_ISDIR(stat_info.st_mode))
+            return stat_info
 
         self._snapshot = DirectorySnapshot(watch.path,
-                                           watch.is_recursive,
-                                           walker_callback)
+                                           recursive=watch.is_recursive,
+                                           stat=custom_stat)
 
     def _register_kevent(self, path, is_directory):
         """
