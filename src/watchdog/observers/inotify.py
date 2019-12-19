@@ -125,7 +125,7 @@ class InotifyEmitter(EventEmitter):
             self._inotify.close()
 
     def queue_events(self, timeout, full_events=False):
-        # If "full_events" is true, then the method will report unmatched move events as seperate events
+        # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         with self._lock:
             event = self._inotify.read_event()
