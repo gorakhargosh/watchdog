@@ -134,7 +134,7 @@ Install from source:
     $ python -m pip install -e .
 
     # or to install the watchmedo utility:
-    $ python -m pip install -e .[watchmedo]
+    $ python -m pip install -e ".[watchmedo]"
 
 
 Installation Caveats
