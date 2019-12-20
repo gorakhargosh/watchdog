@@ -6,7 +6,7 @@ Changelog
 0.10.0
 ~~~~~~
 
-unreleased • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.9.0...master>`__
+2019-12-20 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.9.0...v0.10.0>`__
 
 Breaking Changes
 ================
