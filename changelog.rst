@@ -11,8 +11,8 @@ Changelog
 Other Changes
 =============
 
--
-- Thanks to our beloved contributors:
+- [snapshot] Added EmptyDirectorySnapshot (`#613 <https://github.com/gorakhargosh/watchdog/pull/613>`__)
+- Thanks to our beloved contributors: @Ajordat
 
 
 0.10.0
