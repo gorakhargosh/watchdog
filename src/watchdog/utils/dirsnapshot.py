@@ -42,6 +42,10 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: DirectorySnapshotEmpty
+   :members:
+   :show-inheritance:
+
 """
 
 import errno
@@ -347,3 +351,30 @@ class DirectorySnapshot(object):
 
     def __repr__(self):
         return str(self._stat_info)
+
+
+class EmptyDirectorySnapshot(object):
+    """Class to implement an empty snapshot. This is used together with
+    DirectorySnapshot and DirectorySnapshotDiff in order to get all the files/folders
+    in the directory as created.
+    """
+
+    @staticmethod
+    def path(_):
+        """Mock up method to return the path of the received inode. As the snapshot
+        is intended to be empty, it always returns None.
+
+        :returns:
+            None.
+        """
+        return None
+
+    @property
+    def paths(self):
+        """Mock up method to return a set of file/directory paths in the snapshot. As
+        the snapshot is intended to be empty, it always returns an empty set.
+
+        :returns:
+            An empty set.
+        """
+        return set()

@@ -21,6 +21,7 @@ import time
 
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
+from watchdog.utils.dirsnapshot import EmptyDirectorySnapshot
 from watchdog.utils import platform
 
 from .shell import mkdir, touch, mv, rm
@@ -200,3 +201,19 @@ def test_ignore_device(monkeypatch, p):
     diff_without_device = DirectorySnapshotDiff(ref, snapshot, ignore_device=True)
     assert diff_without_device.files_deleted == []
     assert diff_without_device.files_created == []
+
+
+def test_empty_snapshot(p):
+    # Create a file and declare a DirectorySnapshot and a DirectorySnapshotEmpty.
+    # When we make the diff, although both objects were declared with the same items on
+    # the directory, the file and directories created BEFORE the DirectorySnapshot will
+    # be detected as newly created.
+
+    touch(p('a'))
+    mkdir(p('b', 'c'), parents=True)
+    ref = DirectorySnapshot(p(''))
+    empty = EmptyDirectorySnapshot()
+
+    diff = DirectorySnapshotDiff(empty, ref)
+    assert diff.files_created == [p('a')]
+    assert sorted(diff.dirs_created) == sorted([p(''), p('b'), p('b', 'c')])
