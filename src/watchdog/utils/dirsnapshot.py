@@ -42,6 +42,10 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: DirectorySnapshotEmpty
+   :members:
+   :show-inheritance:
+
 """
 
 import errno
