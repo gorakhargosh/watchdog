@@ -353,7 +353,7 @@ class DirectorySnapshot(object):
         return str(self._stat_info)
 
 
-class DirectorySnapshotEmpty(object):
+class EmptyDirectorySnapshot(object):
     """Class to implement an empty snapshot. This is used together with
     DirectorySnapshot and DirectorySnapshotDiff in order to get all the files/folders
     in the directory as created.

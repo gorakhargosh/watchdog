@@ -21,7 +21,7 @@ import time
 
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
-from watchdog.utils.dirsnapshot import DirectorySnapshotEmpty
+from watchdog.utils.dirsnapshot import EmptyDirectorySnapshot
 from watchdog.utils import platform
 
 from .shell import mkdir, touch, mv, rm
@@ -212,7 +212,7 @@ def test_empty_snapshot(p):
     touch(p('a'))
     mkdir(p('b', 'c'), parents=True)
     ref = DirectorySnapshot(p(''))
-    empty = DirectorySnapshotEmpty()
+    empty = EmptyDirectorySnapshot()
 
     diff = DirectorySnapshotDiff(empty, ref)
     assert diff.files_created == [p('a')]
