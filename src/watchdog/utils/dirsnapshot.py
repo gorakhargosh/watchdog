@@ -347,3 +347,18 @@ class DirectorySnapshot(object):
 
     def __repr__(self):
         return str(self._stat_info)
+
+
+class DirectorySnapshotEmpty(object):
+    """Class to implement an empty snapshot. This is used together with
+    DirectorySnapshot and DirectorySnapshotDiff in order to get all the files/folders
+    in the directory as created.
+    """
+
+    @staticmethod
+    def path(_):
+        return None
+
+    @property
+    def paths(self):
+        return set()
