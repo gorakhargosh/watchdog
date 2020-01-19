@@ -361,8 +361,21 @@ class EmptyDirectorySnapshot(object):
 
     @staticmethod
     def path(_):
+        """Mock up method to return the path of the received inode. As the snapshot
+        is intended to be empty, it always returns None.
+
+        :returns:
+            None.
+        """
         return None
 
     @property
     def paths(self):
+        """
+        Mock up method to return a set of file/directory paths in the snapshot. As the
+        snapshot is intended to be empty, it always returns an empty set.
+
+        :returns:
+            An empty set.
+        """
         return set()
