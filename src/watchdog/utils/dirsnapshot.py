@@ -371,9 +371,8 @@ class EmptyDirectorySnapshot(object):
 
     @property
     def paths(self):
-        """
-        Mock up method to return a set of file/directory paths in the snapshot. As the
-        snapshot is intended to be empty, it always returns an empty set.
+        """Mock up method to return a set of file/directory paths in the snapshot. As
+        the snapshot is intended to be empty, it always returns an empty set.
 
         :returns:
             An empty set.
