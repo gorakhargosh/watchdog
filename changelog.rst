@@ -18,7 +18,7 @@ Other Changes
 0.10.0
 ~~~~~~
 
-2019-12-20 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.9.0...v0.10.0>`__
+2020-01-26 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.9.0...v0.10.0>`__
 
 **Breaking Changes**
 
