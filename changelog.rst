@@ -8,8 +8,7 @@ Changelog
 
 2019-12-20 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.9.0...v0.10.0>`__
 
-Breaking Changes
-================
+**Breaking Changes**
 
 - Dropped support for Python 2.6, 3.2 and 3.3
 - Emitters that failed to start are now removed
@@ -18,8 +17,7 @@ Breaking Changes
 - [watchmedo] The utility is no more installed by default but via the extra
   ``watchdog[watchmedo]``
 
-Other Changes
-=============
+**Other Changes**
 
 - Fixed several Python 3 warnings
 - Identify synthesized events with ``is_synthetic`` attribute (`#369 <https://github.com/gorakhargosh/watchdog/pull/369>`__)
