@@ -10,9 +10,9 @@ Changelog
 
 Other Changes
 =============
-
+- Fixed Python 3.6 installation when the OS locale is set to POSIX (`#615 <https://github.com/gorakhargosh/watchdog/pull/615>`__)
 - [snapshot] Added EmptyDirectorySnapshot (`#613 <https://github.com/gorakhargosh/watchdog/pull/613>`__)
-- Thanks to our beloved contributors: @Ajordat
+- Thanks to our beloved contributors: @Ajordat, @tehkirill
 
 
 0.10.0

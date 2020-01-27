@@ -18,6 +18,7 @@
 
 import sys
 import os.path
+from codecs import open
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
@@ -79,10 +80,10 @@ extras_require = {
     'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
 }
 
-with open('README.rst') as f:
+with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
 
-with open('changelog.rst') as f:
+with open('changelog.rst', encoding='utf-8') as f:
     changelog = f.read()
 
 setup(name="watchdog",
