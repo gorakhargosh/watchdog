@@ -26,22 +26,16 @@
 #include <signal.h>
 
 
-#if (PY_VERSION_HEX < 0x02050000) && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MIN INT_MIN
-#define PY_SSIZE_T_MAX INT_MAX
-#endif
-
 /* Convenience macros to make code more readable. */
-#define G_NOT(o)                        (!(o))
-#define G_IS_NULL(o)                    ((o) == NULL)
-#define G_IS_NOT_NULL(o)                ((o) != NULL)
-#define G_RETURN_NULL_IF_NULL(o)        do{if(NULL == (o)){ return NULL; }}while(0)
-#define G_RETURN_NULL_IF(condition)     do{if((condition)){ return NULL; }}while(0)
-#define G_RETURN_NULL_IF_NOT(condition) do{if(!(condition)){ return NULL; }}while(0)
-#define G_RETURN_IF(condition)          do{if((condition)){ return; }}while(0)
-#define G_RETURN_IF_NOT(condition)      do{if(!(condition)){ return; }}while(0)
-#define UNUSED(x)                       (void)(x)
+#define G_NOT(o)                        !o
+#define G_IS_NULL(o)                    o == NULL
+#define G_IS_NOT_NULL(o)                o != NULL
+#define G_RETURN_NULL_IF_NULL(o)        do { if (NULL == o) { return NULL; } } while (0)
+#define G_RETURN_NULL_IF(condition)     do { if (condition) { return NULL; } } while (0)
+#define G_RETURN_NULL_IF_NOT(condition) do { if (!condition) { return NULL; } } while (0)
+#define G_RETURN_IF(condition)          do { if (condition) { return; } } while (0)
+#define G_RETURN_IF_NOT(condition)      do { if (!condition) { return; } } while (0)
+#define UNUSED(x)                       (void)x
 
 /* Error message definitions. */
 #define ERROR_CANNOT_CALL_CALLBACK "Unable to call Python callback."

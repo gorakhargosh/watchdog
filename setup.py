@@ -22,7 +22,6 @@ from codecs import open
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
-from distutils.util import get_platform
 
 SRC_DIR = 'src'
 WATCHDOG_PKG_DIR = os.path.join(SRC_DIR, 'watchdog')
@@ -38,7 +37,7 @@ else:
     version = imp.load_source('version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
 
 ext_modules = []
-if get_platform().startswith('macosx'):
+if sys.platform == 'darwin':
     ext_modules = [
         Extension(
             name='_watchdog_fsevents',
@@ -61,7 +60,6 @@ if get_platform().startswith('macosx'):
                 '-std=c99',
                 '-pedantic',
                 '-Wall',
-                '-Werror',
                 '-Wextra',
                 '-fPIC',
 
@@ -70,15 +68,6 @@ if get_platform().startswith('macosx'):
             ]
         ),
     ]
-
-install_requires = [
-    "pathtools>=0.1.1",
-    'pyobjc-framework-Cocoa>=4.2.2 ; sys_platform == "darwin"',
-    'pyobjc-framework-FSEvents>=4.2.2 ; sys_platform == "darwin"',
-]
-extras_require = {
-    'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
-}
 
 with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
@@ -136,8 +125,6 @@ setup(name="watchdog",
       package_dir={'': SRC_DIR},
       packages=find_packages(SRC_DIR),
       include_package_data=True,
-      install_requires=install_requires,
-      extras_require=extras_require,
       cmdclass={
           'build_ext': build_ext,
       },
