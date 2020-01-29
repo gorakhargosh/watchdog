@@ -42,7 +42,7 @@ Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: DirectorySnapshotEmpty
+.. autoclass:: EmptyDirectorySnapshot
    :members:
    :show-inheritance:
 
