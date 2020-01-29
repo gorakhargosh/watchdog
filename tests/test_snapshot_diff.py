@@ -204,7 +204,7 @@ def test_ignore_device(monkeypatch, p):
 
 
 def test_empty_snapshot(p):
-    # Create a file and declare a DirectorySnapshot and a DirectorySnapshotEmpty.
+    # Create a file and declare a DirectorySnapshot and a EmptyDirectorySnapshot.
     # When we make the diff, although both objects were declared with the same items on
     # the directory, the file and directories created BEFORE the DirectorySnapshot will
     # be detected as newly created.

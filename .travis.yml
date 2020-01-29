@@ -10,7 +10,10 @@ matrix:
       env: TOXENV=py35
     - os: linux
       python: "3.6"
-      env: TOXENV=py36
+      env:
+        - TOXENV=py36
+        # To help catch regression seen in #615
+        - LC_ALL=C
     - os: linux
       python: "3.7"
       env: TOXENV=py37
