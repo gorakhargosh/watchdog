@@ -6,10 +6,8 @@ Changelog
 0.10.1
 ~~~~~~
 
-2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.0...master>`__
+2020-01-30 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.0...v0.10.1>`__
 
-Other Changes
-=============
 - Fixed Python 2.7 to 3.6 installation when the OS locale is set to POSIX (`#615 <https://github.com/gorakhargosh/watchdog/pull/615>`__)
 - Fixed the ``build_ext`` command on macOS  (`#618 <https://github.com/gorakhargosh/watchdog/pull/618>`__, `#620 <https://github.com/gorakhargosh/watchdog/pull/620>`_)
 - Moved requirements to ``setup.cfg``  (`#617 <https://github.com/gorakhargosh/watchdog/pull/617>`__)
