@@ -63,6 +63,9 @@ if sys.platform == 'darwin':
                 '-Wextra',
                 '-fPIC',
 
+                # Issue #620
+                '-Wno-nullability-completeness',
+
                 # required w/Xcode 5.1+ and above because of '-mno-fused-madd'
                 '-Wno-error=unused-command-line-argument'
             ]
