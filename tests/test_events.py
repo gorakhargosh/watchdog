@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
@@ -107,7 +108,54 @@ def test_dir_created_event():
     assert not event.is_synthetic
 
 
-def test_file_system_event_handler_dispatch():
+class TestableEventHandler(FileSystemEventHandler):
+    def on_any_event(self, event):
+        assert True
+
+    def on_modified(self, event):
+        assert event.event_type == EVENT_TYPE_MODIFIED
+
+    def on_deleted(self, event):
+        assert event.event_type == EVENT_TYPE_DELETED
+
+    def on_moved(self, event):
+        assert event.event_type == EVENT_TYPE_MOVED
+
+    def on_created(self, event):
+        assert event.event_type == EVENT_TYPE_CREATED
+
+
+class CustomEventHandler(FileSystemEventHandler):
+    def __init__(self):
+        self.creations = 0
+        self.deletions = 0
+        self.modifications = 0
+        self.moves = 0
+
+    @property
+    def method_map(self):
+        return {
+            EVENT_TYPE_CREATED: self.created,
+            EVENT_TYPE_DELETED: self.deleted,
+            EVENT_TYPE_MODIFIED: self.modified,
+            EVENT_TYPE_MOVED: self.moved,
+        }
+
+    def modified(self, event):
+        self.modifications += 1
+
+    def deleted(self, event):
+        self.deletions += 1
+
+    def moved(self, event):
+        self.moves += 1
+
+    def created(self, event):
+        self.creations += 1
+
+
+@pytest.mark.parametrize("cls", [TestableEventHandler, CustomEventHandler])
+def test_file_system_event_handler_dispatch(cls):
     dir_del_event = DirDeletedEvent('/path/blah.py')
     file_del_event = FileDeletedEvent('/path/blah.txt')
     dir_cre_event = DirCreatedEvent('/path/blah.py')
@@ -116,6 +164,7 @@ def test_file_system_event_handler_dispatch():
     file_mod_event = FileModifiedEvent('/path/blah.txt')
     dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
     file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
+    file_mov_event2 = FileMovedEvent('/path/blah2.txt', '/path/blah')
 
     all_events = [
         dir_mod_event,
@@ -126,27 +175,18 @@ def test_file_system_event_handler_dispatch():
         file_del_event,
         file_cre_event,
         file_mov_event,
+        file_mov_event2,
     ]
 
-    class TestableEventHandler(FileSystemEventHandler):
-
-        def on_any_event(self, event):
-            assert True
-
-        def on_modified(self, event):
-            assert event.event_type == EVENT_TYPE_MODIFIED
-
-        def on_deleted(self, event):
-            assert event.event_type == EVENT_TYPE_DELETED
-
-        def on_moved(self, event):
-            assert event.event_type == EVENT_TYPE_MOVED
-
-        def on_created(self, event):
-            assert event.event_type == EVENT_TYPE_CREATED
-
-    handler = TestableEventHandler()
+    handler = cls()
 
     for event in all_events:
         assert not event.is_synthetic
         handler.dispatch(event)
+
+    # Check custom methods mapping works
+    if cls is CustomEventHandler:
+        assert handler.creations == 2
+        assert handler.deletions == 2
+        assert handler.modifications == 2
+        assert handler.moves == 3

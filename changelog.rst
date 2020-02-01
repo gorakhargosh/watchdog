@@ -8,6 +8,7 @@ Changelog
 
 2020-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.1...master>`__
 
+- Separated the dispatch handler function calling from filtering logic in ``FileSystemEventHandlers`` (`#307 <https://github.com/gorakhargosh/watchdog/pull/307>`__)
 - Thanks to our beloved contributors: @
 
 
