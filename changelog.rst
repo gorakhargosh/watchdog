@@ -8,6 +8,7 @@ Changelog
 
 2020-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.1...master>`__
 
+- Fixed the ``build_ext`` command on macOS Catalina (`#628 <https://github.com/gorakhargosh/watchdog/pull/628>`__)
 - Refactored ``dispatch()`` method of ``FileSystemEventHandler``,
   ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler``
 - Thanks to our beloved contributors: @BoboTiG

@@ -65,6 +65,9 @@ if sys.platform == 'darwin':
 
                 # Issue #620
                 '-Wno-nullability-completeness',
+                # Issue #628
+                '-Wno-nullability-extension',
+                '-Wno-newline-eof',
 
                 # required w/Xcode 5.1+ and above because of '-mno-fused-madd'
                 '-Wno-error=unused-command-line-argument'
