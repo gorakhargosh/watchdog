@@ -328,14 +328,12 @@ class FileSystemEventHandler(object):
             :class:`FileSystemEvent`
         """
         self.on_any_event(event)
-        _method_map = {
-            EVENT_TYPE_MODIFIED: self.on_modified,
-            EVENT_TYPE_MOVED: self.on_moved,
+        {
             EVENT_TYPE_CREATED: self.on_created,
             EVENT_TYPE_DELETED: self.on_deleted,
-        }
-        event_type = event.event_type
-        _method_map[event_type](event)
+            EVENT_TYPE_MODIFIED: self.on_modified,
+            EVENT_TYPE_MOVED: self.on_moved,
+        }[event.event_type](event)
 
     def on_any_event(self, event):
         """Catch-all event handler.
@@ -451,15 +449,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
                            included_patterns=self.patterns,
                            excluded_patterns=self.ignore_patterns,
                            case_sensitive=self.case_sensitive):
-            self.on_any_event(event)
-            _method_map = {
-                EVENT_TYPE_MODIFIED: self.on_modified,
-                EVENT_TYPE_MOVED: self.on_moved,
-                EVENT_TYPE_CREATED: self.on_created,
-                EVENT_TYPE_DELETED: self.on_deleted,
-            }
-            event_type = event.event_type
-            _method_map[event_type](event)
+            super(PatternMatchingEventHandler, self).dispatch(event)
 
 
 class RegexMatchingEventHandler(FileSystemEventHandler):
@@ -534,15 +524,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             return
 
         if any(r.match(p) for r in self.regexes for p in paths):
-            self.on_any_event(event)
-            _method_map = {
-                EVENT_TYPE_MODIFIED: self.on_modified,
-                EVENT_TYPE_MOVED: self.on_moved,
-                EVENT_TYPE_CREATED: self.on_created,
-                EVENT_TYPE_DELETED: self.on_deleted,
-            }
-            event_type = event.event_type
-            _method_map[event_type](event)
+            super(RegexMatchingEventHandler, self).dispatch(event)
 
 
 class LoggingEventHandler(FileSystemEventHandler):

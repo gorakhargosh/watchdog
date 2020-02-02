@@ -8,7 +8,9 @@ Changelog
 
 2020-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.1...master>`__
 
-- Thanks to our beloved contributors: @
+- Refactored ``dispatch()`` method of ``FileSystemEventHandler``,
+  ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler``
+- Thanks to our beloved contributors: @BoboTiG
 
 
 0.10.1
