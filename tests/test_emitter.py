@@ -48,6 +48,10 @@ elif platform.is_windows():
     from watchdog.observers.read_directory_changes import (
         WindowsApiEmitter as Emitter
     )
+elif platform.is_bsd():
+    from watchdog.observers.kqueue import (
+        KqueueEmitter as Emitter
+    )
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -177,7 +181,7 @@ def test_move_to():
         assert isinstance(event, DirModifiedEvent)
 
 
-@pytest.mark.skipif(platform.is_windows(), reason="InotifyFullEmitter not supported by Windows")
+@pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
 def test_move_to_full():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -209,7 +213,7 @@ def test_move_from():
         assert isinstance(event, DirModifiedEvent)
 
 
-@pytest.mark.skipif(platform.is_windows(), reason="InotifyFullEmitter not supported by Windows")
+@pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
 def test_move_from_full():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
@@ -227,10 +231,10 @@ def test_move_from_full():
 def test_separate_consecutive_moves():
     mkdir(p('dir1'))
     touch(p('dir1', 'a'))
-    touch(p('b'))
+    touch(p('dir1', 'b'))
     start_watching(p('dir1'))
     mv(p('dir1', 'a'), p('c'))
-    mv(p('b'), p('dir1', 'd'))
+    mv(p('dir1', 'b'), p('dir1', 'd'))
 
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('dir1', 'a')
@@ -398,8 +402,8 @@ def test_renaming_top_level_directory():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-@pytest.mark.skipif(platform.is_linux(),
-                    reason="Linux create another set of events for this test")
+@pytest.mark.skipif(not platform.is_windows(),
+                    reason="Non-Windows create another set of events for this test")
 def test_renaming_top_level_directory_on_windows():
     start_watching()
 
@@ -485,8 +489,8 @@ def test_move_nested_subdirectories():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-@pytest.mark.skipif(platform.is_linux(),
-                    reason="Linux create another set of events for this test")
+@pytest.mark.skipif(not platform.is_windows(),
+                    reason="Non-Windows create another set of events for this test")
 def test_move_nested_subdirectories_on_windows():
     mkdir(p('dir1/dir2/dir3'), parents=True)
     touch(p('dir1/dir2/dir3', 'a'))
