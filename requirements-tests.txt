@@ -1,0 +1,7 @@
+-e ".[watchmedo]"
+eventlet
+flake8
+flaky
+pytest
+pytest-cov
+pytest-timeout
