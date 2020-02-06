@@ -1,0 +1,18 @@
+freebsd_instance:
+  image_family: freebsd-12-1
+
+task:
+  install_script:
+    - pkg install -y python37 py37-sqlite3
+    # Print the Python version, only to be sure we are running the version we want
+    - python3.7 -c 'import platform; print("Python", platform.python_version())'
+    # Check SQLite3 is installed
+    - python3.7 -c 'import sqlite3; print("SQLite3", sqlite3.version)'
+  setup_script:
+    - python3.7 -m ensurepip
+    - python3.7 -m pip install -U pip
+    - python3.7 -m pip install -r requirements-tests.txt
+  lint_script:
+    - python3.7 -m flake8 docs src tests tools
+  tests_script:
+    - python3.7 -bb -m pytest tests
