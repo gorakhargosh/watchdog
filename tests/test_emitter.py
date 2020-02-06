@@ -231,10 +231,10 @@ def test_move_from_full():
 def test_separate_consecutive_moves():
     mkdir(p('dir1'))
     touch(p('dir1', 'a'))
-    touch(p('dir1', 'b'))
+    touch(p('b'))
     start_watching(p('dir1'))
     mv(p('dir1', 'a'), p('c'))
-    mv(p('dir1', 'b'), p('dir1', 'd'))
+    mv(p('b'), p('dir1', 'd'))
 
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('dir1', 'a')

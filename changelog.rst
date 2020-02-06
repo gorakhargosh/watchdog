@@ -11,7 +11,8 @@ Changelog
 - Fixed the ``build_ext`` command on macOS Catalina (`#628 <https://github.com/gorakhargosh/watchdog/pull/628>`__)
 - Refactored ``dispatch()`` method of ``FileSystemEventHandler``,
   ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler``
-- Thanks to our beloved contributors: @BoboTiG
+- Improve tests support on non Windows/Linux platforms (`#633 <https://github.com/gorakhargosh/watchdog/pull/633>`__)
+- Thanks to our beloved contributors: @BoboTiG, @evilham
 
 
 0.10.1
