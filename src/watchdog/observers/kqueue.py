@@ -72,7 +72,7 @@ from watchdog.utils import platform
 
 import threading
 import errno
-import stat
+from stat import S_ISDIR
 import os
 import select
 
@@ -85,6 +85,7 @@ from watchdog.observers.api import (
     DEFAULT_EMITTER_TIMEOUT
 )
 
+from watchdog.utils import stat as default_stat
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 from watchdog.events import (
@@ -98,7 +99,8 @@ from watchdog.events import (
     FileModifiedEvent,
     EVENT_TYPE_MOVED,
     EVENT_TYPE_DELETED,
-    EVENT_TYPE_CREATED
+    EVENT_TYPE_CREATED,
+    generate_sub_moved_events,
 )
 
 # Maximum number of events to process.
@@ -424,9 +426,11 @@ class KqueueEmitter(EventEmitter):
         Read events blocking timeout (in seconds).
     :type timeout:
         ``float``
+    :param stat: stat function. See ``os.stat`` for details.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
+                 stat=default_stat):
         EventEmitter.__init__(self, event_queue, watch, timeout)
 
         self._kq = select.kqueue()
@@ -437,7 +441,7 @@ class KqueueEmitter(EventEmitter):
 
         def custom_stat(path, self=self):
             stat_info = stat(path)
-            self._register_kevent(path, stat.S_ISDIR(stat_info.st_mode))
+            self._register_kevent(path, S_ISDIR(stat_info.st_mode))
             return stat_info
 
         self._snapshot = DirectorySnapshot(watch.path,
@@ -615,9 +619,10 @@ class KqueueEmitter(EventEmitter):
             # the event represents deletion/creation instead of movement.
             return
 
-        try:
-            dest_path = absolute_path(
-                new_snapshot.path(ref_stat_info.st_ino))
+        f_id = (ref_stat_info.st_ino, ref_stat_info.st_dev)
+        dest_path = new_snapshot.path(f_id)
+        if dest_path is not None:
+            dest_path = absolute_path(dest_path)
             if is_directory:
                 event = DirMovedEvent(src_path, dest_path)
                 # TODO: Do we need to fire moved events for the items
@@ -626,12 +631,12 @@ class KqueueEmitter(EventEmitter):
                 # only if it doesn't already.
                 # A: It doesn't. So I've enabled this block.
                 if self.watch.is_recursive:
-                    for sub_event in event.sub_moved_events():
+                    for sub_event in generate_sub_moved_events(src_path, dest_path):
                         self.queue_event(sub_event)
                 self.queue_event(event)
             else:
                 self.queue_event(FileMovedEvent(src_path, dest_path))
-        except KeyError:
+        else:
             # If the new snapshot does not have an inode for the
             # old path, we haven't found the new name. Therefore,
             # we mark it as deleted and remove unregister the path.
