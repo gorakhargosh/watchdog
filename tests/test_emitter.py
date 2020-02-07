@@ -236,23 +236,27 @@ def test_separate_consecutive_moves():
     mv(p('dir1', 'a'), p('c'))
     mv(p('b'), p('dir1', 'd'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1', 'a')
-    assert isinstance(event, FileDeletedEvent)
+    dir_modif = (DirModifiedEvent, p('dir1'))
+    a_deleted = (FileDeletedEvent, p('dir1', 'a'))
+    d_created = (FileCreatedEvent, p('dir1', 'd'))
 
-    if not platform.is_windows():
+    expected = [a_deleted, dir_modif, d_created, dir_modif]
+
+    if platform.is_windows():
+        expected = [a_deleted, d_created]
+
+    if platform.is_bsd():
+        # Due to the way kqueue works, we can't really order
+        # 'Created' and 'Deleted' events in time, so creation queues first
+        expected = [d_created, a_deleted, dir_modif, dir_modif]
+
+    def _step(expected_step):
         event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, DirModifiedEvent)
+        assert event.src_path == expected_step[1]
+        assert isinstance(event, expected_step[0])
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1', 'd')
-    assert isinstance(event, FileCreatedEvent)
-
-    if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, DirModifiedEvent)
+    for expected_step in expected:
+        _step(expected_step)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -267,8 +271,8 @@ def test_delete_self():
         assert isinstance(event, FileDeletedEvent)
 
 
-@pytest.mark.skipif(platform.is_windows(),
-                    reason="Windows create another set of events for this test")
+@pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
+                    reason="Windows|BSD create another set of events for this test")
 def test_fast_subdirectory_creation_deletion():
     root_dir = p('dir1')
     sub_dir = p('dir1', 'subdir1')
@@ -330,9 +334,10 @@ def test_recursive_on():
         assert event.src_path == p('dir1', 'dir2', 'dir3')
         assert isinstance(event, DirModifiedEvent)
 
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
-        assert isinstance(event, FileModifiedEvent)
+        if not platform.is_bsd():
+            event = event_queue.get(timeout=5)[0]
+            assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
+            assert isinstance(event, FileModifiedEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -379,6 +384,11 @@ def test_renaming_top_level_directory():
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, DirMovedEvent)
     assert event.src_path == p('a', 'b')
+
+    if platform.is_bsd():
+        event = event_queue.get(timeout=5)[0]
+        assert isinstance(event, DirModifiedEvent)
+        assert event.src_path == p()
 
     open(p('a2', 'b', 'c'), 'a').close()
 
@@ -480,6 +490,15 @@ def test_move_nested_subdirectories():
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('dir1/dir2/dir3', 'a')
     assert isinstance(event, FileMovedEvent)
+
+    if platform.is_bsd():
+        event = event_queue.get(timeout=5)[0]
+        assert p(event.src_path) == p()
+        assert isinstance(event, DirModifiedEvent)
+
+        event = event_queue.get(timeout=5)[0]
+        assert p(event.src_path) == p('dir1')
+        assert isinstance(event, DirModifiedEvent)
 
     touch(p('dir2/dir3', 'a'))
 
