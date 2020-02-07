@@ -75,6 +75,13 @@ if sys.platform == 'darwin':
         ),
     ]
 
+install_requires = [
+    "pathtools>=0.1.1",
+]
+extras_require = {
+    'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
+}
+
 with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
 
@@ -131,6 +138,8 @@ setup(name="watchdog",
       package_dir={'': SRC_DIR},
       packages=find_packages(SRC_DIR),
       include_package_data=True,
+      install_requires=install_requires,
+      extras_require=extras_require,
       cmdclass={
           'build_ext': build_ext,
       },

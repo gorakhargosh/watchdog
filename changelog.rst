@@ -9,6 +9,7 @@ Changelog
 2020-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.1...master>`__
 
 - Fixed the ``build_ext`` command on macOS Catalina (`#628 <https://github.com/gorakhargosh/watchdog/pull/628>`__)
+- Removed pinned macOS requirements for ``fsevents2`` (`#635 <https://github.com/gorakhargosh/watchdog/pull/635>`__)
 - Refactored ``dispatch()`` method of ``FileSystemEventHandler``,
   ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler``
 - Improve tests support on non Windows/Linux platforms (`#633 <https://github.com/gorakhargosh/watchdog/pull/633>`__, `#639 <https://github.com/gorakhargosh/watchdog/pull/639>`__)
