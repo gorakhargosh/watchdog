@@ -74,6 +74,7 @@ import threading
 import errno
 from stat import S_ISDIR
 import os
+import os.path
 import select
 
 from pathtools.path import absolute_path
@@ -522,109 +523,97 @@ class KqueueEmitter(EventEmitter):
         elif event.event_type == EVENT_TYPE_DELETED:
             self._unregister_kevent(event.src_path)
 
-    def _queue_dirs_modified(self,
-                             dirs_modified,
-                             ref_snapshot,
-                             new_snapshot):
+    def _gen_kqueue_events(self,
+                           kev,
+                           ref_snapshot,
+                           new_snapshot):
         """
-        Queues events for directory modifications by scanning the directory
-        for changes.
-
-        A scan is a comparison between two snapshots of the same directory
-        taken at two different times. This also determines whether files
-        or directories were created, which updated the modified timestamp
-        for the directory.
-        """
-        if dirs_modified:
-            for dir_modified in dirs_modified:
-                self.queue_event(DirModifiedEvent(dir_modified))
-            diff_events = new_snapshot - ref_snapshot
-            for file_created in diff_events.files_created:
-                self.queue_event(FileCreatedEvent(file_created))
-            for directory_created in diff_events.dirs_created:
-                self.queue_event(DirCreatedEvent(directory_created))
-
-    def _queue_events_except_renames_and_dir_modifications(self, event_list):
-        """
-        Queues events from the kevent list returned from the call to
+        Generate events from the kevent list returned from the call to
         :meth:`select.kqueue.control`.
 
-        .. NOTE:: Queues only the deletions, file modifications,
+        .. NOTE:: kqueue only tells us about deletions, file modifications,
                   attribute modifications. The other events, namely,
                   file creation, directory modification, file rename,
                   directory rename, directory creation, etc. are
                   determined by comparing directory snapshots.
         """
-        files_renamed = set()
-        dirs_renamed = set()
-        dirs_modified = set()
+        descriptor = self._descriptors.get_for_fd(kev.ident)
+        src_path = descriptor.path
 
-        for kev in event_list:
-            descriptor = self._descriptors.get_for_fd(kev.ident)
-            src_path = descriptor.path
-
-            if is_deleted(kev):
-                if descriptor.is_directory:
-                    self.queue_event(DirDeletedEvent(src_path))
-                else:
-                    self.queue_event(FileDeletedEvent(src_path))
-            elif is_attrib_modified(kev):
-                if descriptor.is_directory:
-                    self.queue_event(DirModifiedEvent(src_path))
-                else:
-                    self.queue_event(FileModifiedEvent(src_path))
-            elif is_modified(kev):
-                if descriptor.is_directory:
+        if is_renamed(kev):
+            # Kqueue does not specify the destination names for renames
+            # to, so we have to process these using the a snapshot
+            # of the directory.
+            for event in self._gen_renamed_events(src_path,
+                                                  descriptor.is_directory,
+                                                  ref_snapshot,
+                                                  new_snapshot):
+                yield event
+        elif is_attrib_modified(kev):
+            if descriptor.is_directory:
+                yield DirModifiedEvent(src_path)
+            else:
+                yield FileModifiedEvent(src_path)
+        elif is_modified(kev):
+            if descriptor.is_directory:
+                if self.watch.is_recursive or self.watch.path == src_path:
                     # When a directory is modified, it may be due to
                     # sub-file/directory renames or new file/directory
                     # creation. We determine all this by comparing
                     # snapshots later.
-                    dirs_modified.add(src_path)
-                else:
-                    self.queue_event(FileModifiedEvent(src_path))
-            elif is_renamed(kev):
-                # Kqueue does not specify the destination names for renames
-                # to, so we have to process these after taking a snapshot
-                # of the directory.
-                if descriptor.is_directory:
-                    dirs_renamed.add(src_path)
-                else:
-                    files_renamed.add(src_path)
-        return files_renamed, dirs_renamed, dirs_modified
+                    yield DirModifiedEvent(src_path)
+            else:
+                yield FileModifiedEvent(src_path)
+        elif is_deleted(kev):
+            if descriptor.is_directory:
+                yield DirDeletedEvent(src_path)
+            else:
+                yield FileDeletedEvent(src_path)
 
-    def _queue_renamed(self,
-                       src_path,
-                       is_directory,
-                       ref_snapshot,
-                       new_snapshot):
+    def _parent_dir_modified(self, src_path):
+        """
+        Helper to generate a DirModifiedEvent on the parent of src_path.
+        """
+        return DirModifiedEvent(os.path.dirname(src_path))
+
+    def _gen_renamed_events(self,
+                            src_path,
+                            is_directory,
+                            ref_snapshot,
+                            new_snapshot):
         """
         Compares information from two directory snapshots (one taken before
         the rename operation and another taken right after) to determine the
-        destination path of the file system object renamed, and adds
-        appropriate events to the event queue.
+        destination path of the file system object renamed, and yields
+        the appropriate events to be queued.
         """
         try:
-            ref_stat_info = ref_snapshot.stat_info(src_path)
+            f_inode = ref_snapshot.inode(src_path)
         except KeyError:
             # Probably caught a temporary file/directory that was renamed
             # and deleted. Fires a sequence of created and deleted events
             # for the path.
             if is_directory:
-                self.queue_event(DirCreatedEvent(src_path))
-                self.queue_event(DirDeletedEvent(src_path))
+                yield DirCreatedEvent(src_path)
+                yield DirDeletedEvent(src_path)
             else:
-                self.queue_event(FileCreatedEvent(src_path))
-                self.queue_event(FileDeletedEvent(src_path))
+                yield FileCreatedEvent(src_path)
+                yield FileDeletedEvent(src_path)
                 # We don't process any further and bail out assuming
             # the event represents deletion/creation instead of movement.
             return
 
-        f_id = (ref_stat_info.st_ino, ref_stat_info.st_dev)
-        dest_path = new_snapshot.path(f_id)
+        dest_path = new_snapshot.path(f_inode)
         if dest_path is not None:
             dest_path = absolute_path(dest_path)
             if is_directory:
                 event = DirMovedEvent(src_path, dest_path)
+                yield event
+            else:
+                yield FileMovedEvent(src_path, dest_path)
+            yield self._parent_dir_modified(src_path)
+            yield self._parent_dir_modified(dest_path)
+            if is_directory:
                 # TODO: Do we need to fire moved events for the items
                 # inside the directory tree? Does kqueue does this
                 # all by itself? Check this and then enable this code
@@ -632,18 +621,16 @@ class KqueueEmitter(EventEmitter):
                 # A: It doesn't. So I've enabled this block.
                 if self.watch.is_recursive:
                     for sub_event in generate_sub_moved_events(src_path, dest_path):
-                        self.queue_event(sub_event)
-                self.queue_event(event)
-            else:
-                self.queue_event(FileMovedEvent(src_path, dest_path))
+                        yield sub_event
         else:
             # If the new snapshot does not have an inode for the
             # old path, we haven't found the new name. Therefore,
             # we mark it as deleted and remove unregister the path.
             if is_directory:
-                self.queue_event(DirDeletedEvent(src_path))
+                yield DirDeletedEvent(src_path)
             else:
-                self.queue_event(FileDeletedEvent(src_path))
+                yield FileDeletedEvent(src_path)
+            yield self._parent_dir_modified(src_path)
 
     def _read_events(self, timeout=None):
         """
@@ -672,8 +659,8 @@ class KqueueEmitter(EventEmitter):
         with self._lock:
             try:
                 event_list = self._read_events(timeout)
-                files_renamed, dirs_renamed, dirs_modified = (
-                    self._queue_events_except_renames_and_dir_modifications(event_list))
+                # TODO: investigate why order appears to be reversed
+                event_list.reverse()
 
                 # Take a fresh snapshot of the directory and update the
                 # saved snapshot.
@@ -681,24 +668,24 @@ class KqueueEmitter(EventEmitter):
                                                  self.watch.is_recursive)
                 ref_snapshot = self._snapshot
                 self._snapshot = new_snapshot
+                diff_events = new_snapshot - ref_snapshot
 
-                if files_renamed or dirs_renamed or dirs_modified:
-                    for src_path in files_renamed:
-                        self._queue_renamed(src_path,
-                                            False,
-                                            ref_snapshot,
-                                            new_snapshot)
-                    for src_path in dirs_renamed:
-                        self._queue_renamed(src_path,
-                                            True,
-                                            ref_snapshot,
-                                            new_snapshot)
-                    self._queue_dirs_modified(dirs_modified,
-                                              ref_snapshot,
-                                              new_snapshot)
+                # Process events
+                for directory_created in diff_events.dirs_created:
+                    self.queue_event(DirCreatedEvent(directory_created))
+                for file_created in diff_events.files_created:
+                    self.queue_event(FileCreatedEvent(file_created))
+                for file_modified in diff_events.files_modified:
+                    self.queue_event(FileModifiedEvent(file_modified))
+
+                for kev in event_list:
+                    for event in self._gen_kqueue_events(kev,
+                                                         ref_snapshot,
+                                                         new_snapshot):
+                        self.queue_event(event)
+
             except OSError as e:
                 if e.errno == errno.EBADF:
-                    # logging.debug(e)
                     pass
                 else:
                     raise
