@@ -685,9 +685,7 @@ class KqueueEmitter(EventEmitter):
                         self.queue_event(event)
 
             except OSError as e:
-                if e.errno == errno.EBADF:
-                    pass
-                else:
+                if e.errno != errno.EBADF:
                     raise
 
     def on_thread_stop(self):
