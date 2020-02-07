@@ -15,9 +15,12 @@
 # limitations under the License.
 
 from time import time
+
+import pytest
 from watchdog.utils.delayed_queue import DelayedQueue
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_delayed_get():
     q = DelayedQueue(2)
     q.put("", True)
@@ -28,6 +31,7 @@ def test_delayed_get():
     assert 2.10 > elapsed > 1.99
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_nondelayed_get():
     q = DelayedQueue(2)
     q.put("", False)
