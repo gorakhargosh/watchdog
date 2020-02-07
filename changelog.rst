@@ -13,7 +13,7 @@ Changelog
   ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler``
 - Improve tests support on non Windows/Linux platforms (`#633 <https://github.com/gorakhargosh/watchdog/pull/633>`__, `#639 <https://github.com/gorakhargosh/watchdog/pull/639>`__)
 - Added FreeBSD CI support (`#532 <https://github.com/gorakhargosh/watchdog/pull/532>`__)
-- [BSD] Restore partial support (`#638 <https://github.com/gorakhargosh/watchdog/pull/638>`__)
+- [BSD] Restore support (`#638 <https://github.com/gorakhargosh/watchdog/pull/638>`__, `#641 <https://github.com/gorakhargosh/watchdog/pull/641>`__)
 - Thanks to our beloved contributors: @BoboTiG, @evilham
 
 
