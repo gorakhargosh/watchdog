@@ -6,16 +6,16 @@ Changelog
 0.10.2
 ~~~~~~
 
-2020-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.1...master>`__
+2020-02-08 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.1...v0.10.2>`__
 
 - Fixed the ``build_ext`` command on macOS Catalina (`#628 <https://github.com/gorakhargosh/watchdog/pull/628>`__)
-- Removed pinned macOS requirements for ``fsevents2`` (`#635 <https://github.com/gorakhargosh/watchdog/pull/635>`__)
+- Fixed the installation of macOS requirements on non-macOS OSes (`#635 <https://github.com/gorakhargosh/watchdog/pull/635>`__)
 - Refactored ``dispatch()`` method of ``FileSystemEventHandler``,
   ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler``
-- Improve tests support on non Windows/Linux platforms (`#633 <https://github.com/gorakhargosh/watchdog/pull/633>`__, `#639 <https://github.com/gorakhargosh/watchdog/pull/639>`__)
-- Added FreeBSD CI support (`#532 <https://github.com/gorakhargosh/watchdog/pull/532>`__)
-- [BSD] Restore support (`#638 <https://github.com/gorakhargosh/watchdog/pull/638>`__, `#641 <https://github.com/gorakhargosh/watchdog/pull/641>`__)
-- Thanks to our beloved contributors: @BoboTiG, @evilham
+- [bsd] Improved tests support on non Windows/Linux platforms (`#633 <https://github.com/gorakhargosh/watchdog/pull/633>`__, `#639 <https://github.com/gorakhargosh/watchdog/pull/639>`__)
+- [bsd] Added FreeBSD CI support (`#532 <https://github.com/gorakhargosh/watchdog/pull/532>`__)
+- [bsd] Restored full support (`#638 <https://github.com/gorakhargosh/watchdog/pull/638>`__, `#641 <https://github.com/gorakhargosh/watchdog/pull/641>`__)
+- Thanks to our beloved contributors: @BoboTiG, @evilham, @danilobellini
 
 
 0.10.1
