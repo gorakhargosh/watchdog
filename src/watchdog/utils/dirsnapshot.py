@@ -52,6 +52,7 @@ import errno
 import os
 from stat import S_ISDIR
 from watchdog.utils import stat as default_stat
+from watchdog.utils import platform
 try:
     from os import scandir
 except ImportError:
@@ -123,12 +124,12 @@ class DirectorySnapshotDiff(object):
         modified = set()
         for path in ref.paths & snapshot.paths:
             if get_inode(ref, path) == get_inode(snapshot, path):
-                if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
+                if ref.ctime(path) != snapshot.ctime(path) or ref.size(path) != snapshot.size(path):
                     modified.add(path)
 
         for (old_path, new_path) in moved:
-            if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(old_path) != snapshot.size(new_path):
-                modified.add(old_path)
+            if ref.ctime(old_path) != snapshot.ctime(new_path) or ref.size(old_path) != snapshot.size(new_path):
+                modified.add(new_path)
 
         self._dirs_created = [path for path in created if snapshot.isdir(path)]
         self._dirs_deleted = [path for path in deleted if ref.isdir(path)]
@@ -139,6 +140,21 @@ class DirectorySnapshotDiff(object):
         self._files_deleted = list(deleted - set(self._dirs_deleted))
         self._files_modified = list(modified - set(self._dirs_modified))
         self._files_moved = list(moved - set(self._dirs_moved))
+
+        self._ordered_events = []
+
+        self._dirs_deleted.sort(key=lambda p: p.count(os.path.sep))
+        self._dirs_moved.sort(key=lambda p: p.count(os.path.sep))
+        self._dirs_created.sort(key=lambda p: p.count(os.path.sep),
+                                reverse=True)
+
+        self._ordered_events.append(*self._files_deleted)
+        self._ordered_events.append(*self._dirs_deleted)
+        self._ordered_events.append(*self._files_moved)
+        self._ordered_events.append(*self._dirs_moved)
+        self._ordered_events.append(*modified)
+        self._ordered_events.append(*self._dirs_created)
+        self._ordered_events.append(*self._files_created)
 
     def __str__(self):
         return self.__repr__()
@@ -215,6 +231,29 @@ class DirectorySnapshotDiff(object):
         List of directories that were created.
         """
         return self._dirs_created
+
+    @property
+    def ordered_events(self):
+        """
+        List of all events with a consistent order. When applied in the
+        given order, the file structure of the new snapshot can be generated
+        from the old snapshot.
+
+        There are few exceptions:
+            * Changes in metadata (e.g., permissions) may be lost.
+            * Moved files are given before moved directories.
+            * Swaps in location will be reported successively.
+            * File location swaps (a -> b, b -> a) are reported as modified
+              events for the individual location.
+
+        To recreate the reported changes:
+            * Apply all events in order.
+            * If a file or directory is moved to a location which does not yet
+              exist, create the parent directories.
+            * If a directory is moved to a location which already exists,
+              delete the old entry but do not overwrite the new entry.
+        """
+        return self._ordered_events
 
 
 class DirectorySnapshot(object):
@@ -318,6 +357,13 @@ class DirectorySnapshot(object):
 
     def mtime(self, path):
         return self._stat_info[path].st_mtime
+
+    def ctime(self, path):
+        if platform.is_windows():
+            # TODO: get metadata modified time in Windows
+            return self._stat_info[path].st_mtime
+        else:
+            return self._stat_info[path].st_ctime
 
     def size(self, path):
         return self._stat_info[path].st_size
