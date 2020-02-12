@@ -242,9 +242,7 @@ class DirectorySnapshotDiff(object):
         There are few exceptions:
             * Changes in metadata (e.g., permissions) may be lost.
             * Moved files are given before moved directories.
-            * Swaps in location will be reported successively.
-            * File location swaps (a -> b, b -> a) are reported as modified
-              events for the individual location.
+            * Swaps in location will be reported as ...
 
         To recreate the reported changes:
             * Apply all events in order.
