@@ -21,6 +21,10 @@ import threading
 from watchdog.utils import BaseThread
 from watchdog.utils.compat import queue
 from watchdog.utils.bricks import SkipRepeatsQueue
+try:
+    from pathlib import Path as _PATH_CLASSES
+except ImportError:
+    _PATH_CLASSES = ()
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
@@ -46,7 +50,10 @@ class ObservedWatch(object):
     """
 
     def __init__(self, path, recursive):
-        self._path = path
+        if isinstance(path, _PATH_CLASSES):
+            self._path = str(path)
+        else:
+            self._path = path
         self._is_recursive = recursive
 
     @property

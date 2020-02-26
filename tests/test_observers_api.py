@@ -30,6 +30,14 @@ from watchdog.observers.api import (
 )
 
 
+def test_observer_constructor():
+    try:
+        from pathlib import Path
+    except ImportError:
+        return
+    ObservedWatch(Path('/foobar'), True)
+
+
 def test_observer__eq__():
     watch1 = ObservedWatch('/foobar', True)
     watch2 = ObservedWatch('/foobar', True)
