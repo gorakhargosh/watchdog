@@ -5,3 +5,4 @@ flaky
 pytest
 pytest-cov
 pytest-timeout
+pathlib
