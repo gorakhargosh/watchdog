@@ -10,7 +10,7 @@ Changelog
 
 - Ensure ObservedWatch.path is a string (`#655 <https://github.com/gorakhargosh/watchdog/pull/651>`_)
 - [inotify] Allow to monitor single file (`#655 <https://github.com/gorakhargosh/watchdog/pull/655>`__)
-- Thanks to our beloved contributors: @brant-ruan
+- Thanks to our beloved contributors: @brant-ruan, @rec
 
 
 0.10.2
