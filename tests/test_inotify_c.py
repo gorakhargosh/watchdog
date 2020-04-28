@@ -172,8 +172,8 @@ def test_non_ascii_path():
 
 def test_watch_file():
     path = p("this_is_a_file")
-    from pathlib import Path
-    Path(path).touch()
+    with open(path, "a"):
+        pass
     with watching(path):
         os.remove(path)
         event, _ = event_queue.get(timeout=5)
