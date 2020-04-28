@@ -168,3 +168,13 @@ def test_non_ascii_path():
         assert event.src_path == path
         # Just make sure it doesn't raise an exception.
         assert repr(event)
+
+
+def test_watch_file():
+    path = p("this_is_a_file")
+    with open(path, "a"):
+        pass
+    with watching(path):
+        os.remove(path)
+        event, _ = event_queue.get(timeout=5)
+        assert repr(event)
