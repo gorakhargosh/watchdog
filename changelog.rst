@@ -10,7 +10,8 @@ Changelog
 
 - Ensure ``ObservedWatch.path`` is a string (`#651 <https://github.com/gorakhargosh/watchdog/pull/651>`_)
 - [inotify] Allow to monitor single file (`#655 <https://github.com/gorakhargosh/watchdog/pull/655>`__)
-- Thanks to our beloved contributors: @brant-ruan, @rec
+- [inotify] Prevent raising an exception when a file in a monitored folder has no permissions (`#669 <https://github.com/gorakhargosh/watchdog/pull/669>`__, `#670 <https://github.com/gorakhargosh/watchdog/pull/670>`__)
+- Thanks to our beloved contributors: @brant-ruan, @rec, @andfoy, @BoboTiG
 
 
 0.10.2
