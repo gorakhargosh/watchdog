@@ -6,7 +6,7 @@ Changelog
 0.10.3
 ~~~~~~
 
-2020-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.2...master>`__
+2020-06-25 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.2...v0.10.3>`__
 
 - Ensure ``ObservedWatch.path`` is a string (`#651 <https://github.com/gorakhargosh/watchdog/pull/651>`_)
 - [inotify] Allow to monitor single file (`#655 <https://github.com/gorakhargosh/watchdog/pull/655>`__)
