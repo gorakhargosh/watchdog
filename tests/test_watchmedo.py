@@ -8,11 +8,11 @@ import pytest
 # in README.rst
 yaml = pytest.importorskip('yaml')  # noqa
 
-import os
+import os  # noqa
 
-from watchdog import watchmedo
-from yaml.constructor import ConstructorError
-from yaml.scanner import ScannerError
+from watchdog import watchmedo  # noqa
+from yaml.constructor import ConstructorError  # noqa
+from yaml.scanner import ScannerError  # noqa
 
 
 def test_load_config_valid(tmpdir):

@@ -21,7 +21,7 @@ TOP_DIR_PATH = os.path.abspath('../../')  # noqa
 SRC_DIR_PATH = os.path.join(TOP_DIR_PATH, 'src')  # noqa
 sys.path.insert(0, SRC_DIR_PATH)  # noqa
 
-import watchdog.version
+import watchdog.version  # noqa
 
 PROJECT_NAME = 'watchdog'
 AUTHOR_NAME = 'Yesudeep Mangalapilly and contributors'
