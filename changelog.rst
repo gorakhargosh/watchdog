@@ -3,6 +3,14 @@
 Changelog
 ---------
 
+0.10.4
+~~~~~~
+
+2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...master>`__
+
+- Thanks to our beloved contributors: @
+
+
 0.10.3
 ~~~~~~
 
