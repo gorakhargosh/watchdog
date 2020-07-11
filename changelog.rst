@@ -9,6 +9,7 @@ Changelog
 2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...master>`__
 
 - Add logger parameter for the LoggingEventHandler (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
+- Replace mutable default arguments with ``if None`` implementation (`#677 <https://github.com/gorakhargosh/watchdog/pull/677>`_)
 - Thanks to our beloved contributors: @Sraw
 
 
