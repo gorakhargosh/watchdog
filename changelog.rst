@@ -8,7 +8,8 @@ Changelog
 
 2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...master>`__
 
-- Thanks to our beloved contributors: @
+- Add logger parameter for the LoggingEventHandler (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
+- Thanks to our beloved contributors: @Sraw
 
 
 0.10.3
