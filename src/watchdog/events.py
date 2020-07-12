@@ -534,30 +534,35 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
 class LoggingEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
 
+    def __init__(self, logger=None):
+        super(LoggingEventHandler, self).__init__()
+
+        self.logger = logger or logging.root
+
     def on_moved(self, event):
         super(LoggingEventHandler, self).on_moved(event)
 
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Moved %s: from %s to %s", what, event.src_path,
-                     event.dest_path)
+        self.logger.info("Moved %s: from %s to %s", what, event.src_path,
+                         event.dest_path)
 
     def on_created(self, event):
         super(LoggingEventHandler, self).on_created(event)
 
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Created %s: %s", what, event.src_path)
+        self.logger.info("Created %s: %s", what, event.src_path)
 
     def on_deleted(self, event):
         super(LoggingEventHandler, self).on_deleted(event)
 
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Deleted %s: %s", what, event.src_path)
+        self.logger.info("Deleted %s: %s", what, event.src_path)
 
     def on_modified(self, event):
         super(LoggingEventHandler, self).on_modified(event)
 
         what = 'directory' if event.is_directory else 'file'
-        logging.info("Modified %s: %s", what, event.src_path)
+        self.logger.info("Modified %s: %s", what, event.src_path)
 
 
 class LoggingFileSystemEventHandler(LoggingEventHandler):
