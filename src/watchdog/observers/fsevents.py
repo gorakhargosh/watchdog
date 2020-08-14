@@ -42,7 +42,6 @@ from watchdog.events import (
     DirMovedEvent
 )
 
-from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
@@ -71,7 +70,6 @@ class FSEventsEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
 
     def on_thread_stop(self):
         if self.watch:
