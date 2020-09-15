@@ -16,6 +16,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+:module: watchdog.tricks
+:synopsis: Utility event handlers.
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
+
+Classes
+-------
+.. autoclass:: Trick
+   :members:
+   :show-inheritance:
+
+.. autoclass:: LoggerTrick
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ShellCommandTrick
+   :members:
+   :show-inheritance:
+
+.. autoclass:: AutoRestartTrick
+   :members:
+   :show-inheritance:
+
+"""
 
 import os
 import signal
@@ -127,9 +151,9 @@ class AutoRestartTrick(Trick):
     """Starts a long-running subprocess and restarts it on matched events.
 
     The command parameter is a list of command arguments, such as
-    ['bin/myserver', '-c', 'etc/myconfig.ini'].
+    `['bin/myserver', '-c', 'etc/myconfig.ini']`.
 
-    Call start() after creating the Trick. Call stop() when stopping
+    Call `start()` after creating the Trick. Call `stop()` when stopping
     the process.
     """
 
