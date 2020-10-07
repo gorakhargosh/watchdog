@@ -52,6 +52,10 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileClosedEvent
+   :members:
+   :show-inheritance:
+
 .. autoclass:: DirCreatedEvent
    :members:
    :show-inheritance:
@@ -97,6 +101,7 @@ EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
+EVENT_TYPE_CLOSED = 'closed'
 
 
 class FileSystemEvent(object):
@@ -247,6 +252,19 @@ class FileMovedEvent(FileSystemMovedEvent):
                           src_path=self.src_path,
                           dest_path=self.dest_path))
 
+
+class FileClosedEvent(FileSystemEvent):
+    """File system event representing file close on the file system."""
+
+    event_type = EVENT_TYPE_CLOSED
+
+    def __init__(self, src_path):
+        super(FileClosedEvent, self).__init__(src_path)
+
+    def __repr__(self):
+        return ("<%(class_name)s: src_path=%(src_path)r>"
+                ) % (dict(class_name=self.__class__.__name__,
+                          src_path=self.src_path))
 
 # Directory events.
 
