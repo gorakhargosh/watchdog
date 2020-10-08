@@ -10,7 +10,8 @@ Changelog
 
 - Add logger parameter for the LoggingEventHandler (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
 - Replace mutable default arguments with ``if None`` implementation (`#677 <https://github.com/gorakhargosh/watchdog/pull/677>`_)
-- Thanks to our beloved contributors: @Sraw
+- [inotify] Add events for IN_WRITE_CLOSE and IN_NOWRITE_CLOSE (`#690 <https://github.com/gorakhargosh/watchdog/pull/690>`)
+- Thanks to our beloved contributors: @Sraw, @lukassup
 
 
 0.10.3
