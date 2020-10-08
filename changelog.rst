@@ -3,17 +3,10 @@
 Changelog
 ---------
 
-0.10.5
-~~~~~~
-
-2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...master>`__
-
-- [inotify] Add events for IN_WRITE_CLOSE and IN_NOWRITE_CLOSE (`#690 <https://github.com/gorakhargosh/watchdog/pull/690>`)
-
 0.10.4
 ~~~~~~
 
-2020-10-08 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...v0.10.4>`__
+2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...master>`__
 
 - Add logger parameter for the LoggingEventHandler (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
 - Replace mutable default arguments with ``if None`` implementation (`#677 <https://github.com/gorakhargosh/watchdog/pull/677>`_)
