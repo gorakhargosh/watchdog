@@ -25,6 +25,7 @@
 
 from __future__ import with_statement
 
+import os
 import sys
 import threading
 import unicodedata
@@ -41,7 +42,6 @@ from watchdog.events import (
     DirMovedEvent
 )
 
-from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
@@ -70,7 +70,6 @@ class FSEventsEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
 
     def on_thread_stop(self):
         if self.watch:
@@ -80,37 +79,61 @@ class FSEventsEmitter(EventEmitter):
 
     def queue_events(self, timeout):
         with self._lock:
-            if (not self.watch.is_recursive
-                    and self.watch.path not in self.pathnames):
-                return
-            new_snapshot = DirectorySnapshot(self.watch.path,
-                                             self.watch.is_recursive)
-            events = new_snapshot - self.snapshot
-            self.snapshot = new_snapshot
+            events = self.native_events
+            i = 0
+            while i < len(events):
+                event = events[i]
 
-            # Files.
-            for src_path in events.files_deleted:
-                self.queue_event(FileDeletedEvent(src_path))
-            for src_path in events.files_modified:
-                self.queue_event(FileModifiedEvent(src_path))
-            for src_path in events.files_created:
-                self.queue_event(FileCreatedEvent(src_path))
-            for src_path, dest_path in events.files_moved:
-                self.queue_event(FileMovedEvent(src_path, dest_path))
+                # For some reason the create and remove flags are sometimes also
+                # set for rename and modify type events, so let those take
+                # precedence.
+                if event.is_renamed:
+                    # Internal moves appears to always be consecutive in the same
+                    # buffer and have IDs differ by exactly one (while others
+                    # don't) making it possible to pair up the two events coming
+                    # from a singe move operation. (None of this is documented!)
+                    # Otherwise, guess whether file was moved in or out.
+                    # TODO: handle id wrapping
+                    if (i + 1 < len(events) and events[i + 1].is_renamed
+                            and events[i + 1].event_id == event.event_id + 1):
+                        cls = DirMovedEvent if event.is_directory else FileMovedEvent
+                        self.queue_event(cls(event.path, events[i + 1].path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(events[i + 1].path)))
+                        i += 1
+                    elif os.path.exists(event.path):
+                        cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                        self.queue_event(cls(event.path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                    else:
+                        cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                        self.queue_event(cls(event.path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                    # TODO: generate events for tree
 
-            # Directories.
-            for src_path in events.dirs_deleted:
-                self.queue_event(DirDeletedEvent(src_path))
-            for src_path in events.dirs_modified:
-                self.queue_event(DirModifiedEvent(src_path))
-            for src_path in events.dirs_created:
-                self.queue_event(DirCreatedEvent(src_path))
-            for src_path, dest_path in events.dirs_moved:
-                self.queue_event(DirMovedEvent(src_path, dest_path))
+                elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod :
+                    cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                    self.queue_event(cls(event.path))
+
+                elif event.is_created:
+                    cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                    self.queue_event(cls(event.path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+
+                elif event.is_removed:
+                    cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                    self.queue_event(cls(event.path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                i += 1
 
     def run(self):
         try:
-            def callback(pathnames, flags, emitter=self):
+            def callback(pathnames, flags, ids, emitter=self):
+                with emitter._lock:
+                    emitter.native_events = [
+                        _fsevents.NativeEvent(event_path, event_flags, event_id)
+                        for event_path, event_flags, event_id in zip(pathnames, flags, ids)
+                    ]
                 emitter.queue_events(emitter.timeout)
 
             # for pathname, flag in zip(pathnames, flags):
