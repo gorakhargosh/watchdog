@@ -583,8 +583,6 @@ watchdog_module_add_attributes(PyObject *module)
 
 #if PY_MAJOR_VERSION < 3
 
-void initwatchdog_fsevents(void);
-
 /**
  * Initialize the Python 2.x module.
  */
