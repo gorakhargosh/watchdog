@@ -10,8 +10,9 @@ Changelog
 
 - Add logger parameter for the LoggingEventHandler (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
 - Replace mutable default arguments with ``if None`` implementation (`#677 <https://github.com/gorakhargosh/watchdog/pull/677>`_)
+- Expand tests to Python 2.7 and 3.5-3.10 for GNU/Linux, macOS and Windows
 - [mac] Performance improvements for the `fsevents` module (`#680 <https://github.com/gorakhargosh/watchdog/pull/680>`_)
-- Thanks to our beloved contributors: @Sraw, @CCP-Aporia
+- Thanks to our beloved contributors: @Sraw, @CCP-Aporia, @BoboTiG
 
 
 0.10.3
