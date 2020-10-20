@@ -25,6 +25,6 @@ observer.start()
 try:
     while True:
         time.sleep(1)
-except KeyboardInterrupt:
+finally:
     observer.stop()
-observer.join()
+    observer.join()
