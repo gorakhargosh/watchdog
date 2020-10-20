@@ -38,7 +38,7 @@ except ImportError:
 
 from argh import arg, aliases, ArghParser, expects_obj
 from watchdog.version import VERSION_STRING
-from watchdog.utils import load_class
+from watchdog.utils import WatchdogShutdown, load_class
 
 
 logging.basicConfig(level=logging.INFO)
@@ -117,7 +117,7 @@ def observe_with(observer, event_handler, pathnames, recursive):
     try:
         while True:
             time.sleep(1)
-    except KeyboardInterrupt:
+    except WatchdogShutdown:
         observer.stop()
     observer.join()
 
@@ -198,7 +198,7 @@ def tricks_from(args):
     try:
         while True:
             time.sleep(1)
-    except KeyboardInterrupt:
+    except WatchdogShutdown:
         for o in observers:
             o.unschedule_all()
             o.stop()
@@ -531,12 +531,18 @@ def auto_restart(args):
     else:
         stop_signal = int(args.signal)
 
-    # Handle SIGTERM in the same manner as SIGINT so that
-    # this program has a chance to stop the child process.
-    def handle_sigterm(_signum, _frame):
-        raise KeyboardInterrupt()
+    # Handle termination signals by raising a semantic exception which will
+    # allow us to gracefully unwind and stop the observer
+    termination_signals = {signal.SIGTERM, signal.SIGINT}
 
-    signal.signal(signal.SIGTERM, handle_sigterm)
+    def handler_termination_signal(_signum, _frame):
+        # Neuter all signals so that we don't attempt a double shutdown
+        for signum in termination_signals:
+            signal.signal(signum, signal.SIG_IGN)
+        raise WatchdogShutdown
+
+    for signum in termination_signals:
+        signal.signal(signum, handler_termination_signal)
 
     patterns, ignore_patterns = parse_patterns(args.patterns,
                                                args.ignore_patterns)
@@ -550,8 +556,12 @@ def auto_restart(args):
                                kill_after=args.kill_after)
     handler.start()
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
-    handler.stop()
+    try:
+        observe_with(observer, handler, args.directories, args.recursive)
+    except WatchdogShutdown:
+        pass
+    finally:
+        handler.stop()
 
 
 epilog = """Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.

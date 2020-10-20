@@ -62,6 +62,13 @@ class UnsupportedLibc(Exception):
     pass
 
 
+class WatchdogShutdown(Exception):
+    """
+    Semantic exception used to signal an external shutdown event.
+    """
+    pass
+
+
 class BaseThread(threading.Thread):
     """ Convenience class for creating stoppable threads. """
 

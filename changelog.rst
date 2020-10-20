@@ -12,7 +12,8 @@ Changelog
 - Replace mutable default arguments with ``if None`` implementation (`#677 <https://github.com/gorakhargosh/watchdog/pull/677>`_)
 - Expand tests to Python 2.7 and 3.5-3.10 for GNU/Linux, macOS and Windows
 - [mac] Performance improvements for the `fsevents` module (`#680 <https://github.com/gorakhargosh/watchdog/pull/680>`_)
-- Thanks to our beloved contributors: @Sraw, @CCP-Aporia, @BoboTiG
+- Handle shutdown events from SIGTERM and SIGINT to `watchmedo` more reliably (`#693 <https://github.com/gorakhargosh/watchdog/pull/693>`_)
+- Thanks to our beloved contributors: @Sraw, @CCP-Aporia, @BoboTiG, @maybe-sybr
 
 
 0.10.3
