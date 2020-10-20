@@ -33,9 +33,9 @@ as command-line arguments and logs events generated:
         try:
             while True:
                 time.sleep(1)
-        except KeyboardInterrupt:
+        finally:
             observer.stop()
-        observer.join()
+            observer.join()
 
 
 Shell Utilities

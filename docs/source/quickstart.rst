@@ -48,8 +48,8 @@ file system changes and simply log them to the console::
         try:
             while observer.isAlive():
                 observer.join(1)
-        except KeyboardInterrupt:
+        finally:
             observer.stop()
-        observer.join()
+            observer.join()
 
 To stop the program, press Control-C.
