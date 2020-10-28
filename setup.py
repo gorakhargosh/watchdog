@@ -17,8 +17,10 @@
 # limitations under the License.
 
 import sys
+import os
 import os.path
 from codecs import open
+from platform import machine
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from setuptools.command.build_ext import build_ext
@@ -36,8 +38,13 @@ else:
     import imp
     version = imp.load_source('version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
 
+# Ignored Apple devices on which compiling watchdog_fsevents.c would fail.
+# The FORCE_MACOS_MACHINE envar, when set to 1, will force the compilation.
+_apple_devices = ('appletv', 'iphone', 'ipod', 'ipad', 'watch')
+is_macos = sys.platform == 'darwin' and not machine().lower().startswith(_apple_devices)
+
 ext_modules = []
-if sys.platform == 'darwin':
+if is_macos or os.getenv('FORCE_MACOS_MACHINE', '0') == '1':
     ext_modules = [
         Extension(
             name='_watchdog_fsevents',
