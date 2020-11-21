@@ -6,14 +6,14 @@ Changelog
 0.10.4
 ~~~~~~
 
-2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...master>`__
+2020-11-21 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...v0.10.4>`__
 
-- Add logger parameter for the LoggingEventHandler (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
+- Add ``logger`` parameter for the ``LoggingEventHandler`` (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
 - Replace mutable default arguments with ``if None`` implementation (`#677 <https://github.com/gorakhargosh/watchdog/pull/677>`_)
 - Expand tests to Python 2.7 and 3.5-3.10 for GNU/Linux, macOS and Windows
-- [mac] Performance improvements for the `fsevents` module (`#680 <https://github.com/gorakhargosh/watchdog/pull/680>`_)
+- [mac] Performance improvements for the ``fsevents`` module (`#680 <https://github.com/gorakhargosh/watchdog/pull/680>`_)
 - [mac] Prevent compilation of ``watchdog_fsevents.c`` on non-macOS machines (`#687 <https://github.com/gorakhargosh/watchdog/pull/687>`_)
-- Handle shutdown events from SIGTERM and SIGINT to `watchmedo` more reliably (`#693 <https://github.com/gorakhargosh/watchdog/pull/693>`_)
+- [watchmedo] Handle shutdown events from ``SIGTERM`` and ``SIGINT`` more reliably (`#693 <https://github.com/gorakhargosh/watchdog/pull/693>`_)
 - Thanks to our beloved contributors: @Sraw, @CCP-Aporia, @BoboTiG, @maybe-sybr
 
 
