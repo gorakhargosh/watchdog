@@ -8,8 +8,9 @@ Changelog
 
 2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...master>`__
 
--  (`# <https://github.com/gorakhargosh/watchdog/pull/>`_)
-- Thanks to our beloved contributors: @
+- Allow file paths on Unix that don't follow the file system encoding (`# <https://github.com/gorakhargosh/watchdog/pull/703>`_)
+- Drop support for Python 2.7 (`# <https://github.com/gorakhargosh/watchdog/pull/703>`_)
+- Thanks to our beloved contributors: @SamSchott
 
 
 0.10.4
