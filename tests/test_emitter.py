@@ -23,7 +23,6 @@ from functools import partial
 from . import Queue, Empty
 from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
-from watchdog.utils.unicode_paths import str_cls
 from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
@@ -303,10 +302,10 @@ def test_fast_subdirectory_creation_deletion():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode():
-    start_watching(str_cls(p("")))
+    start_watching(str(p("")))
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
-    assert isinstance(event.src_path, str_cls)
+    assert isinstance(event.src_path, str)
 
 
 @pytest.mark.skipif(platform.is_windows(),
