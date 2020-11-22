@@ -22,8 +22,6 @@
     :author: yesudeep@google.com (Yesudeep Mangalapilly)
 """
 
-from __future__ import with_statement
-
 import os
 import os.path
 import tempfile

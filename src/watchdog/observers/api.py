@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import with_statement
 import threading
 from watchdog.utils import BaseThread
 from watchdog.utils.compat import queue

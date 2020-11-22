@@ -67,7 +67,6 @@ Collections and Utility Classes
 
 """
 
-from __future__ import with_statement
 from watchdog.utils import platform
 
 import threading

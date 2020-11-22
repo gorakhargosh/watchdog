@@ -67,8 +67,6 @@ Some extremely useful articles and documentation:
 
 """
 
-from __future__ import with_statement
-
 import os
 import threading
 from .inotify_buffer import InotifyBuffer

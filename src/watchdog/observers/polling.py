@@ -34,7 +34,6 @@ Classes
    :special-members:
 """
 
-from __future__ import with_statement
 import threading
 from functools import partial
 from watchdog.utils import stat as default_stat
