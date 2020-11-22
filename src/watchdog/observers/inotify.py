@@ -92,7 +92,6 @@ from watchdog.events import (
     generate_sub_moved_events,
     generate_sub_created_events,
 )
-from watchdog.utils import unicode_paths
 
 
 class InotifyEmitter(EventEmitter):
@@ -117,7 +116,7 @@ class InotifyEmitter(EventEmitter):
         self._inotify = None
 
     def on_thread_start(self):
-        path = unicode_paths.encode(self.watch.path)
+        path = os.fsencode(self.watch.path)
         self._inotify = InotifyBuffer(path, self.watch.is_recursive)
 
     def on_thread_stop(self):
@@ -176,10 +175,10 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
 
     def _decode_path(self, path):
-        """ Decode path only if unicode string was passed to this emitter. """
+        """Decode path only if unicode string was passed to this emitter. """
         if isinstance(self.watch.path, bytes):
             return path
-        return unicode_paths.decode(path)
+        return os.fsdecode(path)
 
 
 class InotifyFullEmitter(InotifyEmitter):

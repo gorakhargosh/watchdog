@@ -87,7 +87,7 @@ class FSEventsQueue(Thread):
         self._run_loop = None
 
         if isinstance(path, bytes):
-            path = path.decode('utf-8')
+            path = os.fsdecode(path)
         self._path = unicodedata.normalize('NFC', path)
 
         context = None
