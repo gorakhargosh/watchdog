@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
 import os
 import time
 import pytest
@@ -23,7 +22,6 @@ from functools import partial
 from . import Queue, Empty
 from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
-from watchdog.utils.unicode_paths import str_cls
 from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
@@ -97,6 +95,25 @@ def test_create():
 
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
+    assert isinstance(event, FileCreatedEvent)
+
+    if not platform.is_windows():
+        event = event_queue.get(timeout=5)[0]
+        assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
+        assert isinstance(event, DirModifiedEvent)
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(
+    platform.is_darwin() or platform.is_windows(),
+    reason="Windows and macOS enforce proper encoding"
+)
+def test_create_wrong_encoding():
+    start_watching()
+    open(p('a_\udce4'), 'a').close()
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('a_\udce4')
     assert isinstance(event, FileCreatedEvent)
 
     if not platform.is_windows():
@@ -303,10 +320,10 @@ def test_fast_subdirectory_creation_deletion():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode():
-    start_watching(str_cls(p("")))
+    start_watching(str(p("")))
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
-    assert isinstance(event.src_path, str_cls)
+    assert isinstance(event.src_path, str)
 
 
 @pytest.mark.skipif(platform.is_windows(),

@@ -40,13 +40,7 @@ Steps to setting up a clean environment:
     
 3. Linux
 
-For example Debian and Python 2.7: 
-
-.. code:: bash
-
-    $ sudo apt-get install python-pip python-virtualenv
-    
-For Python 3:
+For example Debian:
     
 .. code:: bash
 

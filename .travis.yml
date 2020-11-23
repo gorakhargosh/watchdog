@@ -13,10 +13,6 @@ env:
 jobs:
   fast_finish: true
   include:
-    - name: Python 2.7 on GNU/Linux
-      os: linux
-      python: "2.7"
-      env: TOXENV=py27
     - name: Python 3.5 on GNU/Linux
       os: linux
       python: "3.5"
@@ -44,10 +40,6 @@ jobs:
       os: linux
       python: nightly
       env: TOXENV=py310
-    - name: PyPy 2.7 on GNU/Linux
-      os: linux
-      python: "pypy"
-      env: TOXENV=pypy
     - name: PyPy 3.6 on GNU/Linux
       os: linux
       python: "pypy3"
@@ -118,14 +110,6 @@ jobs:
         - pyenv install --skip-existing 3.10-dev
         - pyenv global system 3.10-dev
       env: TOXENV=py310
-    - name: Python 2.7 on Windows
-      os: windows
-      language: shell
-      before_install:
-        - choco install python2
-      env:
-        - TOXENV=py27
-        - export PATH="/c/Python27:/c/Python27/Scripts:$PATH"
     - name: Python 3.5 on Windows
       os: windows
       language: shell

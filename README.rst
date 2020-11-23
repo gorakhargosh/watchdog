@@ -226,7 +226,7 @@ appropriate observer like in the example above, do::
 
 Dependencies
 ------------
-1. Python 2.7, 3.4 or above.
+1. Python 3.4 or above.
 2. pathtools_
 3. XCode_ (only on Mac OS X)
 4. PyYAML_ (only for ``watchmedo`` script)
