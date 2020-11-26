@@ -16,7 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathtools.patterns import filter_paths
 from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
@@ -33,6 +32,7 @@ from watchdog.events import (
     EVENT_TYPE_MOVED,
 )
 from watchdog.utils import has_attribute
+from watchdog.utils.patterns import filter_paths
 
 path_1 = '/path/xyz'
 path_2 = '/path/abc'

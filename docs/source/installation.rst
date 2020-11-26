@@ -59,8 +59,6 @@ using.
 +=====================+=============+=============+=============+=============+
 | XCode_              |             |             |     Yes     |             |
 +---------------------+-------------+-------------+-------------+-------------+
-| pathtools_          |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
 
 The following is a list of dependencies you need based on the operating system you are
 using the ``watchmedo`` utility.
