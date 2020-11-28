@@ -130,7 +130,7 @@ jobs:
       os: windows
       language: shell
       before_install:
-        -choco install python3 --version=3.7.9
+        - choco install python3 --version=3.7.9
       env:
         - TOXENV=py37
         - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
