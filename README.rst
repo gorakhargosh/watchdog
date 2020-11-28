@@ -227,7 +227,6 @@ appropriate observer like in the example above, do::
 Dependencies
 ------------
 1. Python 3.4 or above.
-2. pathtools_
 3. XCode_ (only on Mac OS X)
 4. PyYAML_ (only for ``watchmedo`` script)
 5. argh_ (only for ``watchmedo`` script)
@@ -277,7 +276,6 @@ to do:
 .. _PyYAML: http://www.pyyaml.org/
 .. _XCode: http://developer.apple.com/technologies/tools/xcode.html
 .. _LibYAML: http://pyyaml.org/wiki/LibYAML
-.. _pathtools: http://github.com/gorakhargosh/pathtools
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471

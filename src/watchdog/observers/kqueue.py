@@ -76,7 +76,7 @@ import os
 import os.path
 import select
 
-from pathtools.path import absolute_path
+from pathlib import Path
 
 from watchdog.observers.api import (
     BaseObserver,
@@ -125,6 +125,10 @@ WATCHDOG_KQ_FFLAGS = (
     | select.KQ_NOTE_RENAME
     | select.KQ_NOTE_REVOKE
 )
+
+
+def absolute_path(path):
+    return Path(path).resolve()
 
 # Flag tests.
 

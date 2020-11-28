@@ -42,4 +42,3 @@
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
 .. _XCode: http://developer.apple.com/technologies/tools/xcode.html
 .. _zc.buildout: http://www.buildout.org/
-.. _pathtools: http://github.com/gorakhargosh/pathtools

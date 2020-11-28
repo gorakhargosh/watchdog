@@ -82,9 +82,6 @@ if is_macos or os.getenv('FORCE_MACOS_MACHINE', '0') == '1':
         ),
     ]
 
-install_requires = [
-    "pathtools>=0.1.1",
-]
 extras_require = {
     'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
 }
@@ -145,7 +142,6 @@ setup(name="watchdog",
       package_dir={'': SRC_DIR},
       packages=find_packages(SRC_DIR),
       include_package_data=True,
-      install_requires=install_requires,
       extras_require=extras_require,
       cmdclass={
           'build_ext': build_ext,
