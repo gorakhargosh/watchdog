@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
@@ -19,7 +19,8 @@ import time
 import pytest
 import logging
 from functools import partial
-from . import Queue, Empty
+from queue import Queue, Empty
+
 from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
 from watchdog.events import (

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2020 Boris Staletic <boris.staletic@gmail.com>

@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.util
 import sys
 import os
 import os.path
-from codecs import open
 from platform import machine
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
@@ -28,15 +27,11 @@ from setuptools.command.build_ext import build_ext
 SRC_DIR = 'src'
 WATCHDOG_PKG_DIR = os.path.join(SRC_DIR, 'watchdog')
 
-if sys.version_info >= (3, 5):
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(
-        'version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
-    version = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(version)
-else:
-    import imp
-    version = imp.load_source('version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
+# Load the module version
+spec = importlib.util.spec_from_file_location(
+    'version', os.path.join(WATCHDOG_PKG_DIR, 'version.py'))
+version = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(version)
 
 # Ignored Apple devices on which compiling watchdog_fsevents.c would fail.
 # The FORCE_MACOS_MACHINE envar, when set to 1, will force the compilation.
@@ -122,16 +117,21 @@ setup(name="watchdog",
           'Operating System :: POSIX :: Linux',
           'Operating System :: MacOS :: MacOS X',
           'Operating System :: POSIX :: BSD',
-          'Operating System :: Microsoft :: Windows :: Windows NT/2000',
+          'Operating System :: Microsoft :: Windows :: Windows Vista',
+          'Operating System :: Microsoft :: Windows :: Windows 7',
+          'Operating System :: Microsoft :: Windows :: Windows 8',
+          'Operating System :: Microsoft :: Windows :: Windows 8.1',
+          'Operating System :: Microsoft :: Windows :: Windows 10',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.4',
+          'Programming Language :: Python :: 3 :: Only',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
+          'Programming Language :: Python :: 3.10',
           'Programming Language :: Python :: Implementation :: PyPy',
           'Programming Language :: C',
           'Topic :: Software Development :: Libraries',
@@ -150,5 +150,6 @@ setup(name="watchdog",
       entry_points={'console_scripts': [
           'watchmedo = watchdog.watchmedo:main [watchmedo]',
       ]},
+      python_requires='>=3.5',
       zip_safe=False
 )

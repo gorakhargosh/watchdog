@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +20,7 @@
 :module: watchdog.utils.dirsnapshot
 :synopsis: Directory snapshots and comparison.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 .. ADMONITION:: Where are the moved events? They "disappeared"
 
@@ -51,14 +51,9 @@ Classes
 import errno
 import os
 from stat import S_ISDIR
-from watchdog.utils import stat as default_stat
-try:
-    from os import scandir
-except ImportError:
-    from os import listdir as scandir
 
 
-class DirectorySnapshotDiff(object):
+class DirectorySnapshotDiff:
     """
     Compares two directory snapshots and creates an object that represents
     the difference between the two snapshots.
@@ -217,7 +212,7 @@ class DirectorySnapshotDiff(object):
         return self._dirs_created
 
 
-class DirectorySnapshot(object):
+class DirectorySnapshot:
     """
     A snapshot of stat information of files in a directory.
 
@@ -237,12 +232,11 @@ class DirectorySnapshot(object):
         A function taking a ``path`` as argument which will be called
         for every entry in the directory tree.
     :param listdir:
-        Use custom listdir function. For details see ``os.scandir`` if available, else ``os.listdir``.
+        Use custom listdir function. For details see ``os.scandir``.
     """
 
     def __init__(self, path, recursive=True,
-                 stat=default_stat,
-                 listdir=scandir):
+                 stat=os.stat, listdir=os.scandir):
         self.recursive = recursive
         self.stat = stat
         self.listdir = listdir
@@ -288,12 +282,8 @@ class DirectorySnapshot(object):
                     if S_ISDIR(st.st_mode):
                         for entry in self.walk(path):
                             yield entry
-                except (IOError, OSError) as e:
-                    # IOError for Python 2
-                    # OSError for Python 3
-                    # (should be only PermissionError when dropping Python 2 support)
-                    if e.errno != errno.EACCES:
-                        raise
+                except PermissionError:
+                    pass
 
     @property
     def paths(self):
@@ -353,7 +343,7 @@ class DirectorySnapshot(object):
         return str(self._stat_info)
 
 
-class EmptyDirectorySnapshot(object):
+class EmptyDirectorySnapshot:
     """Class to implement an empty snapshot. This is used together with
     DirectorySnapshot and DirectorySnapshotDiff in order to get all the files/folders
     in the directory as created.

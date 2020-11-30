@@ -11,13 +11,13 @@ import errno
 import logging
 import os
 from functools import partial
+from queue import Queue
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
 from watchdog.observers.inotify_c import Inotify
 
-from . import Queue
 from .shell import mkdtemp, rm
 
 

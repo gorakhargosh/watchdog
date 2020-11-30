@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +18,9 @@
 
 # When updating this version number, please update the
 # ``docs/source/global.rst.inc`` file as well.
-VERSION_MAJOR = 0
-VERSION_MINOR = 10
-VERSION_BUILD = 5
+VERSION_MAJOR = 1
+VERSION_MINOR = 0
+VERSION_BUILD = 0
 VERSION_INFO = (VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD)
 VERSION_STRING = "%d.%d.%d" % VERSION_INFO
 

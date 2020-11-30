@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +23,7 @@ Utility collections or "bricks".
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: lalinsky@gmail.com (Lukáš Lalinský)
 :author: python@rcn.com (Raymond Hettinger)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 Classes
 =======
@@ -36,10 +36,10 @@ Classes
 
 """
 
-from .compat import queue
+import queue
 
 
-class SkipRepeatsQueue(queue.Queue, object):
+class SkipRepeatsQueue(queue.Queue):
 
     """Thread-safe implementation of an special queue where a
     put of the last-item put'd will be dropped.
@@ -54,7 +54,7 @@ class SkipRepeatsQueue(queue.Queue, object):
 
     An example implementation follows::
 
-        class Item(object):
+        class Item:
             def __init__(self, a, b):
                 self._a = a
                 self._b = b
@@ -83,12 +83,12 @@ class SkipRepeatsQueue(queue.Queue, object):
     """
 
     def _init(self, maxsize):
-        super(SkipRepeatsQueue, self)._init(maxsize)
+        super()._init(maxsize)
         self._last_item = None
 
     def _put(self, item):
         if item != self._last_item:
-            super(SkipRepeatsQueue, self)._put(item)
+            super()._put(item)
             self._last_item = item
         else:
             # `put` increments `unfinished_tasks` even if we did not put
@@ -96,7 +96,7 @@ class SkipRepeatsQueue(queue.Queue, object):
             self.unfinished_tasks -= 1
 
     def _get(self):
-        item = super(SkipRepeatsQueue, self)._get()
+        item = super()._get()
         if item is self._last_item:
             self._last_item = None
         return item
