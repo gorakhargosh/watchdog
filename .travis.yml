@@ -50,66 +50,78 @@ jobs:
       install:
         - unset PYENV_ROOT
         - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
         - eval "$(pyenv init -)"
         - pyenv install --skip-existing 3.5.10
         - pyenv global 3.5.10
-      env: TOXENV=py35
+      env:
+        - TOXENV=py35
+        - PYENV_ROOT="$HOME/.pyenv/versions/3.5.10"
+        - PATH="$PYENV_ROOT/bin:$PATH"
     - name: Python 3.6 on macOS
       os: osx
       language: shell
       install:
         - unset PYENV_ROOT
         - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
         - eval "$(pyenv init -)"
         - pyenv install --skip-existing 3.6.12
-        - pyenv global system 3.6.12
-      env: TOXENV=py36
+        - pyenv global 3.6.12
+      env:
+        - TOXENV=py36
+        - PYENV_ROOT="$HOME/.pyenv/versions/3.6.12"
+        - PATH="$PYENV_ROOT/bin:$PATH"
     - name: Python 3.7 on macOS
       os: osx
       language: shell
       install:
         - unset PYENV_ROOT
         - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
         - eval "$(pyenv init -)"
         - pyenv install --skip-existing 3.7.9
         - pyenv global system 3.7.9
-      env: TOXENV=py37
+      env:
+        - TOXENV=py37
+        - PYENV_ROOT="$HOME/.pyenv/versions/3.7.9"
+        - PATH="$PYENV_ROOT/bin:$PATH"
     - name: Python 3.8 on macOS
       os: osx
       language: shell
       install:
         - unset PYENV_ROOT
         - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
         - eval "$(pyenv init -)"
         - pyenv install --skip-existing 3.8.6
         - pyenv global system 3.8.6
-      env: TOXENV=py38
+      env:
+        - TOXENV=py38
+        - PYENV_ROOT="$HOME/.pyenv/versions/3.8.6"
+        - PATH="$PYENV_ROOT/bin:$PATH"
     - name: Python 3.9 on macOS
       os: osx
       language: shell
       install:
         - unset PYENV_ROOT
         - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
         - eval "$(pyenv init -)"
-        - pyenv install --skip-existing 3.9-dev
-        - pyenv global system 3.9-dev
-      env: TOXENV=py39
+        - pyenv install --skip-existing 3.9.0
+        - pyenv global system 3.9.0
+      env:
+        - TOXENV=py39
+        - PYENV_ROOT="$HOME/.pyenv/versions/3.9.0"
+        - PATH="$PYENV_ROOT/bin:$PATH"
     - name: Python 3.10 on macOS
       os: osx
       language: shell
       install:
         - unset PYENV_ROOT
         - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
         - eval "$(pyenv init -)"
         - pyenv install --skip-existing 3.10-dev
         - pyenv global system 3.10-dev
-      env: TOXENV=py310
+      env:
+        - TOXENV=py310
+        - PYENV_ROOT="$HOME/.pyenv/versions/3.10-dev"
+        - PATH="$PYENV_ROOT/bin:$PATH"
     - name: Python 3.5 on Windows
       os: windows
       language: shell
@@ -160,6 +172,7 @@ jobs:
         - export PATH="/c/Python310:/c/Python310/Scripts:$PATH"
 
 before_script:
+  - python -V
   - python -m pip install -U pip tox
   - python -m tox --notest  # Note: keep it!
 

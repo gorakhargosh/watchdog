@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,19 +41,19 @@ class _TestableEventHandler(LoggingEventHandler):
         assert True
 
     def on_modified(self, event):
-        super(_TestableEventHandler, self).on_modified(event)
+        super().on_modified(event)
         assert event.event_type == EVENT_TYPE_MODIFIED
 
     def on_deleted(self, event):
-        super(_TestableEventHandler, self).on_deleted(event)
+        super().on_deleted(event)
         assert event.event_type == EVENT_TYPE_DELETED
 
     def on_moved(self, event):
-        super(_TestableEventHandler, self).on_moved(event)
+        super().on_moved(event)
         assert event.event_type == EVENT_TYPE_MOVED
 
     def on_created(self, event):
-        super(_TestableEventHandler, self).on_created(event)
+        super().on_created(event)
         assert event.event_type == EVENT_TYPE_CREATED
 
 

@@ -3,7 +3,7 @@
  *
  * Copyright 2010 Malthe Borch <mborch@gmail.com>
  * Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
- * Copyright 2012 Google, Inc.
+ * Copyright 2012 Google, Inc & contributors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,12 +36,6 @@
 #define G_RETURN_IF(condition)          do { if (condition) { return; } } while (0)
 #define G_RETURN_IF_NOT(condition)      do { if (!condition) { return; } } while (0)
 #define UNUSED(x)                       (void)x
-
-#if PY_MAJOR_VERSION < 3
-#define AS_PYTHON_STRING(x) PyString_FromString(x)
-#else /* PY_MAJOR_VERSION < 3 */
-#define AS_PYTHON_STRING(x) PyUnicode_FromString(x)
-#endif /* PY_MAJOR_VERSION < 3 */
 
 /* Error message definitions. */
 #define ERROR_CANNOT_CALL_CALLBACK "Unable to call Python callback."
@@ -98,44 +92,36 @@ PyObject* NativeEventTypeString(PyObject* instance, void* closure)
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
     if (self->flags & kFSEventStreamEventFlagItemCreated)
-        return AS_PYTHON_STRING("Created");
+        return PyUnicode_FromString("Created");
     if (self->flags & kFSEventStreamEventFlagItemRemoved)
-        return AS_PYTHON_STRING("Removed");
+        return PyUnicode_FromString("Removed");
     if (self->flags & kFSEventStreamEventFlagItemRenamed)
-        return AS_PYTHON_STRING("Renamed");
+        return PyUnicode_FromString("Renamed");
     if (self->flags & kFSEventStreamEventFlagItemModified)
-        return AS_PYTHON_STRING("Modified");
+        return PyUnicode_FromString("Modified");
 
-    return AS_PYTHON_STRING("Unknown");
+    return PyUnicode_FromString("Unknown");
 }
 
 PyObject* NativeEventTypeFlags(PyObject* instance, void* closure)
 {
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
-#if PY_MAJOR_VERSION < 3
-    return PyInt_FromLong(self->flags);
-#else /* PY_MAJOR_VERSION < 3 */
     return PyLong_FromLong(self->flags);
-#endif /* PY_MAJOR_VERSION < 3 */
 }
 
 PyObject* NativeEventTypePath(PyObject* instance, void* closure)
 {
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
-    return AS_PYTHON_STRING(self->path);
+    return PyUnicode_FromString(self->path);
 }
 
 PyObject* NativeEventTypeID(PyObject* instance, void* closure)
 {
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
-#if PY_MAJOR_VERSION < 3
-    return PyInt_FromLong(self->id);
-#else /* PY_MAJOR_VERSION < 3 */
     return PyLong_FromLong(self->id);
-#endif /* PY_MAJOR_VERSION < 3 */
 }
 
 #define FLAG_PROPERTY(suffix, flag) \
@@ -207,9 +193,8 @@ PyObject *watch_to_stream = NULL;
 
 
 /**
- * PyCapsule destructor for Python 3 compatibility
+ * PyCapsule destructor.
  */
-#if PY_MAJOR_VERSION >= 3
 static void watchdog_pycapsule_destructor(PyObject *ptr)
 {
     void *p = PyCapsule_GetPointer(ptr, NULL);
@@ -217,7 +202,6 @@ static void watchdog_pycapsule_destructor(PyObject *ptr)
         PyMem_Free(p);
     }
 }
-#endif
 
 
 /**
@@ -280,13 +264,8 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     for (i = 0; i < num_events; ++i)
     {
         id = PyLong_FromLongLong(event_flags[i]);
-#if PY_MAJOR_VERSION >= 3
         path = PyUnicode_FromString(event_paths[i]);
         flags = PyLong_FromLong(event_flags[i]);
-#else
-        path = PyString_FromString(event_paths[i]);
-        flags = PyInt_FromLong(event_flags[i]);
-#endif
         if (G_NOT(path && flags && id))
         {
             Py_DECREF(py_event_paths);
@@ -361,15 +340,11 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
     {
         py_string = PyList_GetItem(py_string_list, i);
         G_RETURN_NULL_IF_NULL(py_string);
-#if PY_MAJOR_VERSION >= 3
         if (PyUnicode_Check(py_string)) {
           c_string = PyUnicode_AsUTF8(py_string);
         } else {
           c_string = PyBytes_AS_STRING(py_string);
         }
-#else
-        c_string = PyString_AS_STRING(py_string);
-#endif
         cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
                                               c_string,
                                               kCFStringEncodingUTF8);
@@ -479,11 +454,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref,
                                               paths_to_watch,
                                               (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
-#if PY_MAJOR_VERSION >= 3
     value = PyCapsule_New(stream_ref, NULL, watchdog_pycapsule_destructor);
-#else
-    value = PyCObject_FromVoidPtr(stream_ref, PyMem_Free);
-#endif
     PyDict_SetItem(watch_to_stream, watch, value);
 
     /* Get a reference to the runloop for the emitter thread
@@ -495,11 +466,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     }
     else
     {
-#if PY_MAJOR_VERSION >= 3
         run_loop_ref = PyCapsule_GetPointer(value, NULL);
-#else
-        run_loop_ref = PyCObject_AsVoidPtr(value);
-#endif
     }
 
     /* Schedule the stream with the obtained runloop. */
@@ -550,11 +517,7 @@ watchdog_read_events(PyObject *self, PyObject *args)
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
-#if PY_MAJOR_VERSION >= 3
         value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
-#else
-        value = PyCObject_FromVoidPtr(run_loop_ref, PyMem_Free);
-#endif
         PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
         Py_INCREF(emitter_thread);
         Py_INCREF(value);
@@ -590,11 +553,7 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
     PyObject *value = PyDict_GetItem(watch_to_stream, watch);
     PyDict_DelItem(watch_to_stream, watch);
 
-#if PY_MAJOR_VERSION >= 3
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
-#else
-    FSEventStreamRef stream_ref = PyCObject_AsVoidPtr(value);
-#endif
 
     FSEventStreamStop(stream_ref);
     FSEventStreamInvalidate(stream_ref);
@@ -618,11 +577,7 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
       goto success;
     }
 
-#if PY_MAJOR_VERSION >= 3
     CFRunLoopRef run_loop_ref = PyCapsule_GetPointer(value, NULL);
-#else
-    CFRunLoopRef run_loop_ref = PyCObject_AsVoidPtr(value);
-#endif
     G_RETURN_NULL_IF(PyErr_Occurred());
 
     /* Stop the run loop. */
@@ -702,33 +657,6 @@ watchdog_module_add_attributes(PyObject *module)
                        Py_BuildValue("s", WATCHDOG_VERSION_STRING));
 }
 
-
-#if PY_MAJOR_VERSION < 3
-
-/**
- * Initialize the Python 2.x module.
- */
-void
-init_watchdog_fsevents(void)
-{
-    NativeEventType.tp_new = PyType_GenericNew;
-    G_RETURN_IF(PyType_Ready(&NativeEventType) < 0);
-    PyObject *module = Py_InitModule3(MODULE_NAME,
-                                      watchdog_fsevents_methods,
-                                      watchdog_fsevents_module__doc__);
-    G_RETURN_IF(module == NULL);
-    Py_INCREF(&NativeEventType);
-    if (PyModule_AddObject(module, "NativeEvent", (PyObject*)&NativeEventType) < 0) {
-        Py_DECREF(&NativeEventType);
-        Py_DECREF(module);
-        return;
-    }
-    watchdog_module_add_attributes(module);
-    watchdog_module_init();
-}
-
-#else /* !PY_MAJOR_VERSION < 3 */
-
 static struct PyModuleDef watchdog_fsevents_module = {
     PyModuleDef_HEAD_INIT,
     MODULE_NAME,
@@ -759,5 +687,3 @@ PyInit__watchdog_fsevents(void){
     watchdog_module_init();
     return module;
 }
-
-#endif /* !PY_MAJOR_VERSION < 3 */

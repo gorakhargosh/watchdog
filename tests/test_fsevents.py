@@ -11,12 +11,12 @@ import os
 import time
 from functools import partial
 from os import mkdir, rmdir
+from queue import Queue
 
 from watchdog.observers import Observer
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.fsevents import FSEventsEmitter
 
-from . import Queue
 from .shell import mkdtemp, rm
 
 logging.basicConfig(level=logging.DEBUG)

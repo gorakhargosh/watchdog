@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 # echo.py: Tracing function calls using Python decorators.
 #
 # Written by Thomas Guest <tag@wordaligned.org>

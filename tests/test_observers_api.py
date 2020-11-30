@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +16,7 @@
 # limitations under the License.
 
 import time
+from pathlib import Path
 
 import pytest
 
@@ -31,10 +31,6 @@ from watchdog.observers.api import (
 
 
 def test_observer_constructor():
-    try:
-        from pathlib import Path
-    except ImportError:
-        return
     ObservedWatch(Path('/foobar'), True)
 
 

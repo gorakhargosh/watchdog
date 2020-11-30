@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 # patterns.py: Common wildcard searching/filtering functionality for files.
 #
 # Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
