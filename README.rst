@@ -1,12 +1,20 @@
 Watchdog
 ========
 
-.. image:: https://travis-ci.org/gorakhargosh/watchdog.svg?branch=master
+.. image:: https://travis-ci.org/gorakhargosh/watchdog.svg?branch=python-2.7
     :target: https://travis-ci.org/gorakhargosh/watchdog
 
 Python API and shell utilities to monitor file system events.
 
-Works on Python 2.7 and 3.4+. If you want to use an old version of Python, you should stick with watchdog < 0.10.0.
+    ⚠️ This is a branch where Python 2.7 support is being kept.
+
+    It is in maintenance mode and follows the 0.10.x versioning.
+
+Works on Python 2.7 and 3.4+.
+
+If you want to use an old version of Python, you should stick with watchdog < 0.10.0.
+
+If you want to use a Python 3 only version with up-to-date patches, you should go with watchdog from the master branch.
 
 Example API Usage
 -----------------
