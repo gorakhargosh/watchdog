@@ -263,7 +263,17 @@ WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
         FILE_NOTIFY_CHANGE_CREATION,
     ])
 
-BUFFER_SIZE = 2048
+# ReadDirectoryChangesW buffer length.
+# To handle cases with lot of changes, this seems the highest safest value we can use.
+# Note: it will fail with ERROR_INVALID_PARAMETER when it is greater than 64 KB and
+#       the application is monitoring a directory over the network.
+#       This is due to a packet size limitation with the underlying file sharing protocols.
+#       https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw#remarks
+BUFFER_SIZE = 64000
+
+# Buffer length for path-related stuff.
+# Introduced to keep the old behavior when we bumped BUFFER_SIZE from 2048 to 64000 in v1.0.0.
+PATH_BUFFER_SIZE = 2048
 
 
 def _parse_event_buffer(readBuffer, nBytes):
@@ -286,8 +296,8 @@ def _is_observed_path_deleted(handle, path):
     # Comparison of observed path and actual path, returned by
     # GetFinalPathNameByHandleW. If directory moved to the trash bin, or
     # deleted, actual path will not be equal to observed path.
-    buff = ctypes.create_unicode_buffer(BUFFER_SIZE)
-    GetFinalPathNameByHandleW(handle, buff, BUFFER_SIZE, VOLUME_NAME_NT)
+    buff = ctypes.create_unicode_buffer(PATH_BUFFER_SIZE)
+    GetFinalPathNameByHandleW(handle, buff, PATH_BUFFER_SIZE, VOLUME_NAME_NT)
     return buff.value != path
 
 
@@ -296,7 +306,7 @@ def _generate_observed_path_deleted_event():
     path = ctypes.create_unicode_buffer('.')
     event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
     event_size = ctypes.sizeof(event)
-    buff = ctypes.create_string_buffer(BUFFER_SIZE)
+    buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
     ctypes.memmove(buff, ctypes.addressof(event), event_size)
     return buff, event_size
 
