@@ -20,38 +20,27 @@ jobs:
     - name: Python 3.5 on GNU/Linux
       os: linux
       python: "3.5"
-      env: TOXENV=py35
-    - name: Python 3.6 on GNU/Linux
-      os: linux
-      python: "3.6"
       env:
-        - TOXENV=py36
+        - TOXENV=py35
         # To help catch regression seen in #615
         - LC_ALL=C
-    - name: Python 3.7 on GNU/Linux
-      os: linux
-      python: "3.7"
-      env: TOXENV=py37
-    - name: Python 3.8 on GNU/Linux
-      os: linux
-      python: "3.8"
-      env: TOXENV=py38
-    - name: Python 3.9 on GNU/Linux
-      os: linux
-      python: 3.9-dev
-      env: TOXENV=py39
-    - name: Python 3.10 on GNU/Linux
-      os: linux
-      python: nightly
-      env: TOXENV=py310
+
     - name: PyPy 2.7 on GNU/Linux
       os: linux
       python: "pypy"
       env: TOXENV=pypy
-    - name: PyPy 3.6 on GNU/Linux
-      os: linux
-      python: "pypy3"
-      env: TOXENV=pypy3
+
+    - name: Python 2.7 on macOS
+      os: osx
+      language: shell
+      install:
+        - unset PYENV_ROOT
+        - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+        - export PATH="$HOME/.pyenv/bin:$PATH"
+        - eval "$(pyenv init -)"
+        - pyenv install --skip-existing 2.7.16
+        - pyenv global 2.7.16
+      env: TOXENV=py27
     - name: Python 3.5 on macOS
       os: osx
       language: shell
@@ -63,61 +52,7 @@ jobs:
         - pyenv install --skip-existing 3.5.10
         - pyenv global 3.5.10
       env: TOXENV=py35
-    - name: Python 3.6 on macOS
-      os: osx
-      language: shell
-      install:
-        - unset PYENV_ROOT
-        - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
-        - eval "$(pyenv init -)"
-        - pyenv install --skip-existing 3.6.12
-        - pyenv global system 3.6.12
-      env: TOXENV=py36
-    - name: Python 3.7 on macOS
-      os: osx
-      language: shell
-      install:
-        - unset PYENV_ROOT
-        - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
-        - eval "$(pyenv init -)"
-        - pyenv install --skip-existing 3.7.9
-        - pyenv global system 3.7.9
-      env: TOXENV=py37
-    - name: Python 3.8 on macOS
-      os: osx
-      language: shell
-      install:
-        - unset PYENV_ROOT
-        - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
-        - eval "$(pyenv init -)"
-        - pyenv install --skip-existing 3.8.6
-        - pyenv global system 3.8.6
-      env: TOXENV=py38
-    - name: Python 3.9 on macOS
-      os: osx
-      language: shell
-      install:
-        - unset PYENV_ROOT
-        - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
-        - eval "$(pyenv init -)"
-        - pyenv install --skip-existing 3.9-dev
-        - pyenv global system 3.9-dev
-      env: TOXENV=py39
-    - name: Python 3.10 on macOS
-      os: osx
-      language: shell
-      install:
-        - unset PYENV_ROOT
-        - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - export PATH="$HOME/.pyenv/bin:$PATH"
-        - eval "$(pyenv init -)"
-        - pyenv install --skip-existing 3.10-dev
-        - pyenv global system 3.10-dev
-      env: TOXENV=py310
+
     - name: Python 2.7 on Windows
       os: windows
       language: shell
@@ -134,46 +69,6 @@ jobs:
       env:
         - TOXENV=py35
         - export PATH="/c/Python35:/c/Python35/Scripts:$PATH"
-    - name: Python 3.6 on Windows
-      os: windows
-      language: shell
-      before_install:
-        - choco install python3 --version=3.6.8
-      env:
-        - TOXENV=py36
-        - export PATH="/c/Python36:/c/Python36/Scripts:$PATH"
-    - name: Python 3.7 on Windows
-      os: windows
-      language: shell
-      before_install:
-        -choco install python3 --version=3.7.9
-      env:
-        - TOXENV=py37
-        - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
-    - name: Python 3.8 on Windows
-      os: windows
-      language: shell
-      before_install:
-        - choco install python3 --version=3.8.6
-      env:
-        - TOXENV=py38
-        - export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
-    - name: Python 3.9 on Windows
-      os: windows
-      language: shell
-      before_install:
-        - choco install python3 --version=3.9.0
-      env:
-        - TOXENV=py39
-        - export PATH="/c/Python39:/c/Python39/Scripts:$PATH"
-    - name: Python 3.10 on Windows
-      os: windows
-      language: shell
-      before_install:
-        - choco install python3 --pre
-      env:
-        - TOXENV=py310
-        - export PATH="/c/Python310:/c/Python310/Scripts:$PATH"
 
 before_script:
   - python -m pip install -U pip tox

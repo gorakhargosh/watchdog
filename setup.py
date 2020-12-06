@@ -132,10 +132,6 @@ setup(name="watchdog",
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
-          'Programming Language :: Python :: 3.6',
-          'Programming Language :: Python :: 3.7',
-          'Programming Language :: Python :: 3.8',
-          'Programming Language :: Python :: 3.9',
           'Programming Language :: Python :: Implementation :: PyPy',
           'Programming Language :: C',
           'Topic :: Software Development :: Libraries',
@@ -155,5 +151,6 @@ setup(name="watchdog",
       entry_points={'console_scripts': [
           'watchmedo = watchdog.watchmedo:main [watchmedo]',
       ]},
+      python_requires='>=2.7, <3.6',
       zip_safe=False
 )
