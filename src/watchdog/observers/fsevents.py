@@ -111,7 +111,7 @@ class FSEventsEmitter(EventEmitter):
                         self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
                     # TODO: generate events for tree
 
-                elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod :
+                elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
                     cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
                     self.queue_event(cls(event.path))
 
