@@ -4,7 +4,7 @@
 
 Installation
 ============
-|project_name| requires 3.5+ to work. See a list of :ref:`installation-dependencies`.
+|project_name| requires 3.6+ to work. See a list of :ref:`installation-dependencies`.
 
 Installing from PyPI using pip
 ------------------------------

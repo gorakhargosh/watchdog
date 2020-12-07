@@ -13,10 +13,6 @@ env:
 jobs:
   fast_finish: true
   include:
-    - name: Python 3.5 on GNU/Linux
-      os: linux
-      python: "3.5"
-      env: TOXENV=py35
     - name: Python 3.6 on GNU/Linux
       os: linux
       python: "3.6"
@@ -34,29 +30,18 @@ jobs:
       env: TOXENV=py38
     - name: Python 3.9 on GNU/Linux
       os: linux
-      python: 3.9-dev
+      python: "3.9"
       env: TOXENV=py39
     - name: Python 3.10 on GNU/Linux
       os: linux
       python: nightly
       env: TOXENV=py310
+
     - name: PyPy 3.6 on GNU/Linux
       os: linux
-      python: "pypy3"
+      python: pypy3
       env: TOXENV=pypy3
-    - name: Python 3.5 on macOS
-      os: osx
-      language: shell
-      install:
-        - unset PYENV_ROOT
-        - curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
-        - eval "$(pyenv init -)"
-        - pyenv install --skip-existing 3.5.10
-        - pyenv global 3.5.10
-      env:
-        - TOXENV=py35
-        - PYENV_ROOT="$HOME/.pyenv/versions/3.5.10"
-        - PATH="$PYENV_ROOT/bin:$PATH"
+
     - name: Python 3.6 on macOS
       os: osx
       language: shell
@@ -122,14 +107,7 @@ jobs:
         - TOXENV=py310
         - PYENV_ROOT="$HOME/.pyenv/versions/3.10-dev"
         - PATH="$PYENV_ROOT/bin:$PATH"
-    - name: Python 3.5 on Windows
-      os: windows
-      language: shell
-      before_install:
-        - choco install python3 --version=3.5.4
-      env:
-        - TOXENV=py35
-        - export PATH="/c/Python35:/c/Python35/Scripts:$PATH"
+
     - name: Python 3.6 on Windows
       os: windows
       language: shell

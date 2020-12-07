@@ -9,7 +9,7 @@ Changelog
 2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...master>`__
 
 - Versioning is now following `semver <https://semver.org/>`_
-- Drop support for Python 2.7 and 3.4
+- Drop support for Python 2.7, 3.4 and 3.5
 - Allow file paths on Unix that don't follow the file system encoding (`#703 <https://github.com/gorakhargosh/watchdog/pull/703>`_)
 - Use ``pathlib`` from the standard library, instead of pathtools (`#556 <https://github.com/gorakhargosh/watchdog/pull/556>`_)
 - Removed the long-time deprecated ``events.LoggingFileSystemEventHandler`` class, use ``LoggingEventHandler`` instead
