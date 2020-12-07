@@ -357,6 +357,48 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     PyGILState_Release(gil_state);
 }
 
+/**
+ * Converts a Python string object to an UTF-8 encoded ``CFStringRef``.
+ *
+ * :param py_string:
+ *      A Python unicode or utf-8 encoded bytestring object.
+ * :returns:
+ *      A new ``CFStringRef`` with the contents of ``py_string``, or ``NULL`` if an error occurred.
+ */
+CFStringRef PyString_AsUTF8EncodedCFStringRef(PyObject *py_string)
+{
+    CFStringRef cf_string = NULL;
+    const char *c_string = NULL;
+    PyObject *helper = NULL;
+
+    if (PyUnicode_Check(py_string)) {
+        helper = PyUnicode_AsUTF8String(py_string);
+    } else if (PyBytes_Check(py_string)) {
+        PyObject *utf8 = PyUnicode_FromEncodedObject(py_string, NULL, "strict");
+        if (!utf8) {
+            return NULL;
+        }
+        Py_DECREF(utf8);
+        helper = PyObject_Bytes(py_string);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Path to watch must be a string or a UTF-8 encoded bytes object.");
+        return NULL;
+    }
+
+    if (!helper)
+      return NULL;
+
+    c_string = PyBytes_AsString(helper);
+    if (c_string) {
+        cf_string = CFStringCreateWithCString(kCFAllocatorDefault, c_string,kCFStringEncodingUTF8);
+        Py_DECREF(c_string);
+    }
+
+    Py_XDECREF(helper);
+
+    return cf_string;
+}
+
 
 /**
  * Converts a list of Python strings to a ``CFMutableArray`` of
@@ -375,7 +417,6 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
 {
     Py_ssize_t i = 0;
     Py_ssize_t string_list_size = 0;
-    const char *c_string = NULL;
     CFMutableArrayRef array_of_cf_string = NULL;
     CFStringRef cf_string = NULL;
     PyObject *py_string = NULL;
@@ -395,18 +436,10 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
     {
         py_string = PyList_GetItem(py_string_list, i);
         G_RETURN_NULL_IF_NULL(py_string);
-#if PY_MAJOR_VERSION >= 3
-        if (PyUnicode_Check(py_string)) {
-          c_string = PyUnicode_AsUTF8(py_string);
-        } else {
-          c_string = PyBytes_AS_STRING(py_string);
-        }
-#else
-        c_string = PyString_AS_STRING(py_string);
-#endif
-        cf_string = CFStringCreateWithCString(kCFAllocatorDefault,
-                                              c_string,
-                                              kCFStringEncodingUTF8);
+
+        cf_string = PyString_AsUTF8EncodedCFStringRef(py_string);
+        G_RETURN_NULL_IF_NULL(cf_string);
+
         CFArraySetValueAtIndex(array_of_cf_string, i, cf_string);
         CFRelease(cf_string);
     }
