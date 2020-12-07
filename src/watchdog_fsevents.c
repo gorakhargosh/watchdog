@@ -243,9 +243,8 @@ PyObject *watch_to_stream = NULL;
 
 
 /**
- * PyCapsule destructor for Python 3 compatibility
+ * PyCapsule destructor
  */
-#if PY_MAJOR_VERSION >= 3
 static void watchdog_pycapsule_destructor(PyObject *ptr)
 {
     void *p = PyCapsule_GetPointer(ptr, NULL);
@@ -253,7 +252,6 @@ static void watchdog_pycapsule_destructor(PyObject *ptr)
         PyMem_Free(p);
     }
 }
-#endif
 
 
 /**
@@ -515,11 +513,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref,
                                               paths_to_watch,
                                               (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
-#if PY_MAJOR_VERSION >= 3
     value = PyCapsule_New(stream_ref, NULL, watchdog_pycapsule_destructor);
-#else
-    value = PyCObject_FromVoidPtr(stream_ref, PyMem_Free);
-#endif
     PyDict_SetItem(watch_to_stream, watch, value);
 
     /* Get a reference to the runloop for the emitter thread
@@ -531,11 +525,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     }
     else
     {
-#if PY_MAJOR_VERSION >= 3
         run_loop_ref = PyCapsule_GetPointer(value, NULL);
-#else
-        run_loop_ref = PyCObject_AsVoidPtr(value);
-#endif
     }
 
     /* Schedule the stream with the obtained runloop. */
@@ -586,11 +576,7 @@ watchdog_read_events(PyObject *self, PyObject *args)
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
-#if PY_MAJOR_VERSION >= 3
         value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
-#else
-        value = PyCObject_FromVoidPtr(run_loop_ref, PyMem_Free);
-#endif
         PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
         Py_INCREF(emitter_thread);
         Py_INCREF(value);
@@ -626,11 +612,7 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
     PyObject *value = PyDict_GetItem(watch_to_stream, watch);
     PyDict_DelItem(watch_to_stream, watch);
 
-#if PY_MAJOR_VERSION >= 3
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
-#else
-    FSEventStreamRef stream_ref = PyCObject_AsVoidPtr(value);
-#endif
 
     FSEventStreamStop(stream_ref);
     FSEventStreamInvalidate(stream_ref);
@@ -654,11 +636,7 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
       goto success;
     }
 
-#if PY_MAJOR_VERSION >= 3
     CFRunLoopRef run_loop_ref = PyCapsule_GetPointer(value, NULL);
-#else
-    CFRunLoopRef run_loop_ref = PyCObject_AsVoidPtr(value);
-#endif
     G_RETURN_NULL_IF(PyErr_Occurred());
 
     /* Stop the run loop. */
