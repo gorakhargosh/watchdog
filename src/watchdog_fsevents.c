@@ -149,11 +149,29 @@ PyObject* NativeEventTypeID(PyObject* instance, void* closure)
         Py_RETURN_FALSE; \
     }
 
+FLAG_PROPERTY(IsMustScanSubDirs, kFSEventStreamEventFlagMustScanSubDirs)
+FLAG_PROPERTY(IsUserDropped, kFSEventStreamEventFlagUserDropped)
+FLAG_PROPERTY(IsKernelDropped, kFSEventStreamEventFlagKernelDropped)
+FLAG_PROPERTY(IsEventIdsWrapped, kFSEventStreamEventFlagEventIdsWrapped)
+FLAG_PROPERTY(IsHistoryDone, kFSEventStreamEventFlagHistoryDone)
+FLAG_PROPERTY(IsRootChanged, kFSEventStreamEventFlagRootChanged)
+FLAG_PROPERTY(IsMount, kFSEventStreamEventFlagMount)
+FLAG_PROPERTY(IsUnmount, kFSEventStreamEventFlagUnmount)
 FLAG_PROPERTY(IsCreated, kFSEventStreamEventFlagItemCreated)
 FLAG_PROPERTY(IsRemoved, kFSEventStreamEventFlagItemRemoved)
+FLAG_PROPERTY(IsInodeMetaMod, kFSEventStreamEventFlagItemInodeMetaMod)
 FLAG_PROPERTY(IsRenamed, kFSEventStreamEventFlagItemRenamed)
 FLAG_PROPERTY(IsModified, kFSEventStreamEventFlagItemModified)
+FLAG_PROPERTY(IsItemFinderInfoMod, kFSEventStreamEventFlagItemFinderInfoMod)
+FLAG_PROPERTY(IsChangeOwner, kFSEventStreamEventFlagItemChangeOwner)
+FLAG_PROPERTY(IsXattrMod, kFSEventStreamEventFlagItemXattrMod)
+FLAG_PROPERTY(IsFile, kFSEventStreamEventFlagItemIsFile)
 FLAG_PROPERTY(IsDirectory, kFSEventStreamEventFlagItemIsDir)
+FLAG_PROPERTY(IsSymlink, kFSEventStreamEventFlagItemIsSymlink)
+FLAG_PROPERTY(IsOwnEvent, kFSEventStreamEventFlagOwnEvent)
+FLAG_PROPERTY(IsHardlink, kFSEventStreamEventFlagItemIsHardlink)
+FLAG_PROPERTY(IsLastHardlink, kFSEventStreamEventFlagItemIsLastHardlink)
+FLAG_PROPERTY(IsCloned, kFSEventStreamEventFlagItemCloned)
 
 static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kwds)
 {
@@ -171,11 +189,29 @@ static PyGetSetDef NativeEventProperties[] = {
     {"flags", NativeEventTypeFlags, NULL, "The raw mask of flags as returend by FSEvents", NULL},
     {"path", NativeEventTypePath, NULL, "The path for which this event was generated", NULL},
     {"id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
+    {"must_scan_subdirs", NativeEventTypeIsMustScanSubDirs, NULL, "True if application must rescan all subdirectories", NULL},
+    {"is_user_dropped", NativeEventTypeIsUserDropped, NULL, "True if a failure during event buffering occured", NULL},
+    {"is_kernel_dropped", NativeEventTypeIsKernelDropped, NULL, "True if a failure during event buffering occured", NULL},
+    {"is_event_ids_wrapped", NativeEventTypeIsEventIdsWrapped, NULL, "True if event_id wrapped around", NULL},
+    {"is_history_done", NativeEventTypeIsHistoryDone, NULL, "True if all historical events are done", NULL},
+    {"is_root_changed", NativeEventTypeIsRootChanged, NULL, "True if a change to one of the directories along the path to one of the directories you watch occurred", NULL},
+    {"is_mount", NativeEventTypeIsMount, NULL, "True if a volume is mounted underneath one of the paths being monitored", NULL},
+    {"is_unmount", NativeEventTypeIsUnmount, NULL, "True if a volume is unmounted underneath one of the paths being monitored", NULL},
     {"is_created", NativeEventTypeIsCreated, NULL, "True if self.path was created on the filesystem", NULL},
     {"is_removed", NativeEventTypeIsRemoved, NULL, "True if self.path was removed from the filesystem", NULL},
+    {"is_inode_meta_mod", NativeEventTypeIsInodeMetaMod, NULL, "True if meta data for self.path was modified ", NULL},
     {"is_renamed", NativeEventTypeIsRenamed, NULL, "True if self.path was renamed on the filesystem", NULL},
     {"is_modified", NativeEventTypeIsModified, NULL, "True if self.path was modified", NULL},
+    {"is_item_finder_info_modified", NativeEventTypeIsItemFinderInfoMod, NULL, "True if FinderInfo for self.path was modified", NULL},
+    {"is_owner_change", NativeEventTypeIsChangeOwner, NULL, "True if self.path had its ownership changed", NULL},
+    {"is_xattr_mod", NativeEventTypeIsXattrMod, NULL, "True if extended attributes for self.path were modified ", NULL},
+    {"is_file", NativeEventTypeIsFile, NULL, "True if self.path is a file", NULL},
     {"is_directory", NativeEventTypeIsDirectory, NULL, "True if self.path is a directory", NULL},
+    {"is_symlink", NativeEventTypeIsSymlink, NULL, "True if self.path is a symbolic link", NULL},
+    {"is_own_event", NativeEventTypeIsOwnEvent, NULL, "True if the event originated from our own process", NULL},
+    {"is_hardlink", NativeEventTypeIsHardlink, NULL, "True if self.path is a hard link", NULL},
+    {"is_last_hardlink", NativeEventTypeIsLastHardlink, NULL, "True if self.path was the last hard link", NULL},
+    {"is_cloned", NativeEventTypeIsCloned, NULL, "True if self.path is a clone or was cloned", NULL},
     {NULL, NULL, NULL, NULL, NULL},
 };
 
