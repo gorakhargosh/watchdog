@@ -313,7 +313,7 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     }
     for (i = 0; i < num_events; ++i)
     {
-        id = PyLong_FromLongLong(event_flags[i]);
+        id = PyLong_FromLongLong(event_ids[i]);
 #if PY_MAJOR_VERSION >= 3
         path = PyUnicode_FromString(event_paths[i]);
         flags = PyLong_FromLong(event_flags[i]);
