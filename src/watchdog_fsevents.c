@@ -306,9 +306,9 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     py_event_ids = PyList_New(num_events);
     if (G_NOT(py_event_paths && py_event_flags && py_event_ids))
     {
-        Py_DECREF(py_event_paths);
-        Py_DECREF(py_event_ids);
-        Py_DECREF(py_event_flags);
+        Py_XDECREF(py_event_paths);
+        Py_XDECREF(py_event_ids);
+        Py_XDECREF(py_event_flags);
         return /*NULL*/;
     }
     for (i = 0; i < num_events; ++i)
@@ -368,33 +368,25 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
 CFStringRef PyString_AsUTF8EncodedCFStringRef(PyObject *py_string)
 {
     CFStringRef cf_string = NULL;
-    const char *c_string = NULL;
-    PyObject *helper = NULL;
 
     if (PyUnicode_Check(py_string)) {
-        helper = PyUnicode_AsUTF8String(py_string);
+        PyObject* helper = PyUnicode_AsUTF8String(py_string);
+        if (!helper) {
+            return NULL;
+        }
+        cf_string = CFStringCreateWithCString(kCFAllocatorDefault, PyBytes_AS_STRING(helper), kCFStringEncodingUTF8);
+        Py_DECREF(helper);
     } else if (PyBytes_Check(py_string)) {
         PyObject *utf8 = PyUnicode_FromEncodedObject(py_string, NULL, "strict");
         if (!utf8) {
             return NULL;
         }
         Py_DECREF(utf8);
-        helper = PyObject_Bytes(py_string);
+        cf_string = CFStringCreateWithCString(kCFAllocatorDefault, PyBytes_AS_STRING(py_string), kCFStringEncodingUTF8);
     } else {
         PyErr_SetString(PyExc_TypeError, "Path to watch must be a string or a UTF-8 encoded bytes object.");
         return NULL;
     }
-
-    if (!helper)
-      return NULL;
-
-    c_string = PyBytes_AsString(helper);
-    if (c_string) {
-        cf_string = CFStringCreateWithCString(kCFAllocatorDefault, c_string,kCFStringEncodingUTF8);
-        Py_DECREF(c_string);
-    }
-
-    Py_XDECREF(helper);
 
     return cf_string;
 }
@@ -546,7 +538,18 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref,
                                               paths_to_watch,
                                               (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
+    if (!stream_ref) {
+        PyMem_Del(stream_callback_info_ref);
+        PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream");
+        return NULL;
+    }
     value = PyCapsule_New(stream_ref, NULL, watchdog_pycapsule_destructor);
+    if (!value || !PyCapsule_IsValid(value, NULL)) {
+        PyMem_Del(stream_callback_info_ref);
+        FSEventStreamInvalidate(stream_ref);
+        FSEventStreamRelease(stream_ref);
+        return NULL;
+    }
     PyDict_SetItem(watch_to_stream, watch, value);
 
     /* Get a reference to the runloop for the emitter thread
