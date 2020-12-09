@@ -8,8 +8,8 @@ Changelog
 
 2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...master>`__
 
--  (`# <https://github.com/gorakhargosh/watchdog/pull/>`_)
-- Thanks to our beloved contributors: @
+- [mac] Regression fixes for native `fsevents`` (`#716 <https://github.com/gorakhargosh/watchdog/pull/716>`_)
+- Thanks to our beloved contributors: @CCP-Aporia
 
 
 0.10.4
