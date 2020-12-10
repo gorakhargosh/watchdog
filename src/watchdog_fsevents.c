@@ -174,7 +174,7 @@ static PyGetSetDef NativeEventProperties[] = {
     {"_event_type", NativeEventTypeString, NULL, "Textual representation of the native event that occurred", NULL},
     {"flags", NativeEventTypeFlags, NULL, "The raw mask of flags as returend by FSEvents", NULL},
     {"path", NativeEventTypePath, NULL, "The path for which this event was generated", NULL},
-    {"id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
+    {"event_id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
     {"must_scan_subdirs", NativeEventTypeIsMustScanSubDirs, NULL, "True if application must rescan all subdirectories", NULL},
     {"is_user_dropped", NativeEventTypeIsUserDropped, NULL, "True if a failure during event buffering occured", NULL},
     {"is_kernel_dropped", NativeEventTypeIsKernelDropped, NULL, "True if a failure during event buffering occured", NULL},
