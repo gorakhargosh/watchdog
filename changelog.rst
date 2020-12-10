@@ -6,9 +6,7 @@ Changelog
 1.0.1
 ~~~~~
 
-202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.0...master>`__
-
-- Thanks to our beloved contributors:
+2020-12-10 • Fix version with good metadatas.
 
 
 1.0.0
