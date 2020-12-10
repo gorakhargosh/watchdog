@@ -8,7 +8,8 @@ Changelog
 
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.0...master>`__
 
-- Thanks to our beloved contributors:
+- [mac] Fix missing ``event_id`` attribute in ``fsevents`` (`#721 <https://github.com/gorakhargosh/watchdog/pull/721>`_)
+- Thanks to our beloved contributors: @SamSchott
 
 
 1.0.0
