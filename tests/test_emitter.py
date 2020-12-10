@@ -41,7 +41,6 @@ if platform.is_linux():
         InotifyFullEmitter,
     )
 elif platform.is_darwin():
-    pytestmark = pytest.mark.skip("FIXME: issue #546.")
     from watchdog.observers.fsevents import FSEventsEmitter as Emitter
 elif platform.is_windows():
     from watchdog.observers.read_directory_changes import (
@@ -77,11 +76,16 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
     else:
         emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive))
 
+    emitter.start()
+
     if platform.is_darwin():
         # FSEvents will report old events (like create for mkdtemp in test
         # setup. Waiting for a considerable time seems to 'flush' the events.
-        time.sleep(10)
-    emitter.start()
+
+        emitter.join(10)
+        while not event_queue.empty():
+            event_queue.get()
+            emitter.join(1)
 
 
 def rerun_filter(exc, *args):
@@ -352,7 +356,7 @@ def test_recursive_on():
         assert event.src_path == p('dir1', 'dir2', 'dir3')
         assert isinstance(event, DirModifiedEvent)
 
-        if not platform.is_bsd():
+        if platform.is_linux():
             event = event_queue.get(timeout=5)[0]
             assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
             assert isinstance(event, FileModifiedEvent)
