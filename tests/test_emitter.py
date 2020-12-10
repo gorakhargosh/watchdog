@@ -17,6 +17,7 @@
 import os
 import time
 import pytest
+import pdb
 import logging
 from functools import partial
 from queue import Queue, Empty
@@ -120,11 +121,6 @@ def test_create_wrong_encoding():
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a_\udce4')
     assert isinstance(event, FileCreatedEvent)
-
-    if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
-        assert isinstance(event, DirModifiedEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
