@@ -13,11 +13,12 @@ from functools import partial
 from os import mkdir, rmdir
 from queue import Queue
 
+from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.fsevents import FSEventsEmitter
 
-from .shell import mkdtemp, rm
+from .shell import mkdtemp, rm, touch
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -96,7 +97,49 @@ E       SystemError: <built-in function stop> returned a result with an error se
     """
     a = p("a")
     mkdir(a)
-    w = observer.schedule(event_queue, a, recursive=False)
+    w = observer.schedule(FileSystemEventHandler(), a, recursive=False)
     rmdir(a)
     time.sleep(0.1)
     observer.unschedule(w)
+
+
+def test_watchdog_recursive():
+    """ See https://github.com/gorakhargosh/watchdog/issues/706
+    """
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    import os.path
+
+    class Handler(FileSystemEventHandler):
+        def __init__(self):
+            FileSystemEventHandler.__init__(self)
+            self.changes = []
+
+        def on_any_event(self, event):
+            self.changes.append(os.path.basename(event.src_path))
+
+    handler = Handler()
+    observer = Observer()
+
+    watches = []
+    watches.append(observer.schedule(handler, str(p('')), recursive=True))
+
+    try:
+        observer.start()
+        time.sleep(0.1)
+
+        touch(p('my0.txt'))
+        mkdir(p('dir_rec'))
+        touch(p('dir_rec', 'my1.txt'))
+
+        expected = {"dir_rec", "my0.txt", "my1.txt"}
+        timeout_at = time.time() + 5
+        while not expected.issubset(handler.changes) and time.time() < timeout_at:
+            time.sleep(0.2)
+
+        assert expected.issubset(handler.changes), "Did not find expected changes. Found: {}".format(handler.changes)
+    finally:
+        for watch in watches:
+            observer.unschedule(watch)
+        observer.stop()
+        observer.join(1)
