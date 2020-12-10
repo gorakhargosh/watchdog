@@ -286,7 +286,7 @@ def test_delete_self():
     if platform.is_darwin():
         event = event_queue.get(timeout=5)[0]
         assert event.src_path == p('dir1')
-        assert isinstance(event, FileDeletedEvent)
+        assert isinstance(event, DirDeletedEvent)
 
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
