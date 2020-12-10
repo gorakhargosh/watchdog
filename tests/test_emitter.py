@@ -83,10 +83,10 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
         # FSEvents will report old events (like create for mkdtemp in test
         # setup. Waiting for a considerable time seems to 'flush' the events.
 
-        emitter.join(10)
+        time.sleep(15)
         while not event_queue.empty():
             event_queue.get()
-            emitter.join(1)
+            time.sleep(2)
 
 
 def rerun_filter(exc, *args):
