@@ -400,9 +400,12 @@ def test_renaming_top_level_directory():
     assert isinstance(event, DirModifiedEvent)
     assert event.src_path == p()
 
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirMovedEvent)
-    assert event.src_path == p('a', 'b')
+    if not platform.is_darwin():
+        # recursive rename events are currently not generated, see TODOs
+        event = event_queue.get(timeout=5)[0]
+        assert isinstance(event, DirMovedEvent)
+        assert event.src_path == p('a', 'b')
+        assert event.dest_path == p('a2', 'b')
 
     if platform.is_bsd():
         event = event_queue.get(timeout=5)[0]
@@ -502,13 +505,15 @@ def test_move_nested_subdirectories():
     assert p(event.src_path, '') == p('')
     assert isinstance(event, DirModifiedEvent)
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1/dir2/dir3')
-    assert isinstance(event, DirMovedEvent)
+    if not platform.is_darwin():
+        # recursive rename events are currently not generated, see TODOs
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir1/dir2/dir3')
+        assert isinstance(event, DirMovedEvent)
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1/dir2/dir3', 'a')
-    assert isinstance(event, FileMovedEvent)
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir1/dir2/dir3', 'a')
+        assert isinstance(event, FileMovedEvent)
 
     if platform.is_bsd():
         event = event_queue.get(timeout=5)[0]
