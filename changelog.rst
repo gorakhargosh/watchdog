@@ -3,10 +3,18 @@
 Changelog
 ---------
 
+0.10.6
+~~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.5...python-2.7>`__
+
+- Thanks to our beloved contributors:
+
+
 0.10.5
 ~~~~~~
 
-2021-12-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...v0.10.5>`__
+2020-12-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...v0.10.5>`__
 
 - [mac] Regression fixes for native ``fsevents`` (`#716 <https://github.com/gorakhargosh/watchdog/pull/716>`_)
 - Thanks to our beloved contributors: @CCP-Aporia, @BoboTiG
