@@ -359,6 +359,7 @@ def test_recursive_on():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(platform.is_darwin(), reason="macOS watches are always recursive")
 def test_recursive_off():
     mkdir(p('dir1'))
     start_watching(recursive=False)
