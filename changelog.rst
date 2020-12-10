@@ -3,10 +3,18 @@
 Changelog
 ---------
 
+1.0.1
+~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.0...master>`__
+
+- Thanks to our beloved contributors:
+
+
 1.0.0
 ~~~~~
 
-2021-12-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...v1.0.0>`__
+2020-12-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...v1.0.0>`__
 
 - Versioning is now following the `semver <https://semver.org/>`_
 - Drop support for Python 2.7, 3.4 and 3.5
