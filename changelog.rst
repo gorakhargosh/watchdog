@@ -6,9 +6,7 @@ Changelog
 0.10.6
 ~~~~~~
 
-202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.5...python-2.7>`__
-
-- Thanks to our beloved contributors:
+2020-12-10 • Fix version with good metadatas.
 
 
 0.10.5
