@@ -86,13 +86,15 @@ class FSEventsEmitter(EventEmitter):
                 # precedence.
                 if event.is_renamed:
                     # Internal moves appears to always be consecutive in the same
-                    # buffer and have IDs differ by exactly one (while others
-                    # don't) making it possible to pair up the two events coming
-                    # from a singe move operation. (None of this is documented!)
+                    # buffer and have equal IDs (macOS Bug Sur) or IDs that differ by
+                    # exactly one (while others don't) making it possible to pair up the
+                    # two events coming from a singe move operation. (None of this is
+                    # documented!)
                     # Otherwise, guess whether file was moved in or out.
                     # TODO: handle id wrapping
                     if (i + 1 < len(events) and events[i + 1].is_renamed
-                            and events[i + 1].event_id == event.event_id + 1):
+                            and (events[i + 1].event_id == event.event_id + 1
+                                 or events[i + 1].event_id == event.event_id)):
                         cls = DirMovedEvent if event.is_directory else FileMovedEvent
                         self.queue_event(cls(event.path, events[i + 1].path))
                         self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
