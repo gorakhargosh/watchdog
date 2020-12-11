@@ -291,6 +291,19 @@ def test_delete_self():
     assert not emitter.is_alive()
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_move_self():
+    mkdir(p('dir1'))
+    start_watching(p('dir1'))
+    mv(p('dir1'), p('dir2'))
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1')
+    # TODO: check DirMovedEvent or DirDeletedEvent
+
+    emitter.join(timeout=1)
+    assert not emitter.is_alive()
+
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
                     reason="Windows|BSD create another set of events for this test")
