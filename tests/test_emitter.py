@@ -17,7 +17,6 @@
 import os
 import time
 import pytest
-import pdb
 import logging
 from functools import partial
 from queue import Queue, Empty
