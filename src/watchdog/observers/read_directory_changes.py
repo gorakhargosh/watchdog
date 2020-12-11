@@ -22,6 +22,7 @@ import time
 
 from watchdog.events import (
     DirCreatedEvent,
+    DirDeletedEvent,
     DirMovedEvent,
     DirModifiedEvent,
     FileCreatedEvent,
@@ -121,6 +122,7 @@ class WindowsApiEmitter(EventEmitter):
                 elif winapi_event.is_removed:
                     self.queue_event(FileDeletedEvent(src_path))
                 elif winapi_event.is_removed_self:
+                    self.queue_event(DirDeletedEvent(self.watch.path))
                     self.stop()
 
 
