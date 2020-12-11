@@ -80,6 +80,7 @@ class FSEventsEmitter(EventEmitter):
             i = 0
             while i < len(events):
                 event = events[i]
+                src_path = self._encode_path(event.path)
 
                 # For some reason the create and remove flags are sometimes also
                 # set for rename and modify type events, so let those take
@@ -94,33 +95,34 @@ class FSEventsEmitter(EventEmitter):
                     if (i + 1 < len(events) and events[i + 1].is_renamed
                             and events[i + 1].event_id == event.event_id + 1):
                         cls = DirMovedEvent if event.is_directory else FileMovedEvent
-                        self.queue_event(cls(event.path, events[i + 1].path))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(events[i + 1].path)))
+                        dst_path = self._encode_path(events[i + 1].path)
+                        self.queue_event(cls(src_path, dst_path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
                         i += 1
                     elif os.path.exists(event.path):
                         cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
-                        self.queue_event(cls(event.path))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                        self.queue_event(cls(src_path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     else:
                         cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
-                        self.queue_event(cls(event.path))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                        self.queue_event(cls(src_path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     # TODO: generate events for tree
 
-                elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod :
+                elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
                     cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
-                    self.queue_event(cls(event.path))
+                    self.queue_event(cls(src_path))
 
                 elif event.is_created:
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
-                    self.queue_event(cls(event.path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
 
                 elif event.is_removed:
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
-                    self.queue_event(cls(event.path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 i += 1
 
     def run(self):
@@ -161,6 +163,12 @@ class FSEventsEmitter(EventEmitter):
             _fsevents.read_events(self)
         except Exception:
             pass
+
+    def _encode_path(self, path):
+        """Encode path only if bytes were passed to this emitter. """
+        if isinstance(self.watch.path, bytes):
+            return os.fsencode(path)
+        return path
 
 
 class FSEventsObserver(BaseObserver):
