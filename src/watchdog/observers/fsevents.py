@@ -133,7 +133,6 @@ class FSEventsEmitter(EventEmitter):
                     # This will be set if root or any if its parents is renamed or
                     # deleted.
                     # TODO: find out new path and generate DirMovedEvent?
-                    # self.queue_event(DirDeletedEvent(self.watch.path))
                     self.queue_event(DirDeletedEvent(self.watch.path))
                     self.stop()
 
