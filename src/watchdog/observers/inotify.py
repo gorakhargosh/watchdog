@@ -170,6 +170,9 @@ class InotifyEmitter(EventEmitter):
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+            elif event.is_delete_self:
+                self.queue_event(DirDeletedEvent(self.watch.path))
+                self.stop()
 
     def _decode_path(self, path):
         """Decode path only if unicode string was passed to this emitter. """
