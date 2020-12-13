@@ -20,10 +20,24 @@
 
 
 #include <Python.h>
+#include <Availability.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 #include <stdlib.h>
 #include <signal.h>
+
+
+/* Compatibility; since fsevents won't set these on earlier macOS versions the properties will always be False */
+#if MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_9
+#define kFSEventStreamEventFlagOwnEvent 0x00080000
+#endif
+#if MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_10
+#define kFSEventStreamEventFlagItemIsHardlink 0x00100000
+#define kFSEventStreamEventFlagItemIsLastHardlink 0x00200000
+#endif
+#if MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_13
+#define kFSEventStreamEventFlagItemCloned 0x00400000
+#endif
 
 
 /* Convenience macros to make code more readable. */
