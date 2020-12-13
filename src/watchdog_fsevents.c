@@ -124,6 +124,26 @@ PyObject* NativeEventTypeID(PyObject* instance, void* closure)
     return PyLong_FromLong(self->id);
 }
 
+PyObject* NativeEventTypeIsCoalesced(PyObject* instance, void* closure)
+{
+    UNUSED(closure);
+    NativeEventObject *self = (NativeEventObject*)instance;
+
+    // if any of these bitmasks match then we have a coalesced event and need to do sys calls to figure out what happened
+    FSEventStreamEventFlags coalesced_masks[] = {
+        kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved,
+        kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRenamed,
+        kFSEventStreamEventFlagItemRemoved | kFSEventStreamEventFlagItemRenamed,
+    };
+    for (size_t i = 0; i < sizeof(coalesced_masks) / sizeof(FSEventStreamEventFlags); ++i) {
+        if ((self->flags & coalesced_masks[i]) == coalesced_masks[i]) {
+            Py_RETURN_TRUE;
+        }
+    }
+
+    Py_RETURN_FALSE;
+}
+
 #define FLAG_PROPERTY(suffix, flag) \
     PyObject* NativeEventType##suffix(PyObject* instance, void* closure) \
     { \
@@ -175,6 +195,7 @@ static PyGetSetDef NativeEventProperties[] = {
     {"flags", NativeEventTypeFlags, NULL, "The raw mask of flags as returend by FSEvents", NULL},
     {"path", NativeEventTypePath, NULL, "The path for which this event was generated", NULL},
     {"event_id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
+    {"is_coalesced", NativeEventTypeIsCoalesced, NULL, "True if multiple ambiguous changes to the monitored path happened", NULL},
     {"must_scan_subdirs", NativeEventTypeIsMustScanSubDirs, NULL, "True if application must rescan all subdirectories", NULL},
     {"is_user_dropped", NativeEventTypeIsUserDropped, NULL, "True if a failure during event buffering occured", NULL},
     {"is_kernel_dropped", NativeEventTypeIsKernelDropped, NULL, "True if a failure during event buffering occured", NULL},
