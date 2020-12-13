@@ -64,7 +64,11 @@ def setup_teardown(tmpdir):
 
     yield
 
-    emitter.stop()
+    try:
+        emitter.stop()
+    except OSError:
+        # watch was already stopped, e.g., in `test_delete_self`
+        pass
     emitter.join(5)
     assert not emitter.is_alive()
 
