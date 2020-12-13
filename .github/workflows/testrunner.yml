@@ -10,6 +10,10 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         python-version: [2.7, 3.5, pypy2]
+        exclude:
+          # the pypy2 on Windows tests appear to hang, so let's disable it until we can figure out why
+          - os: windows-latest
+            python-version: pypy2
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{matrix.python-version}}
