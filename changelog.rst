@@ -9,7 +9,8 @@ Changelog
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.1...master>`__
 
 - [mac] Fix missing ``event_id`` attribute in ``fsevents`` (`#721 <https://github.com/gorakhargosh/watchdog/pull/721>`_)
-- Thanks to our beloved contributors: @SamSchott
+- [mac] Add compatibility with old macOS versions (`#733` <https://github.com/gorakhargosh/watchdog/pull/733>`_)
+- Thanks to our beloved contributors: @SamSchott, @CCP-Aporia
 
 
 1.0.1
