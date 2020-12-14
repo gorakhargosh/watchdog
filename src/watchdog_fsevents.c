@@ -113,20 +113,15 @@ typedef struct {
     FSEventStreamEventId id;
 } NativeEventObject;
 
-PyObject* NativeEventTypeString(PyObject* instance, void* closure)
-{
-    UNUSED(closure);
+PyObject* NativeEventRepr(PyObject* instance) {
     NativeEventObject *self = (NativeEventObject*)instance;
-    if (self->flags & kFSEventStreamEventFlagItemCreated)
-        return PyUnicode_FromString("Created");
-    if (self->flags & kFSEventStreamEventFlagItemRemoved)
-        return PyUnicode_FromString("Removed");
-    if (self->flags & kFSEventStreamEventFlagItemRenamed)
-        return PyUnicode_FromString("Renamed");
-    if (self->flags & kFSEventStreamEventFlagItemModified)
-        return PyUnicode_FromString("Modified");
 
-    return PyUnicode_FromString("Unknown");
+    return PyUnicode_FromFormat(
+        "NativeEvent(path=\"%s\", flags=%x, id=%llu)",
+        self->path,
+        self->flags,
+        self->id
+    );
 }
 
 PyObject* NativeEventTypeFlags(PyObject* instance, void* closure)
@@ -217,7 +212,6 @@ static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kw
 }
 
 static PyGetSetDef NativeEventProperties[] = {
-    {"_event_type", NativeEventTypeString, NULL, "Textual representation of the native event that occurred", NULL},
     {"flags", NativeEventTypeFlags, NULL, "The raw mask of flags as returend by FSEvents", NULL},
     {"path", NativeEventTypePath, NULL, "The path for which this event was generated", NULL},
     {"event_id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
@@ -259,6 +253,7 @@ static PyTypeObject NativeEventType = {
     .tp_new = PyType_GenericNew,
     .tp_getset = NativeEventProperties,
     .tp_init = (initproc) NativeEventInit,
+    .tp_repr = (reprfunc) NativeEventRepr,
 };
 
 
