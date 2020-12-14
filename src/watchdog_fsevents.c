@@ -20,10 +20,36 @@
 
 
 #include <Python.h>
+#include <Availability.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 #include <stdlib.h>
 #include <signal.h>
+
+
+/* Compatibility; since fsevents won't set these on earlier macOS versions the properties will always be False */
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_7
+#error Watchdog module requires at least Mac OS X 10.7
+#endif
+#ifndef MAC_OS_X_VERSION_10_9
+#define MAC_OS_X_VERSION_10_9         1090
+#endif
+#ifndef MAC_OS_X_VERSION_10_10
+#define MAC_OS_X_VERSION_10_10      101000
+#endif
+#ifndef MAC_OS_X_VERSION_10_13
+#define MAC_OS_X_VERSION_10_13      101300
+#endif
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_9
+#define kFSEventStreamEventFlagOwnEvent 0x00080000
+#endif
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_10
+#define kFSEventStreamEventFlagItemIsHardlink 0x00100000
+#define kFSEventStreamEventFlagItemIsLastHardlink 0x00200000
+#endif
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
+#define kFSEventStreamEventFlagItemCloned 0x00400000
+#endif
 
 
 /* Convenience macros to make code more readable. */
