@@ -123,6 +123,19 @@ class FSEventsEmitter(EventEmitter):
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+
+                    if src_path == self.watch.path:
+                        # this should not really occur, instead we expect
+                        # is_root_changed to be set
+                        self.stop()
+
+                elif event.is_root_changed:
+                    # This will be set if root or any if its parents is renamed or
+                    # deleted.
+                    # TODO: find out new path and generate DirMovedEvent?
+                    self.queue_event(DirDeletedEvent(self.watch.path))
+                    self.stop()
+
                 i += 1
 
     def run(self):

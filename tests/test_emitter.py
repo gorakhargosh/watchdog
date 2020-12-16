@@ -64,7 +64,11 @@ def setup_teardown(tmpdir):
 
     yield
 
-    emitter.stop()
+    try:
+        emitter.stop()
+    except OSError:
+        # watch was already stopped, e.g., in `test_delete_self`
+        pass
     emitter.join(5)
     assert not emitter.is_alive()
 
@@ -283,10 +287,12 @@ def test_delete_self():
     start_watching(p('dir1'))
     rm(p('dir1'), True)
 
-    if platform.is_darwin():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, FileDeletedEvent)
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1')
+    assert isinstance(event, DirDeletedEvent)
+
+    emitter.join(timeout=1)
+    assert not emitter.is_alive()
 
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
