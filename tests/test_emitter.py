@@ -41,7 +41,6 @@ if platform.is_linux():
         InotifyFullEmitter,
     )
 elif platform.is_darwin():
-    pytestmark = pytest.mark.skip("FIXME: issue #546.")
     from watchdog.observers.fsevents import FSEventsEmitter as Emitter
 elif platform.is_windows():
     from watchdog.observers.read_directory_changes import (
@@ -64,29 +63,65 @@ def setup_teardown(tmpdir):
 
     yield
 
-    emitter.stop()
+    try:
+        emitter.stop()
+    except OSError:
+        # watch was already stopped, e.g. in `test_delete_self`
+        pass
     emitter.join(5)
     assert not emitter.is_alive()
 
 
 def start_watching(path=None, use_full_emitter=False, recursive=True):
-    path = p('') if path is None else path
+    # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
+    path = p() if path is None else path
     global emitter
     if platform.is_linux() and use_full_emitter:
         emitter = InotifyFullEmitter(event_queue, ObservedWatch(path, recursive=recursive))
     else:
         emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive))
 
-    if platform.is_darwin():
-        # FSEvents will report old events (like create for mkdtemp in test
-        # setup. Waiting for a considerable time seems to 'flush' the events.
-        time.sleep(10)
     emitter.start()
+
+    if platform.is_darwin():
+        # FSEvents _may_ report the event for the creation of `tmpdir`,
+        # however, we're racing with fseventd there - if other filesystem
+        # events happened _after_ `tmpdir` was created, but _before_ we
+        # created the emitter then we won't get this event.
+        # But if we get it, then we'll also get the `DirModifiedEvent`
+        # for `path` and thus have to receive that.
+        try:
+            expect_event(DirCreatedEvent(path))
+        except Empty:
+            if os.path.exists(path):
+                pass
+        else:
+            expect_event(DirModifiedEvent(os.path.dirname(path)))
 
 
 def rerun_filter(exc, *args):
     time.sleep(5)
-    return issubclass(exc[0], Empty) and platform.is_windows()
+    if issubclass(exc[0], Empty) and platform.is_windows():
+        return True
+
+    # on macOS with fsevents we may sometimes miss the creation event for tmpdir,
+    # and that will then trigger an assertion failure.
+    if issubclass(exc[0], (Empty, AssertionError)) and platform.is_darwin():
+        return True
+    return False
+
+
+def expect_event(expected_event, timeout=30.0):
+    """ Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
+
+    Provides some robustness for the otherwise flaky nature of asynchronous notifications.
+    NB: specifying a timeout of less than 30 seconds doesn't play nicely on macOS
+    """
+    try:
+        event = event_queue.get(timeout=timeout)[0]
+        assert event == expected_event
+    except Empty:
+        raise
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -94,14 +129,10 @@ def test_create():
     start_watching()
     open(p('a'), 'a').close()
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
-    assert isinstance(event, FileCreatedEvent)
+    expect_event(FileCreatedEvent(p('a')))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p()))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -127,27 +158,43 @@ def test_create_wrong_encoding():
 def test_delete():
     touch(p('a'))
     start_watching()
+
+    if platform.is_darwin():
+        # anticipate the initial events
+        expect_event(FileCreatedEvent(p('a')))
+        expect_event(DirModifiedEvent(p()))
+        expect_event(FileModifiedEvent(p('a')))
+
     rm(p('a'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
-    assert isinstance(event, FileDeletedEvent)
+    # FIXME fseventsd fools the emitter by sending 0x10700 which is a file that is created, modified, and deleted
+    if platform.is_darwin():
+        expect_event(FileModifiedEvent(p('a')))
+
+    expect_event(FileDeletedEvent(p('a')))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p()))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_modify():
-    touch(p('a'))
     start_watching()
     touch(p('a'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
-    assert isinstance(event, FileModifiedEvent)
+    if platform.is_darwin():
+        expect_event(FileCreatedEvent(p('a')))
+        expect_event(DirModifiedEvent(p()))
+        expect_event(FileModifiedEvent(p('a')))
+
+    touch(p('a'))
+
+    # FIXME we're not dealing well with coalesced modifications
+    if platform.is_darwin():
+        expect_event(FileCreatedEvent(p('a')))
+        expect_event(DirModifiedEvent(p()))
+
+    expect_event(FileModifiedEvent(p('a')))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -156,13 +203,19 @@ def test_move():
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching()
+    if platform.is_darwin():
+        expect_event(DirCreatedEvent(p('dir1')))
+        expect_event(DirModifiedEvent(p()))
+        expect_event(DirCreatedEvent(p('dir2')))
+        expect_event(DirModifiedEvent(p()))
+        expect_event(FileCreatedEvent(p('dir1', 'a')))
+        expect_event(DirModifiedEvent(p('dir1')))
+        expect_event(FileModifiedEvent(p('dir1', 'a')))
+
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1', 'a')
-        assert event.dest_path == p('dir2', 'b')
-        assert isinstance(event, FileMovedEvent)
+        expect_event(FileMovedEvent(p('dir1', 'a'), p('dir2', 'b')))
     else:
         event = event_queue.get(timeout=5)[0]
         assert event.src_path == p('dir1', 'a')
@@ -187,16 +240,13 @@ def test_move_to():
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching(p('dir2'))
+
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir2', 'b')
-    assert isinstance(event, FileCreatedEvent)
+    expect_event(FileCreatedEvent(p('dir2', 'b')))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir2')
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p('dir2')))
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
@@ -219,16 +269,18 @@ def test_move_from():
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching(p('dir1'))
+
+    if platform.is_darwin():
+        expect_event(FileCreatedEvent(p('dir1', 'a')))
+        expect_event(DirModifiedEvent(p('dir1')))
+        expect_event(FileModifiedEvent(p('dir1', 'a')))
+
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, FileDeletedEvent)
-    assert event.src_path == p('dir1', 'a')
+    expect_event(FileDeletedEvent(p('dir1', 'a')))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p('dir1')))
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
@@ -254,27 +306,22 @@ def test_separate_consecutive_moves():
     mv(p('dir1', 'a'), p('c'))
     mv(p('b'), p('dir1', 'd'))
 
-    dir_modif = (DirModifiedEvent, p('dir1'))
-    a_deleted = (FileDeletedEvent, p('dir1', 'a'))
-    d_created = (FileCreatedEvent, p('dir1', 'd'))
+    dir_modif = DirModifiedEvent(p('dir1'))
+    a_deleted = FileDeletedEvent(p('dir1', 'a'))
+    d_created = FileCreatedEvent(p('dir1', 'd'))
 
-    expected = [a_deleted, dir_modif, d_created, dir_modif]
+    expected_events = [a_deleted, dir_modif, d_created, dir_modif]
 
     if platform.is_windows():
-        expected = [a_deleted, d_created]
+        expected_events = [a_deleted, d_created]
 
     if platform.is_bsd():
         # Due to the way kqueue works, we can't really order
         # 'Created' and 'Deleted' events in time, so creation queues first
-        expected = [d_created, a_deleted, dir_modif, dir_modif]
+        expected_events = [d_created, a_deleted, dir_modif, dir_modif]
 
-    def _step(expected_step):
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == expected_step[1]
-        assert isinstance(event, expected_step[0])
-
-    for expected_step in expected:
-        _step(expected_step)
+    for expected_event in expected_events:
+        expect_event(expected_event)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -282,11 +329,9 @@ def test_delete_self():
     mkdir(p('dir1'))
     start_watching(p('dir1'))
     rm(p('dir1'), True)
-
-    if platform.is_darwin():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, FileDeletedEvent)
+    expect_event(FileDeletedEvent(p('dir1')))
+    emitter.join(5)
+    assert not emitter.is_alive()
 
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
@@ -359,6 +404,7 @@ def test_recursive_on():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(platform.is_darwin(), reason="macOS watches are always recursive")
 def test_recursive_off():
     mkdir(p('dir1'))
     start_watching(recursive=False)
