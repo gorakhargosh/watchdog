@@ -19,6 +19,7 @@ import queue
 import threading
 from pathlib import Path
 
+from watchdog.events import FileObserverErrorEvent
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
@@ -145,7 +146,10 @@ class EventEmitter(BaseThread):
 
     def run(self):
         while self.should_keep_running():
-            self.queue_events(self.timeout)
+            try:
+                self.queue_events(self.timeout)
+            except Exception as ex:
+                self.queue_event(FileObserverErrorEvent(self._watch.path, ex))
 
 
 class EventDispatcher(BaseThread):
