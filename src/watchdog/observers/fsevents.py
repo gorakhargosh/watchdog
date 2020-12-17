@@ -23,6 +23,7 @@
 :platforms: Mac OS X
 """
 
+import logging
 import os
 import threading
 import unicodedata
@@ -45,6 +46,9 @@ from watchdog.observers.api import (
     DEFAULT_EMITTER_TIMEOUT,
     DEFAULT_OBSERVER_TIMEOUT
 )
+
+logger = logging.getLogger('fsevents')
+logger.addHandler(logging.NullHandler())
 
 
 class FSEventsEmitter(EventEmitter):
@@ -74,66 +78,102 @@ class FSEventsEmitter(EventEmitter):
             _fsevents.stop(self)
             self._watch = None
 
-    def queue_events(self, timeout):
-        with self._lock:
-            events = self.native_events
-            i = 0
-            while i < len(events):
-                event = events[i]
-                src_path = self._encode_path(event.path)
+    def queue_event(self, event):
+        logger.info("queue_event %s", event)
+        EventEmitter.queue_event(self, event)
 
-                # For some reason the create and remove flags are sometimes also
-                # set for rename and modify type events, so let those take
-                # precedence.
-                if event.is_renamed:
-                    # Internal moves appears to always be consecutive in the same
-                    # buffer and have IDs differ by exactly one (while others
-                    # don't) making it possible to pair up the two events coming
-                    # from a singe move operation. (None of this is documented!)
-                    # Otherwise, guess whether file was moved in or out.
-                    # TODO: handle id wrapping
-                    if (i + 1 < len(events) and events[i + 1].is_renamed
-                            and events[i + 1].event_id == event.event_id + 1):
-                        cls = DirMovedEvent if event.is_directory else FileMovedEvent
-                        dst_path = self._encode_path(events[i + 1].path)
-                        self.queue_event(cls(src_path, dst_path))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
-                        i += 1
-                    elif os.path.exists(event.path):
-                        cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
-                        self.queue_event(cls(src_path))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                    else:
-                        cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
-                        self.queue_event(cls(src_path))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                    # TODO: generate events for tree
+    def queue_events(self, timeout, events):
+        i = 0
+        while i < len(events):
+            event = events[i]
+            logger.info(event)
+            src_path = self._encode_path(event.path)
 
-                elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
-                    cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
-                    self.queue_event(cls(src_path))
+            """
+            FIXME: It is not enough to just de-duplicate the events based on
+                   whether they are coalesced or not. We must also take into
+                   account old and new state. As such we need to track all
+                   events that occurred in order to make a correct decision
+                   about which events should be generated.
+                   It is worth noting that `DirSnapshot` is _not_ the right
+                   way of doing it since that traverses _everything_.
+            """
 
-                elif event.is_created:
+            # For some reason the create and remove flags are sometimes also
+            # set for rename and modify type events, so let those take
+            # precedence.
+            if event.is_renamed:
+                # Internal moves appears to always be consecutive in the same
+                # buffer and have IDs differ by exactly one (while others
+                # don't) making it possible to pair up the two events coming
+                # from a singe move operation. (None of this is documented!)
+                # Otherwise, guess whether file was moved in or out.
+                # TODO: handle id wrapping
+                if (i + 1 < len(events) and events[i + 1].is_renamed
+                        and events[i + 1].event_id == event.event_id + 1):
+                    logger.info("Next event for rename is %s", events[i + 1])
+                    cls = DirMovedEvent if event.is_directory else FileMovedEvent
+                    dst_path = self._encode_path(events[i + 1].path)
+                    self.queue_event(cls(src_path, dst_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
+                    i += 1
+                elif os.path.exists(event.path):
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-
-                elif event.is_removed:
+                else:
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                i += 1
+                # TODO: generate events for tree
+
+            if event.is_created:
+                cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                if not event.is_coalesced or (
+                    event.is_coalesced and not event.is_renamed and os.path.exists(event.path)
+                ):
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+
+            if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                # NB: in the scenario of touch(file) -> rm(file) we can trigger this twice
+                cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                self.queue_event(cls(src_path))
+
+            if event.is_removed:
+                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                if not event.is_coalesced or (event.is_coalesced and not os.path.exists(event.path)):
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+
+                    if src_path == self.watch.path:
+                        # this should not really occur, instead we expect
+                        # is_root_changed to be set
+                        logger.info("Stopping because root path was removed")
+                        self.stop()
+
+            if event.is_root_changed:
+                # This will be set if root or any of its parents is renamed or
+                # deleted.
+                # TODO: find out new path and generate DirMovedEvent?
+                self.queue_event(DirDeletedEvent(self.watch.path))
+                logger.info("Stopping because root path was changed")
+                self.stop()
+
+            i += 1
 
     def run(self):
         try:
             def callback(pathnames, flags, ids, emitter=self):
-                with emitter._lock:
-                    emitter.native_events = [
-                        _fsevents.NativeEvent(event_path, event_flags, event_id)
-                        for event_path, event_flags, event_id in zip(pathnames, flags, ids)
-                    ]
-                emitter.queue_events(emitter.timeout)
+                try:
+                    with emitter._lock:
+                        emitter.queue_events(emitter.timeout, [
+                            _fsevents.NativeEvent(event_path, event_flags, event_id)
+                            for event_path, event_flags, event_id in zip(pathnames, flags, ids)
+                        ])
+                except Exception:
+                    logger.exception("Unhandled exception in fsevents callback")
 
             # for pathname, flag in zip(pathnames, flags):
             # if emitter.watch.is_recursive: # and pathname != emitter.watch.path:
@@ -162,7 +202,7 @@ class FSEventsEmitter(EventEmitter):
                                 self.pathnames)
             _fsevents.read_events(self)
         except Exception:
-            pass
+            logger.exception("Unhandled exception in FSEventsEmitter")
 
     def _encode_path(self, path):
         """Encode path only if bytes were passed to this emitter. """
