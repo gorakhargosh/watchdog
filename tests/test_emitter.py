@@ -88,15 +88,29 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
         # however, we're racing with fseventd there - if other filesystem
         # events happened _after_ `tmpdir` was created, but _before_ we
         # created the emitter then we won't get this event.
-        # But if we get it, then we'll also get the `DirModifiedEvent`
-        # for `path` and thus have to receive that.
-        try:
-            expect_event(DirCreatedEvent(path))
-        except Empty:
-            if os.path.exists(path):
+        # As such, let's create a sentinel event that tells us that we are
+        # good to go.
+        sentinel_file = os.path.join(path, '.sentinel')
+        touch(sentinel_file)
+        sentinel_events = [
+            FileCreatedEvent(sentinel_file),
+            DirModifiedEvent(path),
+            FileModifiedEvent(sentinel_file)
+        ]
+        next_sentinel_event = sentinel_events.pop(0)
+        now = time.monotonic()
+        while time.monotonic() <= now + 30.0:
+            try:
+                event = event_queue.get(timeout=0.5)[0]
+                if event == next_sentinel_event:
+                    if not sentinel_events:
+                        break
+                    next_sentinel_event = sentinel_events.pop(0)
+            except Empty:
                 pass
+            time.sleep(0.1)
         else:
-            expect_event(DirModifiedEvent(os.path.dirname(path)))
+            assert False, "Sentinel event never arrived!"
 
 
 def rerun_filter(exc, *args):
@@ -104,10 +118,6 @@ def rerun_filter(exc, *args):
     if issubclass(exc[0], Empty) and platform.is_windows():
         return True
 
-    # on macOS with fsevents we may sometimes miss the creation event for tmpdir,
-    # and that will then trigger an assertion failure.
-    if issubclass(exc[0], (Empty, AssertionError)) and platform.is_darwin():
-        return True
     return False
 
 
@@ -159,12 +169,6 @@ def test_delete():
     touch(p('a'))
     start_watching()
 
-    if platform.is_darwin():
-        # anticipate the initial events
-        expect_event(FileCreatedEvent(p('a')))
-        expect_event(DirModifiedEvent(p()))
-        expect_event(FileModifiedEvent(p('a')))
-
     rm(p('a'))
 
     # FIXME fseventsd fools the emitter by sending 0x10700 which is a file that is created, modified, and deleted
@@ -203,14 +207,6 @@ def test_move():
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching()
-    if platform.is_darwin():
-        expect_event(DirCreatedEvent(p('dir1')))
-        expect_event(DirModifiedEvent(p()))
-        expect_event(DirCreatedEvent(p('dir2')))
-        expect_event(DirModifiedEvent(p()))
-        expect_event(FileCreatedEvent(p('dir1', 'a')))
-        expect_event(DirModifiedEvent(p('dir1')))
-        expect_event(FileModifiedEvent(p('dir1', 'a')))
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
@@ -269,11 +265,6 @@ def test_move_from():
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching(p('dir1'))
-
-    if platform.is_darwin():
-        expect_event(FileCreatedEvent(p('dir1', 'a')))
-        expect_event(DirModifiedEvent(p('dir1')))
-        expect_event(FileModifiedEvent(p('dir1', 'a')))
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
