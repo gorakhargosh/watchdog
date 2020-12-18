@@ -34,6 +34,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.inputs.branch }}
     - name: Use Python ${{ matrix.python }}
       uses: actions/setup-python@v2
       with:
@@ -50,6 +52,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
       - name: Install Python
         uses: actions/setup-python@v2
       - name: Install build dependencies
@@ -70,6 +74,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
       - name: Install Python
         uses: actions/setup-python@v2
       - name: Install build dependencies
@@ -92,6 +98,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
       - name: Install Python
         uses: actions/setup-python@v2
       - name: Build source distribution
