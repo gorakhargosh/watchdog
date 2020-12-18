@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to base the release from'
+        description: 'The branch, tag or SHA to release from'
         required: true
         default: 'master'
 
