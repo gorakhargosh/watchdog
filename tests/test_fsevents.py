@@ -122,7 +122,9 @@ E       SystemError: <built-in function stop> returned a result with an error se
     w = observer.schedule(FileSystemEventHandler(), a, recursive=False)
     rmdir(a)
     time.sleep(0.1)
-    observer.unschedule(w)
+    with pytest.raises(KeyError):
+        # watch no longer exists!
+        observer.unschedule(w)
 
 
 def test_watchdog_recursive():
