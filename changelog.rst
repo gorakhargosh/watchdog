@@ -8,7 +8,8 @@ Changelog
 
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.2...master>`__
 
-- Thanks to our beloved contributors:
+- Avoid deprecated ``PyEval_InitThreads`` on Python 3.7+ (`#746 <https://github.com/gorakhargosh/watchdog/pull/746>`_)
+- Thanks to our beloved contributors: @bstaletic
 
 
 1.0.2
