@@ -90,7 +90,7 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
         # created the emitter then we won't get this event.
         # As such, let's create a sentinel event that tells us that we are
         # good to go.
-        sentinel_file = os.path.join(path, '.sentinel')
+        sentinel_file = os.path.join(path, '.sentinel' if isinstance(path, str) else '.sentinel'.encode())
         touch(sentinel_file)
         sentinel_events = [
             FileCreatedEvent(sentinel_file),
@@ -171,10 +171,6 @@ def test_delete():
 
     rm(p('a'))
 
-    # FIXME fseventsd fools the emitter by sending 0x10700 which is a file that is created, modified, and deleted
-    if platform.is_darwin():
-        expect_event(FileModifiedEvent(p('a')))
-
     expect_event(FileDeletedEvent(p('a')))
 
     if not platform.is_windows():
@@ -183,20 +179,10 @@ def test_delete():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_modify():
+    touch(p('a'))
     start_watching()
-    touch(p('a'))
-
-    if platform.is_darwin():
-        expect_event(FileCreatedEvent(p('a')))
-        expect_event(DirModifiedEvent(p()))
-        expect_event(FileModifiedEvent(p('a')))
 
     touch(p('a'))
-
-    # FIXME we're not dealing well with coalesced modifications
-    if platform.is_darwin():
-        expect_event(FileCreatedEvent(p('a')))
-        expect_event(DirModifiedEvent(p()))
 
     expect_event(FileModifiedEvent(p('a')))
 
@@ -306,7 +292,7 @@ def test_separate_consecutive_moves():
     if platform.is_windows():
         expected_events = [a_deleted, d_created]
 
-    if platform.is_bsd():
+    if platform.is_linux():
         # Due to the way kqueue works, we can't really order
         # 'Created' and 'Deleted' events in time, so creation queues first
         expected_events = [d_created, a_deleted, dir_modif, dir_modif]
@@ -320,13 +306,14 @@ def test_delete_self():
     mkdir(p('dir1'))
     start_watching(p('dir1'))
     rm(p('dir1'), True)
-    expect_event(FileDeletedEvent(p('dir1')))
+    expect_event(DirDeletedEvent(p('dir1')))
     emitter.join(5)
     assert not emitter.is_alive()
 
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
                     reason="Windows|BSD create another set of events for this test")
+@pytest.mark.skipif(platform.is_darwin(), reason="FSEvents coalesced events make it impossible to assert this way")
 def test_fast_subdirectory_creation_deletion():
     root_dir = p('dir1')
     sub_dir = p('dir1', 'subdir1')
@@ -357,7 +344,7 @@ def test_fast_subdirectory_creation_deletion():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode():
-    start_watching(str(p("")))
+    start_watching(str(p()))
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, str)
@@ -367,7 +354,7 @@ def test_passing_unicode_should_give_unicode():
                     reason="Windows ReadDirectoryChangesW supports only"
                            " unicode for paths.")
 def test_passing_bytes_should_give_bytes():
-    start_watching(p('').encode())
+    start_watching(p().encode())
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, bytes)
@@ -523,7 +510,7 @@ def test_renaming_top_level_directory_on_windows():
 def test_move_nested_subdirectories():
     mkdir(p('dir1/dir2/dir3'), parents=True)
     touch(p('dir1/dir2/dir3', 'a'))
-    start_watching(p(''))
+    start_watching()
     mv(p('dir1/dir2'), p('dir2'))
 
     event = event_queue.get(timeout=5)[0]

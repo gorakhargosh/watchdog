@@ -48,7 +48,6 @@ from watchdog.observers.api import (
 )
 
 logger = logging.getLogger('fsevents')
-logger.addHandler(logging.NullHandler())
 
 
 class FSEventsEmitter(EventEmitter):
@@ -71,12 +70,15 @@ class FSEventsEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
+        # a dictionary of event.path -> posix.stat_result
+        self.filesystem_view = {}
 
     def on_thread_stop(self):
         if self.watch:
             _fsevents.remove_watch(self.watch)
             _fsevents.stop(self)
             self._watch = None
+        self.filesystem_view.clear()
 
     def queue_event(self, event):
         logger.info("queue_event %s", event)
@@ -93,10 +95,8 @@ class FSEventsEmitter(EventEmitter):
             FIXME: It is not enough to just de-duplicate the events based on
                    whether they are coalesced or not. We must also take into
                    account old and new state. As such we need to track all
-                   events that occurred in order to make a correct decision
+                   events that occurred so that we can make a correct decision
                    about which events should be generated.
-                   It is worth noting that `DirSnapshot` is _not_ the right
-                   way of doing it since that traverses _everything_.
             """
 
             # For some reason the create and remove flags are sometimes also
@@ -133,19 +133,31 @@ class FSEventsEmitter(EventEmitter):
                 if not event.is_coalesced or (
                     event.is_coalesced and not event.is_renamed and os.path.exists(event.path)
                 ):
-                    self.queue_event(cls(src_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    if src_path not in self.filesystem_view:
+                        self.filesystem_view[src_path] = os.stat(src_path)
+                        self.queue_event(cls(src_path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
 
-            if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
-                # NB: in the scenario of touch(file) -> rm(file) we can trigger this twice
+            if event.is_modified and not event.is_coalesced and os.path.exists(src_path):
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
-                self.queue_event(cls(src_path))
+                new = os.stat(src_path)
+                old = self.filesystem_view.get(src_path, None)
+                if new != old:
+                    self.queue_event(cls(src_path))
+                    self.filesystem_view[src_path] = new
+
+            if event.is_inode_meta_mod or event.is_xattr_mod:
+                if os.path.exists(src_path) and not event.is_coalesced:
+                    # NB: in the scenario of touch(file) -> rm(file) we can trigger this twice
+                    cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                    self.queue_event(cls(src_path))
 
             if event.is_removed:
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 if not event.is_coalesced or (event.is_coalesced and not os.path.exists(event.path)):
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    self.filesystem_view.pop(src_path, None)
 
                     if src_path == self.watch.path:
                         # this should not really occur, instead we expect
