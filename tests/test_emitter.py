@@ -398,39 +398,23 @@ def test_renaming_top_level_directory():
     start_watching()
 
     mkdir(p('a'))
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirCreatedEvent)
-    assert event.src_path == p('a')
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p()
+    expect_event(DirCreatedEvent(p('a')))
+    expect_event(DirModifiedEvent(p()))
 
     mkdir(p('a', 'b'))
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirCreatedEvent)
-    assert event.src_path == p('a', 'b')
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p('a')
+    expect_event(DirCreatedEvent(p('a', 'b')))
+    expect_event(DirModifiedEvent(p('a')))
 
     mv(p('a'), p('a2'))
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p()
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p()
+    expect_event(DirMovedEvent(p('a'), p('a2')))
+    expect_event(DirModifiedEvent(p()))
+    expect_event(DirModifiedEvent(p()))
 
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirMovedEvent)
-    assert event.src_path == p('a', 'b')
+    if not platform.is_darwin():
+        expect_event(DirMovedEvent(p('a'), p('a2')))
 
     if platform.is_bsd():
-        event = event_queue.get(timeout=5)[0]
-        assert isinstance(event, DirModifiedEvent)
-        assert event.src_path == p()
+        expect_event(DirModifiedEvent(p()))
 
     open(p('a2', 'b', 'c'), 'a').close()
 
