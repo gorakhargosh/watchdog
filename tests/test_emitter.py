@@ -292,7 +292,7 @@ def test_separate_consecutive_moves():
     if platform.is_windows():
         expected_events = [a_deleted, d_created]
 
-    if platform.is_linux():
+    if platform.is_bsd():
         # Due to the way kqueue works, we can't really order
         # 'Created' and 'Deleted' events in time, so creation queues first
         expected_events = [d_created, a_deleted, dir_modif, dir_modif]
