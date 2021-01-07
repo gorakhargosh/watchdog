@@ -37,7 +37,8 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
-    DirMovedEvent
+    DirMovedEvent,
+    generate_sub_moved_events
 )
 
 from watchdog.observers.api import (
@@ -117,6 +118,9 @@ class FSEventsEmitter(EventEmitter):
                     self.queue_event(cls(src_path, dst_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
+                    for sub_event in generate_sub_moved_events(src_path, dst_path):
+                        logger.info("Generated sub event: %s", sub_event)
+                        self.queue_event(sub_event)
                     i += 1
                 elif os.path.exists(event.path):
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
@@ -126,12 +130,12 @@ class FSEventsEmitter(EventEmitter):
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                # TODO: generate events for tree
 
             if event.is_created:
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                 if not event.is_coalesced or (
-                    event.is_coalesced and not event.is_renamed and os.path.exists(event.path)
+                    event.is_coalesced and not event.is_renamed and not event.is_modified and not
+                    event.is_inode_meta_mod and not event.is_xattr_mod
                 ):
                     if src_path not in self.filesystem_view:
                         self.filesystem_view[src_path] = os.stat(src_path)

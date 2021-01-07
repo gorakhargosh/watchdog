@@ -410,8 +410,7 @@ def test_renaming_top_level_directory():
     expect_event(DirModifiedEvent(p()))
     expect_event(DirModifiedEvent(p()))
 
-    if not platform.is_darwin():
-        expect_event(DirMovedEvent(p('a'), p('a2')))
+    expect_event(DirMovedEvent(p('a', 'b'), p('a2', 'b')))
 
     if platform.is_bsd():
         expect_event(DirModifiedEvent(p()))
@@ -497,25 +496,12 @@ def test_move_nested_subdirectories():
     start_watching()
     mv(p('dir1/dir2'), p('dir2'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1', 'dir2')
-    assert isinstance(event, DirMovedEvent)
+    expect_event(DirMovedEvent(p('dir1', 'dir2'), p('dir2')))
+    expect_event(DirModifiedEvent(p('dir1')))
+    expect_event(DirModifiedEvent(p()))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1')
-    assert isinstance(event, DirModifiedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert p(event.src_path, '') == p('')
-    assert isinstance(event, DirModifiedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1/dir2/dir3')
-    assert isinstance(event, DirMovedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1/dir2/dir3', 'a')
-    assert isinstance(event, FileMovedEvent)
+    expect_event(DirMovedEvent(p('dir1', 'dir2', 'dir3'), p('dir2', 'dir3')))
+    expect_event(FileMovedEvent(p('dir1', 'dir2', 'dir3', 'a'), p('dir2', 'dir3', 'a')))
 
     if platform.is_bsd():
         event = event_queue.get(timeout=5)[0]
