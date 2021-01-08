@@ -95,6 +95,7 @@ EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
+EVENT_TYPE_ERROR = 'error'
 
 
 class FileSystemEvent:
@@ -243,6 +244,22 @@ class DirMovedEvent(FileSystemMovedEvent):
 
     is_directory = True
 
+class FileObserverErrorEvent(FileSystemEvent):
+    """File system event representing an error in the monitor."""
+    event_type = EVENT_TYPE_ERROR
+
+    def __init__(self, src_path, exception):
+        self._exception = exception
+        super(FileObserverErrorEvent, self).__init__(src_path)
+
+    @property
+    def exception(self):
+        return self._exception
+
+    def __repr__(self):
+        return ("<%(class_name)s: exception=%(exception)r>"
+                ) % (dict(class_name=self.__class__.__name__,
+                          exception=repr(self.exception)))
 
 class FileSystemEventHandler:
     """
