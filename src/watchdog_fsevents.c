@@ -627,7 +627,11 @@ watchdog_read_events(PyObject *self, PyObject *args)
 
     G_RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &emitter_thread));
 
+// PyEval_InitThreads() does nothing as of Python 3.7 and is deprecated in 3.9.
+// https://docs.python.org/3/c-api/init.html#c.PyEval_InitThreads
+#if PY_VERSION_HEX < 0x030700f0
     PyEval_InitThreads();
+#endif
 
     /* Allocate information and store thread state. */
     value = PyDict_GetItem(thread_to_run_loop, emitter_thread);

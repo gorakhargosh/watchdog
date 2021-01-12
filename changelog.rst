@@ -3,14 +3,26 @@
 Changelog
 ---------
 
+1.0.3
+~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.2...master>`__
+
+- Avoid deprecated ``PyEval_InitThreads`` on Python 3.7+ (`#746 <https://github.com/gorakhargosh/watchdog/pull/746>`_)
+- Thanks to our beloved contributors: @bstaletic
+
+
 1.0.2
 ~~~~~
 
-202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.1...master>`__
+2020-12-18 • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.1...v1.0.2>`__
 
+- Wheels are published for GNU/Linux, macOS and Windows (`#739 <https://github.com/gorakhargosh/watchdog/pull/739>`_)
 - [mac] Fix missing ``event_id`` attribute in ``fsevents`` (`#721 <https://github.com/gorakhargosh/watchdog/pull/721>`_)
+- [mac] Return byte paths if a byte path was given in ``fsevents`` (`#726` <https://github.com/gorakhargosh/watchdog/pull/726>`_)
 - [mac] Add compatibility with old macOS versions (`#733` <https://github.com/gorakhargosh/watchdog/pull/733>`_)
-- Thanks to our beloved contributors: @SamSchott, @CCP-Aporia
+- Uniformize event for deletion of watched dir (`#727 <https://github.com/gorakhargosh/watchdog/pull/727>`_)
+- Thanks to our beloved contributors: @SamSchott, @CCP-Aporia, @di, @BoboTiG
 
 
 1.0.1
