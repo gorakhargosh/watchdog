@@ -38,6 +38,7 @@ from watchdog.events import (
     DirModifiedEvent,
     DirCreatedEvent,
     DirMovedEvent,
+    generate_sub_created_events,
     generate_sub_moved_events
 )
 
@@ -71,15 +72,12 @@ class FSEventsEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        # a dictionary of event.path -> posix.stat_result
-        self.filesystem_view = {}
 
     def on_thread_stop(self):
         if self.watch:
             _fsevents.remove_watch(self.watch)
             _fsevents.stop(self)
             self._watch = None
-        self.filesystem_view.clear()
 
     def queue_event(self, event):
         logger.info("queue_event %s", event)
@@ -92,17 +90,6 @@ class FSEventsEmitter(EventEmitter):
             logger.info(event)
             src_path = self._encode_path(event.path)
 
-            """
-            FIXME: It is not enough to just de-duplicate the events based on
-                   whether they are coalesced or not. We must also take into
-                   account old and new state. As such we need to track all
-                   events that occurred so that we can make a correct decision
-                   about which events should be generated.
-            """
-
-            # For some reason the create and remove flags are sometimes also
-            # set for rename and modify type events, so let those take
-            # precedence.
             if event.is_renamed:
                 # Internal moves appears to always be consecutive in the same
                 # buffer and have IDs differ by exactly one (while others
@@ -126,6 +113,8 @@ class FSEventsEmitter(EventEmitter):
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    for sub_event in generate_sub_created_events(src_path):
+                        self.queue_event(sub_event)
                 else:
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                     self.queue_event(cls(src_path))
@@ -137,18 +126,12 @@ class FSEventsEmitter(EventEmitter):
                     event.is_coalesced and not event.is_renamed and not event.is_modified and not
                     event.is_inode_meta_mod and not event.is_xattr_mod
                 ):
-                    if src_path not in self.filesystem_view:
-                        self.filesystem_view[src_path] = os.stat(src_path)
-                        self.queue_event(cls(src_path))
-                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
 
             if event.is_modified and not event.is_coalesced and os.path.exists(src_path):
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
-                new = os.stat(src_path)
-                old = self.filesystem_view.get(src_path, None)
-                if new != old:
-                    self.queue_event(cls(src_path))
-                    self.filesystem_view[src_path] = new
+                self.queue_event(cls(src_path))
 
             if event.is_inode_meta_mod or event.is_xattr_mod:
                 if os.path.exists(src_path) and not event.is_coalesced:
@@ -161,7 +144,6 @@ class FSEventsEmitter(EventEmitter):
                 if not event.is_coalesced or (event.is_coalesced and not os.path.exists(event.path)):
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                    self.filesystem_view.pop(src_path, None)
 
                     if src_path == self.watch.path:
                         # this should not really occur, instead we expect
