@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +20,7 @@
 :module: watchdog.observers.polling
 :synopsis: Polling emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 Classes
 -------
@@ -34,10 +34,10 @@ Classes
    :special-members:
 """
 
-from __future__ import with_statement
+import os
 import threading
 from functools import partial
-from watchdog.utils import stat as default_stat
+
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
 from watchdog.observers.api import (
     EventEmitter,
@@ -57,11 +57,6 @@ from watchdog.events import (
     FileModifiedEvent
 )
 
-try:
-    from os import scandir
-except ImportError:
-    from os import listdir as scandir
-
 
 class PollingEmitter(EventEmitter):
     """
@@ -70,7 +65,7 @@ class PollingEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
-                 stat=default_stat, listdir=scandir):
+                 stat=os.stat, listdir=os.scandir):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._snapshot = None
         self._lock = threading.Lock()
@@ -141,7 +136,7 @@ class PollingObserverVFS(BaseObserver):
     def __init__(self, stat, listdir, polling_interval=1):
         """
         :param stat: stat function. See ``os.stat`` for details.
-        :param listdir: listdir function. See ``os.listdir`` for details.
+        :param listdir: listdir function. See ``os.scandir`` for details.
         :type polling_interval: float
         :param polling_interval: interval in seconds between polling the file system.
         """

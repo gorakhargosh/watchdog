@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +17,7 @@
 
 
 import os
+from queue import Empty, Queue
 from time import sleep
 
 import pytest
@@ -35,7 +35,6 @@ from watchdog.events import (
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
 
-from . import Empty, Queue
 from .shell import (
     mkdir,
     mkdtemp,

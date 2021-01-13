@@ -19,10 +19,6 @@ __MACOSX__
 *.egg-info/
 *.egg
 .installed.cfg
-bin/
-bin25/
-bin26/
-bin27/
 build/
 develop-eggs/
 dist/

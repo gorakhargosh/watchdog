@@ -3,15 +3,62 @@
 Changelog
 ---------
 
+1.0.3
+~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.2...master>`__
+
+- Avoid deprecated ``PyEval_InitThreads`` on Python 3.7+ (`#746 <https://github.com/gorakhargosh/watchdog/pull/746>`_)
+- Thanks to our beloved contributors: @bstaletic
+
+
+1.0.2
+~~~~~
+
+2020-12-18 • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.1...v1.0.2>`__
+
+- Wheels are published for GNU/Linux, macOS and Windows (`#739 <https://github.com/gorakhargosh/watchdog/pull/739>`_)
+- [mac] Fix missing ``event_id`` attribute in ``fsevents`` (`#721 <https://github.com/gorakhargosh/watchdog/pull/721>`_)
+- [mac] Return byte paths if a byte path was given in ``fsevents`` (`#726` <https://github.com/gorakhargosh/watchdog/pull/726>`_)
+- [mac] Add compatibility with old macOS versions (`#733` <https://github.com/gorakhargosh/watchdog/pull/733>`_)
+- Uniformize event for deletion of watched dir (`#727 <https://github.com/gorakhargosh/watchdog/pull/727>`_)
+- Thanks to our beloved contributors: @SamSchott, @CCP-Aporia, @di, @BoboTiG
+
+
+1.0.1
+~~~~~
+
+2020-12-10 • Fix version with good metadatas.
+
+
+1.0.0
+~~~~~
+
+2020-12-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...v1.0.0>`__
+
+- Versioning is now following the `semver <https://semver.org/>`_
+- Drop support for Python 2.7, 3.4 and 3.5
+- [mac] Regression fixes for native ``fsevents`` (`#717 <https://github.com/gorakhargosh/watchdog/pull/717>`_)
+- [windows] ``winapi.BUFFER_SIZE`` now defaults to ``64000`` (instead of ``2048``) (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
+- [windows] Introduced ``winapi.PATH_BUFFER_SIZE`` (defaults to ``2048``) to keep the old behavior with path-realted functions (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
+- Use ``pathlib`` from the standard library, instead of pathtools (`#556 <https://github.com/gorakhargosh/watchdog/pull/556>`_)
+- Allow file paths on Unix that don't follow the file system encoding (`#703 <https://github.com/gorakhargosh/watchdog/pull/703>`_)
+- Removed the long-time deprecated ``events.LoggingFileSystemEventHandler`` class, use ``LoggingEventHandler`` instead
+- Thanks to our beloved contributors: @SamSchott, @bstaletic, @BoboTiG, @CCP-Aporia
+
+
 0.10.4
 ~~~~~~
 
-2020-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...master>`__
+2020-11-21 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.3...v0.10.4>`__
 
-- Add logger parameter for the LoggingEventHandler (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
+- Add ``logger`` parameter for the ``LoggingEventHandler`` (`#676 <https://github.com/gorakhargosh/watchdog/pull/676>`_)
 - Replace mutable default arguments with ``if None`` implementation (`#677 <https://github.com/gorakhargosh/watchdog/pull/677>`_)
-- [inotify] Add events for IN_WRITE_CLOSE and IN_NOWRITE_CLOSE (`#690 <https://github.com/gorakhargosh/watchdog/pull/690>`)
-- Thanks to our beloved contributors: @Sraw, @lukassup
+- Expand tests to Python 2.7 and 3.5-3.10 for GNU/Linux, macOS and Windows
+- [mac] Performance improvements for the ``fsevents`` module (`#680 <https://github.com/gorakhargosh/watchdog/pull/680>`_)
+- [mac] Prevent compilation of ``watchdog_fsevents.c`` on non-macOS machines (`#687 <https://github.com/gorakhargosh/watchdog/pull/687>`_)
+- [watchmedo] Handle shutdown events from ``SIGTERM`` and ``SIGINT`` more reliably (`#693 <https://github.com/gorakhargosh/watchdog/pull/693>`_)
+- Thanks to our beloved contributors: @Sraw, @CCP-Aporia, @BoboTiG, @maybe-sybr
 
 
 0.10.3

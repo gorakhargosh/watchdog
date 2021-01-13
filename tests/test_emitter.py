@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
@@ -14,16 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
 import os
 import time
 import pytest
 import logging
 from functools import partial
-from . import Queue, Empty
+from queue import Queue, Empty
+
 from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
-from watchdog.utils.unicode_paths import str_cls
 from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
@@ -66,7 +65,11 @@ def setup_teardown(tmpdir):
 
     yield
 
-    emitter.stop()
+    try:
+        emitter.stop()
+    except OSError:
+        # watch was already stopped, e.g., in `test_delete_self`
+        pass
     emitter.join(5)
     assert not emitter.is_alive()
 
@@ -121,6 +124,25 @@ def test_close():
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
     assert isinstance(event, FileClosedEvent)
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(
+    platform.is_darwin() or platform.is_windows(),
+    reason="Windows and macOS enforce proper encoding"
+)
+def test_create_wrong_encoding():
+    start_watching()
+    open(p('a_\udce4'), 'a').close()
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('a_\udce4')
+    assert isinstance(event, FileCreatedEvent)
+
+    if not platform.is_windows():
+        event = event_queue.get(timeout=5)[0]
+        assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
+        assert isinstance(event, DirModifiedEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -288,10 +310,12 @@ def test_delete_self():
     start_watching(p('dir1'))
     rm(p('dir1'), True)
 
-    if platform.is_darwin():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, FileDeletedEvent)
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir1')
+    assert isinstance(event, DirDeletedEvent)
+
+    emitter.join(timeout=1)
+    assert not emitter.is_alive()
 
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
@@ -326,10 +350,10 @@ def test_fast_subdirectory_creation_deletion():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode():
-    start_watching(str_cls(p("")))
+    start_watching(str(p("")))
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
-    assert isinstance(event.src_path, str_cls)
+    assert isinstance(event.src_path, str)
 
 
 @pytest.mark.skipif(platform.is_windows(),

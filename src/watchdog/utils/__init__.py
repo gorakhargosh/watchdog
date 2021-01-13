@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +20,7 @@
 :module: watchdog.utils
 :synopsis: Utility classes and functions.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 Classes
 -------
@@ -30,35 +30,18 @@ Classes
    :inherited-members:
 
 """
-import os
 import sys
 import threading
-from watchdog.utils import platform
-from watchdog.utils.compat import Event
-
-
-if sys.version_info[0] == 2 and platform.is_windows():
-    # st_ino is not implemented in os.stat on this platform
-    import win32stat
-    stat = win32stat.stat
-else:
-    stat = os.stat
-
-
-def has_attribute(ob, attribute):
-    """
-    :func:`hasattr` swallows exceptions. :func:`has_attribute` tests a Python object for the
-    presence of an attribute.
-
-    :param ob:
-        object to inspect
-    :param attribute:
-        ``str`` for the name of the attribute.
-    """
-    return getattr(ob, attribute, None) is not None
 
 
 class UnsupportedLibc(Exception):
+    pass
+
+
+class WatchdogShutdown(Exception):
+    """
+    Semantic exception used to signal an external shutdown event.
+    """
     pass
 
 
@@ -67,13 +50,13 @@ class BaseThread(threading.Thread):
 
     def __init__(self):
         threading.Thread.__init__(self)
-        if has_attribute(self, 'daemon'):
+        if hasattr(self, 'daemon'):
             self.daemon = True
         else:
             self.setDaemon(True)
-        self._stopped_event = Event()
+        self._stopped_event = threading.Event()
 
-        if not has_attribute(self._stopped_event, 'is_set'):
+        if not hasattr(self._stopped_event, 'is_set'):
             self._stopped_event.is_set = self._stopped_event.isSet
 
     @property
@@ -144,7 +127,7 @@ def load_class(dotted_path):
         module_name = '.'.join(dotted_path_split[:-1])
 
         module = load_module(module_name)
-        if has_attribute(module, klass_name):
+        if hasattr(module, klass_name):
             klass = getattr(module, klass_name)
             return klass
             # Finally create and return an instance of the class

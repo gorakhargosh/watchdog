@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 import pytest
 from watchdog.utils import platform
@@ -12,13 +11,13 @@ import errno
 import logging
 import os
 from functools import partial
+from queue import Queue
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
 from watchdog.observers.inotify_c import Inotify
 
-from . import Queue
 from .shell import mkdtemp, rm
 
 
@@ -41,7 +40,11 @@ def watching(path=None, use_full_emitter=False):
     emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
     emitter.start()
     yield
-    emitter.stop()
+    try:
+        emitter.stop()
+    except OSError:
+        # watch was already stopped, e.g., because root was deleted
+        pass
     emitter.join(5)
 
 

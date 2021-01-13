@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
@@ -19,7 +19,7 @@ import threading
 from collections import deque
 
 
-class DelayedQueue(object):
+class DelayedQueue:
 
     def __init__(self, delay):
         self.delay_sec = delay

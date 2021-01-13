@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 # Copyright 2014 Thomas Amland
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +22,7 @@ import time
 
 from watchdog.events import (
     DirCreatedEvent,
+    DirDeletedEvent,
     DirMovedEvent,
     DirModifiedEvent,
     FileCreatedEvent,
@@ -122,6 +122,7 @@ class WindowsApiEmitter(EventEmitter):
                 elif winapi_event.is_removed:
                     self.queue_event(FileDeletedEvent(src_path))
                 elif winapi_event.is_removed_self:
+                    self.queue_event(DirDeletedEvent(self.watch.path))
                     self.stop()
 
 

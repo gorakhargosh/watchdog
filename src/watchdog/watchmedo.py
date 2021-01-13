@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,26 +18,22 @@
 """
 :module: watchdog.watchmedo
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 :synopsis: ``watchmedo`` shell script utility.
 """
 
+import errno
+import os
 import os.path
 import sys
 import yaml
 import time
 import logging
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    try:
-        from StringIO import StringIO
-    except ImportError:
-        from io import StringIO
+from io import StringIO
 
 from argh import arg, aliases, ArghParser, expects_obj
 from watchdog.version import VERSION_STRING
-from watchdog.utils import load_class
+from watchdog.utils import WatchdogShutdown, load_class
 
 
 logging.basicConfig(level=logging.INFO)
@@ -117,7 +112,7 @@ def observe_with(observer, event_handler, pathnames, recursive):
     try:
         while True:
             time.sleep(1)
-    except KeyboardInterrupt:
+    except WatchdogShutdown:
         observer.stop()
     observer.join()
 
@@ -175,14 +170,14 @@ def tricks_from(args):
         observer = Observer(timeout=args.timeout)
 
         if not os.path.exists(tricks_file):
-            raise IOError("cannot find tricks file: %s" % tricks_file)
+            raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), tricks_file)
 
         config = load_config(tricks_file)
 
         try:
             tricks = config[CONFIG_KEY_TRICKS]
         except KeyError:
-            raise KeyError("No `%s' key specified in %s." % (
+            raise KeyError("No %r key specified in %s." % (
                            CONFIG_KEY_TRICKS, tricks_file))
 
         if CONFIG_KEY_PYTHON_PATH in config:
@@ -198,7 +193,7 @@ def tricks_from(args):
     try:
         while True:
             time.sleep(1)
-    except KeyboardInterrupt:
+    except WatchdogShutdown:
         for o in observers:
             o.unschedule_all()
             o.stop()
@@ -531,12 +526,18 @@ def auto_restart(args):
     else:
         stop_signal = int(args.signal)
 
-    # Handle SIGTERM in the same manner as SIGINT so that
-    # this program has a chance to stop the child process.
-    def handle_sigterm(_signum, _frame):
-        raise KeyboardInterrupt()
+    # Handle termination signals by raising a semantic exception which will
+    # allow us to gracefully unwind and stop the observer
+    termination_signals = {signal.SIGTERM, signal.SIGINT}
 
-    signal.signal(signal.SIGTERM, handle_sigterm)
+    def handler_termination_signal(_signum, _frame):
+        # Neuter all signals so that we don't attempt a double shutdown
+        for signum in termination_signals:
+            signal.signal(signum, signal.SIG_IGN)
+        raise WatchdogShutdown
+
+    for signum in termination_signals:
+        signal.signal(signum, handler_termination_signal)
 
     patterns, ignore_patterns = parse_patterns(args.patterns,
                                                args.ignore_patterns)
@@ -550,12 +551,16 @@ def auto_restart(args):
                                kill_after=args.kill_after)
     handler.start()
     observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
-    handler.stop()
+    try:
+        observe_with(observer, handler, args.directories, args.recursive)
+    except WatchdogShutdown:
+        pass
+    finally:
+        handler.stop()
 
 
 epilog = """Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
-Copyright 2012 Google, Inc.
+Copyright 2012 Google, Inc & contributors.
 
 Licensed under the terms of the Apache license, version 2.0. Please see
 LICENSE in the source code for more information."""

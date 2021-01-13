@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,8 +66,6 @@ Some extremely useful articles and documentation:
 
 """
 
-from __future__ import with_statement
-
 import os
 import threading
 from .inotify_buffer import InotifyBuffer
@@ -93,7 +90,6 @@ from watchdog.events import (
     generate_sub_moved_events,
     generate_sub_created_events,
 )
-from watchdog.utils import unicode_paths
 
 
 class InotifyEmitter(EventEmitter):
@@ -118,7 +114,7 @@ class InotifyEmitter(EventEmitter):
         self._inotify = None
 
     def on_thread_start(self):
-        path = unicode_paths.encode(self.watch.path)
+        path = os.fsencode(self.watch.path)
         self._inotify = InotifyBuffer(path, self.watch.is_recursive)
 
     def on_thread_stop(self):
@@ -182,12 +178,15 @@ class InotifyEmitter(EventEmitter):
             elif event.is_close_nowrite and not event.is_directory:
                 cls = FileClosedEvent
                 self.queue_event(cls(src_path))
+            elif event.is_delete_self and src_path == self.watch.path:
+                self.queue_event(DirDeletedEvent(src_path))
+                self.stop()
 
     def _decode_path(self, path):
-        """ Decode path only if unicode string was passed to this emitter. """
+        """Decode path only if unicode string was passed to this emitter. """
         if isinstance(self.watch.path, bytes):
             return path
-        return unicode_paths.decode(path)
+        return os.fsdecode(path)
 
 
 class InotifyFullEmitter(InotifyEmitter):

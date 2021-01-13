@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +15,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+:module: watchdog.tricks
+:synopsis: Utility event handlers.
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
+
+Classes
+-------
+.. autoclass:: Trick
+   :members:
+   :show-inheritance:
+
+.. autoclass:: LoggerTrick
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ShellCommandTrick
+   :members:
+   :show-inheritance:
+
+.. autoclass:: AutoRestartTrick
+   :members:
+   :show-inheritance:
+
+"""
 
 import os
 import signal
 import subprocess
 import time
 
-from watchdog.utils import echo, has_attribute
+from watchdog.utils import echo
 from watchdog.events import PatternMatchingEventHandler
 
 
@@ -80,8 +104,9 @@ class ShellCommandTrick(Trick):
     def __init__(self, shell_command=None, patterns=None, ignore_patterns=None,
                  ignore_directories=False, wait_for_process=False,
                  drop_during_process=False):
-        super(ShellCommandTrick, self).__init__(patterns, ignore_patterns,
-                                                ignore_directories)
+        super().__init__(
+            patterns=patterns, ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories)
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
@@ -106,13 +131,13 @@ class ShellCommandTrick(Trick):
         }
 
         if self.shell_command is None:
-            if has_attribute(event, 'dest_path'):
+            if hasattr(event, 'dest_path'):
                 context.update({'dest_path': event.dest_path})
                 command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
             else:
                 command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
         else:
-            if has_attribute(event, 'dest_path'):
+            if hasattr(event, 'dest_path'):
                 context.update({'watch_dest_path': event.dest_path})
             command = self.shell_command
 
@@ -127,17 +152,18 @@ class AutoRestartTrick(Trick):
     """Starts a long-running subprocess and restarts it on matched events.
 
     The command parameter is a list of command arguments, such as
-    ['bin/myserver', '-c', 'etc/myconfig.ini'].
+    `['bin/myserver', '-c', 'etc/myconfig.ini']`.
 
-    Call start() after creating the Trick. Call stop() when stopping
+    Call `start()` after creating the Trick. Call `stop()` when stopping
     the process.
     """
 
     def __init__(self, command, patterns=None, ignore_patterns=None,
                  ignore_directories=False, stop_signal=signal.SIGINT,
                  kill_after=10):
-        super(AutoRestartTrick, self).__init__(
-            patterns, ignore_patterns, ignore_directories)
+        super().__init__(
+            patterns=patterns, ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories)
         self.command = command
         self.stop_signal = stop_signal
         self.kill_after = kill_after

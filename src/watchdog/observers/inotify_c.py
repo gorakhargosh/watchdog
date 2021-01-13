@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import with_statement
 import os
 import errno
 import struct
@@ -24,18 +23,16 @@ import ctypes
 import ctypes.util
 from functools import reduce
 from ctypes import c_int, c_char_p, c_uint32
-from watchdog.utils import has_attribute
 from watchdog.utils import UnsupportedLibc
-from watchdog.utils.unicode_paths import decode
 
 
 def _load_libc():
     libc_path = None
     try:
         libc_path = ctypes.util.find_library('c')
-    except (OSError, IOError, RuntimeError):
+    except (OSError, RuntimeError):
         # Note: find_library will on some platforms raise these undocumented
-        # errors, e.g.on android IOError "No usable temporary directory found"
+        # errors, e.g.on android OSError "No usable temporary directory found"
         # will be raised.
         pass
 
@@ -45,26 +42,26 @@ def _load_libc():
     # Fallbacks
     try:
         return ctypes.CDLL('libc.so')
-    except (OSError, IOError):
+    except OSError:
         pass
 
     try:
         return ctypes.CDLL('libc.so.6')
-    except (OSError, IOError):
+    except OSError:
         pass
 
     # uClibc
     try:
         return ctypes.CDLL('libc.so.0')
-    except (OSError, IOError) as err:
+    except OSError as err:
         raise err
 
 
 libc = _load_libc()
 
-if not has_attribute(libc, 'inotify_init') or \
-        not has_attribute(libc, 'inotify_add_watch') or \
-        not has_attribute(libc, 'inotify_rm_watch'):
+if not hasattr(libc, 'inotify_init') or \
+        not hasattr(libc, 'inotify_add_watch') or \
+        not hasattr(libc, 'inotify_rm_watch'):
     raise UnsupportedLibc("Unsupported libc version found: %s" % libc._name)
 
 inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
@@ -77,7 +74,7 @@ inotify_init = ctypes.CFUNCTYPE(c_int, use_errno=True)(
     ("inotify_init", libc))
 
 
-class InotifyConstants(object):
+class InotifyConstants:
     # User-space events
     IN_ACCESS = 0x00000001     # File was accessed.
     IN_MODIFY = 0x00000002     # File was modified.
@@ -172,7 +169,7 @@ DEFAULT_NUM_EVENTS = 2048
 DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 
 
-class Inotify(object):
+class Inotify:
     """
     Linux inotify(7) API wrapper class.
 
@@ -459,7 +456,7 @@ class Inotify(object):
             yield wd, mask, cookie, name
 
 
-class InotifyEvent(object):
+class InotifyEvent:
     """
     Inotify event struct wrapper.
 
@@ -590,4 +587,4 @@ class InotifyEvent(object):
         mask_string = self._get_mask_string(self.mask)
         s = '<%s: src_path=%r, wd=%d, mask=%s, cookie=%d, name=%s>'
         return s % (type(self).__name__, self.src_path, self.wd, mask_string,
-                    self.cookie, decode(self.name))
+                    self.cookie, os.fsdecode(self.name))

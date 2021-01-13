@@ -70,6 +70,11 @@ API Reference
 
 .. automodule:: watchdog.utils.dirsnapshot
 
+`watchdog.tricks`
+=================
+
+.. automodule:: watchdog.tricks
+
 
 .. toctree::
    :maxdepth: 2

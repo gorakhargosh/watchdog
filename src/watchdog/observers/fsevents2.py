@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
@@ -22,9 +22,9 @@
 
 import os
 import logging
+import queue
 import unicodedata
 from threading import Thread
-from watchdog.utils.compat import queue
 
 from watchdog.events import (
     FileDeletedEvent,
@@ -87,7 +87,7 @@ class FSEventsQueue(Thread):
         self._run_loop = None
 
         if isinstance(path, bytes):
-            path = path.decode('utf-8')
+            path = os.fsdecode(path)
         self._path = unicodedata.normalize('NFC', path)
 
         context = None
@@ -97,7 +97,7 @@ class FSEventsQueue(Thread):
             kFSEventStreamEventIdSinceNow, latency,
             kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents)
         if self._stream_ref is None:
-            raise IOError("FSEvents. Could not create stream.")
+            raise OSError("FSEvents. Could not create stream.")
 
     def run(self):
         pool = AppKit.NSAutoreleasePool.alloc().init()
@@ -107,7 +107,7 @@ class FSEventsQueue(Thread):
         if not FSEventStreamStart(self._stream_ref):
             FSEventStreamInvalidate(self._stream_ref)
             FSEventStreamRelease(self._stream_ref)
-            raise IOError("FSEvents. Could not start stream.")
+            raise OSError("FSEvents. Could not start stream.")
 
         CFRunLoopRun()
         FSEventStreamStop(self._stream_ref)
@@ -139,7 +139,7 @@ class FSEventsQueue(Thread):
         return self._queue.get()
 
 
-class NativeEvent(object):
+class NativeEvent:
     def __init__(self, path, flags, event_id):
         self.path = path
         self.flags = flags

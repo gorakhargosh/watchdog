@@ -75,7 +75,7 @@ full_monty(x='spam', y='eggs', z='more spam', extra='even more spam')
 
 You can echo functions in a class by decorating them.
 
->>> class Example(object):
+>>> class Example:
 ...     @echo.echo
 ...     def __init__(self): pass
 ...     @echo.echo
@@ -110,7 +110,7 @@ sm()
 Alternatively, don't decorate the methods you want to echo up front,
 retrospectively decorate the whole class.
 
->>> class YetAnotherExample(object):
+>>> class YetAnotherExample:
 ...     def __init__(self): pass
 ...     def m(self, x, y): pass
 ...     @classmethod
@@ -130,7 +130,7 @@ sm(x='echo', y='echo')
 
 Private methods are echoed as well.
 
->>> class Privates(object):
+>>> class Privates:
 ... 	def __myob(self): pass
 ... 	def do_something(self): self.__myob()
 ...

@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +19,7 @@
 :module: watchdog.observers.kqueue
 :synopsis: ``kqueue(2)`` based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 :platforms: Mac OS X and BSD with kqueue(2).
 
 .. WARNING:: kqueue is a very heavyweight way to monitor file systems.
@@ -67,7 +67,6 @@ Collections and Utility Classes
 
 """
 
-from __future__ import with_statement
 from watchdog.utils import platform
 
 import threading
@@ -77,7 +76,7 @@ import os
 import os.path
 import select
 
-from pathtools.path import absolute_path
+from pathlib import Path
 
 from watchdog.observers.api import (
     BaseObserver,
@@ -86,7 +85,6 @@ from watchdog.observers.api import (
     DEFAULT_EMITTER_TIMEOUT
 )
 
-from watchdog.utils import stat as default_stat
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 from watchdog.events import (
@@ -127,6 +125,10 @@ WATCHDOG_KQ_FFLAGS = (
     | select.KQ_NOTE_REVOKE
 )
 
+
+def absolute_path(path):
+    return Path(path).resolve()
+
 # Flag tests.
 
 
@@ -151,7 +153,7 @@ def is_renamed(kev):
     return kev.fflags & select.KQ_NOTE_RENAME
 
 
-class KeventDescriptorSet(object):
+class KeventDescriptorSet:
 
     """
     Thread-safe kevent descriptor collection.
@@ -306,7 +308,7 @@ class KeventDescriptorSet(object):
         descriptor.close()
 
 
-class KeventDescriptor(object):
+class KeventDescriptor:
 
     """
     A kevent descriptor convenience data structure to keep together:
@@ -431,7 +433,7 @@ class KqueueEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
-                 stat=default_stat):
+                 stat=os.stat):
         EventEmitter.__init__(self, event_queue, watch, timeout)
 
         self._kq = select.kqueue()

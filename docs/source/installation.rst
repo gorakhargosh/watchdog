@@ -4,21 +4,17 @@
 
 Installation
 ============
-|project_name| requires Python 2.7 or 3.4+ to work. If you are using a
-Linux/FreeBSD/Mac OS X system, you already have Python installed. However,
-you may wish to upgrade your system to Python 2.7 at least, because this
-version comes with updates that can reduce compatibility
-problems. See a list of :ref:`installation-dependencies`.
+|project_name| requires 3.6+ to work. See a list of :ref:`installation-dependencies`.
 
 Installing from PyPI using pip
 ------------------------------
 
 .. parsed-literal::
 
-    $ python -m pip install |project_name|
+    $ python -m pip install -U |project_name|
 
     # or to install the watchmedo utility:
-    $ python -m pip install |project_name|[watchmedo]
+    $ python -m pip install -U |project_name|[watchmedo]
 
 Installing from source tarballs
 -------------------------------
@@ -31,7 +27,7 @@ Installing from source tarballs
     $ python -m pip install -e .
 
     # or to install the watchmedo utility:
-    $ python -m pip install -e .[watchmedo]
+    $ python -m pip install -e ".[watchmedo]"
 
 Installing from the code repository
 -----------------------------------
@@ -40,10 +36,10 @@ Installing from the code repository
 
     $ git clone --recursive git://github.com/gorakhargosh/watchdog.git
     $ cd watchdog
-    $ python -m pip install -e.
+    $ python -m pip install -e .
 
     # or to install the watchmedo utility:
-    $ python -m pip install -e.[watchmedo]
+    $ python -m pip install -e ".[watchmedo]"
 
 .. _installation-dependencies:
 
@@ -58,8 +54,6 @@ using.
 | Dependency (row)    |             |             |   Darwin    |             |
 +=====================+=============+=============+=============+=============+
 | XCode_              |             |             |     Yes     |             |
-+---------------------+-------------+-------------+-------------+-------------+
-| pathtools_          |     Yes     |     Yes     |     Yes     |     Yes     |
 +---------------------+-------------+-------------+-------------+-------------+
 
 The following is a list of dependencies you need based on the operating system you are
@@ -84,7 +78,7 @@ On Mac OS X, you can use homebrew_ to install LibYAML::
 On Linux, use your favorite package manager to install LibYAML. Here's how you
 do it on Ubuntu::
 
-    sudo aptitude install libyaml-dev
+    sudo apt install libyaml-dev
 
 On Windows, please install PyYAML_ using the binaries they provide.
 

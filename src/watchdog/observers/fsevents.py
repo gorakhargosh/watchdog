@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,12 +19,11 @@
 :module: watchdog.observers.fsevents
 :synopsis: FSEvents based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 :platforms: Mac OS X
 """
 
-from __future__ import with_statement
-
-import sys
+import os
 import threading
 import unicodedata
 import _watchdog_fsevents as _fsevents
@@ -41,7 +39,6 @@ from watchdog.events import (
     DirMovedEvent
 )
 
-from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
@@ -70,7 +67,6 @@ class FSEventsEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._lock = threading.Lock()
-        self.snapshot = DirectorySnapshot(watch.path, watch.is_recursive)
 
     def on_thread_stop(self):
         if self.watch:
@@ -80,37 +76,76 @@ class FSEventsEmitter(EventEmitter):
 
     def queue_events(self, timeout):
         with self._lock:
-            if (not self.watch.is_recursive
-                    and self.watch.path not in self.pathnames):
-                return
-            new_snapshot = DirectorySnapshot(self.watch.path,
-                                             self.watch.is_recursive)
-            events = new_snapshot - self.snapshot
-            self.snapshot = new_snapshot
+            events = self.native_events
+            i = 0
+            while i < len(events):
+                event = events[i]
+                src_path = self._encode_path(event.path)
 
-            # Files.
-            for src_path in events.files_deleted:
-                self.queue_event(FileDeletedEvent(src_path))
-            for src_path in events.files_modified:
-                self.queue_event(FileModifiedEvent(src_path))
-            for src_path in events.files_created:
-                self.queue_event(FileCreatedEvent(src_path))
-            for src_path, dest_path in events.files_moved:
-                self.queue_event(FileMovedEvent(src_path, dest_path))
+                # For some reason the create and remove flags are sometimes also
+                # set for rename and modify type events, so let those take
+                # precedence.
+                if event.is_renamed:
+                    # Internal moves appears to always be consecutive in the same
+                    # buffer and have IDs differ by exactly one (while others
+                    # don't) making it possible to pair up the two events coming
+                    # from a singe move operation. (None of this is documented!)
+                    # Otherwise, guess whether file was moved in or out.
+                    # TODO: handle id wrapping
+                    if (i + 1 < len(events) and events[i + 1].is_renamed
+                            and events[i + 1].event_id == event.event_id + 1):
+                        cls = DirMovedEvent if event.is_directory else FileMovedEvent
+                        dst_path = self._encode_path(events[i + 1].path)
+                        self.queue_event(cls(src_path, dst_path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
+                        i += 1
+                    elif os.path.exists(event.path):
+                        cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                        self.queue_event(cls(src_path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    else:
+                        cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                        self.queue_event(cls(src_path))
+                        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    # TODO: generate events for tree
 
-            # Directories.
-            for src_path in events.dirs_deleted:
-                self.queue_event(DirDeletedEvent(src_path))
-            for src_path in events.dirs_modified:
-                self.queue_event(DirModifiedEvent(src_path))
-            for src_path in events.dirs_created:
-                self.queue_event(DirCreatedEvent(src_path))
-            for src_path, dest_path in events.dirs_moved:
-                self.queue_event(DirMovedEvent(src_path, dest_path))
+                elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                    cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                    self.queue_event(cls(src_path))
+
+                elif event.is_created:
+                    cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+
+                elif event.is_removed:
+                    cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+
+                    if src_path == self.watch.path:
+                        # this should not really occur, instead we expect
+                        # is_root_changed to be set
+                        self.stop()
+
+                elif event.is_root_changed:
+                    # This will be set if root or any if its parents is renamed or
+                    # deleted.
+                    # TODO: find out new path and generate DirMovedEvent?
+                    self.queue_event(DirDeletedEvent(self.watch.path))
+                    self.stop()
+
+                i += 1
 
     def run(self):
         try:
-            def callback(pathnames, flags, emitter=self):
+            def callback(pathnames, flags, ids, emitter=self):
+                with emitter._lock:
+                    emitter.native_events = [
+                        _fsevents.NativeEvent(event_path, event_flags, event_id)
+                        for event_path, event_flags, event_id in zip(pathnames, flags, ids)
+                    ]
                 emitter.queue_events(emitter.timeout)
 
             # for pathname, flag in zip(pathnames, flags):
@@ -142,6 +177,12 @@ class FSEventsEmitter(EventEmitter):
         except Exception:
             pass
 
+    def _encode_path(self, path):
+        """Encode path only if bytes were passed to this emitter. """
+        if isinstance(self.watch.path, bytes):
+            return os.fsencode(path)
+        return path
+
 
 class FSEventsObserver(BaseObserver):
 
@@ -150,25 +191,8 @@ class FSEventsObserver(BaseObserver):
                               timeout=timeout)
 
     def schedule(self, event_handler, path, recursive=False):
-        # Python 2/3 compat
-        try:
-            str_class = unicode
-        except NameError:
-            str_class = str
-
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
-        if isinstance(path, str_class):
-            # path = unicode(path, 'utf-8')
+        if isinstance(path, str):
             path = unicodedata.normalize('NFC', path)
-            # We only encode the path in Python 2 for backwards compatibility.
-            # On Python 3 we want the path to stay as unicode if possible for
-            # the sake of path matching not having to be rewritten to use the
-            # bytes API instead of strings. The _watchdog_fsevent.so code for
-            # Python 3 can handle both str and bytes paths, which is why we
-            # do not HAVE to encode it with Python 3. The Python 2 code in
-            # _watchdog_fsevents.so was not changed for the sake of backwards
-            # compatibility.
-            if sys.version_info < (3,):
-                path = path.encode('utf-8')
         return BaseObserver.schedule(self, event_handler, path, recursive)

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 
 import sys
 import time
@@ -14,6 +13,6 @@ observer.start()
 try:
     while True:
         time.sleep(1)
-except KeyboardInterrupt:
+finally:
     observer.stop()
-observer.join()
+    observer.join()

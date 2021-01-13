@@ -2,9 +2,9 @@
 
 .. |author_name| replace:: Yesudeep Mangalapilly
 .. |author_email| replace:: yesudeep@gmail.com
-.. |copyright| replace:: Copyright 2012 Google, Inc.
+.. |copyright| replace:: Copyright 2012 Google, Inc & contributors.
 .. |project_name| replace:: ``watchdog``
-.. |project_version| replace:: 0.9.0
+.. |project_version| replace:: 1.0.3
 
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _code repository: http://github.com/gorakhargosh/watchdog
@@ -42,4 +42,3 @@
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
 .. _XCode: http://developer.apple.com/technologies/tools/xcode.html
 .. _zc.buildout: http://www.buildout.org/
-.. _pathtools: http://github.com/gorakhargosh/pathtools

@@ -6,10 +6,15 @@ Watchdog
 
 Python API and shell utilities to monitor file system events.
 
-Works on Python 2.7 and 3.4+. If you want to use an old version of Python, you should stick with watchdog < 0.10.0.
+Works on 3.6+.
+
+If you want to use Python 2.6, you should stick with watchdog < 0.10.0.
+
+If you want to use Python 2.7, 3.4 or 3.5, you should stick with watchdog < 1.0.0.
 
 Example API Usage
 -----------------
+
 A simple program that uses watchdog to monitor directories specified
 as command-line arguments and logs events generated:
 
@@ -33,13 +38,14 @@ as command-line arguments and logs events generated:
         try:
             while True:
                 time.sleep(1)
-        except KeyboardInterrupt:
+        finally:
             observer.stop()
-        observer.join()
+            observer.join()
 
 
 Shell Utilities
 ---------------
+
 Watchdog comes with an *optional* utility script called ``watchmedo``.
 Please type ``watchmedo --help`` at the shell prompt to
 know more about this tool.
@@ -76,6 +82,7 @@ Please see the help information for these commands by typing:
 
 About ``watchmedo`` Tricks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ``watchmedo`` can read ``tricks.yaml`` files and execute tricks within them in
 response to file system events. Tricks are actually event handlers that
 subclass ``watchdog.tricks.Trick`` and are written by plugin authors. Trick
@@ -112,20 +119,16 @@ The directory containing the ``tricks.yaml`` file will be monitored. Each trick
 class is initialized with its corresponding keys in the ``tricks.yaml`` file as
 arguments and events are fed to an instance of this class as they arrive.
 
-Tricks will be included in the 0.5.0 release. I need community input about them.
-Please file enhancement requests at the `issue tracker`_.
-
-
 Installation
 ------------
 Install from PyPI using ``pip``:
 
 .. code-block:: bash
 
-    $ python -m pip install watchdog
+    $ python -m pip install -U watchdog
 
     # or to install the watchmedo utility:
-    $ python -m pip install watchdog[watchmedo]
+    $ python -m pip install -U watchdog[watchmedo]
 
 Install from source:
 
@@ -139,6 +142,7 @@ Install from source:
 
 Installation Caveats
 ~~~~~~~~~~~~~~~~~~~~
+
 The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_,
 which brings a performance boost to the PyYAML parser. However, installing
 LibYAML_ is optional but recommended. On Mac OS X, you can use homebrew_
@@ -153,16 +157,18 @@ do it on Ubuntu:
 
 .. code-block:: bash
 
-    $ sudo aptitude install libyaml-dev
+    $ sudo apt install libyaml-dev
 
 On Windows, please install PyYAML_ using the binaries they provide.
 
 Documentation
 -------------
+
 You can browse the latest release documentation_ online.
 
 Contribute
 ----------
+
 Fork the `repository`_ on GitHub and send a pull request, or file an issue
 ticket at the `issue tracker`_. For general help and questions use the official
 `mailing list`_ or ask on `stackoverflow`_ with tag `python-watchdog`.
@@ -170,7 +176,7 @@ ticket at the `issue tracker`_. For general help and questions use the official
 Create and activate your virtual environment, then::
 
     python -m pip install pytest pytest-cov
-    python -m pip install -e .[watchmedo]
+    python -m pip install -e ".[watchmedo]"
     python -m pytest tests
 
 If you are making a substantial change, add an entry to the "Unreleased" section
@@ -178,6 +184,7 @@ of the `changelog`_.
 
 Supported Platforms
 -------------------
+
 * Linux 2.6 (inotify)
 * Mac OS X (FSEvents, kqueue)
 * FreeBSD/BSD (kqueue)
@@ -206,6 +213,7 @@ files.
 
 About using watchdog with editors like Vim
 ------------------------------------------
+
 Vim does not modify files unless directed to do so.
 It creates backup files and then swaps them in to replace
 the files you are editing on the disk. This means that
@@ -217,6 +225,7 @@ this feature.
 
 About using watchdog with CIFS
 ------------------------------
+
 When you want to watch changes in CIFS, you need to explicitly tell watchdog to
 use ``PollingObserver``, that is, instead of letting watchdog decide an
 appropriate observer like in the example above, do::
@@ -226,26 +235,28 @@ appropriate observer like in the example above, do::
 
 Dependencies
 ------------
-1. Python 2.7, 3.4 or above.
-2. pathtools_
-3. XCode_ (only on Mac OS X)
-4. PyYAML_ (only for ``watchmedo`` script)
-5. argh_ (only for ``watchmedo`` script)
+
+1. Python 3.6 or above.
+2. XCode_ (only on Mac OS X)
+3. PyYAML_ (only for ``watchmedo`` script)
+4. argh_ (only for ``watchmedo`` script)
 
 
 Licensing
 ---------
+
 Watchdog is licensed under the terms of the `Apache License, version 2.0`_.
 
 Copyright 2011 `Yesudeep Mangalapilly`_.
 
-Copyright 2012 Google, Inc.
+Copyright 2012 Google, Inc & contributors.
 
 Project `source code`_ is available at Github. Please report bugs and file
 enhancement requests at the `issue tracker`_.
 
 Why Watchdog?
 -------------
+
 Too many people tried to do the same thing and none did what I needed Python
 to do:
 
@@ -277,7 +288,6 @@ to do:
 .. _PyYAML: http://www.pyyaml.org/
 .. _XCode: http://developer.apple.com/technologies/tools/xcode.html
 .. _LibYAML: http://pyyaml.org/wiki/LibYAML
-.. _pathtools: http://github.com/gorakhargosh/pathtools
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471

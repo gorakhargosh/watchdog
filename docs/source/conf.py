@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # watchdog documentation build configuration file, created by
 # sphinx-quickstart on Tue Nov 30 00:43:58 2010.
