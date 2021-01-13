@@ -351,6 +351,7 @@ class FileSystemEventHandler(object):
             EVENT_TYPE_DELETED: self.on_deleted,
             EVENT_TYPE_MODIFIED: self.on_modified,
             EVENT_TYPE_MOVED: self.on_moved,
+            EVENT_TYPE_CLOSED: self.on_closed,
         }[event.event_type](event)
 
     def on_any_event(self, event):
@@ -396,6 +397,16 @@ class FileSystemEventHandler(object):
             Event representing file/directory modification.
         :type event:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
+        """
+
+    def on_closed(self, event):
+        """Called when a file opened for reading or writing is closed.
+
+        :param event:
+            Event representing file closing.
+        :type event:
+            :class:`FileClosedEvent`
+        :return:
         """
 
 
