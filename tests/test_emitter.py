@@ -32,7 +32,8 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
-    DirMovedEvent
+    DirMovedEvent,
+    FileClosedEvent,
 )
 from watchdog.observers.api import ObservedWatch
 
@@ -104,6 +105,23 @@ def test_create():
         assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
         assert isinstance(event, DirModifiedEvent)
 
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
+        assert isinstance(event, FileClosedEvent)
+
+
+@pytest.mark.skipif(not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux")
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_close():
+    f_d = open(p('a'), 'a')
+    start_watching()
+    f_d.close()
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('a')
+    assert isinstance(event, FileClosedEvent)
+
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_delete():
@@ -130,6 +148,11 @@ def test_modify():
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
     assert isinstance(event, FileModifiedEvent)
+
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
+        assert isinstance(event, FileClosedEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
