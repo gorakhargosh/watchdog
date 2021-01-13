@@ -84,12 +84,14 @@ def test_file_moved_event():
     assert not event.is_directory
     assert not event.is_synthetic
 
+
 def test_file_closed_event():
     event = FileClosedEvent(path_1)
     assert path_1 == event.src_path
     assert EVENT_TYPE_CLOSED == event.event_type
     assert not event.is_directory
     assert not event.is_synthetic
+
 
 def test_dir_deleted_event():
     event = DirDeletedEvent(path_1)

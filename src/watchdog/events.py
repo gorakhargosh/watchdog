@@ -406,7 +406,6 @@ class FileSystemEventHandler(object):
             Event representing file closing.
         :type event:
             :class:`FileClosedEvent`
-        :return:
         """
 
 
