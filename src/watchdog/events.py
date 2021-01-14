@@ -222,13 +222,6 @@ class FileClosedEvent(FileSystemEvent):
 
     event_type = EVENT_TYPE_CLOSED
 
-    def __init__(self, src_path):
-        super(FileClosedEvent, self).__init__(src_path)
-
-    def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)r>"
-                ) % (dict(class_name=self.__class__.__name__,
-                          src_path=self.src_path))
 
 # Directory events.
 
