@@ -330,7 +330,7 @@ class FileSystemEventHandler:
         """
 
     def on_closed(self, event):
-        """Called when a file opened for reading or writing is closed.
+        """Called when a file opened for writing is closed.
 
         :param event:
             Event representing file closing.

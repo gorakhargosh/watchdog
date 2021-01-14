@@ -175,9 +175,9 @@ class InotifyEmitter(EventEmitter):
                 cls = FileClosedEvent
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-            elif event.is_close_nowrite and not event.is_directory:
-                cls = FileClosedEvent
-                self.queue_event(cls(src_path))
+            # elif event.is_close_nowrite and not event.is_directory:
+            #     cls = FileClosedEvent
+            #     self.queue_event(cls(src_path))
             elif event.is_delete_self and src_path == self.watch.path:
                 self.queue_event(DirDeletedEvent(src_path))
                 self.stop()
