@@ -121,9 +121,19 @@ def test_close():
     start_watching()
     f_d.close()
 
+    # After file creation/open in append mode
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
     assert isinstance(event, FileClosedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
+    assert isinstance(event, DirModifiedEvent)
+
+    # After read-only, only IN_CLOSE_NOWRITE is emitted but not catched for now #747
+    open(p('a'), 'r').close()
+
+    assert event_queue.empty()
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
