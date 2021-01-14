@@ -446,7 +446,7 @@ def test_renaming_top_level_directory():
         if event_queue.empty():
             break
 
-    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent)) for e in events])
+    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent, FileClosedEvent)) for e in events])
 
     for event in events:
         if isinstance(event, FileCreatedEvent):
