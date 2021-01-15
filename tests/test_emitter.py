@@ -31,7 +31,8 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
-    DirMovedEvent
+    DirMovedEvent,
+    FileClosedEvent,
 )
 from watchdog.observers.api import ObservedWatch
 
@@ -107,6 +108,33 @@ def test_create():
         assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
         assert isinstance(event, DirModifiedEvent)
 
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
+        assert isinstance(event, FileClosedEvent)
+
+
+@pytest.mark.skipif(not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux")
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_close():
+    f_d = open(p('a'), 'a')
+    start_watching()
+    f_d.close()
+
+    # After file creation/open in append mode
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('a')
+    assert isinstance(event, FileClosedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
+    assert isinstance(event, DirModifiedEvent)
+
+    # After read-only, only IN_CLOSE_NOWRITE is emitted but not catched for now #747
+    open(p('a'), 'r').close()
+
+    assert event_queue.empty()
+
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 @pytest.mark.skipif(
@@ -152,6 +180,11 @@ def test_modify():
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
     assert isinstance(event, FileModifiedEvent)
+
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
+        assert isinstance(event, FileClosedEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -423,7 +456,7 @@ def test_renaming_top_level_directory():
         if event_queue.empty():
             break
 
-    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent)) for e in events])
+    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent, FileClosedEvent)) for e in events])
 
     for event in events:
         if isinstance(event, FileCreatedEvent):
