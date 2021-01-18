@@ -9,7 +9,8 @@ Changelog
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.2...master>`__
 
 - Avoid deprecated ``PyEval_InitThreads`` on Python 3.7+ (`#746 <https://github.com/gorakhargosh/watchdog/pull/746>`_)
-- Thanks to our beloved contributors: @bstaletic
+- [mac] Support coalesced filesystem events (`#734 <https://github.com/gorakhargosh/watchdog/pull/734>`_)
+- Thanks to our beloved contributors: @bstaletic, @SamSchott, @CCP-Aporia
 
 
 1.0.2
