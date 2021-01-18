@@ -94,6 +94,9 @@ import logging
 import re
 from watchdog.utils.patterns import match_any_paths
 
+from datetime import datetime
+# System time as in iso format.
+iso_time = lambda: datetime.isoformat(datetime.now())
 
 EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
@@ -127,6 +130,14 @@ class FileSystemEvent:
 
     def __init__(self, src_path):
         self._src_path = src_path
+        self._event_time = iso_time() # Time when the object was created
+
+    @property
+    def event_time(self):
+        """ The time FileSystemEvent object was created, rather than 
+        the time FileSystemEventHandler is run. Which is always 
+        different due to blocking."""
+        return self._event_time  #> ie 2021-01-19T12:34:44.772505
 
     @property
     def src_path(self):
@@ -139,17 +150,19 @@ class FileSystemEvent:
     def __repr__(self):
         return ("<%(class_name)s: event_type=%(event_type)s, "
                 "src_path=%(src_path)r, "
-                "is_directory=%(is_directory)s>"
+                "is_directory=%(is_directory)s, "
+                "event_time=%(event_time)s> "
                 ) % (dict(
                      class_name=self.__class__.__name__,
                      event_type=self.event_type,
                      src_path=self.src_path,
-                     is_directory=self.is_directory))
+                     is_directory=self.is_directory,
+                     event_time=self.event_time))
 
     # Used for comparison of events.
     @property
     def key(self):
-        return (self.event_type, self.src_path, self.is_directory)
+        return (self.event_type, self.src_path, self.is_directory, self.event_time)
 
     def __eq__(self, event):
         return self.key == event.key
