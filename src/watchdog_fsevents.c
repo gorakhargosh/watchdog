@@ -113,20 +113,15 @@ typedef struct {
     FSEventStreamEventId id;
 } NativeEventObject;
 
-PyObject* NativeEventTypeString(PyObject* instance, void* closure)
-{
-    UNUSED(closure);
+PyObject* NativeEventRepr(PyObject* instance) {
     NativeEventObject *self = (NativeEventObject*)instance;
-    if (self->flags & kFSEventStreamEventFlagItemCreated)
-        return PyUnicode_FromString("Created");
-    if (self->flags & kFSEventStreamEventFlagItemRemoved)
-        return PyUnicode_FromString("Removed");
-    if (self->flags & kFSEventStreamEventFlagItemRenamed)
-        return PyUnicode_FromString("Renamed");
-    if (self->flags & kFSEventStreamEventFlagItemModified)
-        return PyUnicode_FromString("Modified");
 
-    return PyUnicode_FromString("Unknown");
+    return PyUnicode_FromFormat(
+        "NativeEvent(path=\"%s\", flags=%x, id=%llu)",
+        self->path,
+        self->flags,
+        self->id
+    );
 }
 
 PyObject* NativeEventTypeFlags(PyObject* instance, void* closure)
@@ -148,6 +143,26 @@ PyObject* NativeEventTypeID(PyObject* instance, void* closure)
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
     return PyLong_FromLong(self->id);
+}
+
+PyObject* NativeEventTypeIsCoalesced(PyObject* instance, void* closure)
+{
+    UNUSED(closure);
+    NativeEventObject *self = (NativeEventObject*)instance;
+
+    // if any of these bitmasks match then we have a coalesced event and need to do sys calls to figure out what happened
+    FSEventStreamEventFlags coalesced_masks[] = {
+        kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved,
+        kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRenamed,
+        kFSEventStreamEventFlagItemRemoved | kFSEventStreamEventFlagItemRenamed,
+    };
+    for (size_t i = 0; i < sizeof(coalesced_masks) / sizeof(FSEventStreamEventFlags); ++i) {
+        if ((self->flags & coalesced_masks[i]) == coalesced_masks[i]) {
+            Py_RETURN_TRUE;
+        }
+    }
+
+    Py_RETURN_FALSE;
 }
 
 #define FLAG_PROPERTY(suffix, flag) \
@@ -197,10 +212,10 @@ static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kw
 }
 
 static PyGetSetDef NativeEventProperties[] = {
-    {"_event_type", NativeEventTypeString, NULL, "Textual representation of the native event that occurred", NULL},
     {"flags", NativeEventTypeFlags, NULL, "The raw mask of flags as returend by FSEvents", NULL},
     {"path", NativeEventTypePath, NULL, "The path for which this event was generated", NULL},
     {"event_id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
+    {"is_coalesced", NativeEventTypeIsCoalesced, NULL, "True if multiple ambiguous changes to the monitored path happened", NULL},
     {"must_scan_subdirs", NativeEventTypeIsMustScanSubDirs, NULL, "True if application must rescan all subdirectories", NULL},
     {"is_user_dropped", NativeEventTypeIsUserDropped, NULL, "True if a failure during event buffering occured", NULL},
     {"is_kernel_dropped", NativeEventTypeIsKernelDropped, NULL, "True if a failure during event buffering occured", NULL},
@@ -238,6 +253,7 @@ static PyTypeObject NativeEventType = {
     .tp_new = PyType_GenericNew,
     .tp_getset = NativeEventProperties,
     .tp_init = (initproc) NativeEventInit,
+    .tp_repr = (reprfunc) NativeEventRepr,
 };
 
 
