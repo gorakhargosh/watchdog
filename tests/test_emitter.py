@@ -257,6 +257,35 @@ def test_move():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_case_change():
+    mkdir(p('dir1'))
+    mkdir(p('dir2'))
+    touch(p('dir1', 'file'))
+    start_watching()
+
+    mv(p('dir1', 'file'), p('dir2', 'FILE'))
+
+    if not platform.is_windows():
+        expect_event(FileMovedEvent(p('dir1', 'file'), p('dir2', 'FILE')))
+    else:
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir1', 'file')
+        assert isinstance(event, FileDeletedEvent)
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir2', 'FILE')
+        assert isinstance(event, FileCreatedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path in [p('dir1'), p('dir2')]
+    assert isinstance(event, DirModifiedEvent)
+
+    if not platform.is_windows():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path in [p('dir1'), p('dir2')]
+        assert isinstance(event, DirModifiedEvent)
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_move_to():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
