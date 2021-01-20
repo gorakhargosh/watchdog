@@ -163,41 +163,20 @@ class FSEventsEmitter(EventEmitter):
 
     def run(self):
         try:
-            def callback(pathnames, flags, ids, emitter=self):
+            def callback(paths, inodes, flags, ids, emitter=self):
                 try:
                     with emitter._lock:
-                        emitter.queue_events(emitter.timeout, [
-                            _fsevents.NativeEvent(event_path, event_flags, event_id)
-                            for event_path, event_flags, event_id in zip(pathnames, flags, ids)
-                        ])
+                        events = [
+                            _fsevents.NativeEvent(path, inode, event_flags, event_id)
+                            for path, inode, event_flags, event_id in zip(paths, inodes, flags, ids)
+                        ]
+                        emitter.queue_events(emitter.timeout, events)
                 except Exception:
                     logger.exception("Unhandled exception in fsevents callback")
 
-            # for pathname, flag in zip(pathnames, flags):
-            # if emitter.watch.is_recursive: # and pathname != emitter.watch.path:
-            #    new_sub_snapshot = DirectorySnapshot(pathname, True)
-            #    old_sub_snapshot = self.snapshot.copy(pathname)
-            #    diff = new_sub_snapshot - old_sub_snapshot
-            #    self.snapshot += new_subsnapshot
-            # else:
-            #    new_snapshot = DirectorySnapshot(emitter.watch.path, False)
-            #    diff = new_snapshot - emitter.snapshot
-            #    emitter.snapshot = new_snapshot
-
-            # INFO: FSEvents reports directory notifications recursively
-            # by default, so we do not need to add subdirectory paths.
-            # pathnames = set([self.watch.path])
-            # if self.watch.is_recursive:
-            #    for root, directory_names, _ in os.walk(self.watch.path):
-            #        for directory_name in directory_names:
-            #            full_path = absolute_path(
-            #                            os.path.join(root, directory_name))
-            #            pathnames.add(full_path)
             self.pathnames = [self.watch.path]
-            _fsevents.add_watch(self,
-                                self.watch,
-                                callback,
-                                self.pathnames)
+
+            _fsevents.add_watch(self, self.watch, callback, self.pathnames)
             _fsevents.read_events(self)
         except Exception:
             logger.exception("Unhandled exception in FSEventsEmitter")

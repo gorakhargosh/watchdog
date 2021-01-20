@@ -62,7 +62,7 @@ typedef struct {
      * function must accept 2 arguments, both of which
      * are Python lists::
      *
-     *    def python_callback(event_paths, event_flags, event_ids):
+     *    def python_callback(event_paths, event_inodes, event_flags, event_ids):
      *        pass
      */
     PyObject        *python_callback;
@@ -89,6 +89,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     const char *path;
+    long inode;
     FSEventStreamEventFlags flags;
     FSEventStreamEventId id;
 } NativeEventObject;
@@ -97,8 +98,9 @@ PyObject* NativeEventRepr(PyObject* instance) {
     NativeEventObject *self = (NativeEventObject*)instance;
 
     return PyUnicode_FromFormat(
-        "NativeEvent(path=\"%s\", flags=%x, id=%llu)",
+        "NativeEvent(path=\"%s\", inode=%llu, flags=%x, id=%llu)",
         self->path,
+        self->inode,
         self->flags,
         self->id
     );
@@ -116,6 +118,13 @@ PyObject* NativeEventTypePath(PyObject* instance, void* closure)
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
     return PyUnicode_FromString(self->path);
+}
+
+PyObject* NativeEventTypeInode(PyObject* instance, void* closure)
+{
+    UNUSED(closure);
+    NativeEventObject *self = (NativeEventObject*)instance;
+    return PyLong_FromLong(self->inode);
 }
 
 PyObject* NativeEventTypeID(PyObject* instance, void* closure)
@@ -182,9 +191,9 @@ FLAG_PROPERTY(IsCloned, kFSEventStreamEventFlagItemCloned)
 
 static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"path", "flags", "id", NULL};
+    static char *kwlist[] = {"path", "inode", "flags", "id", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sIL", kwlist, &self->path, &self->flags, &self->id)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sLIL", kwlist, &self->path, &self->inode, &self->flags, &self->id)) {
         return -1;
     }
 
@@ -194,6 +203,7 @@ static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kw
 static PyGetSetDef NativeEventProperties[] = {
     {"flags", NativeEventTypeFlags, NULL, "The raw mask of flags as returend by FSEvents", NULL},
     {"path", NativeEventTypePath, NULL, "The path for which this event was generated", NULL},
+    {"inode", NativeEventTypeInode, NULL, "The inode for which this event was generated", NULL},
     {"event_id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
     {"is_coalesced", NativeEventTypeIsCoalesced, NULL, "True if multiple ambiguous changes to the monitored path happened", NULL},
     {"must_scan_subdirs", NativeEventTypeIsMustScanSubDirs, NULL, "True if application must rescan all subdirectories", NULL},
@@ -262,6 +272,60 @@ static void watchdog_pycapsule_destructor(PyObject *ptr)
 }
 
 
+
+/**
+ * Converts a ``CFStringRef`` to a Python string object.
+ *
+ * :param cf_string:
+ *      A ``CFStringRef``.
+ * :returns:
+ *      A Python unicode or utf-8 encoded bytestring object.
+ */
+PyObject * CFString_AsPyUnicode(CFStringRef cf_string_ref)
+{
+    CFIndex cf_string_length;
+    char *c_string_buff = NULL;
+    const char *c_string_ptr;
+    PyObject *py_string;
+
+    c_string_ptr = CFStringGetCStringPtr(cf_string_ref, 0);
+
+    if (G_IS_NULL(c_string_ptr)) {
+        cf_string_length = CFStringGetLength(cf_string_ref);
+        CFStringGetCString(cf_string_ref, c_string_buff, cf_string_length, 0);
+        py_string = PyUnicode_FromString(c_string_buff);
+    } else {
+        py_string = PyUnicode_FromString(c_string_ptr);
+    }
+
+    Py_INCREF(py_string);
+
+    return py_string;
+
+}
+
+/**
+ * Converts a ``CFNumberRef`` to a Python string object.
+ *
+ * :param cf_number:
+ *      A ``CFNumberRef``.
+ * :returns:
+ *      A Python unicode or utf-8 encoded bytestring object.
+ */
+PyObject * CFNumberRef_AsPyLong(CFNumberRef cf_number)
+{
+    long c_int;
+    PyObject *py_long;
+
+    CFNumberGetValue(cf_number, kCFNumberSInt64Type, &c_int);
+
+    py_long = PyLong_FromLong(c_int);
+    Py_INCREF(py_long);
+
+    return py_long;
+}
+
+
 /**
  * This is the callback passed to the FSEvents API, which calls
  * the Python callback function, in turn, by passing in event data
@@ -289,19 +353,24 @@ static void
 watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
                                StreamCallbackInfo            *stream_callback_info_ref,
                                size_t                         num_events,
-                               const char                    *event_paths[],
+                               CFArrayRef                     event_path_info_array_ref,
                                const FSEventStreamEventFlags  event_flags[],
                                const FSEventStreamEventId     event_ids[])
 {
     UNUSED(stream_ref);
     size_t i = 0;
+    CFDictionaryRef path_info_dict;
+    CFStringRef cf_path;
+    CFNumberRef cf_inode;
     PyObject *callback_result = NULL;
     PyObject *path = NULL;
+    PyObject *inode = NULL;
     PyObject *id = NULL;
     PyObject *flags = NULL;
     PyObject *py_event_flags = NULL;
     PyObject *py_event_ids = NULL;
     PyObject *py_event_paths = NULL;
+    PyObject *py_event_inodes = NULL;
     PyThreadState *saved_thread_state = NULL;
 
     /* Acquire interpreter lock and save original thread state. */
@@ -310,11 +379,11 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
 
     /* Convert event flags and paths to Python ints and strings. */
     py_event_paths = PyList_New(num_events);
+    py_event_inodes = PyList_New(num_events);
     py_event_flags = PyList_New(num_events);
     py_event_ids = PyList_New(num_events);
-    if (G_NOT(py_event_paths && py_event_flags && py_event_ids))
+    if (G_NOT(event_path_info_array_ref && py_event_flags && py_event_ids))
     {
-        Py_XDECREF(py_event_paths);
         Py_XDECREF(py_event_ids);
         Py_XDECREF(py_event_flags);
         return /*NULL*/;
@@ -322,16 +391,31 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     for (i = 0; i < num_events; ++i)
     {
         id = PyLong_FromLongLong(event_ids[i]);
-        path = PyUnicode_FromString(event_paths[i]);
         flags = PyLong_FromLong(event_flags[i]);
-        if (G_NOT(path && flags && id))
+
+        path_info_dict = CFArrayGetValueAtIndex(event_path_info_array_ref, i);
+        cf_path = CFDictionaryGetValue(path_info_dict, kFSEventStreamEventExtendedDataPathKey);
+        cf_inode = CFDictionaryGetValue(path_info_dict, kFSEventStreamEventExtendedFileIDKey);
+
+        path = CFString_AsPyUnicode(cf_path);
+
+        if (G_IS_NOT_NULL(cf_inode)) {
+            inode = CFNumberRef_AsPyLong(cf_inode);
+        } else {
+            Py_INCREF(Py_None);
+            inode = Py_None;
+        }
+
+        if (G_NOT(path && inode && flags && id))
         {
             Py_DECREF(py_event_paths);
-            Py_DECREF(py_event_flags);
+            Py_DECREF(py_event_inodes);
             Py_DECREF(py_event_ids);
+            Py_DECREF(py_event_flags);
             return /*NULL*/;
         }
         PyList_SET_ITEM(py_event_paths, i, path);
+        PyList_SET_ITEM(py_event_inodes, i, inode);
         PyList_SET_ITEM(py_event_flags, i, flags);
         PyList_SET_ITEM(py_event_ids, i, id);
     }
@@ -345,7 +429,7 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
      */
     callback_result = \
         PyObject_CallFunction(stream_callback_info_ref->python_callback,
-                              "OOO", py_event_paths, py_event_flags, py_event_ids);
+                              "OOOO", py_event_paths, py_event_inodes, py_event_flags, py_event_ids);
     if (G_IS_NULL(callback_result))
     {
         if (G_NOT(PyErr_Occurred()))
@@ -394,7 +478,6 @@ CFStringRef PyString_AsUTF8EncodedCFStringRef(PyObject *py_string)
 
     return cf_string;
 }
-
 
 /**
  * Converts a list of Python strings to a ``CFMutableArray`` of
@@ -489,7 +572,7 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
                                      paths,
                                      kFSEventStreamEventIdSinceNow,
                                      stream_latency,
-                                     kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot);
+                                     kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagUseExtendedData | kFSEventStreamCreateFlagUseCFTypes);
     CFRelease(paths);
     return stream_ref;
 }
