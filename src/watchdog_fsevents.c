@@ -725,6 +725,25 @@ watchdog_read_events(PyObject *self, PyObject *args)
     return Py_None;
 }
 
+PyDoc_STRVAR(watchdog_flush_events__doc__,
+        MODULE_NAME ".flush_events(watch) -> None\n\
+Flushes events for the watch.\n\n\
+:param watch:\n\
+    The watch to flush.\n");
+static PyObject *
+watchdog_flush_events(PyObject *self, PyObject *watch)
+{
+    UNUSED(self);
+    PyObject *value = PyDict_GetItem(watch_to_stream, watch);
+
+    FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
+
+    FSEventStreamFlushSync(stream_ref);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 PyDoc_STRVAR(watchdog_remove_watch__doc__,
         MODULE_NAME ".remove_watch(watch) -> None\n\
 Removes a watch from the event loop.\n\n\
@@ -787,6 +806,7 @@ static PyMethodDef watchdog_fsevents_methods[] =
 {
     {"add_watch",    watchdog_add_watch,    METH_VARARGS, watchdog_add_watch__doc__},
     {"read_events",  watchdog_read_events,  METH_VARARGS, watchdog_read_events__doc__},
+    {"flush_events", watchdog_flush_events, METH_O,       watchdog_flush_events__doc__},
     {"remove_watch", watchdog_remove_watch, METH_O,       watchdog_remove_watch__doc__},
 
     /* Aliases for compatibility with macfsevents. */

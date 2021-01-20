@@ -156,7 +156,6 @@ class FSEventsEmitter(EventEmitter):
                 logger.info("Stopping because root path was changed")
                 self.stop()
 
-
     def run(self):
         try:
             def callback(paths, inodes, flags, ids, emitter=self):
