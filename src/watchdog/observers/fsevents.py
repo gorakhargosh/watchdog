@@ -85,7 +85,7 @@ class FSEventsEmitter(EventEmitter):
 
     def queue_events(self, timeout, events):
 
-        while len(events) > 0:
+        while events:
             event = events.pop(0)
             logger.info(event)
             src_path = self._encode_path(event.path)
