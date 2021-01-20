@@ -84,38 +84,35 @@ class FSEventsEmitter(EventEmitter):
         EventEmitter.queue_event(self, event)
 
     def queue_events(self, timeout, events):
-        i = 0
-        while i < len(events):
-            event = events[i]
+
+        while len(events) > 0:
+            event = events.pop(0)
             logger.info(event)
             src_path = self._encode_path(event.path)
 
             if event.is_renamed:
-                # Internal moves appears to always be consecutive in the same
-                # buffer and have IDs differ by exactly one (while others
-                # don't) making it possible to pair up the two events coming
-                # from a singe move operation. (None of this is documented!)
-                # Otherwise, guess whether file was moved in or out.
-                # TODO: handle id wrapping
-                if (i + 1 < len(events) and events[i + 1].is_renamed
-                        and events[i + 1].event_id == event.event_id + 1):
-                    logger.info("Next event for rename is %s", events[i + 1])
+                dest_event = next(iter(e for e in events if e.is_renamed and e.inode == event.inode), None)
+                if dest_event:
+                    # item was moved within the watched folder
+                    events.remove(dest_event)
+                    logger.info("Destination event for rename is %s", dest_event)
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
-                    dst_path = self._encode_path(events[i + 1].path)
+                    dst_path = self._encode_path(dest_event.path)
                     self.queue_event(cls(src_path, dst_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
                     for sub_event in generate_sub_moved_events(src_path, dst_path):
                         logger.info("Generated sub event: %s", sub_event)
                         self.queue_event(sub_event)
-                    i += 1
                 elif os.path.exists(event.path):
+                    # item was moved into the watched folder
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     for sub_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_event)
                 else:
+                    # item was moved out of the watched folder
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
@@ -159,7 +156,6 @@ class FSEventsEmitter(EventEmitter):
                 logger.info("Stopping because root path was changed")
                 self.stop()
 
-            i += 1
 
     def run(self):
         try:
