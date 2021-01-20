@@ -119,10 +119,7 @@ class FSEventsEmitter(EventEmitter):
 
             if event.is_created:
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
-                if not event.is_coalesced or (
-                    event.is_coalesced and not event.is_renamed and not event.is_modified and not
-                    event.is_inode_meta_mod and not event.is_xattr_mod
-                ):
+                if os.path.exists(event.path):
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
 
@@ -138,7 +135,7 @@ class FSEventsEmitter(EventEmitter):
 
             if event.is_removed:
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
-                if not event.is_coalesced or (event.is_coalesced and not os.path.exists(event.path)):
+                if not os.path.exists(event.path):
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
 
