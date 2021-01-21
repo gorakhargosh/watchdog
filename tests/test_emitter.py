@@ -56,6 +56,12 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+if platform.is_darwin():
+    # enable more verbose logs
+    fsevents_logger = logging.getLogger("fsevents")
+    fsevents_logger.setLevel(logging.INFO)
+
+
 @pytest.fixture(autouse=True)
 def setup_teardown(tmpdir):
     global p, emitter, event_queue
