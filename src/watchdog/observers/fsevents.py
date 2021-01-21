@@ -84,38 +84,39 @@ class FSEventsEmitter(EventEmitter):
         EventEmitter.queue_event(self, event)
 
     def queue_events(self, timeout, events):
-        i = 0
-        while i < len(events):
-            event = events[i]
-            logger.info(event)
+
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            for event in events:
+                flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
+                logger.debug(f"{event}: {flags}")
+
+        while events:
+            event = events.pop(0)
             src_path = self._encode_path(event.path)
 
             if event.is_renamed:
-                # Internal moves appears to always be consecutive in the same
-                # buffer and have IDs differ by exactly one (while others
-                # don't) making it possible to pair up the two events coming
-                # from a singe move operation. (None of this is documented!)
-                # Otherwise, guess whether file was moved in or out.
-                # TODO: handle id wrapping
-                if (i + 1 < len(events) and events[i + 1].is_renamed
-                        and events[i + 1].event_id == event.event_id + 1):
-                    logger.info("Next event for rename is %s", events[i + 1])
+                dest_event = next(iter(e for e in events if e.is_renamed and e.inode == event.inode), None)
+                if dest_event:
+                    # item was moved within the watched folder
+                    events.remove(dest_event)
+                    logger.debug("Destination event for rename is %s", dest_event)
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
-                    dst_path = self._encode_path(events[i + 1].path)
+                    dst_path = self._encode_path(dest_event.path)
                     self.queue_event(cls(src_path, dst_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
                     for sub_event in generate_sub_moved_events(src_path, dst_path):
-                        logger.info("Generated sub event: %s", sub_event)
+                        logger.debug("Generated sub event: %s", sub_event)
                         self.queue_event(sub_event)
-                    i += 1
                 elif os.path.exists(event.path):
+                    # item was moved into the watched folder
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     for sub_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_event)
                 else:
+                    # item was moved out of the watched folder
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
@@ -148,7 +149,7 @@ class FSEventsEmitter(EventEmitter):
                     if src_path == self.watch.path:
                         # this should not really occur, instead we expect
                         # is_root_changed to be set
-                        logger.info("Stopping because root path was removed")
+                        logger.debug("Stopping because root path was removed")
                         self.stop()
 
             if event.is_root_changed:
@@ -156,48 +157,25 @@ class FSEventsEmitter(EventEmitter):
                 # deleted.
                 # TODO: find out new path and generate DirMovedEvent?
                 self.queue_event(DirDeletedEvent(self.watch.path))
-                logger.info("Stopping because root path was changed")
+                logger.debug("Stopping because root path was changed")
                 self.stop()
-
-            i += 1
 
     def run(self):
         try:
-            def callback(pathnames, flags, ids, emitter=self):
+            def callback(paths, inodes, flags, ids, emitter=self):
                 try:
                     with emitter._lock:
-                        emitter.queue_events(emitter.timeout, [
-                            _fsevents.NativeEvent(event_path, event_flags, event_id)
-                            for event_path, event_flags, event_id in zip(pathnames, flags, ids)
-                        ])
+                        events = [
+                            _fsevents.NativeEvent(path, inode, event_flags, event_id)
+                            for path, inode, event_flags, event_id in zip(paths, inodes, flags, ids)
+                        ]
+                        emitter.queue_events(emitter.timeout, events)
                 except Exception:
                     logger.exception("Unhandled exception in fsevents callback")
 
-            # for pathname, flag in zip(pathnames, flags):
-            # if emitter.watch.is_recursive: # and pathname != emitter.watch.path:
-            #    new_sub_snapshot = DirectorySnapshot(pathname, True)
-            #    old_sub_snapshot = self.snapshot.copy(pathname)
-            #    diff = new_sub_snapshot - old_sub_snapshot
-            #    self.snapshot += new_subsnapshot
-            # else:
-            #    new_snapshot = DirectorySnapshot(emitter.watch.path, False)
-            #    diff = new_snapshot - emitter.snapshot
-            #    emitter.snapshot = new_snapshot
-
-            # INFO: FSEvents reports directory notifications recursively
-            # by default, so we do not need to add subdirectory paths.
-            # pathnames = set([self.watch.path])
-            # if self.watch.is_recursive:
-            #    for root, directory_names, _ in os.walk(self.watch.path):
-            #        for directory_name in directory_names:
-            #            full_path = absolute_path(
-            #                            os.path.join(root, directory_name))
-            #            pathnames.add(full_path)
             self.pathnames = [self.watch.path]
-            _fsevents.add_watch(self,
-                                self.watch,
-                                callback,
-                                self.pathnames)
+
+            _fsevents.add_watch(self, self.watch, callback, self.pathnames)
             _fsevents.read_events(self)
         except Exception:
             logger.exception("Unhandled exception in FSEventsEmitter")

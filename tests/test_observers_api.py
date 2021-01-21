@@ -85,6 +85,7 @@ def test_event_dispatcher():
     event_dispatcher.start()
     time.sleep(1)
     event_dispatcher.stop()
+    event_dispatcher.join()
 
 
 def test_observer_basic():

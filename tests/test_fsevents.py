@@ -63,17 +63,17 @@ def observer():
 
 @pytest.mark.parametrize('event,expectation', [
     # invalid flags
-    (_fsevents.NativeEvent('', 0, 0), False),
+    (_fsevents.NativeEvent('', 0, 0, 0), False),
     # renamed
-    (_fsevents.NativeEvent('', 0x00000800, 0), False),
+    (_fsevents.NativeEvent('', 0, 0x00000800, 0), False),
     # renamed, removed
-    (_fsevents.NativeEvent('', 0x00000800 | 0x00000200, 0), True),
+    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200, 0), True),
     # renamed, removed, created
-    (_fsevents.NativeEvent('', 0x00000800 | 0x00000200 | 0x00000100, 0), True),
+    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200 | 0x00000100, 0), True),
     # renamed, removed, created, itemfindermod
-    (_fsevents.NativeEvent('', 0x00000800 | 0x00000200 | 0x00000100 | 0x00002000, 0), True),
+    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200 | 0x00000100 | 0x00002000, 0), True),
     # xattr, removed, modified, itemfindermod
-    (_fsevents.NativeEvent('', 0x00008000 | 0x00000200 | 0x00001000 | 0x00002000, 0), False),
+    (_fsevents.NativeEvent('', 0, 0x00008000 | 0x00000200 | 0x00001000 | 0x00002000, 0), False),
 ])
 def test_coalesced_event_check(event, expectation):
     assert event.is_coalesced == expectation
