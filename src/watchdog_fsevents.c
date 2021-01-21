@@ -29,7 +29,7 @@
 
 /* Compatibility; since fsevents won't set these on earlier macOS versions the properties will always be False */
 #if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
-#error Watchdog module requires at least Mac OS X 10.13
+#error Watchdog module requires at least macOS 10.13
 #endif
 
 /* Convenience macros to make code more readable. */
