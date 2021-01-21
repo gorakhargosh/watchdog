@@ -89,7 +89,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     const char *path;
-    long inode;
+    PyObject *inode;
     FSEventStreamEventFlags flags;
     FSEventStreamEventId id;
 } NativeEventObject;
@@ -98,7 +98,7 @@ PyObject* NativeEventRepr(PyObject* instance) {
     NativeEventObject *self = (NativeEventObject*)instance;
 
     return PyUnicode_FromFormat(
-        "NativeEvent(path=\"%s\", inode=%llu, flags=%x, id=%llu)",
+        "NativeEvent(path=\"%s\", inode=%S, flags=%x, id=%llu)",
         self->path,
         self->inode,
         self->flags,
@@ -193,7 +193,7 @@ static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kw
 {
     static char *kwlist[] = {"path", "inode", "flags", "id", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sLIL", kwlist, &self->path, &self->inode, &self->flags, &self->id)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sOIL", kwlist, &self->path, &self->inode, &self->flags, &self->id)) {
         return -1;
     }
 
