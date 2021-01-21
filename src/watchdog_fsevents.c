@@ -298,8 +298,6 @@ PyObject * CFString_AsPyUnicode(CFStringRef cf_string_ref)
         py_string = PyUnicode_FromString(c_string_ptr);
     }
 
-    Py_INCREF(py_string);
-
     return py_string;
 
 }
@@ -320,7 +318,6 @@ PyObject * CFNumberRef_AsPyLong(CFNumberRef cf_number)
     CFNumberGetValue(cf_number, kCFNumberSInt64Type, &c_int);
 
     py_long = PyLong_FromLong(c_int);
-    Py_INCREF(py_long);
 
     return py_long;
 }
