@@ -85,10 +85,13 @@ class FSEventsEmitter(EventEmitter):
 
     def queue_events(self, timeout, events):
 
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            for event in events:
+                flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
+                logger.debug(f"{event}: {flags}")
+
         while events:
             event = events.pop(0)
-            flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
-            logger.info(f"{event}: {flags}")
             src_path = self._encode_path(event.path)
 
             if event.is_renamed:
@@ -96,14 +99,14 @@ class FSEventsEmitter(EventEmitter):
                 if dest_event:
                     # item was moved within the watched folder
                     events.remove(dest_event)
-                    logger.info("Destination event for rename is %s", dest_event)
+                    logger.debug("Destination event for rename is %s", dest_event)
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
                     dst_path = self._encode_path(dest_event.path)
                     self.queue_event(cls(src_path, dst_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                     self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
                     for sub_event in generate_sub_moved_events(src_path, dst_path):
-                        logger.info("Generated sub event: %s", sub_event)
+                        logger.debug("Generated sub event: %s", sub_event)
                         self.queue_event(sub_event)
                 elif os.path.exists(event.path):
                     # item was moved into the watched folder
@@ -146,7 +149,7 @@ class FSEventsEmitter(EventEmitter):
                     if src_path == self.watch.path:
                         # this should not really occur, instead we expect
                         # is_root_changed to be set
-                        logger.info("Stopping because root path was removed")
+                        logger.debug("Stopping because root path was removed")
                         self.stop()
 
             if event.is_root_changed:
@@ -154,7 +157,7 @@ class FSEventsEmitter(EventEmitter):
                 # deleted.
                 # TODO: find out new path and generate DirMovedEvent?
                 self.queue_event(DirDeletedEvent(self.watch.path))
-                logger.info("Stopping because root path was changed")
+                logger.debug("Stopping because root path was changed")
                 self.stop()
 
     def run(self):

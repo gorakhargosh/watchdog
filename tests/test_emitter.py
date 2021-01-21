@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 if platform.is_darwin():
     # enable more verbose logs
     fsevents_logger = logging.getLogger("fsevents")
-    fsevents_logger.setLevel(logging.INFO)
+    fsevents_logger.setLevel(logging.DEBUG)
 
 
 @pytest.fixture(autouse=True)
