@@ -124,7 +124,8 @@ PyObject* NativeEventTypeInode(PyObject* instance, void* closure)
 {
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
-    return PyLong_FromLong(self->inode);
+    Py_INCREF(self->inode);
+    return self->inode;
 }
 
 PyObject* NativeEventTypeID(PyObject* instance, void* closure)
