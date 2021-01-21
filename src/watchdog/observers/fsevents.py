@@ -87,7 +87,8 @@ class FSEventsEmitter(EventEmitter):
 
         while events:
             event = events.pop(0)
-            logger.info(event)
+            flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
+            logger.info(f"{event}: {flags}")
             src_path = self._encode_path(event.path)
 
             if event.is_renamed:
