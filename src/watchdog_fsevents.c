@@ -193,11 +193,19 @@ static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kw
 {
     static char *kwlist[] = {"path", "inode", "flags", "id", NULL};
 
+    self->inode = NULL;
+
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sOIL", kwlist, &self->path, &self->inode, &self->flags, &self->id)) {
         return -1;
     }
 
+    Py_INCREF(self->inode);
+
     return 0;
+}
+
+static void NativeEventDealloc(NativeEventObject *self) {
+    Py_XDECREF(self->inode);
 }
 
 static PyGetSetDef NativeEventProperties[] = {
@@ -244,6 +252,7 @@ static PyTypeObject NativeEventType = {
     .tp_getset = NativeEventProperties,
     .tp_init = (initproc) NativeEventInit,
     .tp_repr = (reprfunc) NativeEventRepr,
+    .tp_dealloc = (destructor) NativeEventDealloc,
 };
 
 
