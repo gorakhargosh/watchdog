@@ -93,30 +93,39 @@ class FSEventsEmitter(EventEmitter):
         while events:
             event = events.pop(0)
             src_path = self._encode_path(event.path)
+            dirname = os.path.dirname(src_path)
+
+            try:
+                stat = os.stat(src_path)
+            except OSError:
+                stat = None
+
+            exists = stat and stat.st_ino == event.inode
 
             if event.is_renamed:
+                # Find other renamed events with the same inode.
                 dest_event = next(iter(e for e in events if e.is_renamed and e.inode == event.inode), None)
                 if dest_event:
-                    # item was moved within the watched folder
+                    # Item was moved within the watched folder.
                     events.remove(dest_event)
                     logger.debug("Destination event for rename is %s", dest_event)
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
                     dst_path = self._encode_path(dest_event.path)
                     self.queue_event(cls(src_path, dst_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    self.queue_event(DirModifiedEvent(dirname))
                     self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
                     for sub_event in generate_sub_moved_events(src_path, dst_path):
                         logger.debug("Generated sub event: %s", sub_event)
                         self.queue_event(sub_event)
-                elif os.path.exists(event.path):
-                    # item was moved into the watched folder
+                elif exists:
+                    # Item was moved into the watched folder.
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                     self.queue_event(cls(src_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                    self.queue_event(DirModifiedEvent(dirname))
                     for sub_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_event)
                 else:
-                    # item was moved out of the watched folder
+                    # Item was moved out of the watched folder.
                     cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                     self.queue_event(cls(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
