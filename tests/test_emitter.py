@@ -21,7 +21,7 @@ import logging
 from functools import partial
 from queue import Queue, Empty
 
-from .shell import mkdir, touch, mv, rm
+from .shell import mkfile, mkdir, touch, mv, rm
 from watchdog.utils import platform
 from watchdog.events import (
     FileDeletedEvent,
@@ -98,11 +98,10 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
         # As such, let's create a sentinel event that tells us that we are
         # good to go.
         sentinel_file = os.path.join(path, '.sentinel' if isinstance(path, str) else '.sentinel'.encode())
-        touch(sentinel_file)
+        mkfile(sentinel_file)
         sentinel_events = [
             FileCreatedEvent(sentinel_file),
             DirModifiedEvent(path),
-            FileModifiedEvent(sentinel_file)
         ]
         next_sentinel_event = sentinel_events.pop(0)
         now = time.monotonic()
@@ -199,9 +198,9 @@ def test_create_wrong_encoding():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_delete():
-    touch(p('a'))
-    start_watching()
+    mkfile(p('a'))
 
+    start_watching()
     rm(p('a'))
 
     expect_event(FileDeletedEvent(p('a')))
@@ -212,7 +211,7 @@ def test_delete():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_modify():
-    touch(p('a'))
+    mkfile(p('a'))
     start_watching()
 
     touch(p('a'))
@@ -229,7 +228,7 @@ def test_modify():
 def test_move():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
-    touch(p('dir1', 'a'))
+    mkfile(p('dir1', 'a'))
     start_watching()
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
@@ -258,7 +257,7 @@ def test_move():
 def test_case_change():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
-    touch(p('dir1', 'file'))
+    mkfile(p('dir1', 'file'))
     start_watching()
 
     mv(p('dir1', 'file'), p('dir2', 'FILE'))
@@ -287,7 +286,7 @@ def test_case_change():
 def test_move_to():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
-    touch(p('dir1', 'a'))
+    mkfile(p('dir1', 'a'))
     start_watching(p('dir2'))
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
@@ -302,7 +301,7 @@ def test_move_to():
 def test_move_to_full():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
-    touch(p('dir1', 'a'))
+    mkfile(p('dir1', 'a'))
     start_watching(p('dir2'), use_full_emitter=True)
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
@@ -316,7 +315,7 @@ def test_move_to_full():
 def test_move_from():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
-    touch(p('dir1', 'a'))
+    mkfile(p('dir1', 'a'))
     start_watching(p('dir1'))
 
     mv(p('dir1', 'a'), p('dir2', 'b'))
@@ -331,7 +330,7 @@ def test_move_from():
 def test_move_from_full():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
-    touch(p('dir1', 'a'))
+    mkfile(p('dir1', 'a'))
     start_watching(p('dir1'), use_full_emitter=True)
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
@@ -344,8 +343,8 @@ def test_move_from_full():
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_separate_consecutive_moves():
     mkdir(p('dir1'))
-    touch(p('dir1', 'a'))
-    touch(p('b'))
+    mkfile(p('dir1', 'a'))
+    mkfile(p('b'))
     start_watching(p('dir1'))
     mv(p('dir1', 'a'), p('c'))
     mv(p('b'), p('dir1', 'd'))
@@ -411,7 +410,7 @@ def test_fast_subdirectory_creation_deletion():
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode():
     start_watching(str(p()))
-    touch(p('a'))
+    mkfile(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, str)
 
@@ -421,7 +420,7 @@ def test_passing_unicode_should_give_unicode():
                            " unicode for paths.")
 def test_passing_bytes_should_give_bytes():
     start_watching(p().encode())
-    touch(p('a'))
+    mkfile(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, bytes)
 
@@ -558,7 +557,7 @@ def test_renaming_top_level_directory_on_windows():
                     reason="Windows create another set of events for this test")
 def test_move_nested_subdirectories():
     mkdir(p('dir1/dir2/dir3'), parents=True)
-    touch(p('dir1/dir2/dir3', 'a'))
+    mkfile(p('dir1/dir2/dir3', 'a'))
     start_watching()
     mv(p('dir1/dir2'), p('dir2'))
 
@@ -590,7 +589,7 @@ def test_move_nested_subdirectories():
                     reason="Non-Windows create another set of events for this test")
 def test_move_nested_subdirectories_on_windows():
     mkdir(p('dir1/dir2/dir3'), parents=True)
-    touch(p('dir1/dir2/dir3', 'a'))
+    mkfile(p('dir1/dir2/dir3', 'a'))
     start_watching(p(''))
     mv(p('dir1/dir2'), p('dir2'))
 

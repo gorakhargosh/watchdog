@@ -49,6 +49,12 @@ def pwd():
     return path
 
 
+def mkfile(path):
+    """Creates a file"""
+    with open(path, 'ab'):
+        pass
+
+
 def mkdir(path, parents=False):
     """Creates a directory (optionally also creates all the parent directories
   in the path)."""
