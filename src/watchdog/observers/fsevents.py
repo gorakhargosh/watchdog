@@ -71,6 +71,7 @@ class FSEventsEmitter(EventEmitter):
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         EventEmitter.__init__(self, event_queue, watch, timeout)
+        self._fs_view = set()
         self._lock = threading.Lock()
 
     def on_thread_stop(self):
@@ -83,6 +84,27 @@ class FSEventsEmitter(EventEmitter):
         logger.info("queue_event %s", event)
         EventEmitter.queue_event(self, event)
 
+    def _queue_created_event(self, event, src_path, dirname):
+        cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+        self.queue_event(cls(src_path))
+        self.queue_event(DirModifiedEvent(dirname))
+
+    def _queue_deleted_event(self, event, src_path, dirname):
+        cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+        self.queue_event(cls(src_path))
+        self.queue_event(DirModifiedEvent(dirname))
+
+    def _queue_modified_event(self, event, src_path, dirname):
+        cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+        self.queue_event(cls(src_path))
+
+    def _queue_renamed_event(self, src_event, src_path, dst_path, src_dirname, dst_dirname):
+        cls = DirMovedEvent if src_event.is_directory else FileMovedEvent
+        dst_path = self._encode_path(dst_path)
+        self.queue_event(cls(src_path, dst_path))
+        self.queue_event(DirModifiedEvent(src_dirname))
+        self.queue_event(DirModifiedEvent(dst_dirname))
+
     def queue_events(self, timeout, events):
 
         if logger.getEffectiveLevel() <= logging.DEBUG:
@@ -93,7 +115,7 @@ class FSEventsEmitter(EventEmitter):
         while events:
             event = events.pop(0)
             src_path = self._encode_path(event.path)
-            dirname = os.path.dirname(src_path)
+            src_dirname = os.path.dirname(src_path)
 
             try:
                 stat = os.stat(src_path)
@@ -102,72 +124,109 @@ class FSEventsEmitter(EventEmitter):
 
             exists = stat and stat.st_ino == event.inode
 
-            if event.is_renamed:
-                # Find other renamed events with the same inode.
-                dest_event = next(iter(e for e in events if e.is_renamed and e.inode == event.inode), None)
-                if dest_event:
-                    # Item was moved within the watched folder.
-                    events.remove(dest_event)
-                    logger.debug("Destination event for rename is %s", dest_event)
-                    cls = DirMovedEvent if event.is_directory else FileMovedEvent
-                    dst_path = self._encode_path(dest_event.path)
-                    self.queue_event(cls(src_path, dst_path))
-                    self.queue_event(DirModifiedEvent(dirname))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(dst_path)))
-                    for sub_event in generate_sub_moved_events(src_path, dst_path):
-                        logger.debug("Generated sub event: %s", sub_event)
-                        self.queue_event(sub_event)
-                elif exists:
-                    # Item was moved into the watched folder.
-                    cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
-                    self.queue_event(cls(src_path))
-                    self.queue_event(DirModifiedEvent(dirname))
-                    for sub_event in generate_sub_created_events(src_path):
-                        self.queue_event(sub_event)
-                else:
-                    # Item was moved out of the watched folder.
-                    cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
-                    self.queue_event(cls(src_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+            # FSevents may coalesce multiple events for the same item + path into a
+            # single event. However, events are never coalesced for different items at
+            # the same path or for the same item at different paths. Therefore, the
+            # event chains "removed -> created" and "created -> renamed -> removed" will
+            # never emit a single native event and a deleted event *always* means that
+            # the item no longer existed at the end of the event chain.
 
-            if event.is_created:
-                cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
-                if not event.is_coalesced or (
-                    event.is_coalesced and not event.is_renamed and not event.is_modified and not
-                    event.is_inode_meta_mod and not event.is_xattr_mod
-                ):
-                    self.queue_event(cls(src_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+            # Some events will have a spurious `is_created` flag set, coalesced from an
+            # already emitted and processed CreatedEvent. To filter those, we keep track
+            # of all inodes which we know to be already created. This is safer than
+            # keeping track of paths since those are more likely to be reused than
+            # inodes.
 
-            if event.is_modified and not event.is_coalesced and os.path.exists(src_path):
-                cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
-                self.queue_event(cls(src_path))
+            if event.is_created and event.is_removed:
 
-            if event.is_inode_meta_mod or event.is_xattr_mod:
-                if os.path.exists(src_path) and not event.is_coalesced:
-                    # NB: in the scenario of touch(file) -> rm(file) we can trigger this twice
-                    cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
-                    self.queue_event(cls(src_path))
+                # Events will only be coalesced for the same item / inode.
+                # The sequence deleted -> created therefore cannot occur.
 
-            if event.is_removed:
-                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
-                if not event.is_coalesced or (event.is_coalesced and not os.path.exists(event.path)):
-                    self.queue_event(cls(src_path))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                if event.inode not in self._fs_view:
+                    self._queue_created_event(event, src_path, src_dirname)
+                    self._fs_view.add(event.inode)
 
-                    if src_path == self.watch.path:
-                        # this should not really occur, instead we expect
-                        # is_root_changed to be set
-                        logger.debug("Stopping because root path was removed")
-                        self.stop()
+                if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                    self._queue_modified_event(event, src_path, src_dirname)
+
+                self._queue_deleted_event(event, src_path, src_dirname)
+                self._fs_view.discard(event.inode)
+
+            else:
+
+                if event.is_created:
+                    # This flag may be set erroneously in coalesced events, despite
+                    # having already registered a created event. We therefore suppress
+                    # this event if the item already exists in our view.
+
+                    if event.inode not in self._fs_view:
+                        self._queue_created_event(event, src_path, src_dirname)
+                        self._fs_view.add(event.inode)
+
+                if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                    self._queue_modified_event(event, src_path, src_dirname)
+
+                if event.is_renamed:
+                    # Check if there is a matching destination event (=> moved within
+                    # the watched folder).
+
+                    dst_event = next(iter(e for e in events if e.is_renamed and e.inode == event.inode), None)
+
+                    if dst_event:
+                        # Item was moved within the watched folder.
+                        logger.debug("Destination event for rename is %s", dst_event)
+
+                        dst_path = self._encode_path(dst_event.path)
+                        dst_dirname = os.path.dirname(dst_path)
+
+                        self._queue_renamed_event(event, src_path, dst_path, src_dirname, dst_dirname)
+                        self._fs_view.add( event.inode)
+
+                        for sub_event in generate_sub_moved_events(src_path, dst_path):
+                            self.queue_event(sub_event)
+
+                        # Process any coalesced flags for the dst_event.
+
+                        events.remove(dst_event)
+
+                        if dst_event.is_modified or dst_event.is_inode_meta_mod or dst_event.is_xattr_mod:
+                            self._queue_modified_event(dst_event, dst_path, dst_dirname)
+
+                        if dst_event.is_removed:
+                            self._queue_deleted_event(dst_event, dst_path, dst_dirname)
+                            self._fs_view.discard(dst_event.inode)
+
+                    elif exists:
+                        # This is the destination event, item was moved into the watched
+                        # folder.
+                        self._queue_created_event(event, src_path, src_dirname)
+                        self._fs_view.add(event.inode)
+
+                        for sub_event in generate_sub_created_events(src_path):
+                            self.queue_event(sub_event)
+
+                    else:
+                        # This is the source event, item was moved out of the watched
+                        # folder.
+                        self._queue_deleted_event(event, src_path, src_dirname)
+                        self._fs_view.discard(event.inode)
+
+                        # Skip further coalesced processing.
+                        continue
+
+                if event.is_removed:
+                    # Won't occur together with renamed.
+                    self._queue_deleted_event(event, src_path, src_dirname)
+                    self._fs_view.discard(event.inode)
 
             if event.is_root_changed:
-                # This will be set if root or any of its parents is renamed or
-                # deleted.
+                # This will be set if root or any of its parents is renamed or deleted.
                 # TODO: find out new path and generate DirMovedEvent?
                 self.queue_event(DirDeletedEvent(self.watch.path))
                 logger.debug("Stopping because root path was changed")
                 self.stop()
+
+                self._fs_view.clear()
 
     def run(self):
         try:
