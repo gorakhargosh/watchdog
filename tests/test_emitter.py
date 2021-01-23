@@ -106,7 +106,7 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
         ]
         next_sentinel_event = sentinel_events.pop(0)
         now = time.monotonic()
-        while time.monotonic() <= now + 30.0:
+        while time.monotonic() <= now + 2:
             try:
                 event = event_queue.get(timeout=0.5)[0]
                 if event == next_sentinel_event:
@@ -128,11 +128,10 @@ def rerun_filter(exc, *args):
     return False
 
 
-def expect_event(expected_event, timeout=30.0):
+def expect_event(expected_event, timeout=2):
     """ Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
 
     Provides some robustness for the otherwise flaky nature of asynchronous notifications.
-    NB: specifying a timeout of less than 30 seconds doesn't play nicely on macOS
     """
     try:
         event = event_queue.get(timeout=timeout)[0]
