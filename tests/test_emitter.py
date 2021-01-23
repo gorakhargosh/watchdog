@@ -388,6 +388,7 @@ def test_fast_subdirectory_creation_deletion():
     for _ in range(times):
         mkdir(sub_dir)
         rm(sub_dir, True)
+        time.sleep(0.01)  # required for macOS emitter to catch up with us
     count = {DirCreatedEvent: 0,
              DirModifiedEvent: 0,
              DirDeletedEvent: 0}
