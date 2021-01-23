@@ -625,3 +625,33 @@ def test_move_nested_subdirectories_on_windows():
             assert event.src_path == p('dir2', 'dir3', 'a')
         elif isinstance(event, DirModifiedEvent):
             assert event.src_path in [p('dir2'), p('dir2', 'dir3')]
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_file_lifecyle():
+    start_watching()
+
+    mkfile(p('a'))
+    touch(p('a'))
+    mv(p('a'), p('b'))
+    rm(p('b'))
+
+    expect_event(FileCreatedEvent(p('a')))
+
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))
+
+    if platform.is_linux():
+        expect_event(FileClosedEvent(p('a')))
+
+    expect_event(FileModifiedEvent(p('a')))
+    expect_event(FileMovedEvent(p('a'), p('b')))
+
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))
+        expect_event(DirModifiedEvent(p()))
+
+    expect_event(FileDeletedEvent(p('b')))
+
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))

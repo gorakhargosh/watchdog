@@ -137,10 +137,16 @@ class FSEventsEmitter(EventEmitter):
             # keeping track of paths since those are more likely to be reused than
             # inodes.
 
+            # Likewise, some events will have a spurious `is_modified`,
+            # `is_inode_meta_mod` or `is_xattr_mod` flag set. We currently do not
+            # suppress those but could do so if the item still exists by caching the
+            # stat result and verifying that it did change.
+
             if event.is_created and event.is_removed:
 
                 # Events will only be coalesced for the same item / inode.
                 # The sequence deleted -> created therefore cannot occur.
+                # Any combination with renamed cannot occur either.
 
                 if event.inode not in self._fs_view:
                     self._queue_created_event(event, src_path, src_dirname)
