@@ -217,13 +217,6 @@ def test_modify():
 
     touch(p('a'))
 
-    # Because the tests run so fast then on macOS it is almost certain that
-    # we receive a coalesced event from fseventsd here, which triggers an
-    # additional file created event and dir modified event here.
-    if platform.is_darwin():
-        expect_event(FileCreatedEvent(p('a')))
-        expect_event(DirModifiedEvent(p()))
-
     expect_event(FileModifiedEvent(p('a')))
 
     if platform.is_linux():
