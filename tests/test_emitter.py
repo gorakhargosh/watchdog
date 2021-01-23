@@ -387,7 +387,6 @@ def test_delete_self():
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
                     reason="Windows|BSD create another set of events for this test")
-@pytest.mark.skipif(platform.is_darwin(), reason="FSEvents coalesced events make it impossible to assert this way")
 def test_fast_subdirectory_creation_deletion():
     root_dir = p('dir1')
     sub_dir = p('dir1', 'subdir1')
