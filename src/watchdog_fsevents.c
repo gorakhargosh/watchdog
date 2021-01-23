@@ -579,7 +579,11 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
                                      paths,
                                      kFSEventStreamEventIdSinceNow,
                                      stream_latency,
-                                     kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagUseExtendedData | kFSEventStreamCreateFlagUseCFTypes);
+                                     kFSEventStreamCreateFlagNoDefer
+                                     | kFSEventStreamCreateFlagFileEvents
+                                     | kFSEventStreamCreateFlagWatchRoot
+                                     | kFSEventStreamCreateFlagUseExtendedData
+                                     | kFSEventStreamCreateFlagUseCFTypes);
     CFRelease(paths);
     return stream_ref;
 }
