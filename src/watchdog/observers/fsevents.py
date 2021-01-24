@@ -129,8 +129,6 @@ class FSEventsEmitter(EventEmitter):
                 before_start = old_inode == event.inode
             except KeyError:
                 before_start = False
-
-            logger.debug(self._starting_state)
         else:
             before_start = False
 
