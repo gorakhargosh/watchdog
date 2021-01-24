@@ -23,6 +23,7 @@
 :platforms: Mac OS X
 """
 
+import time
 import logging
 import os
 import threading
@@ -48,6 +49,7 @@ from watchdog.observers.api import (
     DEFAULT_EMITTER_TIMEOUT,
     DEFAULT_OBSERVER_TIMEOUT
 )
+from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 logger = logging.getLogger('fsevents')
 
@@ -65,13 +67,22 @@ class FSEventsEmitter(EventEmitter):
         :class:`watchdog.observers.api.ObservedWatch`
     :param timeout:
         Read events blocking timeout (in seconds).
+    :param suppress_history:
+        The FSEvents API may emit historic events up to 30 sec before the watch was
+        started. When ``suppress_history`` is ``True``, those events will be suppressed
+        by creating a directory snapshot of the watched path before starting the stream
+        as a reference to suppress old events. Warning: This may result in significant
+        memory usage in case of a large number of items in the watched path.
     :type timeout:
         ``float``
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, suppress_history=False):
         EventEmitter.__init__(self, event_queue, watch, timeout)
         self._fs_view = set()
+        self.suppress_history = suppress_history
+        self._start_time = 0.0
+        self._starting_state = None
         self._lock = threading.Lock()
 
     def on_thread_stop(self):
@@ -105,6 +116,26 @@ class FSEventsEmitter(EventEmitter):
         self.queue_event(DirModifiedEvent(src_dirname))
         self.queue_event(DirModifiedEvent(dst_dirname))
 
+    def _is_historic_created_event(self, event):
+
+        # We only queue a created event if the item was created after we
+        # started the FSEventsStream.
+
+        in_history = event.inode in self._fs_view
+
+        if self._starting_state:
+            try:
+                old_inode = self._starting_state.inode(event.path)[0]
+                before_start = old_inode == event.inode
+            except KeyError:
+                before_start = False
+
+            logger.debug(self._starting_state)
+        else:
+            before_start = False
+
+        return in_history or before_start
+
     def queue_events(self, timeout, events):
 
         if logger.getEffectiveLevel() <= logging.DEBUG:
@@ -112,8 +143,13 @@ class FSEventsEmitter(EventEmitter):
                 flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
                 logger.debug(f"{event}: {flags}")
 
+        if time.monotonic() - self._start_time > 60:
+            # Event history is no longer needed, let's free some memory.
+            self._starting_state = None
+
         while events:
             event = events.pop(0)
+
             src_path = self._encode_path(event.path)
             src_dirname = os.path.dirname(src_path)
 
@@ -134,7 +170,7 @@ class FSEventsEmitter(EventEmitter):
             # Some events will have a spurious `is_created` flag set, coalesced from an
             # already emitted and processed CreatedEvent. To filter those, we keep track
             # of all inodes which we know to be already created. This is safer than
-            # keeping track of paths since those are more likely to be reused than
+            # keeping track of paths since paths are more likely to be reused than
             # inodes.
 
             # Likewise, some events will have a spurious `is_modified`,
@@ -148,9 +184,10 @@ class FSEventsEmitter(EventEmitter):
                 # The sequence deleted -> created therefore cannot occur.
                 # Any combination with renamed cannot occur either.
 
-                if event.inode not in self._fs_view:
+                if not self._is_historic_created_event(event):
                     self._queue_created_event(event, src_path, src_dirname)
-                    self._fs_view.add(event.inode)
+
+                self._fs_view.add(event.inode)
 
                 if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
                     self._queue_modified_event(event, src_path, src_dirname)
@@ -160,22 +197,17 @@ class FSEventsEmitter(EventEmitter):
 
             else:
 
-                if event.is_created:
-                    # This flag may be set erroneously in coalesced events, despite
-                    # having already registered a created event. We therefore suppress
-                    # this event if the item already exists in our view.
+                if event.is_created and not self._is_historic_created_event(event):
+                    self._queue_created_event(event, src_path, src_dirname)
 
-                    if event.inode not in self._fs_view:
-                        self._queue_created_event(event, src_path, src_dirname)
-                        self._fs_view.add(event.inode)
+                self._fs_view.add(event.inode)
 
                 if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
                     self._queue_modified_event(event, src_path, src_dirname)
 
                 if event.is_renamed:
-                    # Check if there is a matching destination event (=> moved within
-                    # the watched folder).
 
+                    # Check if we have a corresponding destination event in the watched path.
                     dst_event = next(iter(e for e in events if e.is_renamed and e.inode == event.inode), None)
 
                     if dst_event:
@@ -186,7 +218,7 @@ class FSEventsEmitter(EventEmitter):
                         dst_dirname = os.path.dirname(dst_path)
 
                         self._queue_renamed_event(event, src_path, dst_path, src_dirname, dst_dirname)
-                        self._fs_view.add( event.inode)
+                        self._fs_view.add(event.inode)
 
                         for sub_event in generate_sub_moved_events(src_path, dst_path):
                             self.queue_event(sub_event)
@@ -248,11 +280,16 @@ class FSEventsEmitter(EventEmitter):
                     logger.exception("Unhandled exception in fsevents callback")
 
             self.pathnames = [self.watch.path]
+            self._start_time = time.monotonic()
 
             _fsevents.add_watch(self, self.watch, callback, self.pathnames)
             _fsevents.read_events(self)
         except Exception:
             logger.exception("Unhandled exception in FSEventsEmitter")
+
+    def on_thread_start(self):
+        if self.suppress_history:
+            self._starting_state = DirectorySnapshot(self.watch.path)
 
     def _encode_path(self, path):
         """Encode path only if bytes were passed to this emitter. """
