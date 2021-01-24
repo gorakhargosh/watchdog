@@ -289,7 +289,13 @@ class FSEventsEmitter(EventEmitter):
 
     def on_thread_start(self):
         if self.suppress_history:
-            self._starting_state = DirectorySnapshot(self.watch.path)
+
+            if isinstance(self.watch.path, bytes):
+                watch_path = os.fsdecode(self.watch.path)
+            else:
+                watch_path = self.watch.path
+
+            self._starting_state = DirectorySnapshot(watch_path)
 
     def _encode_path(self, path):
         """Encode path only if bytes were passed to this emitter. """
