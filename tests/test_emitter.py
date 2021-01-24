@@ -88,35 +88,10 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
     else:
         emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive))
 
-    emitter.start()
-
     if platform.is_darwin():
-        # FSEvents _may_ report the event for the creation of `tmpdir`,
-        # however, we're racing with fseventd there - if other filesystem
-        # events happened _after_ `tmpdir` was created, but _before_ we
-        # created the emitter then we won't get this event.
-        # As such, let's create a sentinel event that tells us that we are
-        # good to go.
-        sentinel_file = os.path.join(path, '.sentinel' if isinstance(path, str) else '.sentinel'.encode())
-        mkfile(sentinel_file)
-        sentinel_events = [
-            FileCreatedEvent(sentinel_file),
-            DirModifiedEvent(path),
-        ]
-        next_sentinel_event = sentinel_events.pop(0)
-        now = time.monotonic()
-        while time.monotonic() <= now + 2:
-            try:
-                event = event_queue.get(timeout=0.5)[0]
-                if event == next_sentinel_event:
-                    if not sentinel_events:
-                        break
-                    next_sentinel_event = sentinel_events.pop(0)
-            except Empty:
-                pass
-            time.sleep(0.1)
-        else:
-            assert False, "Sentinel event never arrived!"
+        emitter.suppress_history = True
+
+    emitter.start()
 
 
 def rerun_filter(exc, *args):
