@@ -618,6 +618,7 @@ def test_file_lifecyle():
 
     if platform.is_linux():
         expect_event(FileClosedEvent(p('a')))
+        expect_event(DirModifiedEvent(p()))
 
     expect_event(FileModifiedEvent(p('a')))
     expect_event(FileMovedEvent(p('a'), p('b')))
