@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +16,6 @@
 # limitations under the License.
 
 import sys
-import os
 import os.path
 from codecs import open
 from platform import machine
@@ -28,6 +26,7 @@ from setuptools.command.build_ext import build_ext
 SRC_DIR = 'src'
 WATCHDOG_PKG_DIR = os.path.join(SRC_DIR, 'watchdog')
 
+# Load the module version
 if sys.version_info >= (3, 5):
     import importlib.util
     spec = importlib.util.spec_from_file_location(
@@ -85,6 +84,7 @@ if is_macos or os.getenv('FORCE_MACOS_MACHINE', '0') == '1':
 install_requires = [
     "pathtools>=0.1.1",
 ]
+
 extras_require = {
     'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
 }
@@ -126,6 +126,11 @@ setup(name="watchdog",
           'Operating System :: MacOS :: MacOS X',
           'Operating System :: POSIX :: BSD',
           'Operating System :: Microsoft :: Windows :: Windows NT/2000',
+          'Operating System :: Microsoft :: Windows :: Windows Vista',
+          'Operating System :: Microsoft :: Windows :: Windows 7',
+          'Operating System :: Microsoft :: Windows :: Windows 8',
+          'Operating System :: Microsoft :: Windows :: Windows 8.1',
+          'Operating System :: Microsoft :: Windows :: Windows 10',
           'Operating System :: OS Independent',
           'Programming Language :: Python',
           'Programming Language :: Python :: 2.7',

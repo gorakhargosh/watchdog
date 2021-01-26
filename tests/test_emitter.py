@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
@@ -13,17 +13,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import unicode_literals
 import os
 import time
 import pytest
 import logging
 from functools import partial
+
 from . import Queue, Empty
 from .shell import mkdir, touch, mv, rm
 from watchdog.utils import platform
-from watchdog.utils.unicode_paths import str_cls
+from watchdog.utils.unicode_paths import str_cls, bytes_cls
 from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
@@ -32,7 +32,8 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
-    DirMovedEvent
+    DirMovedEvent,
+    FileClosedEvent,
 )
 from watchdog.observers.api import ObservedWatch
 
@@ -42,7 +43,6 @@ if platform.is_linux():
         InotifyFullEmitter,
     )
 elif platform.is_darwin():
-    pytestmark = pytest.mark.skip("FIXME: issue #546.")
     from watchdog.observers.fsevents import FSEventsEmitter as Emitter
 elif platform.is_windows():
     from watchdog.observers.read_directory_changes import (
@@ -57,6 +57,12 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+if platform.is_darwin():
+    # enable more verbose logs
+    fsevents_logger = logging.getLogger("fsevents")
+    fsevents_logger.setLevel(logging.DEBUG)
+
+
 @pytest.fixture(autouse=True)
 def setup_teardown(tmpdir):
     global p, emitter, event_queue
@@ -65,29 +71,75 @@ def setup_teardown(tmpdir):
 
     yield
 
-    emitter.stop()
+    try:
+        emitter.stop()
+    except OSError:
+        # watch was already stopped, e.g., in `test_delete_self`
+        pass
     emitter.join(5)
     assert not emitter.is_alive()
 
 
 def start_watching(path=None, use_full_emitter=False, recursive=True):
-    path = p('') if path is None else path
+    # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
+    path = p() if path is None else path
     global emitter
     if platform.is_linux() and use_full_emitter:
         emitter = InotifyFullEmitter(event_queue, ObservedWatch(path, recursive=recursive))
     else:
         emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive))
 
-    if platform.is_darwin():
-        # FSEvents will report old events (like create for mkdtemp in test
-        # setup. Waiting for a considerable time seems to 'flush' the events.
-        time.sleep(10)
     emitter.start()
+
+    if platform.is_darwin():
+        # FSEvents _may_ report the event for the creation of `tmpdir`,
+        # however, we're racing with fseventd there - if other filesystem
+        # events happened _after_ `tmpdir` was created, but _before_ we
+        # created the emitter then we won't get this event.
+        # As such, let's create a sentinel event that tells us that we are
+        # good to go.
+        sentinel_file = os.path.join(path, '.sentinel' if isinstance(path, str) else '.sentinel'.encode())
+        touch(sentinel_file)
+        sentinel_events = [
+            FileCreatedEvent(sentinel_file),
+            DirModifiedEvent(path),
+            FileModifiedEvent(sentinel_file)
+        ]
+        next_sentinel_event = sentinel_events.pop(0)
+        now = time.time()
+        while time.time() <= now + 30.0:
+            try:
+                event = event_queue.get(timeout=0.5)[0]
+                if event == next_sentinel_event:
+                    if not sentinel_events:
+                        break
+                    next_sentinel_event = sentinel_events.pop(0)
+            except Empty:
+                pass
+            time.sleep(0.1)
+        else:
+            assert False, "Sentinel event never arrived!"
 
 
 def rerun_filter(exc, *args):
     time.sleep(5)
-    return issubclass(exc[0], Empty) and platform.is_windows()
+    if issubclass(exc[0], Empty) and platform.is_windows():
+        return True
+
+    return False
+
+
+def expect_event(expected_event, timeout=30.0):
+    """ Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
+
+    Provides some robustness for the otherwise flaky nature of asynchronous notifications.
+    NB: specifying a timeout of less than 30 seconds doesn't play nicely on macOS
+    """
+    try:
+        event = event_queue.get(timeout=timeout)[0]
+        assert event == expected_event
+    except Empty:
+        raise
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -95,8 +147,50 @@ def test_create():
     start_watching()
     open(p('a'), 'a').close()
 
+    expect_event(FileCreatedEvent(p('a')))
+
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))
+
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
+        assert isinstance(event, FileClosedEvent)
+
+
+@pytest.mark.skipif(not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux")
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_close():
+    f_d = open(p('a'), 'a')
+    start_watching()
+    f_d.close()
+
+    # After file creation/open in append mode
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('a')
+    assert isinstance(event, FileClosedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
+    assert isinstance(event, DirModifiedEvent)
+
+    # After read-only, only IN_CLOSE_NOWRITE is emitted but not catched for now #747
+    open(p('a'), 'r').close()
+
+    assert event_queue.empty()
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(
+    platform.is_darwin() or platform.is_windows(),
+    reason="Windows and macOS enforce proper encoding"
+)
+def test_create_wrong_encoding():
+    start_watching()
+    open(p('a_\udce4'), 'a').close()
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('a_\udce4')
     assert isinstance(event, FileCreatedEvent)
 
     if not platform.is_windows():
@@ -109,27 +203,35 @@ def test_create():
 def test_delete():
     touch(p('a'))
     start_watching()
+
     rm(p('a'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
-    assert isinstance(event, FileDeletedEvent)
+    expect_event(FileDeletedEvent(p('a')))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p()))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_modify():
     touch(p('a'))
     start_watching()
+
     touch(p('a'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
-    assert isinstance(event, FileModifiedEvent)
+    # Because the tests run so fast then on macOS it is almost certain that
+    # we receive a coalesced event from fseventsd here, which triggers an
+    # additional file created event and dir modified event here.
+    if platform.is_darwin():
+        expect_event(FileCreatedEvent(p('a')))
+        expect_event(DirModifiedEvent(p()))
+
+    expect_event(FileModifiedEvent(p('a')))
+
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
+        assert isinstance(event, FileClosedEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -138,13 +240,11 @@ def test_move():
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching()
+
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1', 'a')
-        assert event.dest_path == p('dir2', 'b')
-        assert isinstance(event, FileMovedEvent)
+        expect_event(FileMovedEvent(p('dir1', 'a'), p('dir2', 'b')))
     else:
         event = event_queue.get(timeout=5)[0]
         assert event.src_path == p('dir1', 'a')
@@ -164,21 +264,47 @@ def test_move():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_case_change():
+    mkdir(p('dir1'))
+    mkdir(p('dir2'))
+    touch(p('dir1', 'file'))
+    start_watching()
+
+    mv(p('dir1', 'file'), p('dir2', 'FILE'))
+
+    if not platform.is_windows():
+        expect_event(FileMovedEvent(p('dir1', 'file'), p('dir2', 'FILE')))
+    else:
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir1', 'file')
+        assert isinstance(event, FileDeletedEvent)
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir2', 'FILE')
+        assert isinstance(event, FileCreatedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path in [p('dir1'), p('dir2')]
+    assert isinstance(event, DirModifiedEvent)
+
+    if not platform.is_windows():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path in [p('dir1'), p('dir2')]
+        assert isinstance(event, DirModifiedEvent)
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_move_to():
     mkdir(p('dir1'))
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching(p('dir2'))
+
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir2', 'b')
-    assert isinstance(event, FileCreatedEvent)
+    expect_event(FileCreatedEvent(p('dir2', 'b')))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir2')
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p('dir2')))
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
@@ -201,16 +327,13 @@ def test_move_from():
     mkdir(p('dir2'))
     touch(p('dir1', 'a'))
     start_watching(p('dir1'))
+
     mv(p('dir1', 'a'), p('dir2', 'b'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, FileDeletedEvent)
-    assert event.src_path == p('dir1', 'a')
+    expect_event(FileDeletedEvent(p('dir1', 'a')))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p('dir1')))
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
@@ -236,27 +359,22 @@ def test_separate_consecutive_moves():
     mv(p('dir1', 'a'), p('c'))
     mv(p('b'), p('dir1', 'd'))
 
-    dir_modif = (DirModifiedEvent, p('dir1'))
-    a_deleted = (FileDeletedEvent, p('dir1', 'a'))
-    d_created = (FileCreatedEvent, p('dir1', 'd'))
+    dir_modif = DirModifiedEvent(p('dir1'))
+    a_deleted = FileDeletedEvent(p('dir1', 'a'))
+    d_created = FileCreatedEvent(p('dir1', 'd'))
 
-    expected = [a_deleted, dir_modif, d_created, dir_modif]
+    expected_events = [a_deleted, dir_modif, d_created, dir_modif]
 
     if platform.is_windows():
-        expected = [a_deleted, d_created]
+        expected_events = [a_deleted, d_created]
 
     if platform.is_bsd():
         # Due to the way kqueue works, we can't really order
         # 'Created' and 'Deleted' events in time, so creation queues first
-        expected = [d_created, a_deleted, dir_modif, dir_modif]
+        expected_events = [d_created, a_deleted, dir_modif, dir_modif]
 
-    def _step(expected_step):
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == expected_step[1]
-        assert isinstance(event, expected_step[0])
-
-    for expected_step in expected:
-        _step(expected_step)
+    for expected_event in expected_events:
+        expect_event(expected_event)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -264,15 +382,14 @@ def test_delete_self():
     mkdir(p('dir1'))
     start_watching(p('dir1'))
     rm(p('dir1'), True)
-
-    if platform.is_darwin():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1')
-        assert isinstance(event, FileDeletedEvent)
+    expect_event(DirDeletedEvent(p('dir1')))
+    emitter.join(5)
+    assert not emitter.is_alive()
 
 
 @pytest.mark.skipif(platform.is_windows() or platform.is_bsd(),
                     reason="Windows|BSD create another set of events for this test")
+@pytest.mark.skipif(platform.is_darwin(), reason="FSEvents coalesced events make it impossible to assert this way")
 def test_fast_subdirectory_creation_deletion():
     root_dir = p('dir1')
     sub_dir = p('dir1', 'subdir1')
@@ -303,7 +420,7 @@ def test_fast_subdirectory_creation_deletion():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode():
-    start_watching(str_cls(p("")))
+    start_watching(str_cls(p()))
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, str_cls)
@@ -313,10 +430,10 @@ def test_passing_unicode_should_give_unicode():
                     reason="Windows ReadDirectoryChangesW supports only"
                            " unicode for paths.")
 def test_passing_bytes_should_give_bytes():
-    start_watching(p('').encode())
+    start_watching(p().encode())
     touch(p('a'))
     event = event_queue.get(timeout=5)[0]
-    assert isinstance(event.src_path, bytes)
+    assert isinstance(event.src_path, bytes_cls)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -341,6 +458,7 @@ def test_recursive_on():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(platform.is_darwin(), reason="macOS watches are always recursive")
 def test_recursive_off():
     mkdir(p('dir1'))
     start_watching(recursive=False)
@@ -356,39 +474,22 @@ def test_renaming_top_level_directory():
     start_watching()
 
     mkdir(p('a'))
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirCreatedEvent)
-    assert event.src_path == p('a')
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p()
+    expect_event(DirCreatedEvent(p('a')))
+    expect_event(DirModifiedEvent(p()))
 
     mkdir(p('a', 'b'))
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirCreatedEvent)
-    assert event.src_path == p('a', 'b')
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p('a')
+    expect_event(DirCreatedEvent(p('a', 'b')))
+    expect_event(DirModifiedEvent(p('a')))
 
     mv(p('a'), p('a2'))
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('a')
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p()
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p()
+    expect_event(DirMovedEvent(p('a'), p('a2')))
+    expect_event(DirModifiedEvent(p()))
+    expect_event(DirModifiedEvent(p()))
 
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirMovedEvent)
-    assert event.src_path == p('a', 'b')
+    expect_event(DirMovedEvent(p('a', 'b'), p('a2', 'b')))
 
     if platform.is_bsd():
-        event = event_queue.get(timeout=5)[0]
-        assert isinstance(event, DirModifiedEvent)
-        assert event.src_path == p()
+        expect_event(DirModifiedEvent(p()))
 
     open(p('a2', 'b', 'c'), 'a').close()
 
@@ -399,7 +500,7 @@ def test_renaming_top_level_directory():
         if event_queue.empty():
             break
 
-    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent)) for e in events])
+    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent, FileClosedEvent)) for e in events])
 
     for event in events:
         if isinstance(event, FileCreatedEvent):
@@ -468,28 +569,15 @@ def test_renaming_top_level_directory_on_windows():
 def test_move_nested_subdirectories():
     mkdir(p('dir1/dir2/dir3'), parents=True)
     touch(p('dir1/dir2/dir3', 'a'))
-    start_watching(p(''))
+    start_watching()
     mv(p('dir1/dir2'), p('dir2'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1', 'dir2')
-    assert isinstance(event, DirMovedEvent)
+    expect_event(DirMovedEvent(p('dir1', 'dir2'), p('dir2')))
+    expect_event(DirModifiedEvent(p('dir1')))
+    expect_event(DirModifiedEvent(p()))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1')
-    assert isinstance(event, DirModifiedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert p(event.src_path, '') == p('')
-    assert isinstance(event, DirModifiedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1/dir2/dir3')
-    assert isinstance(event, DirMovedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir1/dir2/dir3', 'a')
-    assert isinstance(event, FileMovedEvent)
+    expect_event(DirMovedEvent(p('dir1', 'dir2', 'dir3'), p('dir2', 'dir3')))
+    expect_event(FileMovedEvent(p('dir1', 'dir2', 'dir3', 'a'), p('dir2', 'dir3', 'a')))
 
     if platform.is_bsd():
         event = event_queue.get(timeout=5)[0]

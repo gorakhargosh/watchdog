@@ -8,7 +8,66 @@ Changelog
 
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.6...python-2.7>`__
 
-- Thanks to our beloved contributors:
+- Avoid deprecated ``PyEval_InitThreads`` on Python 3.7+ (`#746 <https://github.com/gorakhargosh/watchdog/pull/746>`_)
+- [inotify] Add support for ``IN_CLOSE_WRITE`` events. A ``FileCloseEvent`` event will be fired. Note that ``IN_CLOSE_NOWRITE`` events are not handled to prevent much noise. (`#184 <https://github.com/gorakhargosh/watchdog/pull/184>`_, `#245 <https://github.com/gorakhargosh/watchdog/pull/245>`_, `#280 <https://github.com/gorakhargosh/watchdog/pull/280>`_, `#313 <https://github.com/gorakhargosh/watchdog/pull/313>`_, `#690 <https://github.com/gorakhargosh/watchdog/pull/690>`_)
+- [mac] Support coalesced filesystem events (`#734 <https://github.com/gorakhargosh/watchdog/pull/734>`_)
+- [mac] Drop support for OSX 10.12 and earlier (`#750 <https://github.com/gorakhargosh/watchdog/pull/750>`_)
+- [mac] Fix an issue when renaming an item changes only the casing (`#750 <https://github.com/gorakhargosh/watchdog/pull/750>`_)
+- [mac] Fix missing ``event_id`` attribute in ``fsevents`` (`#721 <https://github.com/gorakhargosh/watchdog/pull/721>`_)
+- [mac] Return byte paths if a byte path was given in ``fsevents`` (`#726` <https://github.com/gorakhargosh/watchdog/pull/726>`_)
+- [mac] Add compatibility with old macOS versions (`#733` <https://github.com/gorakhargosh/watchdog/pull/733>`_)
+- Uniformize event for deletion of watched dir (`#727 <https://github.com/gorakhargosh/watchdog/pull/727>`_)
+- [windows] ``winapi.BUFFER_SIZE`` now defaults to ``64000`` (instead of ``2048``) (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
+- [windows] Introduced ``winapi.PATH_BUFFER_SIZE`` (defaults to ``2048``) to keep the old behavior with path-realted functions (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
+- Thanks to our beloved contributors: @bstaletic, @lukassup, @ysard, @SamSchott, @CCP-Aporia
+
+
+1.0.3
+~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.2...master>`__
+
+- Avoid deprecated ``PyEval_InitThreads`` on Python 3.7+ (`#746 <https://github.com/gorakhargosh/watchdog/pull/746>`_)
+- [inotify] Add support for ``IN_CLOSE_WRITE`` events. A ``FileCloseEvent`` event will be fired. Note that ``IN_CLOSE_NOWRITE`` events are not handled to prevent much noise. (`#184 <https://github.com/gorakhargosh/watchdog/pull/184>`_, `#245 <https://github.com/gorakhargosh/watchdog/pull/245>`_, `#280 <https://github.com/gorakhargosh/watchdog/pull/280>`_, `#313 <https://github.com/gorakhargosh/watchdog/pull/313>`_, `#690 <https://github.com/gorakhargosh/watchdog/pull/690>`_)
+- [mac] Support coalesced filesystem events (`#734 <https://github.com/gorakhargosh/watchdog/pull/734>`_)
+- [mac] Drop support for OSX 10.12 and earlier (`#750 <https://github.com/gorakhargosh/watchdog/pull/750>`_)
+- [mac] Fix an issue when renaming an item changes only the casing (`#750 <https://github.com/gorakhargosh/watchdog/pull/750>`_)
+- Thanks to our beloved contributors: @bstaletic, @lukassup, @ysard, @SamSchott, @CCP-Aporia
+
+
+1.0.2
+~~~~~
+
+2020-12-18 • `full history <https://github.com/gorakhargosh/watchdog/compare/v1.0.1...v1.0.2>`__
+
+- Wheels are published for GNU/Linux, macOS and Windows (`#739 <https://github.com/gorakhargosh/watchdog/pull/739>`_)
+- [mac] Fix missing ``event_id`` attribute in ``fsevents`` (`#721 <https://github.com/gorakhargosh/watchdog/pull/721>`_)
+- [mac] Return byte paths if a byte path was given in ``fsevents`` (`#726` <https://github.com/gorakhargosh/watchdog/pull/726>`_)
+- [mac] Add compatibility with old macOS versions (`#733` <https://github.com/gorakhargosh/watchdog/pull/733>`_)
+- Uniformize event for deletion of watched dir (`#727 <https://github.com/gorakhargosh/watchdog/pull/727>`_)
+- Thanks to our beloved contributors: @SamSchott, @CCP-Aporia, @di, @BoboTiG
+
+
+1.0.1
+~~~~~
+
+2020-12-10 • Fix version with good metadatas.
+
+
+1.0.0
+~~~~~
+
+2020-12-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.4...v1.0.0>`__
+
+- Versioning is now following the `semver <https://semver.org/>`_
+- Drop support for Python 2.7, 3.4 and 3.5
+- [mac] Regression fixes for native ``fsevents`` (`#717 <https://github.com/gorakhargosh/watchdog/pull/717>`_)
+- [windows] ``winapi.BUFFER_SIZE`` now defaults to ``64000`` (instead of ``2048``) (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
+- [windows] Introduced ``winapi.PATH_BUFFER_SIZE`` (defaults to ``2048``) to keep the old behavior with path-realted functions (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
+- Use ``pathlib`` from the standard library, instead of pathtools (`#556 <https://github.com/gorakhargosh/watchdog/pull/556>`_)
+- Allow file paths on Unix that don't follow the file system encoding (`#703 <https://github.com/gorakhargosh/watchdog/pull/703>`_)
+- Removed the long-time deprecated ``events.LoggingFileSystemEventHandler`` class, use ``LoggingEventHandler`` instead
+- Thanks to our beloved contributors: @SamSchott, @bstaletic, @BoboTiG, @CCP-Aporia
 
 
 0.10.6

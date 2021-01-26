@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +20,7 @@
 :module: watchdog.utils
 :synopsis: Utility classes and functions.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 Classes
 -------
@@ -34,7 +34,6 @@ import os
 import sys
 import threading
 from watchdog.utils import platform
-from watchdog.utils.compat import Event
 
 
 if sys.version_info[0] == 2 and platform.is_windows():
@@ -78,7 +77,7 @@ class BaseThread(threading.Thread):
             self.daemon = True
         else:
             self.setDaemon(True)
-        self._stopped_event = Event()
+        self._stopped_event = threading.Event()
 
         if not has_attribute(self._stopped_event, 'is_set'):
             self._stopped_event.is_set = self._stopped_event.isSet

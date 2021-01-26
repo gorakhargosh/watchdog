@@ -37,21 +37,21 @@ Steps to setting up a clean environment:
     $ cd watchdog
     $ pip install virtualenv
     $ virtualenv venv
-    
+
 3. Linux
 
-For example Debian and Python 2.7: 
+For example Debian and Python 2.7:
 
 .. code:: bash
 
     $ sudo apt-get install python-pip python-virtualenv
-    
+
 For Python 3:
-    
+
 .. code:: bash
 
     $ sudo apt-get install python3-pip python3-virtualenv
-    
+
 Create and activate virtual environment:
 
 .. code:: bash

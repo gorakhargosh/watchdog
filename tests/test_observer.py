@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
@@ -13,12 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import unicode_literals
 
+import threading
+
 import pytest
+
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent
-from watchdog.utils.compat import Event
 from watchdog.observers.api import EventEmitter, BaseObserver
 
 
@@ -85,7 +86,7 @@ def test_unschedule_self(observer):
             observer.unschedule(watch)
             unschedule_finished.set()
 
-    unschedule_finished = Event()
+    unschedule_finished = threading.Event()
     watch = observer.schedule(EventHandler(), '')
     observer.start()
 

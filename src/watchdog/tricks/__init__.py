@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +19,7 @@
 :module: watchdog.tricks
 :synopsis: Utility event handlers.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 Classes
 -------
@@ -104,8 +104,9 @@ class ShellCommandTrick(Trick):
     def __init__(self, shell_command=None, patterns=None, ignore_patterns=None,
                  ignore_directories=False, wait_for_process=False,
                  drop_during_process=False):
-        super(ShellCommandTrick, self).__init__(patterns, ignore_patterns,
-                                                ignore_directories)
+        super(ShellCommandTrick, self).__init__(
+            patterns=patterns, ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories)
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
@@ -161,7 +162,8 @@ class AutoRestartTrick(Trick):
                  ignore_directories=False, stop_signal=signal.SIGINT,
                  kill_after=10):
         super(AutoRestartTrick, self).__init__(
-            patterns, ignore_patterns, ignore_directories)
+            patterns=patterns, ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories)
         self.command = command
         self.stop_signal = stop_signal
         self.kill_after = kill_after
