@@ -23,7 +23,6 @@ if not platform.is_windows():  # noqa
 
 import os
 import os.path
-from queue import Empty, Queue
 from time import sleep
 
 from watchdog.events import (
@@ -33,6 +32,7 @@ from watchdog.events import (
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
 
+from . import Empty, Queue
 from .shell import (
     mkdir,
     mkdtemp,
