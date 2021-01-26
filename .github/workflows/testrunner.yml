@@ -6,6 +6,7 @@ jobs:
   build:
     runs-on: ${{matrix.os}}
     strategy:
+      fail-fast: false
       max-parallel: 3
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
