@@ -49,7 +49,7 @@ def encode(path):
         except UnicodeEncodeError:
             if not platform.is_linux():
                 raise
-            path = path.encode(fs_fallback_encoding, 'strict')
+            path = path.encode(fs_fallback_encoding, 'surrogateescape')
     return path
 
 
@@ -60,5 +60,5 @@ def decode(path):
         except UnicodeDecodeError:
             if not platform.is_linux():
                 raise
-            path = path.decode(fs_fallback_encoding, 'strict')
+            path = path.decode(fs_fallback_encoding, 'surrogateescape')
     return path
