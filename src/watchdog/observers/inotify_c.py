@@ -313,6 +313,8 @@ class Inotify:
             except OSError as e:
                 if e.errno == errno.EINTR:
                     continue
+                else:
+                    raise
             break
 
         with self._lock:
