@@ -321,7 +321,7 @@ def close_directory_handle(handle):
     try:
         CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
         CloseHandle(handle)       # close directory handle
-    except OSError:
+    except WindowsError:
         try:
             CloseHandle(handle)   # close directory handle
         except Exception:
@@ -340,7 +340,7 @@ def read_directory_changes(handle, path, recursive):
                               len(event_buffer), recursive,
                               WATCHDOG_FILE_NOTIFY_FLAGS,
                               ctypes.byref(nbytes), None, None)
-    except OSError as e:
+    except WindowsError as e:
         if e.winerror == ERROR_OPERATION_ABORTED:
             return [], 0
 

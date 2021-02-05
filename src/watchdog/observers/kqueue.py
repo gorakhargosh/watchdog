@@ -305,7 +305,7 @@ class KeventDescriptorSet(object):
         descriptor.close()
 
 
-class KeventDescriptor:
+class KeventDescriptor(object):
 
     """
     A kevent descriptor convenience data structure to keep together:
