@@ -1,4 +1,4 @@
-name: "Python package"
+name: "Python 2.7 & 3.5 tests"
 
 on: [push]
 
