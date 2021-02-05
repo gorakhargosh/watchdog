@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +18,12 @@
 """
 :module: watchdog.watchmedo
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 :synopsis: ``watchmedo`` shell script utility.
 """
 
+import errno
+import os
 import os.path
 import sys
 import yaml
@@ -175,14 +177,14 @@ def tricks_from(args):
         observer = Observer(timeout=args.timeout)
 
         if not os.path.exists(tricks_file):
-            raise IOError("cannot find tricks file: %s" % tricks_file)
+            raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), tricks_file)
 
         config = load_config(tricks_file)
 
         try:
             tricks = config[CONFIG_KEY_TRICKS]
         except KeyError:
-            raise KeyError("No `%s' key specified in %s." % (
+            raise KeyError("No %r key specified in %s." % (
                            CONFIG_KEY_TRICKS, tricks_file))
 
         if CONFIG_KEY_PYTHON_PATH in config:
@@ -565,7 +567,7 @@ def auto_restart(args):
 
 
 epilog = """Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
-Copyright 2012 Google, Inc.
+Copyright 2012 Google, Inc & contributors.
 
 Licensed under the terms of the Apache license, version 2.0. Please see
 LICENSE in the source code for more information."""

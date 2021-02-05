@@ -3,7 +3,7 @@
  *
  * Copyright 2010 Malthe Borch <mborch@gmail.com>
  * Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
- * Copyright 2012 Google, Inc.
+ * Copyright 2012 Google, Inc & contributors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,17 @@
 
 
 #include <Python.h>
+#include <Availability.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 #include <stdlib.h>
 #include <signal.h>
 
+
+/* Compatibility; since fsevents won't set these on earlier macOS versions the properties will always be False */
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
+#error Watchdog module requires at least macOS 10.13
+#endif
 
 /* Convenience macros to make code more readable. */
 #define G_NOT(o)                        !o
@@ -59,10 +65,10 @@ typedef struct {
      * A pointer to the Python callback which will
      * will in turn be called by our event handler
      * with event information. The Python callback
-     * function must accept 2 arguments, both of which
+     * function must accept 4 arguments, all of which
      * are Python lists::
      *
-     *    def python_callback(event_paths, event_flags, event_ids):
+     *    def python_callback(event_paths, event_inodes, event_flags, event_ids):
      *        pass
      */
     PyObject        *python_callback;
@@ -89,24 +95,21 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     const char *path;
+    PyObject *inode;
     FSEventStreamEventFlags flags;
     FSEventStreamEventId id;
 } NativeEventObject;
 
-PyObject* NativeEventTypeString(PyObject* instance, void* closure)
-{
-    UNUSED(closure);
+PyObject* NativeEventRepr(PyObject* instance) {
     NativeEventObject *self = (NativeEventObject*)instance;
-    if (self->flags & kFSEventStreamEventFlagItemCreated)
-        return AS_PYTHON_STRING("Created");
-    if (self->flags & kFSEventStreamEventFlagItemRemoved)
-        return AS_PYTHON_STRING("Removed");
-    if (self->flags & kFSEventStreamEventFlagItemRenamed)
-        return AS_PYTHON_STRING("Renamed");
-    if (self->flags & kFSEventStreamEventFlagItemModified)
-        return AS_PYTHON_STRING("Modified");
 
-    return AS_PYTHON_STRING("Unknown");
+    return PyUnicode_FromFormat(
+        "NativeEvent(path=\"%s\", inode=%S, flags=%x, id=%llu)",
+        self->path,
+        self->inode,
+        self->flags,
+        self->id
+    );
 }
 
 PyObject* NativeEventTypeFlags(PyObject* instance, void* closure)
@@ -124,7 +127,15 @@ PyObject* NativeEventTypePath(PyObject* instance, void* closure)
 {
     UNUSED(closure);
     NativeEventObject *self = (NativeEventObject*)instance;
-    return AS_PYTHON_STRING(self->path);
+    return PyUnicode_FromString(self->path);
+}
+
+PyObject* NativeEventTypeInode(PyObject* instance, void* closure)
+{
+    UNUSED(closure);
+    NativeEventObject *self = (NativeEventObject*)instance;
+    Py_INCREF(self->inode);
+    return self->inode;
 }
 
 PyObject* NativeEventTypeID(PyObject* instance, void* closure)
@@ -136,6 +147,26 @@ PyObject* NativeEventTypeID(PyObject* instance, void* closure)
 #else /* PY_MAJOR_VERSION < 3 */
     return PyLong_FromLong(self->id);
 #endif /* PY_MAJOR_VERSION < 3 */
+}
+
+PyObject* NativeEventTypeIsCoalesced(PyObject* instance, void* closure)
+{
+    UNUSED(closure);
+    NativeEventObject *self = (NativeEventObject*)instance;
+
+    // if any of these bitmasks match then we have a coalesced event and need to do sys calls to figure out what happened
+    FSEventStreamEventFlags coalesced_masks[] = {
+        kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved,
+        kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRenamed,
+        kFSEventStreamEventFlagItemRemoved | kFSEventStreamEventFlagItemRenamed,
+    };
+    for (size_t i = 0; i < sizeof(coalesced_masks) / sizeof(FSEventStreamEventFlags); ++i) {
+        if ((self->flags & coalesced_masks[i]) == coalesced_masks[i]) {
+            Py_RETURN_TRUE;
+        }
+    }
+
+    Py_RETURN_FALSE;
 }
 
 #define FLAG_PROPERTY(suffix, flag) \
@@ -175,20 +206,29 @@ FLAG_PROPERTY(IsCloned, kFSEventStreamEventFlagItemCloned)
 
 static int NativeEventInit(NativeEventObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"path", "flags", "id", NULL};
+    static char *kwlist[] = {"path", "inode", "flags", "id", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sIL", kwlist, &self->path, &self->flags, &self->id)) {
+    self->inode = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sOIL", kwlist, &self->path, &self->inode, &self->flags, &self->id)) {
         return -1;
     }
+
+    Py_INCREF(self->inode);
 
     return 0;
 }
 
+static void NativeEventDealloc(NativeEventObject *self) {
+    Py_XDECREF(self->inode);
+}
+
 static PyGetSetDef NativeEventProperties[] = {
-    {"_event_type", NativeEventTypeString, NULL, "Textual representation of the native event that occurred", NULL},
     {"flags", NativeEventTypeFlags, NULL, "The raw mask of flags as returend by FSEvents", NULL},
     {"path", NativeEventTypePath, NULL, "The path for which this event was generated", NULL},
-    {"id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
+    {"inode", NativeEventTypeInode, NULL, "The inode for which this event was generated", NULL},
+    {"event_id", NativeEventTypeID, NULL, "The id of the generated event", NULL},
+    {"is_coalesced", NativeEventTypeIsCoalesced, NULL, "True if multiple ambiguous changes to the monitored path happened", NULL},
     {"must_scan_subdirs", NativeEventTypeIsMustScanSubDirs, NULL, "True if application must rescan all subdirectories", NULL},
     {"is_user_dropped", NativeEventTypeIsUserDropped, NULL, "True if a failure during event buffering occured", NULL},
     {"is_kernel_dropped", NativeEventTypeIsKernelDropped, NULL, "True if a failure during event buffering occured", NULL},
@@ -226,6 +266,8 @@ static PyTypeObject NativeEventType = {
     .tp_new = PyType_GenericNew,
     .tp_getset = NativeEventProperties,
     .tp_init = (initproc) NativeEventInit,
+    .tp_repr = (reprfunc) NativeEventRepr,
+    .tp_dealloc = (destructor) NativeEventDealloc,
 };
 
 
@@ -243,7 +285,7 @@ PyObject *watch_to_stream = NULL;
 
 
 /**
- * PyCapsule destructor
+ * PyCapsule destructor.
  */
 static void watchdog_pycapsule_destructor(PyObject *ptr)
 {
@@ -251,6 +293,57 @@ static void watchdog_pycapsule_destructor(PyObject *ptr)
     if (p) {
         PyMem_Free(p);
     }
+}
+
+
+
+/**
+ * Converts a ``CFStringRef`` to a Python string object.
+ *
+ * :param cf_string:
+ *      A ``CFStringRef``.
+ * :returns:
+ *      A Python unicode or utf-8 encoded bytestring object.
+ */
+PyObject * CFString_AsPyUnicode(CFStringRef cf_string_ref)
+{
+    CFIndex cf_string_length;
+    char *c_string_buff = NULL;
+    const char *c_string_ptr;
+    PyObject *py_string;
+
+    c_string_ptr = CFStringGetCStringPtr(cf_string_ref, 0);
+
+    if (G_IS_NULL(c_string_ptr)) {
+        cf_string_length = CFStringGetLength(cf_string_ref);
+        CFStringGetCString(cf_string_ref, c_string_buff, cf_string_length, 0);
+        py_string = AS_PYTHON_STRING(c_string_buff);
+    } else {
+        py_string = AS_PYTHON_STRING(c_string_ptr);
+    }
+
+    return py_string;
+
+}
+
+/**
+ * Converts a ``CFNumberRef`` to a Python string object.
+ *
+ * :param cf_number:
+ *      A ``CFNumberRef``.
+ * :returns:
+ *      A Python unicode or utf-8 encoded bytestring object.
+ */
+PyObject * CFNumberRef_AsPyLong(CFNumberRef cf_number)
+{
+    long c_int;
+
+    CFNumberGetValue(cf_number, kCFNumberSInt64Type, &c_int);
+#if PY_MAJOR_VERSION < 3
+    return PyInt_FromLong(c_int);
+#else /* PY_MAJOR_VERSION < 3 */
+    return PyLong_FromLong(c_int);
+#endif /* PY_MAJOR_VERSION < 3 */
 }
 
 
@@ -281,19 +374,24 @@ static void
 watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
                                StreamCallbackInfo            *stream_callback_info_ref,
                                size_t                         num_events,
-                               const char                    *event_paths[],
+                               CFArrayRef                     event_path_info_array_ref,
                                const FSEventStreamEventFlags  event_flags[],
                                const FSEventStreamEventId     event_ids[])
 {
     UNUSED(stream_ref);
     size_t i = 0;
+    CFDictionaryRef path_info_dict;
+    CFStringRef cf_path;
+    CFNumberRef cf_inode;
     PyObject *callback_result = NULL;
     PyObject *path = NULL;
+    PyObject *inode = NULL;
     PyObject *id = NULL;
     PyObject *flags = NULL;
     PyObject *py_event_flags = NULL;
     PyObject *py_event_ids = NULL;
     PyObject *py_event_paths = NULL;
+    PyObject *py_event_inodes = NULL;
     PyThreadState *saved_thread_state = NULL;
 
     /* Acquire interpreter lock and save original thread state. */
@@ -302,33 +400,46 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
 
     /* Convert event flags and paths to Python ints and strings. */
     py_event_paths = PyList_New(num_events);
+    py_event_inodes = PyList_New(num_events);
     py_event_flags = PyList_New(num_events);
     py_event_ids = PyList_New(num_events);
-    if (G_NOT(py_event_paths && py_event_flags && py_event_ids))
+    if (G_NOT(event_path_info_array_ref && py_event_flags && py_event_ids && py_event_inodes))
     {
         Py_XDECREF(py_event_paths);
-        Py_XDECREF(py_event_ids);
+        Py_XDECREF(py_event_inodes);
         Py_XDECREF(py_event_flags);
+        Py_XDECREF(py_event_ids);
         return /*NULL*/;
     }
     for (i = 0; i < num_events; ++i)
     {
         id = PyLong_FromLongLong(event_ids[i]);
-#if PY_MAJOR_VERSION >= 3
-        path = PyUnicode_FromString(event_paths[i]);
+
         flags = PyLong_FromLong(event_flags[i]);
-#else
-        path = PyString_FromString(event_paths[i]);
-        flags = PyInt_FromLong(event_flags[i]);
-#endif
-        if (G_NOT(path && flags && id))
+
+        path_info_dict = CFArrayGetValueAtIndex(event_path_info_array_ref, i);
+        cf_path = CFDictionaryGetValue(path_info_dict, kFSEventStreamEventExtendedDataPathKey);
+        cf_inode = CFDictionaryGetValue(path_info_dict, kFSEventStreamEventExtendedFileIDKey);
+
+        path = CFString_AsPyUnicode(cf_path);
+
+        if (G_IS_NOT_NULL(cf_inode)) {
+            inode = CFNumberRef_AsPyLong(cf_inode);
+        } else {
+            Py_INCREF(Py_None);
+            inode = Py_None;
+        }
+
+        if (G_NOT(path && inode && flags && id))
         {
             Py_DECREF(py_event_paths);
-            Py_DECREF(py_event_flags);
+            Py_DECREF(py_event_inodes);
             Py_DECREF(py_event_ids);
+            Py_DECREF(py_event_flags);
             return /*NULL*/;
         }
         PyList_SET_ITEM(py_event_paths, i, path);
+        PyList_SET_ITEM(py_event_inodes, i, inode);
         PyList_SET_ITEM(py_event_flags, i, flags);
         PyList_SET_ITEM(py_event_ids, i, id);
     }
@@ -342,7 +453,7 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
      */
     callback_result = \
         PyObject_CallFunction(stream_callback_info_ref->python_callback,
-                              "OOO", py_event_paths, py_event_flags, py_event_ids);
+                              "OOOO", py_event_paths, py_event_inodes, py_event_flags, py_event_ids);
     if (G_IS_NULL(callback_result))
     {
         if (G_NOT(PyErr_Occurred()))
@@ -390,7 +501,6 @@ CFStringRef PyString_AsUTF8EncodedCFStringRef(PyObject *py_string)
 
     return cf_string;
 }
-
 
 /**
  * Converts a list of Python strings to a ``CFMutableArray`` of
@@ -487,7 +597,7 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
                                      paths,
                                      kFSEventStreamEventIdSinceNow,
                                      stream_latency,
-                                     kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents);
+                                     kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagUseExtendedData | kFSEventStreamCreateFlagUseCFTypes);
     CFRelease(paths);
     return stream_ref;
 }
@@ -605,7 +715,11 @@ watchdog_read_events(PyObject *self, PyObject *args)
 
     G_RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "O:loop", &emitter_thread));
 
+// PyEval_InitThreads() does nothing as of Python 3.7 and is deprecated in 3.9.
+// https://docs.python.org/3/c-api/init.html#c.PyEval_InitThreads
+#if PY_VERSION_HEX < 0x030700f0
     PyEval_InitThreads();
+#endif
 
     /* Allocate information and store thread state. */
     value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
@@ -631,6 +745,25 @@ watchdog_read_events(PyObject *self, PyObject *args)
     }
 
     G_RETURN_NULL_IF(PyErr_Occurred());
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+PyDoc_STRVAR(watchdog_flush_events__doc__,
+        MODULE_NAME ".flush_events(watch) -> None\n\
+Flushes events for the watch.\n\n\
+:param watch:\n\
+    The watch to flush.\n");
+static PyObject *
+watchdog_flush_events(PyObject *self, PyObject *watch)
+{
+    UNUSED(self);
+    PyObject *value = PyDict_GetItem(watch_to_stream, watch);
+
+    FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
+
+    FSEventStreamFlushSync(stream_ref);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -698,6 +831,7 @@ static PyMethodDef watchdog_fsevents_methods[] =
 {
     {"add_watch",    watchdog_add_watch,    METH_VARARGS, watchdog_add_watch__doc__},
     {"read_events",  watchdog_read_events,  METH_VARARGS, watchdog_read_events__doc__},
+    {"flush_events", watchdog_flush_events, METH_O,       watchdog_flush_events__doc__},
     {"remove_watch", watchdog_remove_watch, METH_O,       watchdog_remove_watch__doc__},
 
     /* Aliases for compatibility with macfsevents. */
@@ -752,7 +886,6 @@ watchdog_module_add_attributes(PyObject *module)
                        Py_BuildValue("s", WATCHDOG_VERSION_STRING));
 }
 
-
 #if PY_MAJOR_VERSION < 3
 
 /**
@@ -764,8 +897,8 @@ init_watchdog_fsevents(void)
     NativeEventType.tp_new = PyType_GenericNew;
     G_RETURN_IF(PyType_Ready(&NativeEventType) < 0);
     PyObject *module = Py_InitModule3(MODULE_NAME,
-                                      watchdog_fsevents_methods,
-                                      watchdog_fsevents_module__doc__);
+                                                                             watchdog_fsevents_methods,
+                                                                             watchdog_fsevents_module__doc__);
     G_RETURN_IF(module == NULL);
     Py_INCREF(&NativeEventType);
     if (PyModule_AddObject(module, "NativeEvent", (PyObject*)&NativeEventType) < 0) {

@@ -12,6 +12,7 @@ import time
 from functools import partial
 from os import mkdir, rmdir
 
+import _watchdog_fsevents as _fsevents
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import ObservedWatch
@@ -32,10 +33,13 @@ def setup_function(function):
 
 
 def teardown_function(function):
-    emitter.stop()
-    emitter.join(5)
+    try:
+        emitter.stop()
+        emitter.join(5)
+        assert not emitter.is_alive()
+    except NameError:
+        pass  # `name 'emitter' is not defined` unless we call `start_watching`
     rm(p(""), recursive=True)
-    assert not emitter.is_alive()
 
 
 def start_watching(path=None, use_full_emitter=False):
@@ -55,6 +59,24 @@ def observer():
         obs.join()
     except RuntimeError:
         pass
+
+
+@pytest.mark.parametrize('event,expectation', [
+    # invalid flags
+    (_fsevents.NativeEvent('', 0, 0, 0), False),
+    # renamed
+    (_fsevents.NativeEvent('', 0, 0x00000800, 0), False),
+    # renamed, removed
+    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200, 0), True),
+    # renamed, removed, created
+    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200 | 0x00000100, 0), True),
+    # renamed, removed, created, itemfindermod
+    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200 | 0x00000100 | 0x00002000, 0), True),
+    # xattr, removed, modified, itemfindermod
+    (_fsevents.NativeEvent('', 0, 0x00008000 | 0x00000200 | 0x00001000 | 0x00002000, 0), False),
+])
+def test_coalesced_event_check(event, expectation):
+    assert event.is_coalesced == expectation
 
 
 def test_remove_watch_twice():
@@ -100,7 +122,9 @@ E       SystemError: <built-in function stop> returned a result with an error se
     w = observer.schedule(FileSystemEventHandler(), a, recursive=False)
     rmdir(a)
     time.sleep(0.1)
-    observer.unschedule(w)
+    with pytest.raises(KeyError):
+        # watch no longer exists!
+        observer.unschedule(w)
 
 
 def test_watchdog_recursive():

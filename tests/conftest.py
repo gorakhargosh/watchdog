@@ -28,9 +28,10 @@ def no_thread_leaks():
     Fail on thread leak.
     We do not use pytest-threadleak because it is not reliable.
     """
+    old_thread_count = threading.active_count()
     yield
     gc.collect()  # Clear the stuff from other function-level fixtures
-    assert threading.active_count() == 1  # Only the main thread
+    assert threading.active_count() == old_thread_count  # Only previously existing threads
 
 
 @pytest.fixture(autouse=True)

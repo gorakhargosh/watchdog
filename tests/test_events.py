@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +19,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileCreatedEvent,
+    FileClosedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
@@ -30,6 +30,7 @@ from watchdog.events import (
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MOVED,
+    EVENT_TYPE_CLOSED,
 )
 
 path_1 = '/path/xyz'
@@ -83,6 +84,14 @@ def test_file_moved_event():
     assert not event.is_synthetic
 
 
+def test_file_closed_event():
+    event = FileClosedEvent(path_1)
+    assert path_1 == event.src_path
+    assert EVENT_TYPE_CLOSED == event.event_type
+    assert not event.is_directory
+    assert not event.is_synthetic
+
+
 def test_dir_deleted_event():
     event = DirDeletedEvent(path_1)
     assert path_1 == event.src_path
@@ -112,6 +121,7 @@ def test_file_system_event_handler_dispatch():
     file_del_event = FileDeletedEvent('/path/blah.txt')
     dir_cre_event = DirCreatedEvent('/path/blah.py')
     file_cre_event = FileCreatedEvent('/path/blah.txt')
+    file_cls_event = FileClosedEvent('/path/blah.txt')
     dir_mod_event = DirModifiedEvent('/path/blah.py')
     file_mod_event = FileModifiedEvent('/path/blah.txt')
     dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
@@ -126,6 +136,7 @@ def test_file_system_event_handler_dispatch():
         file_del_event,
         file_cre_event,
         file_mov_event,
+        file_cls_event,
     ]
 
     class TestableEventHandler(FileSystemEventHandler):
@@ -144,6 +155,9 @@ def test_file_system_event_handler_dispatch():
 
         def on_created(self, event):
             assert event.event_type == EVENT_TYPE_CREATED
+
+        def on_closed(self, event):
+            assert event.event_type == EVENT_TYPE_CLOSED
 
     handler = TestableEventHandler()
 

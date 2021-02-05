@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# coding: utf-8
 #
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +20,7 @@
 :module: watchdog.utils.dirsnapshot
 :synopsis: Directory snapshots and comparison.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 .. ADMONITION:: Where are the moved events? They "disappeared"
 
@@ -51,11 +51,9 @@ Classes
 import errno
 import os
 from stat import S_ISDIR
+
 from watchdog.utils import stat as default_stat
-try:
-    from os import scandir
-except ImportError:
-    from os import listdir as scandir
+from watchdog.utils.compat import scandir
 
 
 class DirectorySnapshotDiff(object):
@@ -241,8 +239,7 @@ class DirectorySnapshot(object):
     """
 
     def __init__(self, path, recursive=True,
-                 stat=default_stat,
-                 listdir=scandir):
+                 stat=default_stat, listdir=scandir):
         self.recursive = recursive
         self.stat = stat
         self.listdir = listdir
@@ -291,7 +288,6 @@ class DirectorySnapshot(object):
                 except (IOError, OSError) as e:
                     # IOError for Python 2
                     # OSError for Python 3
-                    # (should be only PermissionError when dropping Python 2 support)
                     if e.errno != errno.EACCES:
                         raise
 

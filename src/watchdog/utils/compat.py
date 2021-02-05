@@ -14,12 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['queue', 'Event']
+__all__ = ['queue', 'Event', 'scandir']
 
 try:
     import queue
 except ImportError:
     import Queue as queue
 
+try:
+    from os import scandir
+except ImportError:
+    from os import listdir as scandir
 
 from threading import Event

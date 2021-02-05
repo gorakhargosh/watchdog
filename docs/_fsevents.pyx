@@ -1,5 +1,4 @@
-#!/usr/bin/env cython
-# -*- coding: utf-8 -*-
+# coding: utf-8
 
 cdef extern from "CoreFoundation/CoreFoundation.h":
     struct dummy:

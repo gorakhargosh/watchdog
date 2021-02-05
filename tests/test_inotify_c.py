@@ -41,7 +41,11 @@ def watching(path=None, use_full_emitter=False):
     emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
     emitter.start()
     yield
-    emitter.stop()
+    try:
+        emitter.stop()
+    except OSError:
+        # watch was already stopped, e.g., because root was deleted
+        pass
     emitter.join(5)
 
 
