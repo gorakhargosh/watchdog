@@ -180,7 +180,8 @@ class InotifyEmitter(EventEmitter):
             #     cls = FileClosedEvent
             #     self.queue_event(cls(src_path))
             elif event.is_delete_self and src_path == self.watch.path:
-                self.queue_event(DirDeletedEvent(src_path))
+                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                self.queue_event(cls(src_path))
                 self.stop()
 
     def _decode_path(self, path):
