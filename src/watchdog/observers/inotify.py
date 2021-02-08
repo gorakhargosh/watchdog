@@ -120,6 +120,7 @@ class InotifyEmitter(EventEmitter):
     def on_thread_stop(self):
         if self._inotify:
             self._inotify.close()
+            self._inotify = None
 
     def queue_events(self, timeout, full_events=False):
         # If "full_events" is true, then the method will report unmatched move events as separate events
@@ -179,7 +180,8 @@ class InotifyEmitter(EventEmitter):
             #     cls = FileClosedEvent
             #     self.queue_event(cls(src_path))
             elif event.is_delete_self and src_path == self.watch.path:
-                self.queue_event(DirDeletedEvent(src_path))
+                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                self.queue_event(cls(src_path))
                 self.stop()
 
     def _decode_path(self, path):

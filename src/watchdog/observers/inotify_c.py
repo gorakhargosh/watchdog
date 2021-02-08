@@ -275,7 +275,12 @@ class Inotify:
             if self._path in self._wd_for_path:
                 wd = self._wd_for_path[self._path]
                 inotify_rm_watch(self._inotify_fd, wd)
-            os.close(self._inotify_fd)
+
+            try:
+                os.close(self._inotify_fd)
+            except OSError:
+                # descriptor may be invalid because file was deleted
+                pass
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
         """
