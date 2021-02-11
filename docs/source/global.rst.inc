@@ -4,7 +4,7 @@
 .. |author_email| replace:: yesudeep@gmail.com
 .. |copyright| replace:: Copyright 2012 Google, Inc & contributors.
 .. |project_name| replace:: ``watchdog``
-.. |project_version| replace:: 1.0.3
+.. |project_version| replace:: 2.0.0
 
 .. _issue tracker: http://github.com/gorakhargosh/watchdog/issues
 .. _code repository: http://github.com/gorakhargosh/watchdog
