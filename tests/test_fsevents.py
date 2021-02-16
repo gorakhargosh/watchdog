@@ -46,6 +46,7 @@ def start_watching(path=None, use_full_emitter=False):
     global emitter
     path = p("") if path is None else path
     emitter = FSEventsEmitter(event_queue, ObservedWatch(path, recursive=True))
+    emitter.suppress_history = True
     emitter.start()
 
 
@@ -125,6 +126,20 @@ E       SystemError: <built-in function stop> returned a result with an error se
     with pytest.raises(KeyError):
         # watch no longer exists!
         observer.unschedule(w)
+
+
+def test_converting_cfstring_to_pyunicode():
+    """See https://github.com/gorakhargosh/watchdog/issues/762
+    """
+
+    start_watching()
+
+    try:
+        mkdir(p("TéstClass"))
+        event, _ = event_queue.get()
+        assert event.src_path.endswith("TéstClass")
+    finally:
+        emitter.stop()
 
 
 def test_watchdog_recursive():
