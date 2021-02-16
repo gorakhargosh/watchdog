@@ -399,8 +399,10 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
     py_event_inodes = PyList_New(num_events);
     py_event_flags = PyList_New(num_events);
     py_event_ids = PyList_New(num_events);
-    if (G_NOT(event_path_info_array_ref && py_event_flags && py_event_ids))
+    if (G_NOT(py_event_paths && py_event_inodes && py_event_flags && py_event_ids))
     {
+        Py_XDECREF(py_event_paths);
+        Py_XDECREF(py_event_inodes);
         Py_XDECREF(py_event_ids);
         Py_XDECREF(py_event_flags);
         return /*NULL*/;
