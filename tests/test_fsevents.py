@@ -134,10 +134,12 @@ def test_converting_cfstring_to_pyunicode():
     tmpdir = p()
     start_watching(tmpdir)
 
+    dirname = "TéstClass"
+
     try:
-        mkdir(p("TéstClass"))
+        mkdir(p(dirname))
         event, _ = event_queue.get()
-        assert event.src_path.endswith("TéstClass")
+        assert event.src_path.endswith(dirname)
     finally:
         emitter.stop()
 
