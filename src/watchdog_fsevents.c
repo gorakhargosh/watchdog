@@ -298,10 +298,9 @@ PyObject * CFString_AsPyUnicode(CFStringRef cf_string_ref)
         return PyUnicode_FromString("");
     }
 
-    const char *c_string_ptr;
     PyObject *py_string;
 
-    c_string_ptr = CFStringGetCStringPtr(cf_string_ref, kCFStringEncodingUTF8);
+    const char *c_string_ptr = CFStringGetCStringPtr(cf_string_ref, kCFStringEncodingUTF8);
 
     if (G_IS_NULL(c_string_ptr)) {
         CFIndex length = CFStringGetLength(cf_string_ref);
