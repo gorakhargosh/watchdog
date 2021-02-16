@@ -293,17 +293,27 @@ static void watchdog_pycapsule_destructor(PyObject *ptr)
  */
 PyObject * CFString_AsPyUnicode(CFStringRef cf_string_ref)
 {
-    CFIndex cf_string_length;
-    char *c_string_buff = NULL;
+
+    if (G_IS_NULL(cf_string_ref)) {
+        return PyUnicode_FromString("");
+    }
+
     const char *c_string_ptr;
     PyObject *py_string;
 
-    c_string_ptr = CFStringGetCStringPtr(cf_string_ref, 0);
+    c_string_ptr = CFStringGetCStringPtr(cf_string_ref, kCFStringEncodingUTF8);
 
     if (G_IS_NULL(c_string_ptr)) {
-        cf_string_length = CFStringGetLength(cf_string_ref);
-        CFStringGetCString(cf_string_ref, c_string_buff, cf_string_length, 0);
-        py_string = PyUnicode_FromString(c_string_buff);
+        CFIndex length = CFStringGetLength(cf_string_ref);
+        CFIndex max_size = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+        char *buffer = (char *)malloc(max_size);
+        if (CFStringGetCString(cf_string_ref, buffer, max_size, kCFStringEncodingUTF8)) {
+            py_string = PyUnicode_FromString(buffer);
+        }
+        else {
+            py_string = PyUnicode_FromString("");
+        }
+        free(buffer);
     } else {
         py_string = PyUnicode_FromString(c_string_ptr);
     }
