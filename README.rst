@@ -1,8 +1,7 @@
 Watchdog
 ========
 
-.. image:: https://travis-ci.org/gorakhargosh/watchdog.svg?branch=master
-    :target: https://travis-ci.org/gorakhargosh/watchdog
+|Build Status|
 
 Python API and shell utilities to monitor file system events.
 
@@ -299,3 +298,6 @@ to do:
 .. _treewalker: http://github.com/jbd/treewatcher
 .. _file.monitor: http://github.com/pke/file.monitor
 .. _pyfilesystem: http://code.google.com/p/pyfilesystem
+
+.. |Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
+   :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
