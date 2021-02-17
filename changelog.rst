@@ -3,6 +3,15 @@
 Changelog
 ---------
 
+2.0.1
+~~~~~
+
+2021-02-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.0...master>`__
+
+- [mac] Fix a segmentation fault when dealing with unicode paths (`#763 <https://github.com/gorakhargosh/watchdog/pull/763>`_)
+- Thanks to our beloved contributors: @SamSchott
+
+
 2.0.0
 ~~~~~
 
