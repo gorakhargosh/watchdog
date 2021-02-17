@@ -6,7 +6,7 @@ Changelog
 2.0.1
 ~~~~~
 
-2021-02-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.0...master>`__
+2021-02-17 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.0...v2.0.1>`__
 
 - [mac] Fix a segmentation fault when dealing with unicode paths (`#763 <https://github.com/gorakhargosh/watchdog/pull/763>`_)
 - Moved the CI from Travis-CI to GitHub Actions (`#764 <https://github.com/gorakhargosh/watchdog/pull/764>`_)
