@@ -9,7 +9,8 @@ Changelog
 2021-02-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.0...master>`__
 
 - [mac] Fix a segmentation fault when dealing with unicode paths (`#763 <https://github.com/gorakhargosh/watchdog/pull/763>`_)
-- Thanks to our beloved contributors: @SamSchott
+- Moved the CI from Travis-CI to GitHub Actions (`#764 <https://github.com/gorakhargosh/watchdog/pull/764>`_)
+- Thanks to our beloved contributors: @SamSchott, @BoboTiG
 
 
 2.0.0
