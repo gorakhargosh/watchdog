@@ -236,9 +236,9 @@ Dependencies
 ------------
 
 1. Python 3.6 or above.
-2. XCode_ (only on Mac OS X)
-3. PyYAML_ (only for ``watchmedo`` script)
-4. argh_ (only for ``watchmedo`` script)
+2. XCode_ (only on macOS when installing from sources)
+3. PyYAML_ (only for ``watchmedo``)
+4. argh_ (only for ``watchmedo``)
 
 
 Licensing
