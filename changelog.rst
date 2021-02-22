@@ -6,11 +6,10 @@ Changelog
 2.0.2
 ~~~~~
 
-2021-0x-x • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.1...master>`__
+2021-02-22 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.1...v2.0.2>`__
 
 - [mac] Add missing exception objects (`#766 <https://github.com/gorakhargosh/watchdog/pull/766>`_)
-
-- Thanks to our beloved contributors: @CCP-Aporia
+- Thanks to our beloved contributors: @CCP-Aporia, @BoboTiG
 
 
 2.0.1
