@@ -8,7 +8,9 @@ Changelog
 
 2021-0x-x • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.1...master>`__
 
-- Thanks to our beloved contributors: @
+- [mac] Add missing exception objects (`#766 <https://github.com/gorakhargosh/watchdog/pull/766>`_)
+
+- Thanks to our beloved contributors: @CCP-Aporia
 
 
 2.0.1
