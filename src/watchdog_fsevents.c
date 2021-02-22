@@ -641,7 +641,10 @@ watchdog_add_watch(PyObject *self, PyObject *args)
 
     /* Create an instance of the callback information structure. */
     stream_callback_info_ref = PyMem_New(StreamCallbackInfo, 1);
-    G_RETURN_NULL_IF_NULL(stream_callback_info_ref);
+    if(stream_callback_info_ref == NULL) {
+        PyErr_SetString(PyExc_SystemError, "Failed allocating stream callback info");
+        return NULL;
+    }
 
     /* Create an FSEvent stream and
      * Save the stream reference to the global watch-to-stream dictionary. */
