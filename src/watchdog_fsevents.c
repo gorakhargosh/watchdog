@@ -634,7 +634,10 @@ watchdog_add_watch(PyObject *self, PyObject *args)
                                           &python_callback, &paths_to_watch));
 
     /* Watch must not already be scheduled. */
-    G_RETURN_NULL_IF(PyDict_Contains(watch_to_stream, watch) == 1);
+    if(PyDict_Contains(watch_to_stream, watch) == 1) {
+        PyErr_Format(PyExc_RuntimeError, "Cannot add watch %S - it is already scheduled", watch);
+        return NULL;
+    }
 
     /* Create an instance of the callback information structure. */
     stream_callback_info_ref = PyMem_New(StreamCallbackInfo, 1);
@@ -689,6 +692,9 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     {
         FSEventStreamInvalidate(stream_ref);
         FSEventStreamRelease(stream_ref);
+        // There's no documentation on _why_ this might fail - "it ought to always succeed". But if it fails the
+        // documentation says to "fall back to performing recursive scans of the directories [...] as appropriate".
+        PyErr_SetString(PyExc_SystemError, "Cannot start fsevents stream. Use a kqueue or polling observer instead.");
         return NULL;
     }
 
