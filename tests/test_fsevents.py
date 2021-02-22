@@ -79,6 +79,27 @@ def test_coalesced_event_check(event, expectation):
     assert event.is_coalesced == expectation
 
 
+def test_add_watch_twice(observer):
+    """ Adding the same watch twice used to result in a null pointer return without an exception.
+
+    See https://github.com/gorakhargosh/watchdog/issues/765
+    """
+
+    a = p("a")
+    mkdir(a)
+    h = FileSystemEventHandler()
+    w = ObservedWatch(a, recursive=False)
+
+    def callback(path, inodes, flags, ids):
+        pass
+
+    _fsevents.add_watch(h, w, callback, [w.path])
+    with pytest.raises(RuntimeError):
+        _fsevents.add_watch(h, w, callback, [w.path])
+    _fsevents.remove_watch(w)
+    rmdir(a)
+
+
 def test_remove_watch_twice():
     """
 ValueError: PyCapsule_GetPointer called with invalid PyCapsule object
