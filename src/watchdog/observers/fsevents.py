@@ -92,7 +92,7 @@ class FSEventsEmitter(EventEmitter):
             self._watch = None
 
     def queue_event(self, event):
-        logger.info("queue_event %s", event)
+        logger.debug("queue_event %s", event)
         EventEmitter.queue_event(self, event)
 
     def _queue_created_event(self, event, src_path, dirname):
