@@ -8,8 +8,8 @@ Changelog
 
 2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.2...master>`__
 
--
-- Thanks to our beloved contributors: @
+- [mac] Use ``logger.debug()`` instead of ``logger.info()`` (`#774 <https://github.com/gorakhargosh/watchdog/pull/774>`_)
+- Thanks to our beloved contributors: @globau
 
 
 2.0.2
