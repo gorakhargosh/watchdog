@@ -6,10 +6,11 @@ Changelog
 2.0.3
 ~~~~~
 
-2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.2...master>`__
+2021-04-22 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.2...v2.0.3>`__
 
 - [mac] Use ``logger.debug()`` instead of ``logger.info()`` (`#774 <https://github.com/gorakhargosh/watchdog/pull/774>`_)
-- Thanks to our beloved contributors: @globau
+- Updated documentation links (`#777 <https://github.com/gorakhargosh/watchdog/pull/777>`_)
+- Thanks to our beloved contributors: @globau, @imba-tjd, @BoboTiG
 
 
 2.0.2
