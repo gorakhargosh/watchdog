@@ -94,7 +94,7 @@ setup(name="watchdog",
       author="Yesudeep Mangalapilly",
       author_email="yesudeep@gmail.com",
       license="Apache License 2.0",
-      url="http://github.com/gorakhargosh/watchdog",
+      url="https://github.com/gorakhargosh/watchdog",
       keywords=' '.join([
           'python',
           'filesystem',

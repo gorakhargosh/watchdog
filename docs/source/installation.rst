@@ -21,7 +21,7 @@ Installing from source tarballs
 
 .. parsed-literal::
 
-    $ wget -c http://pypi.python.org/packages/source/w/watchdog/watchdog-|project_version|.tar.gz
+    $ wget -c https://pypi.python.org/packages/source/w/watchdog/watchdog-|project_version|.tar.gz
     $ tar zxvf |project_name|-|project_version|.tar.gz
     $ cd |project_name|-|project_version|
     $ python -m pip install -e .
