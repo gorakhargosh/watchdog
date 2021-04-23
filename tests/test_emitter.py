@@ -419,7 +419,6 @@ def test_recursive_on():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-@pytest.mark.skipif(platform.is_darwin(), reason="macOS watches are always recursive")
 def test_recursive_off():
     mkdir(p('dir1'))
     start_watching(recursive=False)
@@ -427,6 +426,9 @@ def test_recursive_off():
 
     with pytest.raises(Empty):
         event_queue.get(timeout=5)
+
+    mkfile(p('b'))
+    expect_event(FileCreatedEvent(p('b')))
 
 
 @pytest.mark.skipif(platform.is_windows(),

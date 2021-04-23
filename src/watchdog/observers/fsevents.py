@@ -92,8 +92,29 @@ class FSEventsEmitter(EventEmitter):
             self._watch = None
 
     def queue_event(self, event):
-        logger.debug("queue_event %s", event)
-        EventEmitter.queue_event(self, event)
+        # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
+        # all the events here which do not have a src_path / dest_path that matches the watched path
+        if self._watch.is_recursive:
+            logger.debug("queue_event %s", event)
+            EventEmitter.queue_event(self, event)
+        else:
+            if not self._is_recursive_event(event):
+                logger.debug("queue_event %s", event)
+                EventEmitter.queue_event(self, event)
+            else:
+                logger.debug("drop event %s", event)
+
+    def _is_recursive_event(self, event):
+        src_path = event.src_path if event.is_directory else os.path.dirname(event.src_path)
+        if src_path == self._watch.path:
+            return False
+
+        if hasattr(event, "dest_path"):
+            dest_path = event.dest_path if event.is_directory else os.path.dirname(event.dest_path)
+            if dest_path == self._watch.path:
+                return False
+
+        return True
 
     def _queue_created_event(self, event, src_path, dirname):
         cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
