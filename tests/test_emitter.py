@@ -429,6 +429,21 @@ def test_recursive_off():
 
     mkfile(p('b'))
     expect_event(FileCreatedEvent(p('b')))
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))
+
+        if platform.is_linux():
+            expect_event(FileClosedEvent(p('b')))
+
+    mkdir(p('dir1', 'dir2'))
+    with pytest.raises(Empty):
+        event_queue.get(timeout=5)
+    mkfile(p('dir1', 'dir2', 'somefile'))
+    with pytest.raises(Empty):
+        event_queue.get(timeout=5)
+
+    mkdir(p('dir3'))
+    expect_event(DirModifiedEvent(p()))  # the contents of the parent directory changed
 
 
 @pytest.mark.skipif(platform.is_windows(),
