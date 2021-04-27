@@ -8,8 +8,8 @@ Changelog
 
 2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.3...master>`__
 
--
-- Thanks to our beloved contributors: @
+- [mac] Add support for non-recursive watches in FSEventsEmitter (`#779 <https://github.com/gorakhargosh/watchdog/pull/779>`_)
+- Thanks to our beloved contributors: @CCP-Aporia, @
 
 
 2.0.3
