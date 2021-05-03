@@ -146,6 +146,9 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 @arg('--python-path',
      default='.',
      help='paths separated by %s to add to the python path' % os.pathsep)
+@arg('--debug-force-polling',
+     default=False,
+     help='[debug] forces polling')
 @arg('--interval',
      '--timeout',
      dest='timeout',
@@ -162,7 +165,10 @@ def tricks_from(args):
     :param args:
         Command line argument options.
     """
-    from watchdog.observers import Observer
+    if args.debug_force_polling:
+        from watchdog.observers.polling import PollingObserver as Observer
+    else:
+        from watchdog.observers import Observer
 
     add_to_sys_path(path_split(args.python_path))
     observers = []
