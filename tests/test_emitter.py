@@ -419,7 +419,6 @@ def test_recursive_on():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-@pytest.mark.skipif(platform.is_darwin(), reason="macOS watches are always recursive")
 def test_recursive_off():
     mkdir(p('dir1'))
     start_watching(recursive=False)
@@ -427,6 +426,34 @@ def test_recursive_off():
 
     with pytest.raises(Empty):
         event_queue.get(timeout=5)
+
+    mkfile(p('b'))
+    expect_event(FileCreatedEvent(p('b')))
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))
+
+        if platform.is_linux():
+            expect_event(FileClosedEvent(p('b')))
+
+    # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
+    if platform.is_darwin():
+        mkdir(p('dir1', 'dir2'))
+        with pytest.raises(Empty):
+            event_queue.get(timeout=5)
+        mkfile(p('dir1', 'dir2', 'somefile'))
+        with pytest.raises(Empty):
+            event_queue.get(timeout=5)
+
+        mkdir(p('dir3'))
+        expect_event(DirModifiedEvent(p()))  # the contents of the parent directory changed
+
+        mv(p('dir1', 'dir2', 'somefile'), p('somefile'))
+        expect_event(FileMovedEvent(p('dir1', 'dir2', 'somefile'), p('somefile')))
+        expect_event(DirModifiedEvent(p()))
+
+        mv(p('dir1', 'dir2'), p('dir2'))
+        expect_event(DirMovedEvent(p('dir1', 'dir2'), p('dir2')))
+        expect_event(DirModifiedEvent(p()))
 
 
 @pytest.mark.skipif(platform.is_windows(),
