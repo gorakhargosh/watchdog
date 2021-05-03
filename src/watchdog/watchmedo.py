@@ -154,6 +154,24 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 @arg('--recursive',
      default=True,
      help='recursively monitor paths')
+@arg('--debug-force-polling',
+     default=False,
+     help='[debug] forces polling')
+@arg('--debug-force-kqueue',
+     default=False,
+     help='[debug] forces BSD kqueue(2)')
+@arg('--debug-force-winapi',
+     default=False,
+     help='[debug] forces Windows API')
+@arg('--debug-force-winapi-async',
+     default=False,
+     help='[debug] forces Windows API + I/O completion')
+@arg('--debug-force-fsevents',
+     default=False,
+     help='[debug] forces Mac OS X FSEvents')
+@arg('--debug-force-inotify',
+     default=False,
+     help='[debug] forces Linux inotify(7)')
 @expects_obj
 def tricks_from(args):
     """
@@ -162,7 +180,24 @@ def tricks_from(args):
     :param args:
         Command line argument options.
     """
-    from watchdog.observers import Observer
+    if args.debug_force_polling:
+        from watchdog.observers.polling import PollingObserver as Observer
+    elif args.debug_force_kqueue:
+        from watchdog.observers.kqueue import KqueueObserver as Observer
+    elif args.debug_force_winapi_async:
+        from watchdog.observers.read_directory_changes_async import\
+            WindowsApiAsyncObserver as Observer
+    elif args.debug_force_winapi:
+        from watchdog.observers.read_directory_changes import\
+            WindowsApiObserver as Observer
+    elif args.debug_force_inotify:
+        from watchdog.observers.inotify import InotifyObserver as Observer
+    elif args.debug_force_fsevents:
+        from watchdog.observers.fsevents import FSEventsObserver as Observer
+    else:
+        # Automatically picks the most appropriate observer for the platform
+        # on which it is running.
+        from watchdog.observers import Observer
 
     add_to_sys_path(path_split(args.python_path))
     observers = []
