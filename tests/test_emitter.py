@@ -435,6 +435,7 @@ def test_recursive_off():
         if platform.is_linux():
             expect_event(FileClosedEvent(p('b')))
 
+    # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
     if platform.is_darwin():
         mkdir(p('dir1', 'dir2'))
         with pytest.raises(Empty):
@@ -445,6 +446,14 @@ def test_recursive_off():
 
         mkdir(p('dir3'))
         expect_event(DirModifiedEvent(p()))  # the contents of the parent directory changed
+
+        mv(p('dir1', 'dir2', 'somefile'), p('somefile'))
+        expect_event(FileMovedEvent(p('dir1', 'dir2', 'somefile'), p('somefile')))
+        expect_event(DirModifiedEvent(p()))
+
+        mv(p('dir1', 'dir2'), p('dir2'))
+        expect_event(DirMovedEvent(p('dir1', 'dir2'), p('dir2')))
+        expect_event(DirModifiedEvent(p()))
 
 
 @pytest.mark.skipif(platform.is_windows(),
