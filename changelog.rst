@@ -8,9 +8,10 @@ Changelog
 
 2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.3...master>`__
 
+- [inotify] Simplify ``libc`` loading (`#776 <https://github.com/gorakhargosh/watchdog/pull/776>`_)
 - [mac] Add support for non-recursive watches in FSEventsEmitter (`#779 <https://github.com/gorakhargosh/watchdog/pull/779>`_)
 - Add support for `--debug-force-*` arguments to `watchmedo tricks` (`#781 <https://github.com/gorakhargosh/watchdog/pull/781>`_)
-- Thanks to our beloved contributors: @CCP-Aporia, @aodj, @
+- Thanks to our beloved contributors: @CCP-Aporia, @aodj, @UnitedMarsupials
 
 
 2.0.3
