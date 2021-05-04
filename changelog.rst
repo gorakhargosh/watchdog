@@ -3,14 +3,23 @@
 Changelog
 ---------
 
+2.1.1
+~~~~~
+
+2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.0...master>`__
+
+-
+- Thanks to our beloved contributors:
+
+
 2.1.0
 ~~~~~
 
-2021-05-04 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.3...master>`__
+2021-05-04 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.0.3...v2.1.0>`__
 
 - [inotify] Simplify ``libc`` loading (`#776 <https://github.com/gorakhargosh/watchdog/pull/776>`_)
-- [mac] Add support for non-recursive watches in FSEventsEmitter (`#779 <https://github.com/gorakhargosh/watchdog/pull/779>`_)
-- [whatchemdo] Add support for ``--debug-force-*`` arguments to ``tricks`` (`#781 <https://github.com/gorakhargosh/watchdog/pull/781>`_)
+- [mac] Add support for non-recursive watches in ``FSEventsEmitter`` (`#779 <https://github.com/gorakhargosh/watchdog/pull/779>`_)
+- [watchmedo] Add support for ``--debug-force-*`` arguments to ``tricks`` (`#781 <https://github.com/gorakhargosh/watchdog/pull/781>`_)
 - Thanks to our beloved contributors: @CCP-Aporia, @aodj, @UnitedMarsupials, @BoboTiG
 
 
