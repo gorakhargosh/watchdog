@@ -12,6 +12,10 @@ import time
 from functools import partial
 from os import mkdir, rmdir
 from queue import Queue
+from random import random
+from threading import Thread
+from time import sleep
+from unittest.mock import patch
 
 import _watchdog_fsevents as _fsevents
 from watchdog.events import FileSystemEventHandler
@@ -98,6 +102,86 @@ def test_add_watch_twice(observer):
         _fsevents.add_watch(h, w, callback, [w.path])
     _fsevents.remove_watch(w)
     rmdir(a)
+
+
+def test_watcher_deletion_while_receiving_events_1(caplog, observer):
+    """
+    When the watcher is stopped while there are events, such exception could happen:
+
+        Traceback (most recent call last):
+            File "observers/fsevents.py", line 327, in events_callback
+            self.queue_events(self.timeout, events)
+            File "observers/fsevents.py", line 187, in queue_events
+            src_path = self._encode_path(event.path)
+            File "observers/fsevents.py", line 352, in _encode_path
+            if isinstance(self.watch.path, bytes):
+        AttributeError: 'NoneType' object has no attribute 'path'
+    """
+    tmpdir = p()
+
+    orig = FSEventsEmitter.events_callback
+
+    def cb(*args):
+        FSEventsEmitter.stop(emitter)
+        orig(*args)
+
+    with caplog.at_level(logging.ERROR), patch.object(FSEventsEmitter, "events_callback", new=cb):
+        start_watching(tmpdir)
+        # Less than #00 is not enough events to trigger the error
+        for n in range(100):
+            touch(p("{}.txt".format(n)))
+        emitter.stop()
+        assert not caplog.records
+
+
+def test_watcher_deletion_while_receiving_events_2(caplog):
+    """Note: that test takes about 20 seconds to complete.
+
+    Quite similar test to prevent another issue
+    when the watcher is stopped while there are events, such exception could happen:
+
+        Traceback (most recent call last):
+            File "observers/fsevents.py", line 327, in events_callback
+              self.queue_events(self.timeout, events)
+            File "observers/fsevents.py", line 235, in queue_events
+              self._queue_created_event(event, src_path, src_dirname)
+            File "observers/fsevents.py", line 132, in _queue_created_event
+              self.queue_event(cls(src_path))
+            File "observers/fsevents.py", line 104, in queue_event
+              if self._watch.is_recursive:
+        AttributeError: 'NoneType' object has no attribute 'is_recursive'
+    """
+
+    def try_to_fail():
+        tmpdir = p()
+        start_watching(tmpdir)
+
+        def create_files():
+            # Less than 2000 is not enough events to trigger the error
+            for n in range(2000):
+                touch(p(str(n) + ".txt"))
+
+        def stop(em):
+            sleep(random())
+            em.stop()
+
+        th1 = Thread(target=create_files)
+        th2 = Thread(target=stop, args=(emitter,))
+
+        try:
+            with caplog.at_level(logging.ERROR):
+                th1.start()
+                th2.start()
+                th1.join()
+                th2.join()
+                assert not caplog.records
+        finally:
+            emitter.stop()
+
+    # 20 attempts to make the random failure happen
+    for _ in range(20):
+        try_to_fail()
+        sleep(random())
 
 
 def test_remove_watch_twice():
