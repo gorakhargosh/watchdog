@@ -289,6 +289,9 @@ class FSEventsEmitter(EventEmitter):
                 self._fs_view.clear()
 
     def events_callback(self, paths, inodes, flags, ids):
+        """Callback passed to FSEventStreamCreate(), it will receive all
+        FS events and queue them.
+        """
         try:
             events = [
                 _fsevents.NativeEvent(path, inode, event_flags, event_id)

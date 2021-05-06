@@ -127,7 +127,7 @@ def test_watcher_deletion_while_receiving_events_1(caplog, observer):
 
     with caplog.at_level(logging.ERROR), patch.object(FSEventsEmitter, "events_callback", new=cb):
         start_watching(tmpdir)
-        # Less than #00 is not enough events to trigger the error
+        # Less than 100 is not enough events to trigger the error
         for n in range(100):
             touch(p("{}.txt".format(n)))
         emitter.stop()
