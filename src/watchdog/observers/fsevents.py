@@ -86,11 +86,8 @@ class FSEventsEmitter(EventEmitter):
         self._lock = threading.RLock()
 
     def on_thread_stop(self):
-        if self.watch:
-            _fsevents.remove_watch(self.watch)
-            _fsevents.stop(self)
-            with self._lock:
-                self._watch = None
+        _fsevents.remove_watch(self.watch)
+        _fsevents.stop(self)
 
     def queue_event(self, event):
         # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
