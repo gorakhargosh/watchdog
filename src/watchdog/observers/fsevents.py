@@ -83,7 +83,7 @@ class FSEventsEmitter(EventEmitter):
         self.suppress_history = suppress_history
         self._start_time = 0.0
         self._starting_state = None
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
 
     def on_thread_stop(self):
         _fsevents.remove_watch(self.watch)
@@ -296,10 +296,6 @@ class FSEventsEmitter(EventEmitter):
                     paths, inodes, flags, ids
                 )
             ]
-            if not self.watch:
-                # The watcher might be cleared on thread stop but the C callback would
-                # still send events. Let's ignore them to prevent unhandled exceptions later.
-                return
             with self._lock:
                 self.queue_events(self.timeout, events)
         except Exception:
