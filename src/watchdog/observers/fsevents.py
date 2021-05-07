@@ -289,9 +289,10 @@ class FSEventsEmitter(EventEmitter):
         """Callback passed to FSEventStreamCreate(), it will receive all
         FS events and queue them.
         """
+        cls = _fsevents.NativeEvent
         try:
             events = [
-                _fsevents.NativeEvent(path, inode, event_flags, event_id)
+                cls(path, inode, event_flags, event_id)
                 for path, inode, event_flags, event_id in zip(
                     paths, inodes, flags, ids
                 )
