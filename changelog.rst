@@ -9,7 +9,7 @@ Changelog
 2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.0...master>`__
 
 - [mac] Fix callback exceptions when the watcher is deleted but still receiving events
-- Thanks to our beloved contributors: @rom1win, @BoboTiG
+- Thanks to our beloved contributors: @rom1win, @BoboTiG, @CCP-Aporia
 
 
 2.1.0
