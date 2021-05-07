@@ -784,17 +784,20 @@ static PyObject *
 watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
-    PyObject *value = PyDict_GetItem(watch_to_stream, watch);
+    PyObject *streamref_capsule = PyDict_GetItem(watch_to_stream, watch);
+    if (!streamref_capsule) {
+        // A watch might have been removed explicitly before, in which case we can simply early out.
+        Py_RETURN_NONE;
+    }
     PyDict_DelItem(watch_to_stream, watch);
 
-    FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
+    FSEventStreamRef stream_ref = PyCapsule_GetPointer(streamref_capsule, NULL);
 
     FSEventStreamStop(stream_ref);
     FSEventStreamInvalidate(stream_ref);
     FSEventStreamRelease(stream_ref);
 
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 
 PyDoc_STRVAR(watchdog_stop__doc__,
