@@ -86,10 +86,8 @@ class FSEventsEmitter(EventEmitter):
         self._lock = threading.Lock()
 
     def on_thread_stop(self):
-        if self.watch:
-            _fsevents.remove_watch(self.watch)
-            _fsevents.stop(self)
-            self._watch = None
+        _fsevents.remove_watch(self.watch)
+        _fsevents.stop(self)
 
     def queue_event(self, event):
         # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
@@ -287,23 +285,28 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.clear()
 
-    def run(self):
+    def events_callback(self, paths, inodes, flags, ids):
+        """Callback passed to FSEventStreamCreate(), it will receive all
+        FS events and queue them.
+        """
+        cls = _fsevents.NativeEvent
         try:
-            def callback(paths, inodes, flags, ids, emitter=self):
-                try:
-                    with emitter._lock:
-                        events = [
-                            _fsevents.NativeEvent(path, inode, event_flags, event_id)
-                            for path, inode, event_flags, event_id in zip(paths, inodes, flags, ids)
-                        ]
-                        emitter.queue_events(emitter.timeout, events)
-                except Exception:
-                    logger.exception("Unhandled exception in fsevents callback")
+            events = [
+                cls(path, inode, event_flags, event_id)
+                for path, inode, event_flags, event_id in zip(
+                    paths, inodes, flags, ids
+                )
+            ]
+            with self._lock:
+                self.queue_events(self.timeout, events)
+        except Exception:
+            logger.exception("Unhandled exception in fsevents callback")
 
-            self.pathnames = [self.watch.path]
-            self._start_time = time.monotonic()
-
-            _fsevents.add_watch(self, self.watch, callback, self.pathnames)
+    def run(self):
+        self.pathnames = [self.watch.path]
+        self._start_time = time.monotonic()
+        try:
+            _fsevents.add_watch(self, self.watch, self.events_callback, self.pathnames)
             _fsevents.read_events(self)
         except Exception:
             logger.exception("Unhandled exception in FSEventsEmitter")
