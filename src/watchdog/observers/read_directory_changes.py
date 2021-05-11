@@ -19,6 +19,7 @@
 import threading
 import os.path
 import time
+import platform
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -62,8 +63,11 @@ class WindowsApiEmitter(EventEmitter):
         self._lock = threading.Lock()
         self._handle = None
 
-    def on_thread_start(self):
+    def start(self):
         self._handle = get_directory_handle(self.watch.path)
+        super().start()
+        if platform.python_implementation() != 'CPython':
+            time.sleep(0.01)  # Workaround for PyPy https://github.com/gorakhargosh/watchdog/issues/792
 
     def on_thread_stop(self):
         if self._handle:
