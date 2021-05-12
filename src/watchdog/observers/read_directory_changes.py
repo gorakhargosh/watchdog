@@ -19,6 +19,7 @@
 import threading
 import os.path
 import time
+import platform
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -64,6 +65,12 @@ class WindowsApiEmitter(EventEmitter):
 
     def on_thread_start(self):
         self._handle = get_directory_handle(self.watch.path)
+
+    if platform.python_implementation() == 'PyPy':
+        def start(self):
+            """PyPy needs some time before receiving events, see #792."""
+            super().start()
+            time.sleep(0.01)
 
     def on_thread_stop(self):
         if self._handle:
