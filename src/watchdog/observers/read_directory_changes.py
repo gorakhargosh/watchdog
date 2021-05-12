@@ -63,11 +63,14 @@ class WindowsApiEmitter(EventEmitter):
         self._lock = threading.Lock()
         self._handle = None
 
-    def start(self):
+    def on_thread_start(self):
         self._handle = get_directory_handle(self.watch.path)
-        super().start()
-        if platform.python_implementation() != 'CPython':
-            time.sleep(0.01)  # Workaround for PyPy https://github.com/gorakhargosh/watchdog/issues/792
+
+    if platform.python_implementation() == 'PyPy':
+        def start(self):
+            """PyPy needs some time before receiving events, see #792."""
+            super().start()
+            time.sleep(0.01)
 
     def on_thread_stop(self):
         if self._handle:
