@@ -3,13 +3,21 @@
 Changelog
 ---------
 
+2.1.2
+~~~~~
+
+2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.2...master>`__
+
+- [windows] On PyPy, events happening right after ``start()`` were missed. Add a workaround for that. (`#796 <https://github.com/gorakhargosh/watchdog/pull/796>`_)
+- Thanks to our beloved contributors: @oprypin
+
 2.1.1
 ~~~~~
 
-2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.0...master>`__
+2021-05-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.0...v2.1.1>`__
 
-- [windows] On PyPy, events happening right after `start()` were missed. Add a workaround for that. (`#796 <https://github.com/gorakhargosh/watchdog/pull/796>`_)
-- Thanks to our beloved contributors: @oprypin
+- [mac] Fix callback exceptions when the watcher is deleted but still receiving events (`#786 <https://github.com/gorakhargosh/watchdog/pull/786>`_)
+- Thanks to our beloved contributors: @rom1win, @BoboTiG, @CCP-Aporia
 
 
 2.1.0
