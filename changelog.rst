@@ -8,8 +8,8 @@ Changelog
 
 2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.0...master>`__
 
--
-- Thanks to our beloved contributors:
+- [windows] On PyPy, events happening right after `start()` were missed. Add a workaround for that. (`#796 <https://github.com/gorakhargosh/watchdog/pull/796>`_)
+- Thanks to our beloved contributors: @oprypin
 
 
 2.1.0
