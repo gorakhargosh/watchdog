@@ -100,6 +100,7 @@ EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
 EVENT_TYPE_CLOSED = 'closed'
+EVENT_TYPE_ATTRIB = 'attrib'
 
 
 class FileSystemEvent:
@@ -201,6 +202,10 @@ class FileDeletedEvent(FileSystemEvent):
     event_type = EVENT_TYPE_DELETED
 
 
+class FileAttribEvent(FileSystemEvent):
+    event_type = EVENT_TYPE_ATTRIB
+
+
 class FileModifiedEvent(FileSystemEvent):
     """File system event representing file modification on the file system."""
 
@@ -255,6 +260,11 @@ class DirMovedEvent(FileSystemMovedEvent):
     is_directory = True
 
 
+class DirAttribEvent(FileSystemEvent):
+    event_type = EVENT_TYPE_ATTRIB
+    is_directory = True
+
+
 class FileSystemEventHandler:
     """
     Base file system event handler that you can override methods from.
@@ -275,6 +285,7 @@ class FileSystemEventHandler:
             EVENT_TYPE_MODIFIED: self.on_modified,
             EVENT_TYPE_MOVED: self.on_moved,
             EVENT_TYPE_CLOSED: self.on_closed,
+            EVENT_TYPE_ATTRIB: self.on_attrib,
         }[event.event_type](event)
 
     def on_any_event(self, event):
@@ -331,6 +342,13 @@ class FileSystemEventHandler:
             :class:`FileClosedEvent`
         """
 
+    def on_attrib(self, event):
+        """Called when a file or directory metadata is modified.
+        :param event:
+            Event representing file/directory metadata modification.
+        :type event:
+            :class:`FileAttribEvent` or :class:`DirAttribEvent`
+        """
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """
