@@ -84,7 +84,7 @@ class FSEventsEmitter(EventEmitter):
         self._start_time = 0.0
         self._starting_state = None
         self._lock = threading.Lock()
-        self._absolute_watch_path = os.path.abspath(self.watch.path)
+        self._absolute_watch_path = os.path.abspath(os.path.expanduser(self.watch.path))
 
     def on_thread_stop(self):
         _fsevents.remove_watch(self.watch)
