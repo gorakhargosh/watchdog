@@ -87,6 +87,8 @@ from watchdog.events import (
     FileMovedEvent,
     FileCreatedEvent,
     FileClosedEvent,
+    FileAttribEvent,
+    DirAttribEvent,
     generate_sub_moved_events,
     generate_sub_created_events,
 )
@@ -155,7 +157,7 @@ class InotifyEmitter(EventEmitter):
                     for sub_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_event)
             elif event.is_attrib:
-                cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                cls = DirAttribEvent if event.is_directory else FileAttribEvent
                 self.queue_event(cls(src_path))
             elif event.is_modify:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
