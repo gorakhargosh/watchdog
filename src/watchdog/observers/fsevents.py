@@ -84,6 +84,7 @@ class FSEventsEmitter(EventEmitter):
         self._start_time = 0.0
         self._starting_state = None
         self._lock = threading.Lock()
+        self._absolute_watch_path = os.path.abspath(self.watch.path)
 
     def on_thread_stop(self):
         _fsevents.remove_watch(self.watch)
@@ -104,14 +105,14 @@ class FSEventsEmitter(EventEmitter):
 
     def _is_recursive_event(self, event):
         src_path = event.src_path if event.is_directory else os.path.dirname(event.src_path)
-        if src_path == self._watch.path:
+        if src_path == self._absolute_watch_path:
             return False
 
         if isinstance(event, (FileMovedEvent, DirMovedEvent)):
             # when moving something into the watch path we must always take the dirname,
             # otherwise we miss out on `DirMovedEvent`s
             dest_path = os.path.dirname(event.dest_path)
-            if dest_path == self._watch.path:
+            if dest_path == self._absolute_watch_path:
                 return False
 
         return True

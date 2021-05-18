@@ -247,11 +247,15 @@ def test_converting_cfstring_to_pyunicode():
         emitter.stop()
 
 
-def test_issue_797():
+def test_recursive_check_accepts_relative_paths():
+    """See https://github.com/gorakhargosh/watchdog/issues/797
+
+    The test code provided in the defect observes the current working directory
+    using ".". Since the watch path wasn't normalized then that failed.
+    This test emulates the scenario.
+    """
     from watchdog.events import (
         PatternMatchingEventHandler,
-        DirCreatedEvent,
-        DirModifiedEvent,
         FileCreatedEvent,
         FileModifiedEvent
     )
@@ -259,6 +263,8 @@ def test_issue_797():
     class TestEventHandler(PatternMatchingEventHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
+            # the TestEventHandler instance is set to ignore_directories,
+            # as such we won't get a DirModifiedEvent(p()) here.
             self.expected_events = [
                 FileCreatedEvent(p('foo.json')),
                 FileModifiedEvent(p('foo.json'))
@@ -266,18 +272,17 @@ def test_issue_797():
             self.observed_events = set()
 
         def on_any_event(self, event):
-            logger.info(event)
             self.expected_events.remove(event)
             self.observed_events.add(event)
-            # expected_event = self.expected_events.pop(0)
-            # assert expected_event == event
 
         def done(self):
             return not self.expected_events
 
+    cwd = os.getcwd()
+    os.chdir(p())
     event_handler = TestEventHandler(patterns=["*.json"], ignore_patterns=[], ignore_directories=True)
     observer = Observer()
-    observer.schedule(event_handler, p())
+    observer.schedule(event_handler, ".")
     observer.start()
     time.sleep(0.1)
 
@@ -289,6 +294,7 @@ def test_issue_797():
 
         assert event_handler.done()
     finally:
+        os.chdir(cwd)
         observer.stop()
         observer.join()
 
