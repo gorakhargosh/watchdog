@@ -533,6 +533,12 @@ class LoggingEventHandler(FileSystemEventHandler):
         what = 'directory' if event.is_directory else 'file'
         self.logger.info("Modified %s: %s", what, event.src_path)
 
+    def on_attrib(self, event):
+        super().on_attrib(event)
+
+        what = 'directory' if event.is_directory else 'file'
+        self.logger.info("Attrib %s: %s", what, event.src_path)
+
 
 def generate_sub_moved_events(src_dir_path, dest_dir_path):
     """Generates an event list of :class:`DirMovedEvent` and
