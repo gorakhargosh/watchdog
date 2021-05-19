@@ -6,11 +6,11 @@ Changelog
 2.1.2
 ~~~~~
 
-2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.2...master>`__
+2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.2...v2.1.1>`__
 
 - [mac] Fix relative path handling for non-recursive watch. (`#797 <https://github.com/gorakhargosh/watchdog/pull/797>`_)
 - [windows] On PyPy, events happening right after ``start()`` were missed. Add a workaround for that. (`#796 <https://github.com/gorakhargosh/watchdog/pull/796>`_)
-- Thanks to our beloved contributors: @oprypin, @CCP-Aporia
+- Thanks to our beloved contributors: @oprypin, @CCP-Aporia, @BoboTiG
 
 2.1.1
 ~~~~~
