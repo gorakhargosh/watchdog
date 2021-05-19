@@ -46,10 +46,10 @@ def teardown_function(function):
     rm(p(""), recursive=True)
 
 
-def start_watching(path=None, use_full_emitter=False):
+def start_watching(path=None, recursive=True, use_full_emitter=False):
     global emitter
     path = p("") if path is None else path
-    emitter = FSEventsEmitter(event_queue, ObservedWatch(path, recursive=True), suppress_history=True)
+    emitter = FSEventsEmitter(event_queue, ObservedWatch(path, recursive=recursive), suppress_history=True)
     emitter.start()
 
 
@@ -245,6 +245,58 @@ def test_converting_cfstring_to_pyunicode():
         assert event.src_path.endswith(dirname)
     finally:
         emitter.stop()
+
+
+def test_recursive_check_accepts_relative_paths():
+    """See https://github.com/gorakhargosh/watchdog/issues/797
+
+    The test code provided in the defect observes the current working directory
+    using ".". Since the watch path wasn't normalized then that failed.
+    This test emulates the scenario.
+    """
+    from watchdog.events import (
+        PatternMatchingEventHandler,
+        FileCreatedEvent,
+        FileModifiedEvent
+    )
+
+    class TestEventHandler(PatternMatchingEventHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            # the TestEventHandler instance is set to ignore_directories,
+            # as such we won't get a DirModifiedEvent(p()) here.
+            self.expected_events = [
+                FileCreatedEvent(p('foo.json')),
+                FileModifiedEvent(p('foo.json'))
+            ]
+            self.observed_events = set()
+
+        def on_any_event(self, event):
+            self.expected_events.remove(event)
+            self.observed_events.add(event)
+
+        def done(self):
+            return not self.expected_events
+
+    cwd = os.getcwd()
+    os.chdir(p())
+    event_handler = TestEventHandler(patterns=["*.json"], ignore_patterns=[], ignore_directories=True)
+    observer = Observer()
+    observer.schedule(event_handler, ".")
+    observer.start()
+    time.sleep(0.1)
+
+    try:
+        touch(p('foo.json'))
+        timeout_at = time.time() + 5
+        while not event_handler.done() and time.time() < timeout_at:
+            time.sleep(0.1)
+
+        assert event_handler.done()
+    finally:
+        os.chdir(cwd)
+        observer.stop()
+        observer.join()
 
 
 def test_watchdog_recursive():
