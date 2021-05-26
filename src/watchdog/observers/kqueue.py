@@ -100,6 +100,8 @@ from watchdog.events import (
     EVENT_TYPE_DELETED,
     EVENT_TYPE_CREATED,
     generate_sub_moved_events,
+    FileAttribEvent,
+    DirAttribEvent,
 )
 
 # Maximum number of events to process.
@@ -553,9 +555,9 @@ class KqueueEmitter(EventEmitter):
                 yield event
         elif is_attrib_modified(kev):
             if descriptor.is_directory:
-                yield DirModifiedEvent(src_path)
+                yield DirAttribEvent(src_path)
             else:
-                yield FileModifiedEvent(src_path)
+                yield FileAttribEvent(src_path)
         elif is_modified(kev):
             if descriptor.is_directory:
                 if self.watch.is_recursive or self.watch.path == src_path:
