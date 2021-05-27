@@ -68,6 +68,15 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileAttribEvent
+   :members:
+   :show-inheritance:
+
+.. autoclass:: FileAttribEvent
+   :members:
+   :show-inheritance:
+
+
 
 Event Handler Classes
 ---------------------
@@ -203,6 +212,9 @@ class FileDeletedEvent(FileSystemEvent):
 
 
 class FileAttribEvent(FileSystemEvent):
+    """
+    File system event representing file metadata modification on the file system.
+    """
     event_type = EVENT_TYPE_ATTRIB
 
 
@@ -261,6 +273,9 @@ class DirMovedEvent(FileSystemMovedEvent):
 
 
 class DirAttribEvent(FileSystemEvent):
+    """
+    File system event representing directory metadata modification on the file system.
+    """
     event_type = EVENT_TYPE_ATTRIB
     is_directory = True
 
