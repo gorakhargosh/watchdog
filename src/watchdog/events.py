@@ -365,6 +365,7 @@ class FileSystemEventHandler:
             :class:`FileAttribEvent` or :class:`DirAttribEvent`
         """
 
+
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """
     Matches given patterns with file paths associated with occurring events.
