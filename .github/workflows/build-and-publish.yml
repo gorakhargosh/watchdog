@@ -16,6 +16,9 @@
 name: Build & Publish
 
 on:
+  pull_request:
+    branches: '*'
+
   workflow_dispatch:
     inputs:
       branch:
