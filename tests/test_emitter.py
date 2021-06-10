@@ -21,7 +21,7 @@ import logging
 from functools import partial
 from queue import Queue, Empty
 
-from .shell import mkfile, mkdir, touch, mv, rm
+from .shell import mkfile, mkdir, touch, mv, rm, chmod
 from watchdog.utils import platform
 from watchdog.events import (
     FileDeletedEvent,
@@ -33,7 +33,8 @@ from watchdog.events import (
     DirCreatedEvent,
     DirMovedEvent,
     FileClosedEvent,
-    FileAttribEvent
+    FileAttribEvent,
+    DirAttribEvent,
 )
 from watchdog.observers.api import ObservedWatch
 
@@ -603,7 +604,7 @@ def test_move_nested_subdirectories_on_windows():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_file_lifecyle():
+def test_file_lifecycle():
     # TODO
     start_watching()
 
@@ -637,3 +638,25 @@ def test_file_lifecyle():
 
     if not platform.is_windows():
         expect_event(DirModifiedEvent(p()))
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="FileAttribEvent isn't supported in Windows")
+def test_chmod_file():
+    mkfile(p('newfile'))
+
+    start_watching()
+
+    chmod(p('newfile'), 777)
+
+    event_queue.get(FileAttribEvent(p('newfile')))
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="DirAttribEvent isn't supported in Windows")
+def test_chmod_dir():
+    mkdir(p('dir1'))
+
+    start_watching()
+
+    chmod(p('dir1'), 777)
+
+    event_queue.get(DirAttribEvent(p('dir1')))

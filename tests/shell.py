@@ -123,3 +123,9 @@ def msize(path):
     with open(path, 'w') as w:
         w.write('0')
     os.utime(path, (0, 0))
+
+
+def chmod(path, mode):
+    """"Change file mode bits."""
+    os.chmod(path, mode)
+
