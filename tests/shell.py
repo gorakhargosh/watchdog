@@ -128,4 +128,3 @@ def msize(path):
 def chmod(path, mode):
     """"Change file mode bits."""
     os.chmod(path, mode)
-
