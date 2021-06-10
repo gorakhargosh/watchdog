@@ -25,12 +25,15 @@ from watchdog.events import (
     DirCreatedEvent,
     FileMovedEvent,
     DirMovedEvent,
+    FileAttribEvent,
+    DirAttribEvent,
     FileSystemEventHandler,
     EVENT_TYPE_MODIFIED,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MOVED,
     EVENT_TYPE_CLOSED,
+    EVENT_TYPE_ATTRIB,
 )
 
 path_1 = '/path/xyz'
@@ -92,6 +95,14 @@ def test_file_closed_event():
     assert not event.is_synthetic
 
 
+def test_file_attrib_event():
+    event = FileAttribEvent(path_1)
+    assert path_1 == event.src_path
+    assert EVENT_TYPE_ATTRIB == event.event_type
+    assert not event.is_directory
+    assert not event.is_synthetic
+
+
 def test_dir_deleted_event():
     event = DirDeletedEvent(path_1)
     assert path_1 == event.src_path
@@ -116,6 +127,14 @@ def test_dir_created_event():
     assert not event.is_synthetic
 
 
+def test_dir_attrib_event():
+    event = DirAttribEvent(path_1)
+    assert path_1 == event.src_path
+    assert EVENT_TYPE_ATTRIB == event.event_type
+    assert event.is_directory
+    assert not event.is_synthetic
+
+
 def test_file_system_event_handler_dispatch():
     dir_del_event = DirDeletedEvent('/path/blah.py')
     file_del_event = FileDeletedEvent('/path/blah.txt')
@@ -126,6 +145,8 @@ def test_file_system_event_handler_dispatch():
     file_mod_event = FileModifiedEvent('/path/blah.txt')
     dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
     file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
+    file_attr_event = FileAttribEvent('/path/blah.py')
+    dir_attr_event = DirAttribEvent('/path/dir')
 
     all_events = [
         dir_mod_event,
@@ -137,6 +158,8 @@ def test_file_system_event_handler_dispatch():
         file_cre_event,
         file_mov_event,
         file_cls_event,
+        file_attr_event,
+        dir_attr_event,
     ]
 
     class TestableEventHandler(FileSystemEventHandler):
@@ -158,6 +181,9 @@ def test_file_system_event_handler_dispatch():
 
         def on_closed(self, event):
             assert event.event_type == EVENT_TYPE_CLOSED
+
+        def on_attrib(self, event):
+            assert event.event_type == EVENT_TYPE_ATTRIB
 
     handler = TestableEventHandler()
 
