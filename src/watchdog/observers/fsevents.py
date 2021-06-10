@@ -39,6 +39,8 @@ from watchdog.events import (
     DirModifiedEvent,
     DirCreatedEvent,
     DirMovedEvent,
+    FileAttribEvent,
+    DirAttribEvent,
     generate_sub_created_events,
     generate_sub_moved_events
 )
@@ -107,6 +109,10 @@ class FSEventsEmitter(EventEmitter):
 
     def _queue_modified_event(self, event, src_path, dirname):
         cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+        self.queue_event(cls(src_path))
+
+    def _queue_attrib_event(self, event, src_path, dirname):
+        cls = DirAttribEvent if event.is_directory else FileAttribEvent
         self.queue_event(cls(src_path))
 
     def _queue_renamed_event(self, src_event, src_path, dst_path, src_dirname, dst_dirname):
@@ -187,8 +193,11 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
+
+                if event.is_inode_meta_mod or event.is_xattr_mod:
+                    self._queue_attrib_event(event, src_path, src_dirname)
 
                 self._queue_deleted_event(event, src_path, src_dirname)
                 self._fs_view.discard(event.inode)
@@ -200,8 +209,11 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
+
+                if event.is_inode_meta_mod or event.is_xattr_mod:
+                    self._queue_attrib_event(event, src_path, src_dirname)
 
                 if event.is_renamed:
 
@@ -225,8 +237,11 @@ class FSEventsEmitter(EventEmitter):
 
                         events.remove(dst_event)
 
-                        if dst_event.is_modified or dst_event.is_inode_meta_mod or dst_event.is_xattr_mod:
+                        if dst_event.is_modified:
                             self._queue_modified_event(dst_event, dst_path, dst_dirname)
+
+                        if dst_event.is_inode_meta_mod or dst_event.is_xattr_mod:
+                            self._queue_attrib_event(dst_event, dst_path, dst_dirname)
 
                         if dst_event.is_removed:
                             self._queue_deleted_event(dst_event, dst_path, dst_dirname)
