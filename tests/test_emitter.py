@@ -33,6 +33,7 @@ from watchdog.events import (
     DirCreatedEvent,
     DirMovedEvent,
     FileClosedEvent,
+    FileAttribEvent
 )
 from watchdog.observers.api import ObservedWatch
 
@@ -187,12 +188,15 @@ def test_modify():
 
     touch(p('a'))
 
-    expect_event(FileModifiedEvent(p('a')))
+    if platform.is_windows():
+        expect_event(FileModifiedEvent(p('a')))
 
-    if platform.is_linux():
+    if not platform.is_windows():
+        # TODO: change the fsevent module to support this feature and test this on bsd
         event = event_queue.get(timeout=5)[0]
+        assert isinstance(event, FileAttribEvent)
         assert event.src_path == p('a')
-        assert isinstance(event, FileClosedEvent)
+        assert isinstance(event, FileAttribEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -412,10 +416,9 @@ def test_recursive_on():
         assert event.src_path == p('dir1', 'dir2', 'dir3')
         assert isinstance(event, DirModifiedEvent)
 
-        if not platform.is_bsd():
-            event = event_queue.get(timeout=5)[0]
-            assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
-            assert isinstance(event, FileModifiedEvent)
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
+        assert isinstance(event, FileAttribEvent)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -528,6 +531,7 @@ def test_renaming_top_level_directory_on_windows():
 @pytest.mark.skipif(platform.is_windows(),
                     reason="Windows create another set of events for this test")
 def test_move_nested_subdirectories():
+    # TODO
     mkdir(p('dir1/dir2/dir3'), parents=True)
     mkfile(p('dir1/dir2/dir3', 'a'))
     start_watching()
@@ -600,6 +604,7 @@ def test_move_nested_subdirectories_on_windows():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_file_lifecyle():
+    # TODO
     start_watching()
 
     mkfile(p('a'))
