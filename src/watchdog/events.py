@@ -162,7 +162,9 @@ class FileSystemEvent:
         return (self.event_type, self.src_path, self.is_directory)
 
     def __eq__(self, event):
-        return self.key == event.key
+        if isinstance(event, FileSystemEvent):
+            return self.key == event.key
+        return NotImplemented
 
     def __ne__(self, event):
         return self.key != event.key
