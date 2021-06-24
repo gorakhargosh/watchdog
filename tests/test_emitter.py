@@ -192,12 +192,20 @@ def test_modify():
     if platform.is_windows():
         expect_event(FileModifiedEvent(p('a')))
 
-    if not platform.is_windows():
-        # TODO: change the fsevent module to support this feature and test this on bsd
+    if platform.is_linux():
+        # on Linux we'd get the attrib event first then
         event = event_queue.get(timeout=5)[0]
         assert isinstance(event, FileAttribEvent)
         assert event.src_path == p('a')
+
+    if platform.is_bsd():
+        event = event_queue.get(timeout=5)[0]
+        assert isinstance(event, FileModifiedEvent)
+        assert event.src_path == p('a')
+
+        event = event_queue.get(timeout=5)[0]
         assert isinstance(event, FileAttribEvent)
+        assert event.src_path == p('a')
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
