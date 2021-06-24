@@ -1,12 +1,16 @@
 name: Tests
 
 on:
+  pull_request:
+    branches: '*'
+
   workflow_dispatch:
     inputs:
       branch:
         description: 'The branch, tag or SHA to release from'
         required: true
         default: 'master'
+
 jobs:
   tests:
     name: Run tests for ${{ matrix.os }} for ${{ matrix.python }}
