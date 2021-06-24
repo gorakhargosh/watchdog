@@ -129,7 +129,7 @@ WATCHDOG_KQ_FFLAGS = (
 
 
 def absolute_path(path):
-    return Path(path).resolve()
+    return str(Path(path).resolve())
 
 # Flag tests.
 
