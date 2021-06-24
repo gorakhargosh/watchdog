@@ -72,7 +72,7 @@ Event Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: FileAttribEvent
+.. autoclass:: DirAttribEvent
    :members:
    :show-inheritance:
 
