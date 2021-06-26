@@ -8,7 +8,8 @@ Changelog
 
 2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.2...master>`__
 
-- Thanks to our beloved contributors: @
+- Publish macOS ``arm64`` and ``universal2`` wheels. (`#740 <https://github.com/gorakhargosh/watchdog/pull/740>`_)
+- Thanks to our beloved contributors: @kainjow, @BoboTiG
 
 2.1.2
 ~~~~~

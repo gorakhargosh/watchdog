@@ -2,7 +2,12 @@ name: Tests
 
 on:
   pull_request:
-    branches: '*'
+    paths:
+      - ".github/workflows/tests.yml"
+      - "requirements-tests.txt"
+      - "setup.*"
+      - "src/*"
+      - "tests/*.py"
 
 jobs:
   tests:

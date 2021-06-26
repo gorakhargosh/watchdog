@@ -16,6 +16,11 @@
 name: Build & Publish
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/build-and-publish.yml"
+      - "setup.*"
+
   workflow_dispatch:
     inputs:
       branch:
@@ -40,6 +45,7 @@ jobs:
         run: python -m cibuildwheel
         env:
           CIBW_SKIP: "cp27-* cp35-* pp27-*"  # skip 2.7 and 3.5 wheels
+          CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
       - uses: actions/upload-artifact@v2
         with:
           name: python-package-distributions
@@ -100,8 +106,9 @@ jobs:
           name: python-package-distributions
           path: dist/
       - name: What will we publish?
-        run: ls dist
+        run: ls -l dist
       - name: Publish
+        if: github.event.inputs.branch != ''
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
