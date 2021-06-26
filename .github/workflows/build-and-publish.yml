@@ -16,6 +16,11 @@
 name: Build & Publish
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/build-and-publish.yml"
+      - "setup.*"
+
   workflow_dispatch:
     inputs:
       branch:
@@ -89,6 +94,7 @@ jobs:
           retention-days: 4
 
   publish:
+    if: github.event.inputs.branch != ''
     needs:
       - macos-built-distributions
       - pure-built-distributions
