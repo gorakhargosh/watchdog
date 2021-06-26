@@ -40,6 +40,7 @@ jobs:
         run: python -m cibuildwheel
         env:
           CIBW_SKIP: "cp27-* cp35-* pp27-*"  # skip 2.7 and 3.5 wheels
+          CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
       - uses: actions/upload-artifact@v2
         with:
           name: python-package-distributions
