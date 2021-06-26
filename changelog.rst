@@ -6,7 +6,7 @@ Changelog
 2.1.3
 ~~~~~
 
-2021-0x-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.2...master>`__
+2021-06-26 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.2...v2.1.3>`__
 
 - Publish macOS ``arm64`` and ``universal2`` wheels. (`#740 <https://github.com/gorakhargosh/watchdog/pull/740>`_)
 - Thanks to our beloved contributors: @kainjow, @BoboTiG
