@@ -94,7 +94,6 @@ jobs:
           retention-days: 4
 
   publish:
-    if: github.event.inputs.branch != ''
     needs:
       - macos-built-distributions
       - pure-built-distributions
@@ -107,8 +106,9 @@ jobs:
           name: python-package-distributions
           path: dist/
       - name: What will we publish?
-        run: ls dist
+        run: ls -l dist
       - name: Publish
+        if: github.event.inputs.branch != ''
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
