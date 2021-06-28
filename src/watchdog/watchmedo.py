@@ -35,7 +35,7 @@ from argh import arg, aliases, ArghParser, expects_obj
 from watchdog.version import VERSION_STRING
 from watchdog.utils import WatchdogShutdown, load_class
 from watchdog._watchmedo import path_split, add_to_sys_path, \
-        parse_patterns, observe_with, schedule_tricks
+    schedule_tricks
 from watchdog import _watchmedo
 
 
@@ -56,7 +56,6 @@ def load_config(tricks_file_pathname):
     """
     with open(tricks_file_pathname, 'rb') as f:
         return yaml.safe_load(f.read())
-
 
 
 @aliases('tricks')
@@ -175,7 +174,36 @@ if not specified, prints to standard output')
 appending instead of a complete tricks yaml file.')
 @expects_obj
 def tricks_generate_yaml(args):
-    return _watchmedo.tracks_generate_yaml(args)
+    """
+    Subcommand to generate Yaml configuration for tricks named on the command
+    line.
+
+    :param args:
+        Command line argument options.
+    """
+    python_paths = path_split(args.python_path)
+    add_to_sys_path(python_paths)
+    output = StringIO()
+
+    for trick_path in args.trick_paths:
+        TrickClass = load_class(trick_path)
+        output.write(TrickClass.generate_yaml())
+
+    content = output.getvalue()
+    output.close()
+
+    header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths})
+    header += "%s:\n" % CONFIG_KEY_TRICKS
+    if args.append_to_file is None:
+        # Output to standard output.
+        if not args.append_only:
+            content = header + content
+        sys.stdout.write(content)
+    else:
+        if not os.path.exists(args.append_to_file):
+            content = header + content
+        with open(args.append_to_file, 'ab') as output:
+            output.write(content)
 
 
 @arg('directories',

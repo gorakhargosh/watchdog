@@ -22,15 +22,12 @@
 :synopsis: ``watchmedo`` shell script utility.
 """
 
-import errno
 import os
 import os.path
 import sys
 import time
 import logging
-from io import StringIO
 
-from watchdog.version import VERSION_STRING
 from watchdog.utils import WatchdogShutdown, load_class
 
 
@@ -122,40 +119,6 @@ def schedule_tricks(observer, tricks, pathname, recursive):
             handler = TrickClass(**value)
             trick_pathname = getattr(handler, 'source_directory', None) or pathname
             observer.schedule(handler, trick_pathname, recursive)
-
-
-
-def tricks_generate_yaml(args):
-    """
-    Subcommand to generate Yaml configuration for tricks named on the command
-    line.
-
-    :param args:
-        Command line argument options.
-    """
-    python_paths = path_split(args.python_path)
-    add_to_sys_path(python_paths)
-    output = StringIO()
-
-    for trick_path in args.trick_paths:
-        TrickClass = load_class(trick_path)
-        output.write(TrickClass.generate_yaml())
-
-    content = output.getvalue()
-    output.close()
-
-    header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths})
-    header += "%s:\n" % CONFIG_KEY_TRICKS
-    if args.append_to_file is None:
-        # Output to standard output.
-        if not args.append_only:
-            content = header + content
-        sys.stdout.write(content)
-    else:
-        if not os.path.exists(args.append_to_file):
-            content = header + content
-        with open(args.append_to_file, 'ab') as output:
-            output.write(content)
 
 
 def log(args):
