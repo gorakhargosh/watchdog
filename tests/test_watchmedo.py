@@ -48,3 +48,28 @@ def test_load_config_invalid(tmpdir):
         watchmedo.load_config(yaml_file)
 
     assert not os.path.exists(critical_dir)
+
+
+def make_dummy_script(tmpdir, n=10):
+    script = os.path.join(tmpdir, 'auto-test-%d.py' % n)
+    with open(script, 'w') as f:
+        f.write('import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i)\n\ttime.sleep(1)\n' % n)
+    return script
+
+
+def test_kill_auto_restart(tmpdir, capfd):
+    from watchdog.tricks import AutoRestartTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir)
+    try:
+        a = AutoRestartTrick([sys.executable, script])
+        a.start()
+        time.sleep(5)
+        a.stop()
+        cap = capfd.readouterr()
+        assert '+++++ 0' in cap.out
+        assert '+++++ 9' not in cap.out     # we killed the subprocess before the end
+        assert 'KeyboardInterrupt' in cap.err
+    finally:
+        os.remove(script)
