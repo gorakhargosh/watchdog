@@ -6,7 +6,7 @@ on:
       - ".github/workflows/tests.yml"
       - "requirements-tests.txt"
       - "setup.*"
-      - "src/*"
+      - "src/**/*"
       - "tests/*.py"
 
 jobs:

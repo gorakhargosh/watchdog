@@ -170,13 +170,21 @@ class AutoRestartTrick(Trick):
         self.process = None
 
     def start(self):
-        self.process = subprocess.Popen(self.command, preexec_fn=os.setsid)
+        # windows doesn't have setsid
+        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, 'setsid', None))
 
     def stop(self):
         if self.process is None:
             return
+
+        def kill_process(stop_signal):
+            if hasattr(os, 'getpgid') and hasattr(os, 'killpg'):
+                os.killpg(os.getpgid(self.process.pid), stop_signal)
+            else:
+                os.kill(self.process.pid, self.stop_signal)
+
         try:
-            os.killpg(os.getpgid(self.process.pid), self.stop_signal)
+            kill_process(self.stop_signal)
         except OSError:
             # Process is already gone
             pass
@@ -188,7 +196,7 @@ class AutoRestartTrick(Trick):
                 time.sleep(0.25)
             else:
                 try:
-                    os.killpg(os.getpgid(self.process.pid), 9)
+                    kill_process(9)
                 except OSError:
                     # Process is already gone
                     pass
