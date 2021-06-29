@@ -53,7 +53,7 @@ def test_load_config_invalid(tmpdir):
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, 'auto-test-%d.py' % n)
     with open(script, 'w') as f:
-        f.write('import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i)\n\ttime.sleep(1)\n' % n)
+        f.write('import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i, flush=True)\n\ttime.sleep(1)\n' % n)
     return script
 
 
@@ -62,14 +62,11 @@ def test_kill_auto_restart(tmpdir, capfd):
     import sys
     import time
     script = make_dummy_script(tmpdir)
-    try:
-        a = AutoRestartTrick([sys.executable, script])
-        a.start()
-        time.sleep(5)
-        a.stop()
-        cap = capfd.readouterr()
-        assert '+++++ 0' in cap.out
-        assert '+++++ 9' not in cap.out     # we killed the subprocess before the end
-        assert 'KeyboardInterrupt' in cap.err
-    finally:
-        os.remove(script)
+    a = AutoRestartTrick([sys.executable, script])
+    a.start()
+    time.sleep(5)
+    a.stop()
+    cap = capfd.readouterr()
+    assert '+++++ 0' in cap.out
+    assert '+++++ 9' not in cap.out     # we killed the subprocess before the end
+    assert 'KeyboardInterrupt' in cap.err
