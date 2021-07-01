@@ -55,10 +55,13 @@ def encode(path):
 
 def decode(path):
     if isinstance(path, bytes_cls):
+        # Try the filesystem encoding and the fallback encoding.
+        # If all fails, encode invalid characters using surrogate pairs
         try:
             path = path.decode(fs_encoding, 'strict')
         except UnicodeDecodeError:
-            if not platform.is_linux():
-                raise
-            path = path.decode(fs_fallback_encoding, 'strict')
+            try:
+                path = path.decode(fs_fallback_encoding, 'strict')
+            except UnicodeDecodeError:
+                path = path.decode(fs_encoding, 'surrogateescape')
     return path
