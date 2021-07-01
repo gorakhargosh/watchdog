@@ -8,6 +8,7 @@ Changelog
 
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.6...python-2.7>`__
 
+- Avoid crashing the event processing thread on non-utf8 filenames (`#811 <https://github.com/gorakhargosh/watchdog/pull/811>`_)
 - [backport 1.0.0] [mac] Regression fixes for native ``fsevents`` (`#717 <https://github.com/gorakhargosh/watchdog/pull/717>`_)
 - [backport 1.0.0] [windows] ``winapi.BUFFER_SIZE`` now defaults to ``64000`` (instead of ``2048``) (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
 - [backport 1.0.0] [windows] Introduced ``winapi.PATH_BUFFER_SIZE`` (defaults to ``2048``) to keep the old behavior with path-realted functions (`#700 <https://github.com/gorakhargosh/watchdog/pull/700>`_)
@@ -21,7 +22,7 @@ Changelog
 - [backport 2.0.0] [mac] Support coalesced filesystem events (`#734 <https://github.com/gorakhargosh/watchdog/pull/734>`_)
 - [backport 2.0.0] [mac] Drop support for OSX 10.12 and earlier (`#750 <https://github.com/gorakhargosh/watchdog/pull/750>`_)
 - [backport 2.0.0] [mac] Fix an issue when renaming an item changes only the casing (`#750 <https://github.com/gorakhargosh/watchdog/pull/750>`_)
-- Thanks to our beloved contributors: @SamSchott, @bstaletic, @BoboTiG, @CCP-Aporia, @di, @lukassup, @ysard
+- Thanks to our beloved contributors: @SamSchott, @bstaletic, @BoboTiG, @CCP-Aporia, @di, @lukassup, @ysard, @lovasoa
 
 
 0.10.6
