@@ -304,3 +304,4 @@ to do:
 .. _treewalker: http://github.com/jbd/treewatcher
 .. _file.monitor: http://github.com/pke/file.monitor
 .. _pyfilesystem: http://code.google.com/p/pyfilesystem
+.. _pathtools: https://pypi.org/project/pathtools/
