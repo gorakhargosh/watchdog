@@ -3,6 +3,15 @@
 Changelog
 ---------
 
+0.10.8
+~~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.7...python-2.7>`__
+
+-
+- Thanks to our beloved contributors: @
+
+
 0.10.7
 ~~~~~~
 
