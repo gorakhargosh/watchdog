@@ -6,7 +6,7 @@ Changelog
 0.10.7
 ~~~~~~
 
-202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.6...python-2.7>`__
+2021-07-05 • `full history <https://github.com/gorakhargosh/watchdog/compare/v0.10.6...v0.10.7>`__
 
 - Avoid crashing the event processing thread on non-utf8 filenames (`#811 <https://github.com/gorakhargosh/watchdog/pull/811>`_)
 - [backport 1.0.0] [mac] Regression fixes for native ``fsevents`` (`#717 <https://github.com/gorakhargosh/watchdog/pull/717>`_)
