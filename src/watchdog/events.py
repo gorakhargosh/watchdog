@@ -261,7 +261,7 @@ class FileSystemEventHandler:
     """
 
     def __init__(self):
-        # Allow overriding or adding custom event handlers to event dispatch map.  
+        # Allow overriding or adding custom event handlers to event dispatch map.
         self.event_dispatch_map = {
             EVENT_TYPE_CREATED: self.on_created,
             EVENT_TYPE_DELETED: self.on_deleted,
