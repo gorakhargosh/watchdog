@@ -9,7 +9,8 @@ Changelog
 2021-xx-x • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.3...master>`__
 
 - [watchmedo] Fix usage of ``os.setsid()`` and ``os.killpg()`` Unix-only functions.  (`#809 <https://github.com/gorakhargosh/watchdog/pull/809>`_)
-- Thanks to our beloved contributors: @replabrobin, @BoboTiG
+- [mac] Fix missing ``FileModifiedEvent`` on permission or ownership changes of a file.  (`#809 <https://github.com/gorakhargosh/watchdog/pull/814>`_)
+- Thanks to our beloved contributors: @replabrobin, @BoboTiG, @SamSchott
 
 2.1.3
 ~~~~~
