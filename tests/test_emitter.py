@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import os
+import stat
 import time
 import pytest
 import logging
@@ -193,6 +194,21 @@ def test_modify():
         event = event_queue.get(timeout=5)[0]
         assert event.src_path == p('a')
         assert isinstance(event, FileClosedEvent)
+
+
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+def test_chmod():
+    mkfile(p('a'))
+    start_watching()
+
+    # Note: We use S_IREAD here because chmod on Windows only
+    # allows setting the read-only flag.
+    os.chmod(p('a'), stat.S_IREAD)
+
+    expect_event(FileModifiedEvent(p('a')))
+
+    # Reset permissions to allow cleanup.
+    os.chmod(p('a'), stat.S_IWRITE)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
