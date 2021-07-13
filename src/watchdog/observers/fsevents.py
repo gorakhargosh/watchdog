@@ -156,6 +156,11 @@ class FSEventsEmitter(EventEmitter):
 
         return in_history or before_start
 
+    @staticmethod
+    def _is_meta_mod(event):
+        """Returns True if the event indicates a change in metadata."""
+        return event.is_inode_meta_mod or event.is_xattr_mod or event.is_owner_change
+
     def queue_events(self, timeout, events):
 
         if logger.getEffectiveLevel() <= logging.DEBUG:
@@ -209,7 +214,7 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                if event.is_modified or self._is_meta_mod(event):
                     self._queue_modified_event(event, src_path, src_dirname)
 
                 self._queue_deleted_event(event, src_path, src_dirname)
@@ -222,7 +227,7 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+                if event.is_modified or self._is_meta_mod(event):
                     self._queue_modified_event(event, src_path, src_dirname)
 
                 if event.is_renamed:
@@ -247,7 +252,7 @@ class FSEventsEmitter(EventEmitter):
 
                         events.remove(dst_event)
 
-                        if dst_event.is_modified or dst_event.is_inode_meta_mod or dst_event.is_xattr_mod:
+                        if dst_event.is_modified or self._is_meta_mod(dst_event):
                             self._queue_modified_event(dst_event, dst_path, dst_dirname)
 
                         if dst_event.is_removed:
