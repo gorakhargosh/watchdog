@@ -87,7 +87,7 @@ class SkipRepeatsQueue(queue.Queue):
         self._last_item = None
 
     def _put(self, item):
-        if item != self._last_item:
+        if self._last_item is None or item != self._last_item:
             super()._put(item)
             self._last_item = item
         else:
