@@ -9,10 +9,11 @@ Changelog
 2021-xx-x • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.3...master>`__
 
 - [watchmedo] Fix usage of ``os.setsid()`` and ``os.killpg()`` Unix-only functions. (`#809 <https://github.com/gorakhargosh/watchdog/pull/809>`_)
-- [mac] Fix missing ``FileModifiedEvent`` on permission or ownership changes of a file. (`#809 <https://github.com/gorakhargosh/watchdog/pull/814>`_)
+- [mac] Fix missing ``FileModifiedEvent`` on permission or ownership changes of a file. (`#815 <https://github.com/gorakhargosh/watchdog/pull/815>`_)
 - [mac] Convert absolute watch path in ``FSEeventsEmitter`` with ``os.path.realpath()``. (`#822 <https://github.com/gorakhargosh/watchdog/pull/822>`_)
 - Fix a possible ``AttributeError`` in ``SkipRepeatsQueue._put()``. (`#818 <https://github.com/gorakhargosh/watchdog/pull/818>`_)
-- Thanks to our beloved contributors: @replabrobin, @BoboTiG, @SamSchott, @AndreiB97, @NiklasRosenstein
+- Allow overriding or adding custom event handlers to event dispatch map. (`#814 <https://github.com/gorakhargosh/watchdog/pull/814>`_)
+- Thanks to our beloved contributors: @replabrobin, @BoboTiG, @SamSchott, @AndreiB97, @NiklasRosenstein, @ikokollari
 
 2.1.3
 ~~~~~
