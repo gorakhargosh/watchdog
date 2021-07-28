@@ -10,7 +10,8 @@ Changelog
 
 - [watchmedo] Fix usage of ``os.setsid()`` and ``os.killpg()`` Unix-only functions.  (`#809 <https://github.com/gorakhargosh/watchdog/pull/809>`_)
 - [mac] Fix missing ``FileModifiedEvent`` on permission or ownership changes of a file.  (`#809 <https://github.com/gorakhargosh/watchdog/pull/814>`_)
-- Thanks to our beloved contributors: @replabrobin, @BoboTiG, @SamSchott
+- [mac] Fix a possible ``AttributeError`` in ``SkipRepeatsQueue._put()``.  (`#818 <https://github.com/gorakhargosh/watchdog/pull/818>`_)
+- Thanks to our beloved contributors: @replabrobin, @BoboTiG, @SamSchott, @AndreiB97
 
 2.1.3
 ~~~~~
