@@ -16,6 +16,7 @@
 # limitations under the License.
 
 import pytest
+import watchdog.events as events
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 from .markers import cpython_only
@@ -56,6 +57,18 @@ def test_allow_nonconsecutive():
     assert e2 == q.get()
     assert e1 == q.get()
     assert q.empty()
+
+
+def test_put_with_watchdog_events():
+    # FileSystemEvent.__ne__() uses the key property without
+    # doing any type checking. Since _last_item is set to
+    # None in __init__(), an AttributeError is raised when
+    # FileSystemEvent.__ne__() tries to use None.key
+    queue = SkipRepeatsQueue()
+    dummy_file = 'dummy.txt'
+    event = events.FileCreatedEvent(dummy_file)
+    queue.put(event)
+    assert queue.get() is event
 
 
 def test_prevent_consecutive():
