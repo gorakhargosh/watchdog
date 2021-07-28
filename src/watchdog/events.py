@@ -260,6 +260,16 @@ class FileSystemEventHandler:
     Base file system event handler that you can override methods from.
     """
 
+    def __init__(self):
+        # Allow overriding or adding custom event handlers to event dispatch map.
+        self.event_dispatch_map = {
+            EVENT_TYPE_CREATED: self.on_created,
+            EVENT_TYPE_DELETED: self.on_deleted,
+            EVENT_TYPE_MODIFIED: self.on_modified,
+            EVENT_TYPE_MOVED: self.on_moved,
+            EVENT_TYPE_CLOSED: self.on_closed,
+        }
+
     def dispatch(self, event):
         """Dispatches events to the appropriate methods.
 
@@ -269,13 +279,7 @@ class FileSystemEventHandler:
             :class:`FileSystemEvent`
         """
         self.on_any_event(event)
-        {
-            EVENT_TYPE_CREATED: self.on_created,
-            EVENT_TYPE_DELETED: self.on_deleted,
-            EVENT_TYPE_MODIFIED: self.on_modified,
-            EVENT_TYPE_MOVED: self.on_moved,
-            EVENT_TYPE_CLOSED: self.on_closed,
-        }[event.event_type](event)
+        self.event_dispatch_map[event.event_type](event)
 
     def on_any_event(self, event):
         """Catch-all event handler.
