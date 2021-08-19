@@ -10,13 +10,14 @@ import ctypes
 import errno
 import logging
 import os
+import struct
 from functools import partial
 from queue import Queue
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
-from watchdog.observers.inotify_c import Inotify
+from watchdog.observers.inotify_c import Inotify, InotifyConstants
 
 from .shell import mkdtemp, rm
 
@@ -52,28 +53,37 @@ def teardown_function(function):
         pass
 
 
+def struct_inotify(wd, mask, cookie=0, length=0, name=b""):
+    assert len(name) <= length
+    struct_format = (
+        "="  # (native endianness, standard sizes)
+        "i"  # int      wd
+        "i"  # uint32_t mask
+        "i"  # uint32_t cookie
+        "i"  # uint32_t len
+        "%ds" % (length,)  # char[] name
+    )
+    return struct.pack(struct_format, wd, mask, cookie, length, name)
+
+
 def test_late_double_deletion(monkeypatch):
     inotify_fd = type(str("FD"), (object,), {})()  # Empty object
     inotify_fd.last = 0
     inotify_fd.wds = []
 
+    const = InotifyConstants()
+
     # CREATE DELETE CREATE DELETE DELETE_SELF IGNORE DELETE_SELF IGNORE
     inotify_fd.buf = (
-        # IN_CREATE|IS_DIR (wd = 1, path = subdir1)
-        b"\x01\x00\x00\x00\x00\x01\x00\x40\x00\x00\x00\x00\x10\x00\x00\x00"
-        b"\x73\x75\x62\x64\x69\x72\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        # IN_DELETE|IS_DIR (wd = 1, path = subdir1)
-        b"\x01\x00\x00\x00\x00\x02\x00\x40\x00\x00\x00\x00\x10\x00\x00\x00"
-        b"\x73\x75\x62\x64\x69\x72\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        struct_inotify(wd=1, mask=const.IN_CREATE | const.IN_ISDIR,
+                       length=16, name=b"subdir1")
+        + struct_inotify(wd=1, mask=const.IN_DELETE | const.IN_ISDIR,
+                         length=16, name=b"subdir1")
     ) * 2 + (
-        # IN_DELETE_SELF (wd = 2)
-        b"\x02\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        # IN_IGNORE (wd = 2)
-        b"\x02\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        # IN_DELETE_SELF (wd = 3)
-        b"\x03\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        # IN_IGNORE (wd = 3)
-        b"\x03\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        struct_inotify(wd=2, mask=const.IN_DELETE_SELF)
+        + struct_inotify(wd=2, mask=const.IN_IGNORED)
+        + struct_inotify(wd=3, mask=const.IN_DELETE_SELF)
+        + struct_inotify(wd=3, mask=const.IN_IGNORED)
     )
 
     os_read_bkp = os.read

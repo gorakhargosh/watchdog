@@ -13,7 +13,8 @@ Changelog
 - [mac] Convert absolute watch path in ``FSEeventsEmitter`` with ``os.path.realpath()``. (`#822 <https://github.com/gorakhargosh/watchdog/pull/822>`_)
 - Fix a possible ``AttributeError`` in ``SkipRepeatsQueue._put()``. (`#818 <https://github.com/gorakhargosh/watchdog/pull/818>`_)
 - Allow overriding or adding custom event handlers to event dispatch map. (`#814 <https://github.com/gorakhargosh/watchdog/pull/814>`_)
-- Thanks to our beloved contributors: @replabrobin, @BoboTiG, @SamSchott, @AndreiB97, @NiklasRosenstein, @ikokollari
+- Fix tests on big endian platforms. (`#828 <https://github.com/gorakhargosh/watchdog/pull/828>`_)
+- Thanks to our beloved contributors: @replabrobin, @BoboTiG, @SamSchott, @AndreiB97, @NiklasRosenstein, @ikokollari, @mgorny
 
 2.1.3
 ~~~~~
