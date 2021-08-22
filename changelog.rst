@@ -8,8 +8,8 @@ Changelog
 
 2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.4...master>`__
 
--
-- Thanks to our beloved contributors: @
+- convert regexes of type str to list. (`#831 <https://github.com/gorakhargosh/watchdog/pull/831>`_)
+- Thanks to our beloved contributors: @unique1o1
 
 2.1.4
 ~~~~~
