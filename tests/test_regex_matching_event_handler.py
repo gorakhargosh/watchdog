@@ -35,6 +35,7 @@ from watchdog.events import (
 path_1 = '/path/xyz'
 path_2 = '/path/abc'
 g_allowed_regexes = [r".*\.py", r".*\.txt"]
+g_allowed_str_regexes = r".*\.py"
 g_ignore_regexes = [r".*\.pyc"]
 
 
@@ -184,6 +185,12 @@ def test_regexes():
     handler1 = RegexMatchingEventHandler(g_allowed_regexes,
                                          g_ignore_regexes, True)
     assert [r.pattern for r in handler1.regexes] == g_allowed_regexes
+
+
+def test_str_regexes():
+    handler1 = RegexMatchingEventHandler(g_allowed_str_regexes,
+                                         g_ignore_regexes, True)
+    assert [r.pattern for r in handler1.regexes] == [g_allowed_str_regexes]
 
 
 def test_logging_event_handler_dispatch():
