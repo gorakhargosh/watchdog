@@ -6,10 +6,11 @@ Changelog
 2.1.5
 ~~~~~
 
-2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.4...master>`__
+2021-08-23 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.4...v2.1.5>`__
 
-- convert regexes of type str to list. (`#831 <https://github.com/gorakhargosh/watchdog/pull/831>`_)
-- Thanks to our beloved contributors: @unique1o1
+- Fix regression introduced in 2.1.4 (reverted "Allow overriding or adding custom event handlers to event dispatch map. (`#814 <https://github.com/gorakhargosh/watchdog/pull/814>`_)"). (`#830 <https://github.com/gorakhargosh/watchdog/pull/830>`_)
+- Convert regexes of type ``str`` to ``list``. (`831 <https://github.com/gorakhargosh/watchdog/pull/831>`_)
+- Thanks to our beloved contributors: @unique1o1, @BoboTiG
 
 2.1.4
 ~~~~~
