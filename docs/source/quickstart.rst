@@ -46,7 +46,7 @@ file system changes and simply log them to the console::
         observer.schedule(event_handler, path, recursive=True)
         observer.start()
         try:
-            while observer.isAlive():
+            while observer.is_alive():
                 observer.join(1)
         finally:
             observer.stop()
