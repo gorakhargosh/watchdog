@@ -78,7 +78,7 @@ if is_macos or os.getenv('FORCE_MACOS_MACHINE', '0') == '1':
     ]
 
 extras_require = {
-    'watchmedo': ['PyYAML>=3.10', 'argh>=0.24.1'],
+    'watchmedo': ['PyYAML>=3.10'],
 }
 
 with open('README.rst', encoding='utf-8') as f:
