@@ -76,8 +76,6 @@ import os
 import os.path
 import select
 
-from pathlib import Path
-
 from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
@@ -127,7 +125,7 @@ WATCHDOG_KQ_FFLAGS = (
 
 
 def absolute_path(path):
-    return Path(path).resolve()
+    return os.path.abspath(os.path.normpath(path))
 
 # Flag tests.
 
