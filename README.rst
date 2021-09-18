@@ -2,6 +2,7 @@ Watchdog
 ========
 
 |Build Status|
+|CirrusCI Status|
 
 Python API and shell utilities to monitor file system events.
 
@@ -301,3 +302,5 @@ to do:
 
 .. |Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
    :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
+.. |CirrusCI Status| image:: https://api.cirrus-ci.com/github/gorakhargosh/watchdog.svg
+   :target: https://cirrus-ci.com/github/gorakhargosh/watchdog/
