@@ -8,8 +8,9 @@ Changelog
 
 2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.5...master>`__
 
--
-- Thanks to our beloved contributors: @
+- [bsd] Fixed returned paths in ``kqueue.py`` and restored the overall results of the test suite (`#842 <https://github.com/gorakhargosh/watchdog/pull/842>`_)
+- [bsd] Updated FreeBSD CI support (`#841 <https://github.com/gorakhargosh/watchdog/pull/841>`_)
+- Thanks to our beloved contributors: @knobix
 
 2.1.5
 ~~~~~

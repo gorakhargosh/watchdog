@@ -355,6 +355,7 @@ def test_separate_consecutive_moves():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
 def test_delete_self():
     mkdir(p('dir1'))
     start_watching(p('dir1'))
@@ -642,6 +643,7 @@ def test_move_nested_subdirectories_on_windows():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
 def test_file_lifecyle():
     start_watching()
 
