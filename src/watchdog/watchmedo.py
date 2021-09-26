@@ -60,7 +60,7 @@ def argument(*name_or_flags, **kwargs):
     return (list(name_or_flags), kwargs)
 
 
-def command(args=[], parent=subparsers):
+def command(args=[], parent=subparsers, cmd_aliases=[]):
     """Decorator to define a new command in a sanity-preserving way.
       The function will be stored in the ``func`` variable when the parser
       parses arguments so that it can be called directly like so::
@@ -68,7 +68,7 @@ def command(args=[], parent=subparsers):
           args.func(args)
     """
     def decorator(func):
-        parser = parent.add_parser(func.__name__, description=func.__doc__)
+        parser = parent.add_parser(func.__name__, description=func.__doc__, aliases=cmd_aliases)
         for arg in args:
             parser.add_argument(*arg[0], **arg[1])
             parser.set_defaults(func=func)
@@ -204,7 +204,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
                    help='[debug] forces Mac OS X FSEvents'),
           argument('--debug-force-inotify',
                    default=False,
-                   help='[debug] forces Linux inotify(7)')])
+                   help='[debug] forces Linux inotify(7)')], cmd_aliases=['tricks'])
 def tricks_from(args):
     """
     command to execute tricks from a tricks configuration file.
@@ -268,7 +268,6 @@ def tricks_from(args):
         o.join()
 
 
-# @aliases('generate-tricks-yaml')
 @command([argument('trick_paths',
                    nargs='*',
                    help='Dotted paths for all the tricks you want to generate'),
@@ -284,7 +283,7 @@ def tricks_from(args):
                    dest='append_only',
                    default=False,
                    help='if --append-to-file is not specified, produces output for \
-    appending instead of a complete tricks yaml file.')])
+    appending instead of a complete tricks yaml file.')], cmd_aliases=['generate-tricks-yaml'])
 def tricks_generate_yaml(args):
     """
     command to generate Yaml configuration for tricks named on the command
