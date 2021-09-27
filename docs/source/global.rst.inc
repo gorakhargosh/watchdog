@@ -18,7 +18,6 @@
 .. _GetQueuedCompletionStatus: https://docs.microsoft.com/windows/win32/api/ioapiset/nf-ioapiset-getqueuedcompletionstatus
 .. _CreateIoCompletionPort: https://docs.microsoft.com/windows/win32/api/ioapiset/nf-ioapiset-createiocompletionport
 
-.. _argh: https://pypi.python.org/pypi/argh
 .. _coverage: https://coverage.readthedocs.io/en/latest/
 .. _file.monitor: https://github.com/pke/file.monitor
 .. _fsmonitor: https://github.com/shaurz/fsmonitor

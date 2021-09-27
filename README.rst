@@ -239,8 +239,6 @@ Dependencies
 1. Python 3.6 or above.
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
-4. argh_ (only for ``watchmedo``)
-
 
 Licensing
 ---------
@@ -284,7 +282,6 @@ to do:
 .. _changelog: https://github.com/gorakhargosh/watchdog/blob/master/changelog.rst
 
 .. _homebrew: https://brew.sh/
-.. _argh: https://pypi.python.org/pypi/argh
 .. _PyYAML: https://www.pyyaml.org/
 .. _XCode: https://developer.apple.com/technologies/tools/xcode.html
 .. _LibYAML: https://pyyaml.org/wiki/LibYAML

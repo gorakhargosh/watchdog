@@ -31,15 +31,48 @@ import time
 import logging
 from io import StringIO
 
-from argh import arg, aliases, ArghParser, expects_obj
+from argparse import ArgumentParser
 from watchdog.version import VERSION_STRING
 from watchdog.utils import WatchdogShutdown, load_class
-
 
 logging.basicConfig(level=logging.INFO)
 
 CONFIG_KEY_TRICKS = 'tricks'
 CONFIG_KEY_PYTHON_PATH = 'python-path'
+
+epilog = """Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
+Copyright 2012 Google, Inc & contributors.
+
+Licensed under the terms of the Apache license, version 2.0. Please see
+LICENSE in the source code for more information."""
+
+cli = ArgumentParser(epilog=epilog)
+cli.add_argument('--version',
+                 action='version',
+                 version='%(prog)s ' + VERSION_STRING)
+subparsers = cli.add_subparsers(dest="command")
+
+
+def argument(*name_or_flags, **kwargs):
+    """Convenience function to properly format arguments to pass to the
+      command decorator.
+    """
+    return (list(name_or_flags), kwargs)
+
+
+def command(args=[], parent=subparsers, cmd_aliases=[]):
+    """Decorator to define a new command in a sanity-preserving way.
+      The function will be stored in the ``func`` variable when the parser
+      parses arguments so that it can be called directly like so::
+          args = cli.parse_args()
+          args.func(args)
+    """
+    def decorator(func):
+        parser = parent.add_parser(func.__name__, description=func.__doc__, aliases=cmd_aliases)
+        for arg in args:
+            parser.add_argument(*arg[0], **arg[1])
+            parser.set_defaults(func=func)
+    return decorator
 
 
 def path_split(pathname_spec, separator=os.pathsep):
@@ -139,43 +172,42 @@ def schedule_tricks(observer, tricks, pathname, recursive):
             observer.schedule(handler, trick_pathname, recursive)
 
 
-@aliases('tricks')
-@arg('files',
-     nargs='*',
-     help='perform tricks from given file')
-@arg('--python-path',
-     default='.',
-     help='paths separated by %s to add to the python path' % os.pathsep)
-@arg('--interval',
-     '--timeout',
-     dest='timeout',
-     default=1.0,
-     help='use this as the polling interval/blocking timeout (in seconds)')
-@arg('--recursive',
-     default=True,
-     help='recursively monitor paths')
-@arg('--debug-force-polling',
-     default=False,
-     help='[debug] forces polling')
-@arg('--debug-force-kqueue',
-     default=False,
-     help='[debug] forces BSD kqueue(2)')
-@arg('--debug-force-winapi',
-     default=False,
-     help='[debug] forces Windows API')
-@arg('--debug-force-winapi-async',
-     default=False,
-     help='[debug] forces Windows API + I/O completion')
-@arg('--debug-force-fsevents',
-     default=False,
-     help='[debug] forces Mac OS X FSEvents')
-@arg('--debug-force-inotify',
-     default=False,
-     help='[debug] forces Linux inotify(7)')
-@expects_obj
+@command([argument('files',
+                   nargs='*',
+                   help='perform tricks from given file'),
+          argument('--python-path',
+                   default='.',
+                   help='paths separated by %s to add to the python path' % os.pathsep),
+          argument('--interval',
+                   '--timeout',
+                   dest='timeout',
+                   default=1.0,
+                   type=float,
+                   help='use this as the polling interval/blocking timeout (in seconds)'),
+          argument('--recursive',
+                   default=True,
+                   help='recursively monitor paths'),
+          argument('--debug-force-polling',
+                   default=False,
+                   help='[debug] forces polling'),
+          argument('--debug-force-kqueue',
+                   default=False,
+                   help='[debug] forces BSD kqueue(2)'),
+          argument('--debug-force-winapi',
+                   default=False,
+                   help='[debug] forces Windows API'),
+          argument('--debug-force-winapi-async',
+                   default=False,
+                   help='[debug] forces Windows API + I/O completion'),
+          argument('--debug-force-fsevents',
+                   default=False,
+                   help='[debug] forces Mac OS X FSEvents'),
+          argument('--debug-force-inotify',
+                   default=False,
+                   help='[debug] forces Linux inotify(7)')], cmd_aliases=['tricks'])
 def tricks_from(args):
     """
-    Subcommand to execute tricks from a tricks configuration file.
+    command to execute tricks from a tricks configuration file.
 
     :param args:
         Command line argument options.
@@ -236,27 +268,25 @@ def tricks_from(args):
         o.join()
 
 
-@aliases('generate-tricks-yaml')
-@arg('trick_paths',
-     nargs='*',
-     help='Dotted paths for all the tricks you want to generate')
-@arg('--python-path',
-     default='.',
-     help='paths separated by %s to add to the python path' % os.pathsep)
-@arg('--append-to-file',
-     default=None,
-     help='appends the generated tricks YAML to a file; \
-if not specified, prints to standard output')
-@arg('-a',
-     '--append-only',
-     dest='append_only',
-     default=False,
-     help='if --append-to-file is not specified, produces output for \
-appending instead of a complete tricks yaml file.')
-@expects_obj
+@command([argument('trick_paths',
+                   nargs='*',
+                   help='Dotted paths for all the tricks you want to generate'),
+          argument('--python-path',
+                   default='.',
+                   help='paths separated by %s to add to the python path' % os.pathsep),
+          argument('--append-to-file',
+                   default=None,
+                   help='appends the generated tricks YAML to a file; \
+    if not specified, prints to standard output'),
+          argument('-a',
+                   '--append-only',
+                   dest='append_only',
+                   default=False,
+                   help='if --append-to-file is not specified, produces output for \
+    appending instead of a complete tricks yaml file.')], cmd_aliases=['generate-tricks-yaml'])
 def tricks_generate_yaml(args):
     """
-    Subcommand to generate Yaml configuration for tricks named on the command
+    command to generate Yaml configuration for tricks named on the command
     line.
 
     :param args:
@@ -287,62 +317,64 @@ def tricks_generate_yaml(args):
             output.write(content)
 
 
-@arg('directories',
-     nargs='*',
-     default='.',
-     help='directories to watch.')
-@arg('-p',
-     '--pattern',
-     '--patterns',
-     dest='patterns',
-     default='*',
-     help='matches event paths with these patterns (separated by ;).')
-@arg('-i',
-     '--ignore-pattern',
-     '--ignore-patterns',
-     dest='ignore_patterns',
-     default='',
-     help='ignores event paths with these patterns (separated by ;).')
-@arg('-D',
-     '--ignore-directories',
-     dest='ignore_directories',
-     default=False,
-     help='ignores events for directories')
-@arg('-R',
-     '--recursive',
-     dest='recursive',
-     default=False,
-     help='monitors the directories recursively')
-@arg('--interval',
-     '--timeout',
-     dest='timeout',
-     default=1.0,
-     help='use this as the polling interval/blocking timeout')
-@arg('--trace',
-     default=False,
-     help='dumps complete dispatching trace')
-@arg('--debug-force-polling',
-     default=False,
-     help='[debug] forces polling')
-@arg('--debug-force-kqueue',
-     default=False,
-     help='[debug] forces BSD kqueue(2)')
-@arg('--debug-force-winapi',
-     default=False,
-     help='[debug] forces Windows API')
-@arg('--debug-force-winapi-async',
-     default=False,
-     help='[debug] forces Windows API + I/O completion')
-@arg('--debug-force-fsevents',
-     default=False,
-     help='[debug] forces Mac OS X FSEvents')
-@arg('--debug-force-inotify',
-     default=False,
-     help='[debug] forces Linux inotify(7)')
-@expects_obj
+@command([argument('directories',
+                   nargs='*',
+                   default='.',
+                   help='directories to watch. (default: \'.\')'),
+          argument('-p',
+                   '--pattern',
+                   '--patterns',
+                   dest='patterns',
+                   default='*',
+                   help='matches event paths with these patterns (separated by ;).'),
+          argument('-i',
+                   '--ignore-pattern',
+                   '--ignore-patterns',
+                   dest='ignore_patterns',
+                   default='',
+                   help='ignores event paths with these patterns (separated by ;).'),
+          argument('-D',
+                   '--ignore-directories',
+                   dest='ignore_directories',
+                   default=False,
+                   action='store_true',
+                   help='ignores events for directories'),
+          argument('-R',
+                   '--recursive',
+                   dest='recursive',
+                   default=False,
+                   action='store_true',
+                   help='monitors the directories recursively'),
+          argument('--interval',
+                   '--timeout',
+                   dest='timeout',
+                   default=1.0,
+                   type=float,
+                   help='use this as the polling interval/blocking timeout'),
+          argument('--trace',
+                   default=False,
+                   help='dumps complete dispatching trace'),
+          argument('--debug-force-polling',
+                   default=False,
+                   help='[debug] forces polling'),
+          argument('--debug-force-kqueue',
+                   default=False,
+                   help='[debug] forces BSD kqueue(2)'),
+          argument('--debug-force-winapi',
+                   default=False,
+                   help='[debug] forces Windows API'),
+          argument('--debug-force-winapi-async',
+                   default=False,
+                   help='[debug] forces Windows API + I/O completion'),
+          argument('--debug-force-fsevents',
+                   default=False,
+                   help='[debug] forces Mac OS X FSEvents'),
+          argument('--debug-force-inotify',
+                   default=False,
+                   help='[debug] forces Linux inotify(7)')])
 def log(args):
     """
-    Subcommand to log file system events to the console.
+    command to log file system events to the console.
 
     :param args:
         Command line argument options.
@@ -380,77 +412,79 @@ def log(args):
     observe_with(observer, handler, args.directories, args.recursive)
 
 
-@arg('directories',
-     nargs='*',
-     default='.',
-     help='directories to watch')
-@arg('-c',
-     '--command',
-     dest='command',
-     default=None,
-     help='''shell command executed in response to matching events.
-These interpolation variables are available to your command string::
+@command([argument('directories',
+                   nargs='*',
+                   default='.',
+                   help='directories to watch'),
+          argument('-c',
+                   '--command',
+                   dest='command',
+                   default=None,
+                   help='''shell command executed in response to matching events.
+    These interpolation variables are available to your command string::
 
-    ${watch_src_path}    - event source path;
-    ${watch_dest_path}   - event destination path (for moved events);
-    ${watch_event_type}  - event type;
-    ${watch_object}      - ``file`` or ``directory``
+        ${watch_src_path}    - event source path;
+        ${watch_dest_path}   - event destination path (for moved events);
+        ${watch_event_type}  - event type;
+        ${watch_object}      - ``file`` or ``directory``
 
-Note::
-    Please ensure you do not use double quotes (") to quote
-    your command string. That will force your shell to
-    interpolate before the command is processed by this
-    subcommand.
+    Note::
+        Please ensure you do not use double quotes (") to quote
+        your command string. That will force your shell to
+        interpolate before the command is processed by this
+        command.
 
-Example option usage::
+    Example option usage::
 
-    --command='echo "${watch_src_path}"'
-''')
-@arg('-p',
-     '--pattern',
-     '--patterns',
-     dest='patterns',
-     default='*',
-     help='matches event paths with these patterns (separated by ;).')
-@arg('-i',
-     '--ignore-pattern',
-     '--ignore-patterns',
-     dest='ignore_patterns',
-     default='',
-     help='ignores event paths with these patterns (separated by ;).')
-@arg('-D',
-     '--ignore-directories',
-     dest='ignore_directories',
-     default=False,
-     help='ignores events for directories')
-@arg('-R',
-     '--recursive',
-     dest='recursive',
-     default=False,
-     help='monitors the directories recursively')
-@arg('--interval',
-     '--timeout',
-     dest='timeout',
-     default=1.0,
-     help='use this as the polling interval/blocking timeout')
-@arg('-w', '--wait',
-     dest='wait_for_process',
-     action='store_true',
-     default=False,
-     help="wait for process to finish to avoid multiple simultaneous instances")
-@arg('-W', '--drop',
-     dest='drop_during_process',
-     action='store_true',
-     default=False,
-     help="Ignore events that occur while command is still being executed "
-          "to avoid multiple simultaneous instances")
-@arg('--debug-force-polling',
-     default=False,
-     help='[debug] forces polling')
-@expects_obj
+        --command='echo "${watch_src_path}"'
+    '''),
+          argument('-p',
+                   '--pattern',
+                   '--patterns',
+                   dest='patterns',
+                   default='*',
+                   help='matches event paths with these patterns (separated by ;).'),
+          argument('-i',
+                   '--ignore-pattern',
+                   '--ignore-patterns',
+                   dest='ignore_patterns',
+                   default='',
+                   help='ignores event paths with these patterns (separated by ;).'),
+          argument('-D',
+                   '--ignore-directories',
+                   dest='ignore_directories',
+                   default=False,
+                   action='store_true',
+                   help='ignores events for directories'),
+          argument('-R',
+                   '--recursive',
+                   dest='recursive',
+                   default=False,
+                   action='store_true',
+                   help='monitors the directories recursively'),
+          argument('--interval',
+                   '--timeout',
+                   dest='timeout',
+                   default=1.0,
+                   type=float,
+                   help='use this as the polling interval/blocking timeout'),
+          argument('-w', '--wait',
+                   dest='wait_for_process',
+                   action='store_true',
+                   default=False,
+                   help="wait for process to finish to avoid multiple simultaneous instances"),
+          argument('-W', '--drop',
+                   dest='drop_during_process',
+                   action='store_true',
+                   default=False,
+                   help="Ignore events that occur while command is still being executed "
+                   "to avoid multiple simultaneous instances"),
+          argument('--debug-force-polling',
+                   default=False,
+                   help='[debug] forces polling')])
 def shell_command(args):
     """
-    Subcommand to execute shell commands in response to file system events.
+    command to execute shell commands in response to file system events.
 
     :param args:
         Command line argument options.
@@ -477,67 +511,68 @@ def shell_command(args):
     observe_with(observer, handler, args.directories, args.recursive)
 
 
-@arg('command',
-     help='''Long-running command to run in a subprocess.
-''')
-@arg('command_args',
-     metavar='arg',
-     nargs='*',
-     help='''Command arguments.
+@command([argument('command',
+                   help='''Long-running command to run in a subprocess.'''),
+          argument('command_args',
+                   metavar='arg',
+                   nargs='*',
+                   help='''Command arguments.
 
-Note: Use -- before the command arguments, otherwise watchmedo will
-try to interpret them.
-''')
-@arg('-d',
-     '--directory',
-     dest='directories',
-     metavar='directory',
-     action='append',
-     help='Directory to watch. Use another -d or --directory option '
-          'for each directory.')
-@arg('-p',
-     '--pattern',
-     '--patterns',
-     dest='patterns',
-     default='*',
-     help='matches event paths with these patterns (separated by ;).')
-@arg('-i',
-     '--ignore-pattern',
-     '--ignore-patterns',
-     dest='ignore_patterns',
-     default='',
-     help='ignores event paths with these patterns (separated by ;).')
-@arg('-D',
-     '--ignore-directories',
-     dest='ignore_directories',
-     default=False,
-     help='ignores events for directories')
-@arg('-R',
-     '--recursive',
-     dest='recursive',
-     default=False,
-     help='monitors the directories recursively')
-@arg('--interval',
-     '--timeout',
-     dest='timeout',
-     default=1.0,
-     help='use this as the polling interval/blocking timeout')
-@arg('--signal',
-     dest='signal',
-     default='SIGINT',
-     help='stop the subprocess with this signal (default SIGINT)')
-@arg('--debug-force-polling',
-     default=False,
-     help='[debug] forces polling')
-@arg('--kill-after',
-     dest='kill_after',
-     default=10.0,
-     help='when stopping, kill the subprocess after the specified timeout '
-          '(default 10)')
-@expects_obj
+    Note: Use -- before the command arguments, otherwise watchmedo will
+    try to interpret them.
+    '''),
+          argument('-d',
+                   '--directory',
+                   dest='directories',
+                   metavar='directory',
+                   action='append',
+                   help='Directory to watch. Use another -d or --directory option '
+                   'for each directory.'),
+          argument('-p',
+                   '--pattern',
+                   '--patterns',
+                   dest='patterns',
+                   default='*',
+                   help='matches event paths with these patterns (separated by ;).'),
+          argument('-i',
+                   '--ignore-pattern',
+                   '--ignore-patterns',
+                   dest='ignore_patterns',
+                   default='',
+                   help='ignores event paths with these patterns (separated by ;).'),
+          argument('-D',
+                   '--ignore-directories',
+                   dest='ignore_directories',
+                   default=False,
+                   action='store_true',
+                   help='ignores events for directories'),
+          argument('-R',
+                   '--recursive',
+                   dest='recursive',
+                   default=False,
+                   action='store_true',
+                   help='monitors the directories recursively'),
+          argument('--interval',
+                   '--timeout',
+                   dest='timeout',
+                   default=1.0,
+                   type=float,
+                   help='use this as the polling interval/blocking timeout'),
+          argument('--signal',
+                   dest='signal',
+                   default='SIGINT',
+                   help='stop the subprocess with this signal (default SIGINT)'),
+          argument('--debug-force-polling',
+                   default=False,
+                   help='[debug] forces polling'),
+          argument('--kill-after',
+                   dest='kill_after',
+                   default=10.0,
+                   help='when stopping, kill the subprocess after the specified timeout '
+                   '(default 10)')])
 def auto_restart(args):
     """
-    Subcommand to start a long-running subprocess and restart it
+    command to start a long-running subprocess and restart it
     on matched events.
 
     :param args:
@@ -594,26 +629,13 @@ def auto_restart(args):
         handler.stop()
 
 
-epilog = """Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
-Copyright 2012 Google, Inc & contributors.
-
-Licensed under the terms of the Apache license, version 2.0. Please see
-LICENSE in the source code for more information."""
-
-parser = ArghParser(epilog=epilog)
-parser.add_commands([tricks_from,
-                     tricks_generate_yaml,
-                     log,
-                     shell_command,
-                     auto_restart])
-parser.add_argument('--version',
-                    action='version',
-                    version='%(prog)s ' + VERSION_STRING)
-
-
 def main():
     """Entry-point function."""
-    parser.dispatch()
+    args = cli.parse_args()
+    if args.command is None:
+        cli.print_help()
+    else:
+        args.func(args)
 
 
 if __name__ == '__main__':
