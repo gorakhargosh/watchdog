@@ -198,7 +198,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
                    help='[debug] forces Windows API'),
           argument('--debug-force-fsevents',
                    default=False,
-                   help='[debug] forces Mac OS X FSEvents'),
+                   help='[debug] forces macOS FSEvents'),
           argument('--debug-force-inotify',
                    default=False,
                    help='[debug] forces Linux inotify(7)')], cmd_aliases=['tricks'])
@@ -359,7 +359,7 @@ def tricks_generate_yaml(args):
                    help='[debug] forces Windows API'),
           argument('--debug-force-fsevents',
                    default=False,
-                   help='[debug] forces Mac OS X FSEvents'),
+                   help='[debug] forces macOS FSEvents'),
           argument('--debug-force-inotify',
                    default=False,
                    help='[debug] forces Linux inotify(7)')])

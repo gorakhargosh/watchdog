@@ -13,7 +13,7 @@
 .. _kqueue: https://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
 .. _FSEvents: https://developer.apple.com/library/mac/#documentation/Darwin/Conceptual/FSEvents_ProgGuide/Introduction/Introduction.html
 .. _inotify: https://linux.die.net/man/7/inotify
-.. _Mac OS X File System Monitoring Performance Guidelines: https://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html
+.. _macOS File System Monitoring Performance Guidelines: https://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html
 .. _ReadDirectoryChangesW: https://docs.microsoft.com/windows/win32/api/winbase/nf-winbase-readdirectorychangesw
 .. _GetQueuedCompletionStatus: https://docs.microsoft.com/windows/win32/api/ioapiset/nf-ioapiset-getqueuedcompletionstatus
 .. _CreateIoCompletionPort: https://docs.microsoft.com/windows/win32/api/ioapiset/nf-ioapiset-createiocompletionport

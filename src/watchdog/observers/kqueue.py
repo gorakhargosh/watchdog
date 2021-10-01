@@ -20,7 +20,7 @@
 :synopsis: ``kqueue(2)`` based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
-:platforms: Mac OS X and BSD with kqueue(2).
+:platforms: macOS and BSD with kqueue(2).
 
 .. WARNING:: kqueue is a very heavyweight way to monitor file systems.
              Each kqueue-detected directory modification triggers
@@ -32,7 +32,7 @@
 
 .. ADMONITION:: About OS X performance guidelines
 
-    Quote from the `Mac OS X File System Performance Guidelines`_:
+    Quote from the `macOS File System Performance Guidelines`_:
 
         "When you only want to track changes on a file or directory, be sure to
         open it using the ``O_EVTONLY`` flag. This flag prevents the file or
@@ -62,7 +62,7 @@ Collections and Utility Classes
    :members:
    :show-inheritance:
 
-.. _Mac OS X File System Performance Guidelines:
+.. _macOS File System Performance Guidelines:
     http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
 
 """

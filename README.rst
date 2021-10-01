@@ -145,7 +145,7 @@ Installation Caveats
 
 The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_,
 which brings a performance boost to the PyYAML parser. However, installing
-LibYAML_ is optional but recommended. On Mac OS X, you can use homebrew_
+LibYAML_ is optional but recommended. On macOS, you can use homebrew_
 to install LibYAML:
 
 .. code-block:: bash
@@ -186,7 +186,7 @@ Supported Platforms
 -------------------
 
 * Linux 2.6 (inotify)
-* Mac OS X (FSEvents, kqueue)
+* macOS (FSEvents, kqueue)
 * FreeBSD/BSD (kqueue)
 * Windows (ReadDirectoryChangesW with I/O completion ports;
   ReadDirectoryChangesW worker threads)

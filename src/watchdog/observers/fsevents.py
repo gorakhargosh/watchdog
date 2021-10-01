@@ -20,7 +20,7 @@
 :synopsis: FSEvents based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
-:platforms: Mac OS X
+:platforms: macOS
 """
 
 import time
@@ -57,7 +57,7 @@ logger = logging.getLogger('fsevents')
 class FSEventsEmitter(EventEmitter):
 
     """
-    Mac OS X FSEvents Emitter class.
+    macOS FSEvents Emitter class.
 
     :param event_queue:
         The event queue to fill with events.

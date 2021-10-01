@@ -20,7 +20,7 @@ beginning to hack:
 
 1. Python_
 2. git_
-3. XCode_ (on Mac OS X)
+3. XCode_ (on macOS)
 
 Setting up the Work Environment
 -------------------------------

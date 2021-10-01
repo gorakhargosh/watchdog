@@ -49,27 +49,27 @@ Dependencies
 a list of dependencies you need based on the operating system you are
 using.
 
-+---------------------+-------------+-------------+-------------+-------------+
-| Operating system    |   Windows   |  Linux 2.6  | Mac OS X/   |     BSD     |
-| Dependency (row)    |             |             |   Darwin    |             |
-+=====================+=============+=============+=============+=============+
-| XCode_              |             |             |     Yes     |             |
-+---------------------+-------------+-------------+-------------+-------------+
++---------------------+-------------+-------------+--------+-------------+
+| Operating system    |   Windows   |  Linux 2.6  | macOS  |     BSD     |
+| Dependency (row)    |             |             | Darwin |             |
++=====================+=============+=============+========+=============+
+| XCode_              |             |             |  Yes   |             |
++---------------------+-------------+-------------+--------+-------------+
 
 The following is a list of dependencies you need based on the operating system you are
 using the ``watchmedo`` utility.
 
-+---------------------+-------------+-------------+-------------+-------------+
-| Operating system    |   Windows   |  Linux 2.6  | Mac OS X/   |     BSD     |
-| Dependency (row)    |             |             |   Darwin    |             |
-+=====================+=============+=============+=============+=============+
-| PyYAML_             |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
++---------------------+-------------+-------------+--------+-------------+
+| Operating system    |   Windows   |  Linux 2.6  | macOS  |     BSD     |
+| Dependency (row)    |             |             | Darwin |             |
++=====================+=============+=============+========+=============+
+| PyYAML_             |     Yes     |     Yes     |  Yes   |     Yes     |
++---------------------+-------------+-------------+--------+-------------+
 
 Installing Dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~
 The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_.
-On Mac OS X, you can use homebrew_ to install LibYAML::
+On macOS, you can use homebrew_ to install LibYAML::
 
     brew install libyaml
 
@@ -105,7 +105,7 @@ Linux 2.6+
                   fs.inotify.max_user_watches=16384
 
 
-Mac OS X
+macOS
     The Darwin kernel/OS X API maintains two ways to monitor directories
     for file system events:
 
@@ -115,13 +115,13 @@ Mac OS X
     |project_name| can use whichever one is available, preferring
     FSEvents over ``kqueue(2)``. ``kqueue(2)`` uses open file descriptors for monitoring
     and the current implementation uses
-    `Mac OS X File System Monitoring Performance Guidelines`_ to open
+    `macOS File System Monitoring Performance Guidelines`_ to open
     these file descriptors only to monitor events, thus allowing
     OS X to unmount volumes that are being watched without locking them.
 
     .. NOTE:: More information about how |project_name| uses ``kqueue(2)`` is noted
               in `BSD Unix variants`_. Much of this information applies to
-              Mac OS X as well.
+              macOS as well.
 
 
 _`BSD Unix variants`
