@@ -11,6 +11,7 @@ Changelog
 - [bsd] Fixed returned paths in ``kqueue.py`` and restored the overall results of the test suite (`#842 <https://github.com/gorakhargosh/watchdog/pull/842>`_)
 - [bsd] Updated FreeBSD CI support (`#841 <https://github.com/gorakhargosh/watchdog/pull/841>`_)
 - [watchmedo] Removed unexistant ``WindowsApiAsyncObserver`` references and ``--debug-force-winapi-async`` arguments
+- [watchmedo] Improved the help output.
 - Thanks to our beloved contributors: @knobix, @BoboTiG
 
 2.1.5
