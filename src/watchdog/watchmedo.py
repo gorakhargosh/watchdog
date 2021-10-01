@@ -196,9 +196,6 @@ def schedule_tricks(observer, tricks, pathname, recursive):
           argument('--debug-force-winapi',
                    default=False,
                    help='[debug] forces Windows API'),
-          argument('--debug-force-winapi-async',
-                   default=False,
-                   help='[debug] forces Windows API + I/O completion'),
           argument('--debug-force-fsevents',
                    default=False,
                    help='[debug] forces Mac OS X FSEvents'),
@@ -216,9 +213,6 @@ def tricks_from(args):
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif args.debug_force_winapi_async:
-        from watchdog.observers.read_directory_changes_async import\
-            WindowsApiAsyncObserver as Observer
     elif args.debug_force_winapi:
         from watchdog.observers.read_directory_changes import\
             WindowsApiObserver as Observer
@@ -363,9 +357,6 @@ def tricks_generate_yaml(args):
           argument('--debug-force-winapi',
                    default=False,
                    help='[debug] forces Windows API'),
-          argument('--debug-force-winapi-async',
-                   default=False,
-                   help='[debug] forces Windows API + I/O completion'),
           argument('--debug-force-fsevents',
                    default=False,
                    help='[debug] forces Mac OS X FSEvents'),
@@ -394,9 +385,6 @@ def log(args):
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif args.debug_force_winapi_async:
-        from watchdog.observers.read_directory_changes_async import\
-            WindowsApiAsyncObserver as Observer
     elif args.debug_force_winapi:
         from watchdog.observers.read_directory_changes import\
             WindowsApiObserver as Observer

@@ -48,7 +48,6 @@ Class          Platforms                        Note
 .. |FSEvents|    replace:: :class:`.fsevents.FSEventsObserver`
 .. |Kqueue|      replace:: :class:`.kqueue.KqueueObserver`
 .. |WinApi|      replace:: :class:`.read_directory_changes.WindowsApiObserver`
-.. |WinApiAsync| replace:: :class:`.read_directory_changes_async.WindowsApiAsyncObserver`
 .. |Polling|     replace:: :class:`.polling.PollingObserver`
 
 """
