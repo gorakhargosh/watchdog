@@ -154,7 +154,8 @@ class EventDispatcher(BaseThread):
     that dispatch events from an event queue to appropriate event handlers.
 
     :param timeout:
-        Event queue blocking timeout (in seconds).
+        Timeout value (in seconds) passed to emitters
+        constructions in the child class BaseObserver.
     :type timeout:
         ``float``
     """
@@ -169,7 +170,7 @@ class EventDispatcher(BaseThread):
 
     @property
     def timeout(self):
-        """Event queue block timeout."""
+        """Timeout value to construct emitters with."""
         return self._timeout
 
     def stop(self):
