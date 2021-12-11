@@ -159,6 +159,9 @@ class EventDispatcher(BaseThread):
         ``float``
     """
 
+    _stop_event = object()
+    """Event inserted into the queue to signal a requested stop."""
+
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         BaseThread.__init__(self)
         self._event_queue = EventQueue()
@@ -169,6 +172,13 @@ class EventDispatcher(BaseThread):
         """Event queue block timeout."""
         return self._timeout
 
+    def stop(self):
+        BaseThread.stop(self)
+        try:
+            self.event_queue.put_nowait(EventDispatcher._stop_event)
+        except queue.Full:
+            pass
+
     @property
     def event_queue(self):
         """The event queue which is populated with file system events
@@ -176,7 +186,7 @@ class EventDispatcher(BaseThread):
         thread."""
         return self._event_queue
 
-    def dispatch_events(self, event_queue, timeout):
+    def dispatch_events(self, event_queue):
         """Override this method to consume events from an event queue, blocking
         on the queue for the specified timeout before raising :class:`queue.Empty`.
 
@@ -184,11 +194,6 @@ class EventDispatcher(BaseThread):
             Event queue to populate with one set of events.
         :type event_queue:
             :class:`EventQueue`
-        :param timeout:
-            Interval period (in seconds) to wait before timing out on the
-            event queue.
-        :type timeout:
-            ``float``
         :raises:
             :class:`queue.Empty`
         """
@@ -196,7 +201,7 @@ class EventDispatcher(BaseThread):
     def run(self):
         while self.should_keep_running():
             try:
-                self.dispatch_events(self.event_queue, self.timeout)
+                self.dispatch_events(self.event_queue)
             except queue.Empty:
                 continue
 
@@ -360,8 +365,11 @@ class BaseObserver(EventDispatcher):
     def on_thread_stop(self):
         self.unschedule_all()
 
-    def dispatch_events(self, event_queue, timeout):
-        event, watch = event_queue.get(block=True, timeout=timeout)
+    def dispatch_events(self, event_queue):
+        entry = event_queue.get(block=True)
+        if entry is EventDispatcher._stop_event:
+            return
+        event, watch = entry
 
         with self._lock:
             # To allow unschedule/stop and safe removal of event handlers
