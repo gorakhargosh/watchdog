@@ -8,8 +8,8 @@ Changelog
 
 2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.6...master>`__
 
-- 
-- Thanks to our beloved contributors: @
+- Eliminate timeout in waiting on event queue. (`#861 <https://github.com/gorakhargosh/watchdog/pull/861>`_)
+- Thanks to our beloved contributors: @sattlerc
 
 2.1.6
 ~~~~~
@@ -60,7 +60,7 @@ Changelog
 
 - [mac] Fix relative path handling for non-recursive watch. (`#797 <https://github.com/gorakhargosh/watchdog/pull/797>`_)
 - [windows] On PyPy, events happening right after ``start()`` were missed. Add a workaround for that. (`#796 <https://github.com/gorakhargosh/watchdog/pull/796>`_)
-- Thanks to our beloved contributors: @oprypin, @CCP-Aporia, @BoboTiG
+w- Thanks to our beloved contributors: @oprypin, @CCP-Aporia, @BoboTiG
 
 2.1.1
 ~~~~~
