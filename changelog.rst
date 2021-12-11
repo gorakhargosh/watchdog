@@ -8,8 +8,8 @@ Changelog
 
 2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.6...master>`__
 
-- 
-- Thanks to our beloved contributors: @
+- Eliminate timeout in waiting on event queue. (`#861 <https://github.com/gorakhargosh/watchdog/pull/861>`_)
+- Thanks to our beloved contributors: @sattlerc
 
 2.1.6
 ~~~~~
