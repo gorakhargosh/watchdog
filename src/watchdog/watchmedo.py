@@ -31,7 +31,6 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from textwrap import dedent
 
-import yaml
 from watchdog.utils import WatchdogShutdown, load_class
 from watchdog.version import VERSION_STRING
 
@@ -136,6 +135,8 @@ def load_config(tricks_file_pathname):
     :returns:
         A dictionary of configuration information.
     """
+    import yaml
+
     with open(tricks_file_pathname, 'rb') as f:
         return yaml.safe_load(f.read())
 
@@ -309,6 +310,8 @@ def tricks_generate_yaml(args):
     """
     Command to generate Yaml configuration for tricks named on the command line.
     """
+    import yaml
+
     python_paths = path_split(args.python_path)
     add_to_sys_path(python_paths)
     output = StringIO()
