@@ -17,7 +17,7 @@ from queue import Queue
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
-from watchdog.observers.inotify_c import Inotify, InotifyConstants
+from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
 
 from .shell import mkdtemp, rm
 
@@ -187,3 +187,18 @@ def test_watch_file():
         os.remove(path)
         event, _ = event_queue.get(timeout=5)
         assert repr(event)
+
+
+def test_event_equality():
+    wd_parent_dir = 42
+    filename = "file.ext"
+    full_path = p(filename)
+    event1 = InotifyEvent(
+        wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
+    event2 = InotifyEvent(
+        wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
+    event3 = InotifyEvent(
+        wd_parent_dir, InotifyConstants.IN_ACCESS, 0, filename, full_path)
+    assert event1 == event2
+    assert event1 != event3
+    assert event2 != event3

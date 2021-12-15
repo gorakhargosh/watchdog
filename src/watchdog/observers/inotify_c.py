@@ -541,7 +541,7 @@ class InotifyEvent:
         return self.key == inotify_event.key
 
     def __ne__(self, inotify_event):
-        return self.key == inotify_event.key
+        return self.key != inotify_event.key
 
     def __hash__(self):
         return hash(self.key)
