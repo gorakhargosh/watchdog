@@ -187,3 +187,25 @@ def test_watch_file():
         os.remove(path)
         event, _ = event_queue.get(timeout=5)
         assert repr(event)
+
+
+def test_replace_moved_path():
+    from queue import Empty
+    from .shell import mkfile, mkdir, mv, cd, pwd
+
+    curdir = pwd()
+    tmpdir = p("")
+    cd(tmpdir)
+    mkdir("foo/foo/foo/foo", True)
+
+    with watching("foo"):
+        mv("foo/foo", "foo/bar")
+        while True:
+            try:
+                event_queue.get(timeout=5)
+            except Empty:
+                break
+        assert "foo/bar/foo/foo" in emitter._inotify._inotify._wd_for_path
+        assert "foo/bar/foo/bar" not in emitter._inotify._inotify._wd_for_path
+
+    cd(curdir)
