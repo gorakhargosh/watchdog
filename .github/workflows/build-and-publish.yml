@@ -16,6 +16,9 @@
 name: Build & Publish
 
 on:
+  push:
+    branches:
+    - master
   pull_request:
     paths:
       - ".github/workflows/build-and-publish.yml"
