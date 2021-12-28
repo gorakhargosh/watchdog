@@ -293,7 +293,7 @@ to do:
 .. _pyinotify: https://github.com/seb-m/pyinotify
 .. _inotify-tools: https://github.com/rvoicilas/inotify-tools
 .. _jnotify: http://jnotify.sourceforge.net/
-.. _treewalker: https://github.com/jbd/treewatcher
+.. _treewatcher: https://github.com/jbd/treewatcher
 .. _file.monitor: https://github.com/pke/file.monitor
 .. _pyfilesystem: https://github.com/PyFilesystem/pyfilesystem
 
