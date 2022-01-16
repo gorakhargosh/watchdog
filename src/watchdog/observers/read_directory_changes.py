@@ -127,7 +127,8 @@ class WindowsApiEmitter(EventEmitter):
                         for sub_created_event in sub_events:
                             self.queue_event(sub_created_event)
                 elif winapi_event.is_removed:
-                    self.queue_event(FileDeletedEvent(src_path))
+                    cls = DirDeletedEvent if os.path.isdir(src_path) else FileDeletedEvent
+                    self.queue_event(cls(src_path))
                 elif winapi_event.is_removed_self:
                     self.queue_event(DirDeletedEvent(self.watch.path))
                     self.stop()
