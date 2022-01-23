@@ -126,8 +126,8 @@ def msize(path):
 
 
 def mount_tmpfs(path):
-    os.system(f'mount -t tmpfs none {path}')
+    os.system(f'sudo mount -t tmpfs none {path}')
 
 
 def unmount(path):
-    os.system(f'umount {path}')
+    os.system(f'sudo umount {path}')
