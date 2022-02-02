@@ -298,9 +298,9 @@ class BaseObserver(EventDispatcher):
                 emitter = self._emitter_class(event_queue=self.event_queue,
                                               watch=watch,
                                               timeout=self.timeout)
-                self._add_emitter(emitter)
                 if self.is_alive():
                     emitter.start()
+                self._add_emitter(emitter)
             self._watches.add(watch)
         return watch
 
