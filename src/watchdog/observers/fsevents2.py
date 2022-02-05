@@ -205,7 +205,7 @@ class FSEventsEmitter(EventEmitter):
                 # Internal moves appears to always be consecutive in the same
                 # buffer and have IDs differ by exactly one (while others
                 # don't) making it possible to pair up the two events coming
-                # from a singe move operation. (None of this is documented!)
+                # from a single move operation. (None of this is documented!)
                 # Otherwise, guess whether file was moved in or out.
                 # TODO: handle id wrapping
                 if (i + 1 < len(events) and events[i + 1].is_renamed
