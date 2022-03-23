@@ -97,6 +97,7 @@ def command(args=[], parent=subparsers, cmd_aliases=[]):
         for arg in args:
             parser.add_argument(*arg[0], **arg[1])
             parser.set_defaults(func=func)
+        return func
     return decorator
 
 
