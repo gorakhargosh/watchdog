@@ -265,7 +265,7 @@ to do:
 * pyinotify_
 * `inotify-tools`_
 * jnotify_
-* treewalker_
+* treewatcher_
 * `file.monitor`_
 * pyfilesystem_
 

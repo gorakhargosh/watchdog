@@ -37,7 +37,7 @@
 .. _pywin32: https://github.com/mhammond/pywin32
 .. _PyYAML: https://www.pyyaml.org/
 .. _sphinx: https://www.sphinx-doc.org/en/master/
-.. _treewalker: https://github.com/jbd/treewatcher
+.. _treewatcher: https://github.com/jbd/treewatcher
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
 .. _XCode: https://developer.apple.com/technologies/tools/xcode.html
 .. _zc.buildout: https://www.buildout.org/
