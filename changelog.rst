@@ -10,6 +10,7 @@ Changelog
 
 - Eliminate timeout in waiting on event queue. (`#861 <https://github.com/gorakhargosh/watchdog/pull/861>`_)
 - [inotify] Fix ``not`` equality implementation for ``InotifyEvent``. (`#848 <https://github.com/gorakhargosh/watchdog/pull/848>`_)
+- [watchmedo] Fix calling commands from within a Python script. (`#879 <https://github.com/gorakhargosh/watchdog/pull/879>`_)
 - [watchmedo] ``PyYAML`` is loaded only when strictly necessary. Simple usages of ``watchmedo`` are possible without the module being installed. (`#847 <https://github.com/gorakhargosh/watchdog/pull/847>`_)
 - Thanks to our beloved contributors: @sattlerc, @JanzenLiu, @BoboTiG
 

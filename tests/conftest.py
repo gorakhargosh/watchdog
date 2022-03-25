@@ -48,7 +48,7 @@ def no_warnings(recwarn):
             "Not importing directory" in message
             or "Using or importing the ABCs" in message
             or "dns.hash module will be removed in future versions" in message
-            or ("eventlet" in filename and "eventlet" in filename)
+            or "eventlet" in filename
         ):
             continue
         warnings.append("{w.filename}:{w.lineno} {w.message}".format(w=warning))

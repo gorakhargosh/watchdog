@@ -18,6 +18,7 @@ import errno
 import os
 import pickle
 import time
+from unittest.mock import patch
 
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
@@ -107,7 +108,7 @@ def test_dir_modify_on_move(p):
     wait()
     mv(p('dir1', 'a'), p('dir2', 'b'))
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p('')))
-    assert set(diff.dirs_modified) == set([p('dir1'), p('dir2')])
+    assert set(diff.dirs_modified) == {p('dir1'), p('dir2')}
 
 
 def test_detect_modify_for_moved_files(p):
@@ -138,11 +139,12 @@ def test_replace_dir_with_file(p):
     DirectorySnapshot(p('root'), listdir=listdir_fcn)
 
 
-def test_permission_error(monkeypatch, p):
+def test_permission_error(p):
     # Test that unreadable folders are not raising exceptions
     mkdir(p('a', 'b', 'c'), parents=True)
 
     ref = DirectorySnapshot(p(''))
+    walk_orig = DirectorySnapshot.walk
 
     def walk(self, root):
         """Generate a permission error on folder "a/b"."""
@@ -151,16 +153,11 @@ def test_permission_error(monkeypatch, p):
             raise OSError(errno.EACCES, os.strerror(errno.EACCES))
 
         # Mimic the original method
-        for entry in walk_orig(self, root):
-            yield entry
+        yield from walk_orig(self, root)
 
-    walk_orig = DirectorySnapshot.walk
-    monkeypatch.setattr(DirectorySnapshot, "walk", walk)
-
-    # Should NOT raise an OSError (EACCES)
-    new_snapshot = DirectorySnapshot(p(''))
-
-    monkeypatch.undo()
+    with patch.object(DirectorySnapshot, "walk", new=walk):
+        # Should NOT raise an OSError (EACCES)
+        new_snapshot = DirectorySnapshot(p(''))
 
     diff = DirectorySnapshotDiff(ref, new_snapshot)
     assert repr(diff)
@@ -169,11 +166,13 @@ def test_permission_error(monkeypatch, p):
     assert diff.dirs_deleted == [(p('a', 'b', 'c'))]
 
 
-def test_ignore_device(monkeypatch, p):
+def test_ignore_device(p):
     # Create a file and take a snapshot.
     touch(p('file'))
     ref = DirectorySnapshot(p(''))
     wait()
+
+    inode_orig = DirectorySnapshot.inode
 
     def inode(self, path):
         # This function will always return a different device_id,
@@ -181,26 +180,25 @@ def test_ignore_device(monkeypatch, p):
         result = inode_orig(self, path)
         inode.times += 1
         return result[0], result[1] + inode.times
+
     inode.times = 0
 
     # Set the custom inode function.
-    inode_orig = DirectorySnapshot.inode
-    monkeypatch.setattr(DirectorySnapshot, 'inode', inode)
+    with patch.object(DirectorySnapshot, 'inode', new=inode):
+        # If we make the diff of the same directory, since by default the
+        # DirectorySnapshotDiff compares the snapshots using the device_id (and it will
+        # be different), it thinks that the same file has been deleted and created again.
+        snapshot = DirectorySnapshot(p(''))
+        diff_with_device = DirectorySnapshotDiff(ref, snapshot)
+        assert diff_with_device.files_deleted == [(p('file'))]
+        assert diff_with_device.files_created == [(p('file'))]
 
-    # If we make the diff of the same directory, since by default the
-    # DirectorySnapshotDiff compares the snapshots using the device_id (and it will
-    # be different), it thinks that the same file has been deleted and created again.
-    snapshot = DirectorySnapshot(p(''))
-    diff_with_device = DirectorySnapshotDiff(ref, snapshot)
-    assert diff_with_device.files_deleted == [(p('file'))]
-    assert diff_with_device.files_created == [(p('file'))]
-
-    # Otherwise, if we choose to ignore the device, the file will not be detected as
-    # deleted and re-created.
-    snapshot = DirectorySnapshot(p(''))
-    diff_without_device = DirectorySnapshotDiff(ref, snapshot, ignore_device=True)
-    assert diff_without_device.files_deleted == []
-    assert diff_without_device.files_created == []
+        # Otherwise, if we choose to ignore the device, the file will not be detected as
+        # deleted and re-created.
+        snapshot = DirectorySnapshot(p(''))
+        diff_without_device = DirectorySnapshotDiff(ref, snapshot, ignore_device=True)
+        assert diff_without_device.files_deleted == []
+        assert diff_without_device.files_created == []
 
 
 def test_empty_snapshot(p):

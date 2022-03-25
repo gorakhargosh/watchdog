@@ -1,6 +1,7 @@
-# coding: utf-8
-
+from unittest.mock import patch
 import pytest
+
+from watchdog.utils import WatchdogShutdown
 
 # Skip if import PyYAML failed. PyYAML missing possible because
 # watchdog installed without watchmedo. See Installation section
@@ -71,3 +72,25 @@ def test_kill_auto_restart(tmpdir, capfd):
     assert '+++++ 9' not in cap.out     # we killed the subprocess before the end
     # in windows we seem to lose the subprocess stderr
     # assert 'KeyboardInterrupt' in cap.err
+
+
+@pytest.mark.parametrize("command", ["tricks-from", "tricks"])
+def test_tricks_from_file(command, tmp_path):
+    tricks_file = tmp_path / "tricks.yaml"
+    tricks_file.write_text("""
+tricks:
+- watchdog.tricks.LoggerTrick:
+    patterns: ["*.py", "*.js"]
+""")
+    args = watchmedo.cli.parse_args([command, str(tricks_file)])
+
+    checkpoint = False
+
+    def mocked_sleep(_):
+        nonlocal checkpoint
+        checkpoint = True
+        raise WatchdogShutdown()
+
+    with patch("time.sleep", mocked_sleep):
+        watchmedo.tricks_from(args)
+    assert checkpoint

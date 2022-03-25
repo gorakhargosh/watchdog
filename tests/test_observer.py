@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import threading
+from unittest.mock import patch
 
 import pytest
 
@@ -27,10 +29,8 @@ def observer():
     obs = BaseObserver(EventEmitter)
     yield obs
     obs.stop()
-    try:
+    with contextlib.suppress(RuntimeError):
         obs.join()
-    except RuntimeError:
-        pass
 
 
 @pytest.fixture
@@ -38,10 +38,8 @@ def observer2():
     obs = BaseObserver(EventEmitter)
     yield obs
     obs.stop()
-    try:
+    with contextlib.suppress(RuntimeError):
         obs.join()
-    except RuntimeError:
-        pass
 
 
 def test_schedule_should_start_emitter_if_running(observer):
@@ -118,7 +116,7 @@ def test_2_observers_on_the_same_path(observer, observer2):
     assert len(observer2.emitters) == 1
 
 
-def test_start_failure_should_not_prevent_further_try(monkeypatch, observer):
+def test_start_failure_should_not_prevent_further_try(observer):
     observer.schedule(None, '')
     emitters = observer.emitters
     assert len(emitters) == 1
@@ -129,14 +127,13 @@ def test_start_failure_should_not_prevent_further_try(monkeypatch, observer):
         raise OSError()
 
     emitter = next(iter(emitters))
-    monkeypatch.setattr(emitter, "start", mocked_start)
-    with pytest.raises(OSError):
-        observer.start()
+    with patch.object(emitter, "start", new=mocked_start):
+        with pytest.raises(OSError):
+            observer.start()
     # The emitter should be removed from the list
     assert len(observer.emitters) == 0
 
     # Restoring the original behavior should work like there never be emitters
-    monkeypatch.undo()
     observer.start()
     assert len(observer.emitters) == 0
 
