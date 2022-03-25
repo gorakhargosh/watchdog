@@ -6,7 +6,7 @@ Changelog
 2.1.7
 ~~~~~
 
-2021-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.6...master>`__
+2022-03-25 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.6...v2.1.7>`__
 
 - Eliminate timeout in waiting on event queue. (`#861 <https://github.com/gorakhargosh/watchdog/pull/861>`_)
 - [inotify] Fix ``not`` equality implementation for ``InotifyEvent``. (`#848 <https://github.com/gorakhargosh/watchdog/pull/848>`_)
