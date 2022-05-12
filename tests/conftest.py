@@ -52,4 +52,5 @@ def no_warnings(recwarn):
         ):
             continue
         warnings.append("{w.filename}:{w.lineno} {w.message}".format(w=warning))
+    print(warnings)
     assert not warnings
