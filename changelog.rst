@@ -8,8 +8,8 @@ Changelog
 
 2022-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.7...master>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [watchmedo] Fix broken parsing of ``--kill-after`` argument for the ``auto-restart`` command. (`#870 <https://github.com/gorakhargosh/watchdog/issues/870>`_)
+- Thanks to our beloved contributors: @taleinat
 
 2.1.7
 ~~~~~
