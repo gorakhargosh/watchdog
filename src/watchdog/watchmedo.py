@@ -579,6 +579,7 @@ def shell_command(args):
           argument('--kill-after',
                    dest='kill_after',
                    default=10.0,
+                   type=float,
                    help='When stopping, kill the subprocess after the specified timeout '
                    'in seconds (default 10.0).')])
 def auto_restart(args):
