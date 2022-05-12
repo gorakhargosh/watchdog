@@ -74,6 +74,21 @@ def test_kill_auto_restart(tmpdir, capfd):
     # assert 'KeyboardInterrupt' in cap.err
 
 
+def test_auto_restart_arg_parsing_basic():
+    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "cmd"])
+    assert args.func is watchmedo.auto_restart
+    assert args.command == "cmd"
+    assert args.directories == ["."]
+
+
+def test_auto_restart_arg_parsing_kill_after():
+    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--kill-after", "12.5", "cmd"])
+    assert args.func is watchmedo.auto_restart
+    assert args.command == "cmd"
+    assert args.directories == ["."]
+    assert args.kill_after == pytest.approx(12.5)
+
+
 @pytest.mark.parametrize("command", ["tricks-from", "tricks"])
 def test_tricks_from_file(command, tmp_path):
     tricks_file = tmp_path / "tricks.yaml"
