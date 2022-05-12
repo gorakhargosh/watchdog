@@ -143,7 +143,7 @@ def test_close():
     assert os.path.normpath(event.src_path) == os.path.normpath(p(''))
     assert isinstance(event, DirModifiedEvent)
 
-    # After read-only, only IN_CLOSE_NOWRITE is emitted but not catched for now #747
+    # After read-only, only IN_CLOSE_NOWRITE is emitted but not caught for now #747
     open(p('a'), 'r').close()
 
     assert event_queue.empty()
