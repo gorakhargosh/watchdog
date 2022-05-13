@@ -60,7 +60,8 @@ class HelpFormatter(RawDescriptionHelpFormatter):
         return text.splitlines()
 
 
-epilog = '''Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
+epilog = '''\
+Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
 Copyright 2012 Google, Inc & contributors.
 
 Licensed under the terms of the Apache license, version 2.0. Please see
@@ -69,6 +70,7 @@ LICENSE in the source code for more information.'''
 cli = ArgumentParser(epilog=epilog, formatter_class=HelpFormatter)
 cli.add_argument('--version', action='version', version=VERSION_STRING)
 subparsers = cli.add_subparsers(dest='top_command')
+command_parsers = {}
 
 
 def argument(*name_or_flags, **kwargs):
@@ -94,6 +96,11 @@ def command(args=[], parent=subparsers, cmd_aliases=[]):
                                    description=desc,
                                    aliases=cmd_aliases,
                                    formatter_class=HelpFormatter)
+        verbosity_group = parser.add_mutually_exclusive_group()
+        verbosity_group.add_argument('-q', '--quiet', dest='verbosity',
+                                     action='append_const', const=-1)
+        verbosity_group.add_argument('-v', '--verbose', dest='verbosity',
+                                     action='append_const', const=1)
         for arg in args:
             parser.add_argument(*arg[0], **arg[1])
             parser.set_defaults(func=func)
@@ -397,7 +404,8 @@ def log(args):
     from watchdog.tricks import LoggerTrick
 
     if args.trace:
-        echo.echo_class(LoggerTrick)
+        class_module_logger = logging.getLogger(LoggerTrick.__module__)
+        echo.echo_class(LoggerTrick, write=lambda msg: class_module_logger.info(msg))
 
     patterns, ignore_patterns =\
         parse_patterns(args.patterns, args.ignore_patterns)
@@ -637,9 +645,23 @@ def main():
     args = cli.parse_args()
     if args.command is None:
         cli.print_help()
-    else:
-        args.func(args)
+        return 1
+
+    verbosity = sum(args.verbosity)
+    if verbosity < -1:
+        print("Error: -q/--quiet may be specified only once.", file=sys.stderr)
+        command_parsers[args.top_command].print_help()
+        return 1
+    if verbosity > 2:
+        print("Error: -v/--verbose may be specified up to 2 times.", file=sys.stderr)
+        command_parsers[args.top_command].print_help()
+        return 1
+    log_level = ['ERROR', 'WARNING', 'INFO', 'DEBUG'][1 + verbosity]
+    logging.getLogger('watchdog').setLevel(log_level)
+
+    args.func(args)
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
