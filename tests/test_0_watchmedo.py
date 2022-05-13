@@ -75,10 +75,12 @@ def test_kill_auto_restart(tmpdir, capfd):
 
 
 def test_auto_restart_arg_parsing_basic():
-    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "cmd"])
+    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--recursive", "--debug-force-polling", "cmd"])
     assert args.func is watchmedo.auto_restart
     assert args.command == "cmd"
     assert args.directories == ["."]
+    assert args.recursive
+    assert args.debug_force_polling
 
 
 def test_auto_restart_arg_parsing_kill_after():
