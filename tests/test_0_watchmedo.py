@@ -83,12 +83,17 @@ def test_auto_restart_arg_parsing_basic():
     assert args.debug_force_polling
 
 
-def test_auto_restart_arg_parsing_kill_after():
+def test_auto_restart_arg_parsing():
     args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--kill-after", "12.5", "cmd"])
     assert args.func is watchmedo.auto_restart
     assert args.command == "cmd"
     assert args.directories == ["."]
     assert args.kill_after == pytest.approx(12.5)
+
+
+def test_shell_command_arg_parsing():
+    args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'"])
+    assert args.command == "'cmd'"
 
 
 @pytest.mark.parametrize("command", ["tricks-from", "tricks"])

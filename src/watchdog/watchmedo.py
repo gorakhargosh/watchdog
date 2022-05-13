@@ -68,7 +68,7 @@ LICENSE in the source code for more information.'''
 
 cli = ArgumentParser(epilog=epilog, formatter_class=HelpFormatter)
 cli.add_argument('--version', action='version', version=VERSION_STRING)
-subparsers = cli.add_subparsers(dest='command')
+subparsers = cli.add_subparsers(dest='top_command')
 
 
 def argument(*name_or_flags, **kwargs):
@@ -215,7 +215,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
           argument('--recursive',
                    action='store_true',
                    default=True,
-                   help='Recursively monitor paths.'),
+                   help='Recursively monitor paths (defaults to True).'),
           argument('--debug-force-polling',
                    action='store_true',
                    help='[debug] Forces polling.'),
