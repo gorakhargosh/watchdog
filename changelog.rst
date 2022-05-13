@@ -11,6 +11,7 @@ Changelog
 - Fix adding failed emitters on observer schedule. (`#872 <https://github.com/gorakhargosh/watchdog/issues/872>`_)
 - [watchmedo] Fix broken parsing of ``--kill-after`` argument for the ``auto-restart`` command. (`#870 <https://github.com/gorakhargosh/watchdog/issues/870>`_)
 - [watchmedo] Fix broken parsing of boolean arguments. (`#855 <https://github.com/gorakhargosh/watchdog/issues/855>`_)
+- [watchmedo] Fix broken parsing of commands from ``auto-restart``, and ``shell-command``. (`#855 <https://github.com/gorakhargosh/watchdog/issues/855>`_)
 - Thanks to our beloved contributors: @taleinat, @kianmeng, @palfrey, @IlayRosenberg, @BoboTiG
 
 2.1.7
