@@ -308,7 +308,7 @@ def test_watchdog_recursive():
 
     class Handler(FileSystemEventHandler):
         def __init__(self):
-            FileSystemEventHandler.__init__(self)
+            super().__init__()
             self.changes = []
 
         def on_any_event(self, event):

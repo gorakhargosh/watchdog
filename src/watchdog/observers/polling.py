@@ -66,7 +66,7 @@ class PollingEmitter(EventEmitter):
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
                  stat=os.stat, listdir=os.scandir):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
         self._snapshot = None
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
@@ -125,7 +125,7 @@ class PollingObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
+        super().__init__(emitter_class=PollingEmitter, timeout=timeout)
 
 
 class PollingObserverVFS(BaseObserver):
@@ -141,4 +141,4 @@ class PollingObserverVFS(BaseObserver):
         :param polling_interval: interval in seconds between polling the file system.
         """
         emitter_cls = partial(PollingEmitter, stat=stat, listdir=listdir)
-        BaseObserver.__init__(self, emitter_class=emitter_cls, timeout=polling_interval)
+        super().__init__(emitter_class=emitter_cls, timeout=polling_interval)

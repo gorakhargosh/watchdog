@@ -59,7 +59,7 @@ class WindowsApiEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
         self._lock = threading.Lock()
         self._handle = None
 
@@ -140,5 +140,4 @@ class WindowsApiObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=WindowsApiEmitter,
-                              timeout=timeout)
+        super().__init__(emitter_class=WindowsApiEmitter, timeout=timeout)

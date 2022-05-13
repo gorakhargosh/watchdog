@@ -109,7 +109,7 @@ class InotifyEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
         self._lock = threading.Lock()
         self._inotify = None
 
@@ -208,7 +208,7 @@ class InotifyFullEmitter(InotifyEmitter):
         ``float``
     """
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        InotifyEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
 
     def queue_events(self, timeout, events=True):
         InotifyEmitter.queue_events(self, timeout, full_events=events)
@@ -221,8 +221,5 @@ class InotifyObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
-        if (generate_full_events):
-            BaseObserver.__init__(self, emitter_class=InotifyFullEmitter, timeout=timeout)
-        else:
-            BaseObserver.__init__(self, emitter_class=InotifyEmitter,
-                                  timeout=timeout)
+        cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
+        super().__init__(emitter_class=cls, timeout=timeout)

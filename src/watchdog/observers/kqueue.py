@@ -432,7 +432,7 @@ class KqueueEmitter(EventEmitter):
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
                  stat=os.stat):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
 
         self._kq = select.kqueue()
         self._lock = threading.RLock()
@@ -703,4 +703,4 @@ class KqueueObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout)
+        super().__init__(emitter_class=KqueueEmitter, timeout=timeout)
