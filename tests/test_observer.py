@@ -142,20 +142,18 @@ def test_start_failure_should_not_prevent_further_try(observer):
     assert len(observer.emitters) == 1
 
 
-def test_schedule_failure_should_not_prevent_future_schedules(monkeypatch, observer):
+def test_schedule_failure_should_not_prevent_future_schedules(observer):
     observer.start()
 
     # Make the emitter fail on start(), and subsequently the observer to fail on schedule()
-    def mocked_start(emitter):
+    def bad_start(_):
         raise OSError()
-    monkeypatch.setattr(EventEmitter, "start", mocked_start)
 
-    with pytest.raises(OSError):
+    with patch.object(EventEmitter, "start", new=bad_start), pytest.raises(OSError):
         observer.schedule(None, '')
     # The emitter should not be in the list
-    emitters = observer.emitters
-    assert len(emitters) == 0
+    assert not observer.emitters
 
-    # Re-schduling the watch should work
+    # Re-scheduling the watch should work
     observer.schedule(None, '')
     assert len(observer.emitters) == 1
