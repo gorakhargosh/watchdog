@@ -640,6 +640,15 @@ def auto_restart(args):
         handler.stop()
 
 
+def _get_log_level_from_args(args):
+    verbosity = sum(args.verbosity or [])
+    if verbosity < -1:
+        raise Exception("-q/--quiet may be specified only once.")
+    if verbosity > 2:
+        raise Exception("-v/--verbose may be specified up to 2 times.")
+    return ['ERROR', 'WARNING', 'INFO', 'DEBUG'][1 + verbosity]
+
+
 def main():
     """Entry-point function."""
     args = cli.parse_args()
@@ -647,16 +656,12 @@ def main():
         cli.print_help()
         return 1
 
-    verbosity = sum(args.verbosity)
-    if verbosity < -1:
-        print("Error: -q/--quiet may be specified only once.", file=sys.stderr)
+    try:
+        log_level = _get_log_level_from_args(args)
+    except Exception as exc:
+        print("Error: " + exc.args[0], file=sys.stderr)
         command_parsers[args.top_command].print_help()
         return 1
-    if verbosity > 2:
-        print("Error: -v/--verbose may be specified up to 2 times.", file=sys.stderr)
-        command_parsers[args.top_command].print_help()
-        return 1
-    log_level = ['ERROR', 'WARNING', 'INFO', 'DEBUG'][1 + verbosity]
     logging.getLogger('watchdog').setLevel(log_level)
 
     args.func(args)
