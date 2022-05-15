@@ -41,6 +41,8 @@ Classes
 
 """
 
+import functools
+import logging
 import os
 import signal
 import subprocess
@@ -48,6 +50,10 @@ import time
 
 from watchdog.utils import echo
 from watchdog.events import PatternMatchingEventHandler
+
+
+logger = logging.getLogger(__name__)
+echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
 
 
 class Trick(PatternMatchingEventHandler):
@@ -80,19 +86,19 @@ class LoggerTrick(Trick):
     def on_any_event(self, event):
         pass
 
-    @echo.echo
+    @echo_events
     def on_modified(self, event):
         pass
 
-    @echo.echo
+    @echo_events
     def on_deleted(self, event):
         pass
 
-    @echo.echo
+    @echo_events
     def on_created(self, event):
         pass
 
-    @echo.echo
+    @echo_events
     def on_moved(self, event):
         pass
 
@@ -202,7 +208,7 @@ class AutoRestartTrick(Trick):
                     pass
         self.process = None
 
-    @echo.echo
+    @echo_events
     def on_any_event(self, event):
         self.stop()
         self.start()

@@ -96,6 +96,52 @@ def test_shell_command_arg_parsing():
     assert args.command == "'cmd'"
 
 
+@pytest.mark.parametrize("cmdline", [
+    ["auto-restart", "-d", ".", "cmd"],
+    ["log", "."]
+])
+@pytest.mark.parametrize("verbosity", [
+    ([], "WARNING"),
+    (["-q"], "ERROR"),
+    (["--quiet"], "ERROR"),
+    (["-v"], "INFO"),
+    (["--verbose"], "INFO"),
+    (["-vv"], "DEBUG"),
+    (["-v", "-v"], "DEBUG"),
+    (["--verbose", "-v"], "DEBUG"),
+])
+def test_valid_verbosity(cmdline, verbosity):
+    (verbosity_cmdline_args, expected_log_level) = verbosity
+    cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
+    args = watchmedo.cli.parse_args(cmd)
+    log_level = watchmedo._get_log_level_from_args(args)
+    assert log_level == expected_log_level
+
+
+@pytest.mark.parametrize("cmdline", [
+    ["auto-restart", "-d", ".", "cmd"],
+    ["log", "."]
+])
+@pytest.mark.parametrize("verbosity_cmdline_args", [
+    ["-q", "-v"],
+    ["-v", "-q"],
+    ["-qq"],
+    ["-q", "-q"],
+    ["--quiet", "--quiet"],
+    ["--quiet", "-q"],
+    ["-vvv"],
+    ["-vvvv"],
+    ["-v", "-v", "-v"],
+    ["-vv", "-v"],
+    ["--verbose", "-vv"],
+])
+def test_invalid_verbosity(cmdline, verbosity_cmdline_args):
+    cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
+    with pytest.raises((watchmedo.LogLevelException, SystemExit)):
+        args = watchmedo.cli.parse_args(cmd)
+        watchmedo._get_log_level_from_args(args)
+
+
 @pytest.mark.parametrize("command", ["tricks-from", "tricks"])
 def test_tricks_from_file(command, tmp_path):
     tricks_file = tmp_path / "tricks.yaml"
