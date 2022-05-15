@@ -12,6 +12,7 @@ Changelog
 - [watchmedo] Fix broken parsing of ``--kill-after`` argument for the ``auto-restart`` command. (`#870 <https://github.com/gorakhargosh/watchdog/issues/870>`_)
 - [watchmedo] Fix broken parsing of boolean arguments. (`#855 <https://github.com/gorakhargosh/watchdog/issues/855>`_)
 - [watchmedo] Fix broken parsing of commands from ``auto-restart``, and ``shell-command``. (`#855 <https://github.com/gorakhargosh/watchdog/issues/855>`_)
+- [inotify] Fix hang when unscheduling watch on a path in an unmounted filesystem. (`#869 <https://github.com/gorakhargosh/watchdog/pull/869>`_)
 - Thanks to our beloved contributors: @taleinat, @kianmeng, @palfrey, @IlayRosenberg, @BoboTiG
 
 2.1.7

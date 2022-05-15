@@ -25,7 +25,7 @@ import random
 
 from watchdog.observers.inotify_buffer import InotifyBuffer
 
-from .shell import mkdir, touch, mv, rm
+from .shell import mkdir, touch, mv, rm, mount_tmpfs, unmount
 
 
 def wait_for_move_event(read_event):
@@ -114,6 +114,22 @@ def test_delete_watched_directory(p):
 
     # Ensure InotifyBuffer shuts down cleanly without raising an exception
     inotify.close()
+
+
+@pytest.mark.timeout(5)
+def test_unmount_watched_directory_filesystem(p):
+    mkdir(p('dir1'))
+    mount_tmpfs(p('dir1'))
+    mkdir(p('dir1/dir2'))
+    inotify = InotifyBuffer(p('dir1/dir2').encode())
+    unmount(p('dir1'))
+
+    # Wait for the event to be picked up
+    inotify.read_event()
+
+    # Ensure InotifyBuffer shuts down cleanly without raising an exception
+    inotify.close()
+    assert not inotify.is_alive()
 
 
 def test_close_should_terminate_thread(p):

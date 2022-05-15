@@ -323,7 +323,6 @@ class Inotify:
                     path = self._path_for_wd.pop(wd)
                     if self._wd_for_path[path] == wd:
                         del self._wd_for_path[path]
-                    continue
 
                 event_list.append(inotify_event)
 
