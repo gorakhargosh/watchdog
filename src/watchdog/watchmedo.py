@@ -641,12 +641,16 @@ def auto_restart(args):
         handler.stop()
 
 
+class LogLevelException(Exception):
+    pass
+
+
 def _get_log_level_from_args(args):
     verbosity = sum(args.verbosity or [])
     if verbosity < -1:
-        raise Exception("-q/--quiet may be specified only once.")
+        raise LogLevelException("-q/--quiet may be specified only once.")
     if verbosity > 2:
-        raise Exception("-v/--verbose may be specified up to 2 times.")
+        raise LogLevelException("-v/--verbose may be specified up to 2 times.")
     return ['ERROR', 'WARNING', 'INFO', 'DEBUG'][1 + verbosity]
 
 
@@ -659,7 +663,7 @@ def main():
 
     try:
         log_level = _get_log_level_from_args(args)
-    except Exception as exc:
+    except LogLevelException as exc:
         print("Error: " + exc.args[0], file=sys.stderr)
         command_parsers[args.top_command].print_help()
         return 1

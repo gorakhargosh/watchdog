@@ -137,7 +137,7 @@ def test_valid_verbosity(cmdline, verbosity):
 ])
 def test_invalid_verbosity(cmdline, verbosity_cmdline_args):
     cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
-    with pytest.raises((Exception, SystemExit)):
+    with pytest.raises((watchmedo.LogLevelException, SystemExit)):
         args = watchmedo.cli.parse_args(cmd)
         watchmedo._get_log_level_from_args(args)
 
