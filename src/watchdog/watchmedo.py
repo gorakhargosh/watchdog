@@ -643,7 +643,7 @@ def auto_restart(args):
 def main():
     """Entry-point function."""
     args = cli.parse_args()
-    if args.command is None:
+    if args.top_command is None:
         cli.print_help()
         return 1
 
