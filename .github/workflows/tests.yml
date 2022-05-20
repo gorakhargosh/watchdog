@@ -13,6 +13,21 @@ on:
       - "tests/*.py"
 
 jobs:
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
+      - name: Install test dependencies
+        run: python -m pip install tox
+      - name: Run flake8
+        run: |
+          tox -e flake8
+
   tests:
     name: Run tests for ${{ matrix.os }} for ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
