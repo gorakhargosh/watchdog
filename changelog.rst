@@ -8,8 +8,8 @@ Unreleased
 
 2022-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.8...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [fsevents] Fix flakey test to assert that there are no errors when stopping the emitter.
+- Thanks to our beloved contributors: @samschott
 
 2.1.8
 ~~~~~

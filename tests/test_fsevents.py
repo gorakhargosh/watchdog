@@ -169,19 +169,20 @@ def test_watcher_deletion_while_receiving_events_2(caplog):
         th2 = Thread(target=stop, args=(emitter,))
 
         try:
-            with caplog.at_level(logging.ERROR):
-                th1.start()
-                th2.start()
-                th1.join()
-                th2.join()
-                assert not caplog.records
+            th1.start()
+            th2.start()
+            th1.join()
+            th2.join()
         finally:
             emitter.stop()
 
     # 20 attempts to make the random failure happen
-    for _ in range(20):
-        try_to_fail()
-        sleep(random())
+    with caplog.at_level(logging.ERROR):
+        for _ in range(20):
+            try_to_fail()
+            sleep(random())
+
+        assert not caplog.records
 
 
 def test_remove_watch_twice():
