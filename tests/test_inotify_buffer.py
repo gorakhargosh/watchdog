@@ -22,6 +22,7 @@ if not platform.is_linux():  # noqa
 
 import os
 import random
+import time
 
 from watchdog.observers.inotify_buffer import InotifyBuffer
 
@@ -132,8 +133,28 @@ def test_unmount_watched_directory_filesystem(p):
     assert not inotify.is_alive()
 
 
-def test_close_should_terminate_thread(p):
-    inotify = InotifyBuffer(p('').encode(), recursive=True)
+def delay_call(function, seconds):
+    def delayed(*args, **kwargs):
+        time.sleep(seconds)
+
+        return function(*args, **kwargs)
+
+    return delayed
+
+
+class InotifyBufferDelayedRead(InotifyBuffer):
+    def run(self, *args, **kwargs):
+        # Introduce a delay to trigger the race condition where the file descriptor is
+        # closed prior to a read being triggered.
+        self._inotify.read_events = delay_call(function=self._inotify.read_events, seconds=1)
+
+        return super().run(*args, **kwargs)
+
+
+@pytest.mark.parametrize(argnames="cls", argvalues=[InotifyBuffer, InotifyBufferDelayedRead])
+def test_close_should_terminate_thread(p, cls):
+    inotify = cls(p('').encode(), recursive=True)
+
     assert inotify.is_alive()
     inotify.close()
     assert not inotify.is_alive()

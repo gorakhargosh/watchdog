@@ -286,6 +286,8 @@ class Inotify:
             except OSError as e:
                 if e.errno == errno.EINTR:
                     continue
+                elif e.errno == errno.EBADF:
+                    return []
                 else:
                     raise
             break
