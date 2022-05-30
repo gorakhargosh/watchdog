@@ -24,6 +24,7 @@ import ctypes.util
 from functools import reduce
 from ctypes import c_int, c_char_p, c_uint32
 from watchdog.utils import UnsupportedLibc
+import time
 
 libc = ctypes.CDLL(None)
 
@@ -258,6 +259,8 @@ class Inotify:
         # recursively and simulate events for newly
         # created subdirectories/files. This will handle
         # mkdir -p foobar/blah/bar; touch foobar/afile
+
+        time.sleep(0.000_01)
 
         def _recursive_simulate(src_path):
             events = []
