@@ -156,9 +156,8 @@ class ShellCommandTrick(Trick):
         else:
             process_watcher = ProcessWatcher(self.process, None)
             self._process_watchers.add(process_watcher)
-            def cleanup():
-                self._process_watchers.discard(process_watcher)
-            process_watcher.process_termination_callback = cleanup
+            process_watcher.process_termination_callback = \
+                functools.partial(self._process_watchers.discard, process_watcher)
             process_watcher.start()
 
     def is_process_running(self):
