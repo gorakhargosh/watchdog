@@ -10,7 +10,7 @@ Unreleased
 
 - [fsevents] Fix flakey test to assert that there are no errors when stopping the emitter.
 - [watchmedo] Make ``auto-restart`` restart the sub-process if it terminates. (`#896 <https://github.com/gorakhargosh/watchdog/pull/896>`__)
-- [watchmedo] Avoid zombie sub-processes when running ``shell-command`` without ``--wait``. (`#897 <https://github.com/gorakhargosh/watchdog/pull/897>`__)
+- [watchmedo] Avoid zombie sub-processes when running ``shell-command`` without ``--wait``. (`#405 <https://github.com/gorakhargosh/watchdog/issues/405>`__)
 - Thanks to our beloved contributors: @samschott, @taleinat
 
 2.1.8
