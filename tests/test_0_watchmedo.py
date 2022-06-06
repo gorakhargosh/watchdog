@@ -74,6 +74,19 @@ def test_kill_auto_restart(tmpdir, capfd):
     # assert 'KeyboardInterrupt' in cap.err
 
 
+def test_auto_restart_subprocess_termination(tmpdir, capfd):
+    from watchdog.tricks import AutoRestartTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir, n=2)
+    a = AutoRestartTrick([sys.executable, script])
+    a.start()
+    time.sleep(5)
+    a.stop()
+    cap = capfd.readouterr()
+    assert cap.out.splitlines(keepends=False).count('+++++ 0') > 1
+
+
 def test_auto_restart_arg_parsing_basic():
     args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--recursive", "--debug-force-polling", "cmd"])
     assert args.func is watchmedo.auto_restart
