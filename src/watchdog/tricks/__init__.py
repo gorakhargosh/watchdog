@@ -116,12 +116,14 @@ class ShellCommandTrick(Trick):
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
+
         self.process = None
+        self._process_watchers = set()
 
     def on_any_event(self, event):
         from string import Template
 
-        if self.drop_during_process and self.process and self.process.poll() is None:
+        if self.drop_during_process and self.is_process_running():
             return
 
         if event.is_directory:
@@ -151,6 +153,16 @@ class ShellCommandTrick(Trick):
         self.process = subprocess.Popen(command, shell=True)
         if self.wait_for_process:
             self.process.wait()
+        else:
+            process_watcher = ProcessWatcher(self.process, None)
+            self._process_watchers.add(process_watcher)
+            def cleanup():
+                self._process_watchers.discard(process_watcher)
+            process_watcher.process_termination_callback = cleanup
+            process_watcher.start()
+
+    def is_process_running(self):
+        return self._process_watchers or (self.process is not None and self.process.poll())
 
 
 class AutoRestartTrick(Trick):

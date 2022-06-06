@@ -1,5 +1,4 @@
 import logging
-import time
 
 from watchdog.utils import BaseThread
 
@@ -15,11 +14,10 @@ class ProcessWatcher(BaseThread):
 
     def run(self):
         while True:
-            if self.stopped_event.is_set():
-                return
             if self.popen_obj.poll() is not None:
                 break
-            time.sleep(0.1)
+            if self.stopped_event.wait(timeout=0.1):
+                return
 
         try:
             self.process_termination_callback()
