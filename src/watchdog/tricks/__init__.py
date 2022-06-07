@@ -161,7 +161,7 @@ class ShellCommandTrick(Trick):
             process_watcher.start()
 
     def is_process_running(self):
-        return self._process_watchers or (self.process is not None and self.process.poll())
+        return self._process_watchers or (self.process is not None and self.process.poll() is None)
 
 
 class AutoRestartTrick(Trick):
