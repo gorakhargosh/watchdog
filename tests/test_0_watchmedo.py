@@ -77,11 +77,10 @@ def test_kill_auto_restart(tmpdir, capfd):
 def test_shell_command_wait_for_completion(tmpdir, capfd):
     from watchdog.events import FileModifiedEvent
     from watchdog.tricks import ShellCommandTrick
-    import shlex
     import sys
     import time
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join(map(shlex.quote, [sys.executable, script]))
+    command = " ".join([sys.executable, script])
     trick = ShellCommandTrick(command, wait_for_process=True)
     assert not trick.is_process_running()
     start_time = time.monotonic()
@@ -92,14 +91,13 @@ def test_shell_command_wait_for_completion(tmpdir, capfd):
     assert elapsed >= 1
 
 
-def test_shell_command_subprocess_termination_nowait(tmpdir, capfd):
+def test_shell_command_subprocess_termination_nowait(tmpdir):
     from watchdog.events import FileModifiedEvent
     from watchdog.tricks import ShellCommandTrick
-    import shlex
     import sys
     import time
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join(map(shlex.quote, [sys.executable, script]))
+    command = " ".join([sys.executable, script])
     trick = ShellCommandTrick(command, wait_for_process=False)
     assert not trick.is_process_running()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
