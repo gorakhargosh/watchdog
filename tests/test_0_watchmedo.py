@@ -65,7 +65,7 @@ def test_kill_auto_restart(tmpdir, capfd):
     script = make_dummy_script(tmpdir)
     a = AutoRestartTrick([sys.executable, script])
     a.start()
-    time.sleep(5)
+    time.sleep(3)
     a.stop()
     cap = capfd.readouterr()
     assert '+++++ 0' in cap.out
@@ -87,6 +87,7 @@ def test_shell_command_wait_for_completion(tmpdir, capfd):
     start_time = time.monotonic()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     elapsed = time.monotonic() - start_time
+    print(capfd.readouterr())
     assert not trick.is_process_running()
     assert elapsed >= 1
 
