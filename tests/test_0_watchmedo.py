@@ -81,7 +81,8 @@ def test_shell_command_wait_for_completion(tmpdir, capfd):
     import sys
     import time
     script = make_dummy_script(tmpdir, n=1)
-    trick = ShellCommandTrick(shlex.join([sys.executable, script]), wait_for_process=True)
+    command = " ".join(map(shlex.quote, [sys.executable, script]))
+    trick = ShellCommandTrick(command, wait_for_process=True)
     assert not trick.is_process_running()
     start_time = time.monotonic()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
@@ -97,7 +98,8 @@ def test_shell_command_subprocess_termination_nowait(tmpdir, capfd):
     import sys
     import time
     script = make_dummy_script(tmpdir, n=1)
-    trick = ShellCommandTrick(shlex.join([sys.executable, script]), wait_for_process=False)
+    command = " ".join(map(shlex.quote, [sys.executable, script]))
+    trick = ShellCommandTrick(command, wait_for_process=False)
     assert not trick.is_process_running()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     assert trick.is_process_running()
