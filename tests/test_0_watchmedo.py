@@ -103,7 +103,7 @@ def test_shell_command_subprocess_termination_nowait(tmpdir, capfd):
     assert not trick.is_process_running()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     assert trick.is_process_running()
-    time.sleep(2)
+    time.sleep(3)
     assert not trick.is_process_running()
 
 
