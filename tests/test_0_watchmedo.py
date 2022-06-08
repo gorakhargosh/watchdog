@@ -65,13 +65,45 @@ def test_kill_auto_restart(tmpdir, capfd):
     script = make_dummy_script(tmpdir)
     a = AutoRestartTrick([sys.executable, script])
     a.start()
-    time.sleep(5)
+    time.sleep(3)
     a.stop()
     cap = capfd.readouterr()
     assert '+++++ 0' in cap.out
     assert '+++++ 9' not in cap.out     # we killed the subprocess before the end
     # in windows we seem to lose the subprocess stderr
     # assert 'KeyboardInterrupt' in cap.err
+
+
+def test_shell_command_wait_for_completion(tmpdir, capfd):
+    from watchdog.events import FileModifiedEvent
+    from watchdog.tricks import ShellCommandTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir, n=1)
+    command = " ".join([sys.executable, script])
+    trick = ShellCommandTrick(command, wait_for_process=True)
+    assert not trick.is_process_running()
+    start_time = time.monotonic()
+    trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
+    elapsed = time.monotonic() - start_time
+    print(capfd.readouterr())
+    assert not trick.is_process_running()
+    assert elapsed >= 1
+
+
+def test_shell_command_subprocess_termination_nowait(tmpdir):
+    from watchdog.events import FileModifiedEvent
+    from watchdog.tricks import ShellCommandTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir, n=1)
+    command = " ".join([sys.executable, script])
+    trick = ShellCommandTrick(command, wait_for_process=False)
+    assert not trick.is_process_running()
+    trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
+    assert trick.is_process_running()
+    time.sleep(5)
+    assert not trick.is_process_running()
 
 
 def test_auto_restart_subprocess_termination(tmpdir, capfd):
