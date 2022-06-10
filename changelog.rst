@@ -3,16 +3,16 @@
 Changelog
 ---------
 
-Unreleased
-~~~~~~~~~~
+2.1.9
+~~~~~
 
-2022-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.8...HEAD>`__
+2022-06-10 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.8...v2.1.9>`__
 
 - [fsevents] Fix flakey test to assert that there are no errors when stopping the emitter.
+- [inotify] Suppress occasional ``OSError: [Errno 9] Bad file descriptor`` at shutdown. (`#805 <https://github.com/gorakhargosh/watchdog/issues/805>`__)
 - [watchmedo] Make ``auto-restart`` restart the sub-process if it terminates. (`#896 <https://github.com/gorakhargosh/watchdog/pull/896>`__)
 - [watchmedo] Avoid zombie sub-processes when running ``shell-command`` without ``--wait``. (`#405 <https://github.com/gorakhargosh/watchdog/issues/405>`__)
-- [inotify] Suppress occasional ``OSError: [Errno 9] Bad file descriptor`` at shutdown (`#805 <https://github.com/gorakhargosh/watchdog/issues/805>`__)
-- Thanks to our beloved contributors: @samschott, @taleinat, @altendky
+- Thanks to our beloved contributors: @samschott, @taleinat, @altendky, @BoboTiG
 
 2.1.8
 ~~~~~
