@@ -152,4 +152,4 @@ setup(name="watchdog",
       ]},
       python_requires='>=3.6',
       zip_safe=False
-)
+      )
