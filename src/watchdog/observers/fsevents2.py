@@ -43,8 +43,8 @@ from watchdog.observers.api import (
 )
 
 # pyobjc
-import AppKit
-from FSEvents import (
+import AppKit  # type: ignore
+from FSEvents import (  # type: ignore
     FSEventStreamCreate,
     CFRunLoopGetCurrent,
     FSEventStreamScheduleWithRunLoop,

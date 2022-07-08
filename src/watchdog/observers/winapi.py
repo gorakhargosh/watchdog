@@ -119,11 +119,11 @@ def _errcheck_dword(value, func, args):
     return args
 
 
-kernel32 = ctypes.WinDLL("kernel32")
+kernel32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
 
 ReadDirectoryChangesW = kernel32.ReadDirectoryChangesW
 ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
-ReadDirectoryChangesW.errcheck = _errcheck_bool
+ReadDirectoryChangesW.errcheck = _errcheck_bool  # type: ignore
 ReadDirectoryChangesW.argtypes = (
     ctypes.wintypes.HANDLE,  # hDirectory
     LPVOID,  # lpBuffer
@@ -137,7 +137,7 @@ ReadDirectoryChangesW.argtypes = (
 
 CreateFileW = kernel32.CreateFileW
 CreateFileW.restype = ctypes.wintypes.HANDLE
-CreateFileW.errcheck = _errcheck_handle
+CreateFileW.errcheck = _errcheck_handle  # type: ignore
 CreateFileW.argtypes = (
     ctypes.wintypes.LPCWSTR,  # lpFileName
     ctypes.wintypes.DWORD,  # dwDesiredAccess
@@ -154,7 +154,7 @@ CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)  # hObject
 
 CancelIoEx = kernel32.CancelIoEx
 CancelIoEx.restype = ctypes.wintypes.BOOL
-CancelIoEx.errcheck = _errcheck_bool
+CancelIoEx.errcheck = _errcheck_bool  # type: ignore
 CancelIoEx.argtypes = (
     ctypes.wintypes.HANDLE,  # hObject
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
@@ -162,7 +162,7 @@ CancelIoEx.argtypes = (
 
 CreateEvent = kernel32.CreateEventW
 CreateEvent.restype = ctypes.wintypes.HANDLE
-CreateEvent.errcheck = _errcheck_handle
+CreateEvent.errcheck = _errcheck_handle  # type: ignore
 CreateEvent.argtypes = (
     LPVOID,  # lpEventAttributes
     ctypes.wintypes.BOOL,  # bManualReset
@@ -172,12 +172,12 @@ CreateEvent.argtypes = (
 
 SetEvent = kernel32.SetEvent
 SetEvent.restype = ctypes.wintypes.BOOL
-SetEvent.errcheck = _errcheck_bool
+SetEvent.errcheck = _errcheck_bool  # type: ignore
 SetEvent.argtypes = (ctypes.wintypes.HANDLE,)  # hEvent
 
 WaitForSingleObjectEx = kernel32.WaitForSingleObjectEx
 WaitForSingleObjectEx.restype = ctypes.wintypes.DWORD
-WaitForSingleObjectEx.errcheck = _errcheck_dword
+WaitForSingleObjectEx.errcheck = _errcheck_dword  # type: ignore
 WaitForSingleObjectEx.argtypes = (
     ctypes.wintypes.HANDLE,  # hObject
     ctypes.wintypes.DWORD,  # dwMilliseconds
@@ -186,7 +186,7 @@ WaitForSingleObjectEx.argtypes = (
 
 CreateIoCompletionPort = kernel32.CreateIoCompletionPort
 CreateIoCompletionPort.restype = ctypes.wintypes.HANDLE
-CreateIoCompletionPort.errcheck = _errcheck_handle
+CreateIoCompletionPort.errcheck = _errcheck_handle  # type: ignore
 CreateIoCompletionPort.argtypes = (
     ctypes.wintypes.HANDLE,  # FileHandle
     ctypes.wintypes.HANDLE,  # ExistingCompletionPort
@@ -196,7 +196,7 @@ CreateIoCompletionPort.argtypes = (
 
 GetQueuedCompletionStatus = kernel32.GetQueuedCompletionStatus
 GetQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
-GetQueuedCompletionStatus.errcheck = _errcheck_bool
+GetQueuedCompletionStatus.errcheck = _errcheck_bool  # type: ignore
 GetQueuedCompletionStatus.argtypes = (
     ctypes.wintypes.HANDLE,  # CompletionPort
     LPVOID,  # lpNumberOfBytesTransferred
@@ -207,7 +207,7 @@ GetQueuedCompletionStatus.argtypes = (
 
 PostQueuedCompletionStatus = kernel32.PostQueuedCompletionStatus
 PostQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
-PostQueuedCompletionStatus.errcheck = _errcheck_bool
+PostQueuedCompletionStatus.errcheck = _errcheck_bool  # type: ignore
 PostQueuedCompletionStatus.argtypes = (
     ctypes.wintypes.HANDLE,  # CompletionPort
     ctypes.wintypes.DWORD,  # lpNumberOfBytesTransferred
@@ -218,7 +218,7 @@ PostQueuedCompletionStatus.argtypes = (
 
 GetFinalPathNameByHandleW = kernel32.GetFinalPathNameByHandleW
 GetFinalPathNameByHandleW.restype = ctypes.wintypes.DWORD
-GetFinalPathNameByHandleW.errcheck = _errcheck_dword
+GetFinalPathNameByHandleW.errcheck = _errcheck_dword  # type: ignore
 GetFinalPathNameByHandleW.argtypes = (
     ctypes.wintypes.HANDLE,  # hFile
     ctypes.wintypes.LPWSTR,  # lpszFilePath

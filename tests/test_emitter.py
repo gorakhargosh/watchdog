@@ -19,6 +19,7 @@ import pytest
 import logging
 from functools import partial
 from queue import Queue, Empty
+from typing import Type
 
 from .shell import mkfile, mkdir, touch, mv, rm
 from watchdog.utils import platform
@@ -34,7 +35,9 @@ from watchdog.events import (
     FileClosedEvent,
     FileOpenedEvent,
 )
-from watchdog.observers.api import ObservedWatch
+from watchdog.observers.api import EventEmitter, ObservedWatch
+
+Emitter: Type[EventEmitter]
 
 if platform.is_linux():
     from watchdog.observers.inotify import (
@@ -46,7 +49,9 @@ elif platform.is_darwin():
 elif platform.is_windows():
     from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
 elif platform.is_bsd():
-    from watchdog.observers.kqueue import KqueueEmitter as Emitter
+    from watchdog.observers.kqueue import (  # type: ignore[attr-defined,no-redef]
+        KqueueEmitter as Emitter
+    )
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

@@ -13,6 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The `select` module varies between platforms.
+# mypy may complain about missing module attributes
+# depending on which platform it's running on.
+# The comment below disables mypy's attribute check.
+#
+# type: ignore[attr-defined]
+#
+
 """
 :module: watchdog.observers.kqueue
 :synopsis: ``kqueue(2)`` based emitter implementation.
