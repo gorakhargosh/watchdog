@@ -77,8 +77,6 @@ elif platform.is_bsd():
     from .kqueue import KqueueObserver as Observer
 
 elif platform.is_windows():
-    # TODO: find a reliable way of checking Windows version and import
-    # polling explicitly for Windows XP
     try:
         from .read_directory_changes import WindowsApiObserver as Observer
     except Exception:
