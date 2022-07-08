@@ -8,8 +8,8 @@ Changelog
 
 2022-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.9...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [documentation] HTML documentation builds are now tested for errors.
+- Thanks to our beloved contributors: @kurtmckee
 
 2.1.9
 ~~~~~

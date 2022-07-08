@@ -14,7 +14,7 @@ Installing from PyPI using pip
     $ python -m pip install -U |project_name|
 
     # or to install the watchmedo utility:
-    $ python -m pip install -U |project_name|[watchmedo]
+    $ python -m pip install -U |project_name|\[watchmedo]
 
 Installing from source tarballs
 -------------------------------
