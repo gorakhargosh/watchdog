@@ -8,8 +8,8 @@ Changelog
 
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.3.1...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [testing] watchdog is now PEP 561 compatible and is tested by mypy.
+- Thanks to our beloved contributors: @kurtmckee
 
 2.3.1
 ~~~~~
