@@ -28,6 +28,8 @@ jobs:
       - name: Run flake8
         run: |
           tox -e flake8
+      - name: Run mypy
+        run: tox -e mypy
 
   tests:
     name: Run tests for ${{ matrix.os }} for ${{ matrix.python }}
