@@ -9,6 +9,7 @@ Changelog
 2022-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.9...HEAD>`__
 
 - [documentation] HTML documentation builds are now tested for errors.
+- [fsevents2] The fsevents2 observer is now deprecated.
 - Thanks to our beloved contributors: @kurtmckee
 
 2.1.9

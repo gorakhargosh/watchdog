@@ -24,6 +24,7 @@ import os
 import logging
 import queue
 import unicodedata
+import warnings
 from threading import Thread
 
 from watchdog.events import (
@@ -76,6 +77,10 @@ from FSEvents import (
 )
 
 logger = logging.getLogger(__name__)
+
+message = "watchdog.observers.fsevents2 is deprecated and will be removed in a future release."
+warnings.warn(message, DeprecationWarning)
+logger.warning(message)
 
 
 class FSEventsQueue(Thread):
