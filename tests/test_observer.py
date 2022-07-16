@@ -137,7 +137,7 @@ def test_start_failure_should_not_prevent_further_try(observer):
     observer.start()
     assert len(observer.emitters) == 0
 
-    # Re-schduling the watch should work
+    # Re-scheduling the watch should work
     observer.schedule(None, '')
     assert len(observer.emitters) == 1
 
