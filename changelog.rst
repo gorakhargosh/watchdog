@@ -10,7 +10,8 @@ Changelog
 
 - [documentation] HTML documentation builds are now tested for errors.
 - [fsevents2] The fsevents2 observer is now deprecated.
-- Thanks to our beloved contributors: @kurtmckee
+- [watchmedo] Handle shutdown events from ``SIGHUP`` (`#912 <https://github.com/gorakhargosh/watchdog/pull/912>`__)
+- Thanks to our beloved contributors: @kurtmckee @babymastodon
 
 2.1.9
 ~~~~~
