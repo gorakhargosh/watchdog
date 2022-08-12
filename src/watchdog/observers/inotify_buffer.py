@@ -17,7 +17,10 @@
 import logging
 from watchdog.utils import BaseThread
 from watchdog.utils.delayed_queue import DelayedQueue
-from watchdog.observers.inotify_c import Inotify
+from watchdog.observers.inotify_c import (
+    Inotify,
+    WATCHDOG_ALL_EVENTS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +32,10 @@ class InotifyBuffer(BaseThread):
 
     delay = 0.5
 
-    def __init__(self, path, recursive=False):
+    def __init__(self, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
         super().__init__()
         self._queue = DelayedQueue(self.delay)
-        self._inotify = Inotify(path, recursive)
+        self._inotify = Inotify(path, recursive, event_mask)
         self.start()
 
     def read_event(self):

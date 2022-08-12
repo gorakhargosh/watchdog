@@ -21,6 +21,7 @@ from pathlib import Path
 
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 DEFAULT_EMITTER_TIMEOUT = 1    # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1   # in seconds.
@@ -43,14 +44,17 @@ class ObservedWatch:
         Path string.
     :param recursive:
         ``True`` if watch is recursive; ``False`` otherwise.
+    :param event_mask:
+        Holds the event type to watch for.
     """
 
-    def __init__(self, path, recursive):
+    def __init__(self, path, recursive, event_mask):
         if isinstance(path, Path):
             self._path = str(path)
         else:
             self._path = path
         self._is_recursive = recursive
+        self._event_mask = event_mask
 
     @property
     def path(self):
@@ -61,6 +65,11 @@ class ObservedWatch:
     def is_recursive(self):
         """Determines whether subdirectories are watched for the path."""
         return self._is_recursive
+
+    @property
+    def event_mask(self):
+        """Determines what events to watch for."""
+        return self._event_mask
 
     @property
     def key(self):
@@ -265,7 +274,7 @@ class BaseObserver(EventDispatcher):
                 raise
         super().start()
 
-    def schedule(self, event_handler, path, recursive=False):
+    def schedule(self, event_handler, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
         """
         Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
@@ -290,14 +299,15 @@ class BaseObserver(EventDispatcher):
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive)
+            watch = ObservedWatch(path, recursive, event_mask)
             self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
             if self._emitter_for_watch.get(watch) is None:
                 emitter = self._emitter_class(event_queue=self.event_queue,
                                               watch=watch,
-                                              timeout=self.timeout)
+                                              timeout=self.timeout,
+                                              event_mask=event_mask)
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
