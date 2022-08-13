@@ -22,6 +22,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.fsevents import FSEventsEmitter
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 from .shell import mkdtemp, rm, touch
 
@@ -46,10 +47,11 @@ def teardown_function(function):
     rm(p(""), recursive=True)
 
 
-def start_watching(path=None, recursive=True, use_full_emitter=False):
+def start_watching(path=None, recursive=True, use_full_emitter=False, event_mask=WATCHDOG_ALL_EVENTS):
     global emitter
     path = p("") if path is None else path
-    emitter = FSEventsEmitter(event_queue, ObservedWatch(path, recursive=recursive), suppress_history=True)
+    emitter = FSEventsEmitter(event_queue, ObservedWatch(path, recursive=recursive, event_mask=event_mask),
+                              suppress_history=True)
     emitter.start()
 
 
@@ -92,7 +94,7 @@ def test_add_watch_twice(observer):
     a = p("a")
     mkdir(a)
     h = FileSystemEventHandler()
-    w = ObservedWatch(a, recursive=False)
+    w = ObservedWatch(a, recursive=False, event_mask=WATCHDOG_ALL_EVENTS)
 
     def callback(path, inodes, flags, ids):
         pass
@@ -225,7 +227,7 @@ E       SystemError: <built-in function stop> returned a result with an error se
     """
     a = p("a")
     mkdir(a)
-    w = observer.schedule(FileSystemEventHandler(), a, recursive=False)
+    w = observer.schedule(FileSystemEventHandler(), a, recursive=False, event_mask=WATCHDOG_ALL_EVENTS)
     rmdir(a)
     time.sleep(0.1)
     observer.unschedule(w)
@@ -319,7 +321,7 @@ def test_watchdog_recursive():
     observer = Observer()
 
     watches = []
-    watches.append(observer.schedule(handler, str(p('')), recursive=True))
+    watches.append(observer.schedule(handler, str(p('')), recursive=True, event_mask=WATCHDOG_ALL_EVENTS))
 
     try:
         observer.start()

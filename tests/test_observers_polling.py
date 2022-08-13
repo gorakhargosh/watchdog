@@ -34,6 +34,7 @@ from watchdog.events import (
 )
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 from .shell import (
     mkdir,
@@ -63,7 +64,7 @@ def event_queue():
 
 @pytest.fixture
 def emitter(event_queue):
-    watch = ObservedWatch(temp_dir, True)
+    watch = ObservedWatch(temp_dir, True, WATCHDOG_ALL_EVENTS)
     em = Emitter(event_queue, watch, timeout=0.2)
     em.start()
     yield em

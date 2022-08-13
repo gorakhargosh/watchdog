@@ -17,7 +17,7 @@ from unittest.mock import patch
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
-from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
+from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent, WATCHDOG_ALL_EVENTS
 
 from .shell import mkdtemp, rm
 
@@ -38,7 +38,7 @@ def watching(path=None, use_full_emitter=False):
     path = p('') if path is None else path
     global emitter
     Emitter = InotifyFullEmitter if use_full_emitter else InotifyEmitter
-    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True))
+    emitter = Emitter(event_queue, ObservedWatch(path, recursive=True, event_mask=WATCHDOG_ALL_EVENTS))
     emitter.start()
     yield
     emitter.stop()

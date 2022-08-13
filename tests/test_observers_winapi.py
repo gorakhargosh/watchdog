@@ -32,6 +32,7 @@ from watchdog.events import (
 )
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 from .shell import (
     mkdir,
@@ -63,7 +64,7 @@ def event_queue():
 
 @pytest.fixture
 def emitter(event_queue):
-    watch = ObservedWatch(temp_dir, True)
+    watch = ObservedWatch(temp_dir, True, WATCHDOG_ALL_EVENTS)
     em = WindowsApiEmitter(event_queue, watch, timeout=0.2)
     yield em
     em.stop()

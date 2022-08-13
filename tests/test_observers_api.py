@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from watchdog.events import LoggingEventHandler, FileModifiedEvent
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
@@ -31,14 +32,14 @@ from watchdog.observers.api import (
 
 
 def test_observer_constructor():
-    ObservedWatch(Path('/foobar'), True)
+    ObservedWatch(Path('/foobar'), True, WATCHDOG_ALL_EVENTS)
 
 
 def test_observer__eq__():
-    watch1 = ObservedWatch('/foobar', True)
-    watch2 = ObservedWatch('/foobar', True)
-    watch_ne1 = ObservedWatch('/foo', True)
-    watch_ne2 = ObservedWatch('/foobar', False)
+    watch1 = ObservedWatch('/foobar', True, WATCHDOG_ALL_EVENTS)
+    watch2 = ObservedWatch('/foobar', True, WATCHDOG_ALL_EVENTS)
+    watch_ne1 = ObservedWatch('/foo', True, WATCHDOG_ALL_EVENTS)
+    watch_ne2 = ObservedWatch('/foobar', False, WATCHDOG_ALL_EVENTS)
 
     assert watch1 == watch2
     assert watch1.__eq__(watch2)
@@ -47,10 +48,10 @@ def test_observer__eq__():
 
 
 def test_observer__ne__():
-    watch1 = ObservedWatch('/foobar', True)
-    watch2 = ObservedWatch('/foobar', True)
-    watch_ne1 = ObservedWatch('/foo', True)
-    watch_ne2 = ObservedWatch('/foobar', False)
+    watch1 = ObservedWatch('/foobar', True, WATCHDOG_ALL_EVENTS)
+    watch2 = ObservedWatch('/foobar', True, WATCHDOG_ALL_EVENTS)
+    watch_ne1 = ObservedWatch('/foo', True, WATCHDOG_ALL_EVENTS)
+    watch_ne2 = ObservedWatch('/foobar', False, WATCHDOG_ALL_EVENTS)
 
     assert not watch1.__ne__(watch2)
     assert watch1.__ne__(watch_ne1)
@@ -58,22 +59,22 @@ def test_observer__ne__():
 
 
 def test_observer__repr__():
-    observed_watch = ObservedWatch('/foobar', True)
-    repr_str = '<ObservedWatch: path=/foobar, is_recursive=True>'
+    observed_watch = ObservedWatch('/foobar', True, WATCHDOG_ALL_EVENTS)
+    repr_str = '<ObservedWatch: path=/foobar, is_recursive=True, event_mask=33556430>'
     assert observed_watch.__repr__() == repr(observed_watch)
     assert repr(observed_watch) == repr_str
 
 
 def test_event_emitter():
     event_queue = EventQueue()
-    watch = ObservedWatch('/foobar', True)
+    watch = ObservedWatch('/foobar', True, WATCHDOG_ALL_EVENTS)
     event_emitter = EventEmitter(event_queue, watch, timeout=1)
     event_emitter.queue_event(FileModifiedEvent('/foobar/blah'))
 
 
 def test_event_dispatcher():
     event = FileModifiedEvent('/foobar')
-    watch = ObservedWatch('/path', True)
+    watch = ObservedWatch('/path', True, WATCHDOG_ALL_EVENTS)
 
     class TestableEventDispatcher(EventDispatcher):
 
@@ -92,7 +93,7 @@ def test_observer_basic():
     observer = BaseObserver(EventEmitter)
     handler = LoggingEventHandler()
 
-    watch = observer.schedule(handler, '/foobar', True)
+    watch = observer.schedule(handler, '/foobar', True, WATCHDOG_ALL_EVENTS)
     observer.add_handler_for_watch(handler, watch)
     observer.add_handler_for_watch(handler, watch)
     observer.remove_handler_for_watch(handler, watch)
@@ -102,7 +103,7 @@ def test_observer_basic():
     with pytest.raises(KeyError):
         observer.unschedule(watch)
 
-    watch = observer.schedule(handler, '/foobar', True)
+    watch = observer.schedule(handler, '/foobar', True, WATCHDOG_ALL_EVENTS)
     observer.event_queue.put((FileModifiedEvent('/foobar'), watch))
     observer.start()
     time.sleep(1)

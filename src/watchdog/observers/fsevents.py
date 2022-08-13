@@ -50,6 +50,7 @@ from watchdog.observers.api import (
     DEFAULT_OBSERVER_TIMEOUT
 )
 from watchdog.utils.dirsnapshot import DirectorySnapshot
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 logger = logging.getLogger('fsevents')
 
@@ -339,9 +340,9 @@ class FSEventsObserver(BaseObserver):
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         super().__init__(emitter_class=FSEventsEmitter, timeout=timeout)
 
-    def schedule(self, event_handler, path, recursive=False):
+    def schedule(self, event_handler, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
         if isinstance(path, str):
             path = unicodedata.normalize('NFC', path)
-        return BaseObserver.schedule(self, event_handler, path, recursive)
+        return BaseObserver.schedule(self, event_handler, path, recursive, event_mask)

@@ -6,6 +6,7 @@ import time
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -31,7 +32,7 @@ path = sys.argv[1]
 
 event_handler = MyEventHandler()
 observer = Observer()
-observer.schedule(event_handler, path, recursive=True)
+observer.schedule(event_handler, path, recursive=True, event_mask=WATCHDOG_ALL_EVENTS)
 observer.start()
 try:
     while True:

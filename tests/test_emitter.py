@@ -36,6 +36,7 @@ from watchdog.events import (
     FileClosedEvent,
 )
 from watchdog.observers.api import ObservedWatch
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 if platform.is_linux():
     from watchdog.observers.inotify import (
@@ -55,7 +56,6 @@ elif platform.is_bsd():
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
 
 if platform.is_darwin():
     # enable more verbose logs
@@ -81,9 +81,10 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
     path = p() if path is None else path
     global emitter
     if platform.is_linux() and use_full_emitter:
-        emitter = InotifyFullEmitter(event_queue, ObservedWatch(path, recursive=recursive))
+        emitter = InotifyFullEmitter(event_queue,
+                                     ObservedWatch(path, recursive=recursive, event_mask=WATCHDOG_ALL_EVENTS))
     else:
-        emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive))
+        emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive, event_mask=WATCHDOG_ALL_EVENTS))
 
     if platform.is_darwin():
         emitter.suppress_history = True

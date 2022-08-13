@@ -110,7 +110,7 @@ class InotifyEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_mask=WATCHDOG_ALL_EVENTS):
-        super().__init__(event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout, event_mask=WATCHDOG_ALL_EVENTS)
         self._lock = threading.Lock()
         self._inotify = None
         self._event_mask = event_mask

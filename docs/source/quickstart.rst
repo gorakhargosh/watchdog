@@ -35,6 +35,7 @@ file system changes and simply log them to the console::
     import logging
     from watchdog.observers import Observer
     from watchdog.events import LoggingEventHandler
+    from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
     if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO,
@@ -43,7 +44,7 @@ file system changes and simply log them to the console::
         path = sys.argv[1] if len(sys.argv) > 1 else '.'
         event_handler = LoggingEventHandler()
         observer = Observer()
-        observer.schedule(event_handler, path, recursive=True)
+        observer.schedule(event_handler, path, recursive=True, event_mask=WATCHDOG_ALL_EVENTS)
         observer.start()
         try:
             while observer.is_alive():

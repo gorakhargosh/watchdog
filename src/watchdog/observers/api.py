@@ -85,8 +85,8 @@ class ObservedWatch:
         return hash(self.key)
 
     def __repr__(self):
-        return "<%s: path=%s, is_recursive=%s>" % (
-            type(self).__name__, self.path, self.is_recursive)
+        return "<%s: path=%s, is_recursive=%s, event_mask=%s>" % (
+            type(self).__name__, self.path, self.is_recursive, self.event_mask)
 
 
 # Observer classes
@@ -107,13 +107,18 @@ class EventEmitter(BaseThread):
         Timeout (in seconds) between successive attempts at reading events.
     :type timeout:
         ``float``
+    :param event_mask:
+        Event type to listen to.
+    :type event_mask:
+        ``byte``
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_mask=WATCHDOG_ALL_EVENTS):
         super().__init__()
         self._event_queue = event_queue
         self._watch = watch
         self._timeout = timeout
+        self._event_mask = event_mask
 
     @property
     def timeout(self):
@@ -128,6 +133,13 @@ class EventEmitter(BaseThread):
         The watch associated with this emitter.
         """
         return self._watch
+
+    @property
+    def event_mask(self):
+        """
+        Event type to listen to.
+        """
+        return self._event_mask
 
     def queue_event(self, event):
         """
@@ -294,6 +306,8 @@ class BaseObserver(EventDispatcher):
             traversed recursively; ``False`` otherwise.
         :type recursive:
             ``bool``
+        :param event_mask:
+            Holds the type of event to listen to
         :return:
             An :class:`ObservedWatch` object instance representing
             a watch.
