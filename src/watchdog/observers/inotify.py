@@ -69,7 +69,6 @@ Some extremely useful articles and documentation:
 import os
 import threading
 from .inotify_buffer import InotifyBuffer
-from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
 
 from watchdog.observers.api import (
     EventEmitter,
@@ -109,15 +108,14 @@ class InotifyEmitter(EventEmitter):
         ``float``
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_mask=WATCHDOG_ALL_EVENTS):
-        super().__init__(event_queue, watch, timeout, event_mask=WATCHDOG_ALL_EVENTS)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+        super().__init__(event_queue, watch, timeout)
         self._lock = threading.Lock()
         self._inotify = None
-        self._event_mask = event_mask
 
     def on_thread_start(self):
         path = os.fsencode(self.watch.path)
-        self._inotify = InotifyBuffer(path, self.watch.is_recursive, self._event_mask)
+        self._inotify = InotifyBuffer(path, self.watch.is_recursive, self.watch.event_mask)
 
     def on_thread_stop(self):
         if self._inotify:
@@ -209,8 +207,8 @@ class InotifyFullEmitter(InotifyEmitter):
     :type timeout:
         ``float``
     """
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_mask=WATCHDOG_ALL_EVENTS):
-        super().__init__(event_queue, watch, timeout, event_mask)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+        super().__init__(event_queue, watch, timeout)
 
     def queue_events(self, timeout, events=True):
         InotifyEmitter.queue_events(self, timeout, full_events=events)

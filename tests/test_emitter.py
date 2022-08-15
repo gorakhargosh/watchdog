@@ -36,7 +36,7 @@ from watchdog.events import (
     FileClosedEvent,
 )
 from watchdog.observers.api import ObservedWatch
-from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS, InotifyConstants
 
 if platform.is_linux():
     from watchdog.observers.inotify import (
@@ -76,15 +76,15 @@ def setup_teardown(tmpdir):
     assert not emitter.is_alive()
 
 
-def start_watching(path=None, use_full_emitter=False, recursive=True):
+def start_watching(path=None, use_full_emitter=False, recursive=True, event_mask=WATCHDOG_ALL_EVENTS):
     # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
     path = p() if path is None else path
     global emitter
     if platform.is_linux() and use_full_emitter:
         emitter = InotifyFullEmitter(event_queue,
-                                     ObservedWatch(path, recursive=recursive, event_mask=WATCHDOG_ALL_EVENTS))
+                                     ObservedWatch(path, recursive=recursive, event_mask=event_mask))
     else:
-        emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive, event_mask=WATCHDOG_ALL_EVENTS))
+        emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive, event_mask=event_mask))
 
     if platform.is_darwin():
         emitter.suppress_history = True

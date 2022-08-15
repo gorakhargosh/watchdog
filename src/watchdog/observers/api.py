@@ -107,18 +107,13 @@ class EventEmitter(BaseThread):
         Timeout (in seconds) between successive attempts at reading events.
     :type timeout:
         ``float``
-    :param event_mask:
-        Event type to listen to.
-    :type event_mask:
-        ``byte``
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_mask=WATCHDOG_ALL_EVENTS):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         super().__init__()
         self._event_queue = event_queue
         self._watch = watch
         self._timeout = timeout
-        self._event_mask = event_mask
 
     @property
     def timeout(self):
@@ -133,13 +128,6 @@ class EventEmitter(BaseThread):
         The watch associated with this emitter.
         """
         return self._watch
-
-    @property
-    def event_mask(self):
-        """
-        Event type to listen to.
-        """
-        return self._event_mask
 
     def queue_event(self, event):
         """
@@ -320,8 +308,7 @@ class BaseObserver(EventDispatcher):
             if self._emitter_for_watch.get(watch) is None:
                 emitter = self._emitter_class(event_queue=self.event_queue,
                                               watch=watch,
-                                              timeout=self.timeout,
-                                              event_mask=event_mask)
+                                              timeout=self.timeout)
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
