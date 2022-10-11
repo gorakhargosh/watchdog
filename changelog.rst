@@ -11,6 +11,8 @@ Changelog
 - [documentation] HTML documentation builds are now tested for errors.
 - [fsevents2] The fsevents2 observer is now deprecated.
 - [watchmedo] Handle shutdown events from ``SIGHUP`` (`#912 <https://github.com/gorakhargosh/watchdog/pull/912>`__)
+- [tests] The error message returned by musl libc for error code ``-1`` is now allowed.
+  (`#920 <https://github.com/gorakhargosh/watchdog/issues/920>`_)
 - Thanks to our beloved contributors: @kurtmckee @babymastodon
 
 2.1.9

@@ -135,18 +135,20 @@ def test_late_double_deletion():
     assert inotify_fd.wds == [2, 3]  # Only 1 is removed explicitly
 
 
-@pytest.mark.parametrize("error, pattern", [
-    (errno.ENOSPC, "inotify watch limit reached"),
-    (errno.EMFILE, "inotify instance limit reached"),
-    (errno.ENOENT, "No such file or directory"),
-    (-1, "Unknown error -1"),
+@pytest.mark.parametrize("error, patterns", [
+    (errno.ENOSPC, ("inotify watch limit reached",)),
+    (errno.EMFILE, ("inotify instance limit reached",)),
+    (errno.ENOENT, ("No such file or directory",)),
+    # Error messages for -1 are undocumented
+    # and vary between libc implementations.
+    (-1, ("Unknown error -1", "No error information")),
 ])
-def test_raise_error(error, pattern):
+def test_raise_error(error, patterns):
     with patch.object(ctypes, "get_errno", new=lambda: error):
         with pytest.raises(OSError) as exc:
             Inotify._raise_error()
     assert exc.value.errno == error
-    assert pattern in str(exc.value)
+    assert any(pattern in str(exc.value) for pattern in patterns)
 
 
 def test_non_ascii_path():
