@@ -255,8 +255,7 @@ class DirectorySnapshot:
 
     def walk(self, root):
         try:
-            paths = [os.path.join(root, entry if isinstance(entry, str) else entry.name)
-                     for entry in self.listdir(root)]
+            paths = [os.path.join(root, entry.name) for entry in self.listdir(root)]
         except OSError as e:
             # Directory may have been deleted between finding it in the directory
             # list of its parent and trying to delete its contents. If this

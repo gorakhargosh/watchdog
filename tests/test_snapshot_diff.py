@@ -130,7 +130,7 @@ def test_replace_dir_with_file(p):
         if path == p("root", "dir"):
             rm(path, recursive=True)
             touch(path)
-        return os.listdir(path)
+        return os.scandir(path)
 
     mkdir(p('root'))
     mkdir(p('root', 'dir'))
