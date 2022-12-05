@@ -18,7 +18,7 @@ name: Build & Publish
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
     paths:
       - ".github/workflows/build-and-publish.yml"
@@ -27,9 +27,9 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'The branch, tag or SHA to release from'
+        description: "The branch, tag or SHA to release from"
         required: true
-        default: 'master'
+        default: "master"
 
 jobs:
   macos-built-distributions:
@@ -37,19 +37,19 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
       - name: Install build dependencies
         run: python -m pip install cibuildwheel
       - name: Build wheels
         run: python -m cibuildwheel
         env:
-          CIBW_SKIP: "cp27-* cp35-* pp27-*"  # skip 2.7 and 3.5 wheels
+          CIBW_SKIP: "cp27-* cp35-* pp27-*" # skip 2.7 and 3.5 wheels
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
           path: ./wheelhouse/*.whl
@@ -59,11 +59,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
       - name: Install build dependencies
         run: python -m pip install -U setuptools wheel
       - name: Build wheels
@@ -72,7 +72,7 @@ jobs:
           do
             python setup.py bdist_wheel --plat-name $platform
           done
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
           path: ./dist/*.whl
@@ -82,15 +82,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
       - name: Build source distribution
         run: python setup.py sdist
       - name: Store the source distribution
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
           path: dist

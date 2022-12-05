@@ -8,8 +8,8 @@ Changelog
 
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.0...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [ci] Update actions versions in use
+- Thanks to our beloved contributors: @BoboTiG
 
 2.2.0
 ~~~~~
