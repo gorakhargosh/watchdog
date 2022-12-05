@@ -3,6 +3,14 @@
 Changelog
 ---------
 
+2.2.1
+~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.0...HEAD>`__
+
+- 
+- Thanks to our beloved contributors: @
+
 2.2.0
 ~~~~~
 
@@ -15,7 +23,7 @@ Changelog
 - [tests] The error message returned by musl libc for error code ``-1`` is now allowed (`#923 <https://github.com/gorakhargosh/watchdog/pull/923>`__)
 - [utils] Remove unnecessary code in ``dirsnapshot.py`` (`#930 <https://github.com/gorakhargosh/watchdog/pull/930>`__)
 - [watchmedo] Handle shutdown events from ``SIGHUP`` (`#912 <https://github.com/gorakhargosh/watchdog/pull/912>`__)
-- Thanks to our beloved contributors: @kurtmckee, @babymastodon, @QuantumEnergyE, @timgates42
+- Thanks to our beloved contributors: @kurtmckee, @babymastodon, @QuantumEnergyE, @timgates42, @BoboTiG
 
 2.1.9
 ~~~~~
