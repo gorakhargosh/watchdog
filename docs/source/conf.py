@@ -25,7 +25,7 @@ import watchdog.version  # noqa
 
 PROJECT_NAME = 'watchdog'
 AUTHOR_NAME = 'Yesudeep Mangalapilly and contributors'
-COPYRIGHT = '2010-2021, ' + AUTHOR_NAME
+COPYRIGHT = '2010-2022, ' + AUTHOR_NAME
 
 
 # -- General configuration -----------------------------------------------------
