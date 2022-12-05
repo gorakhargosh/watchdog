@@ -1,6 +1,5 @@
 -e ".[watchmedo]"
-# TODO: re-activate after https://github.com/python-greenlet/greenlet/pull/306
-eventlet; python_version < "3.11"
+eventlet
 flake8
 flaky
 pytest
