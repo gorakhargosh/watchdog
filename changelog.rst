@@ -3,12 +3,12 @@
 Changelog
 ---------
 
-2.1.10
-~~~~~~
+2.2.0
+~~~~~
 
-2022-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.9...HEAD>`__
+2022-12-05 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.1.9...v2.2.0>`__
 
-- [build] Wheels are now available for Python 3.11
+- [build] Wheels are now available for Python 3.11 (`#932 <https://github.com/gorakhargosh/watchdog/pull/932>`__)
 - [documentation] HTML documentation builds are now tested for errors (`#902 <https://github.com/gorakhargosh/watchdog/pull/902>`__)
 - [documentation] Fix typos here, and there (`#910 <https://github.com/gorakhargosh/watchdog/pull/910>`__)
 - [fsevents2] The ``fsevents2`` observer is now deprecated (`#909 <https://github.com/gorakhargosh/watchdog/pull/909>`__)
