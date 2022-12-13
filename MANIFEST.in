@@ -4,6 +4,8 @@ include LICENSE
 include COPYING
 include AUTHORS
 recursive-include src *.py *.h *.c
+include src/watchdog/py.typed
+include tox.ini
 include docs/*.txt
 include docs/*.xml
 include docs/Makefile
