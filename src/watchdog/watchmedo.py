@@ -24,7 +24,6 @@
 import errno
 import logging
 import os
-import platform
 import os.path
 import sys
 import time
