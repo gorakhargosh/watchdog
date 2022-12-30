@@ -610,7 +610,10 @@ def auto_restart(args):
 
     # Handle termination signals by raising a semantic exception which will
     # allow us to gracefully unwind and stop the observer
-    termination_signals = {signal.SIGTERM, signal.SIGINT, signal.SIGHUP}
+    termination_signals = {signal.SIGTERM, signal.SIGINT}
+
+    if hasattr(signal, "SIGHUP"):
+        termination_signals.add(signal.SIGHUP)
 
     def handler_termination_signal(_signum, _frame):
         # Neuter all signals so that we don't attempt a double shutdown
