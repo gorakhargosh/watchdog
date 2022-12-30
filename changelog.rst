@@ -10,7 +10,7 @@ Changelog
 
 - Enable ``mypy`` to discover type hints as specified in PEP 561 (`#933 <https://github.com/gorakhargosh/watchdog/pull/933>`__)
 - [ci] Update actions versions in use
-- [watchmedo] Fix usage of missing ``signal.SIGHUP``attribute on non-Unix Oses (`#935 <https://github.com/gorakhargosh/watchdog/pull/935>`__)
+- [watchmedo] Fix usage of missing ``signal.SIGHUP`` attribute on non-Unix Oses (`#935 <https://github.com/gorakhargosh/watchdog/pull/935>`__)
 - Thanks to our beloved contributors: @BoboTiG, @simon04, @piotrpdev
 
 2.2.0
