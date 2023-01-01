@@ -6,7 +6,7 @@ Changelog
 2.2.1
 ~~~~~
 
-202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.0...HEAD>`__
+2023-01-01 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.0...v2.2.1>`__
 
 - Enable ``mypy`` to discover type hints as specified in PEP 561 (`#933 <https://github.com/gorakhargosh/watchdog/pull/933>`__)
 - [ci] Set the expected Python version when building release files
