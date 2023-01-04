@@ -56,6 +56,7 @@ ignoring all directory events:
         --patterns="*.py;*.txt" \
         --ignore-directories \
         --recursive \
+        --verbose \
         .
 
 You can use the ``shell-command`` subcommand to execute shell commands in
