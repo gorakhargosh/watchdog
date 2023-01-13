@@ -585,7 +585,13 @@ def shell_command(args):
                    default=10.0,
                    type=float,
                    help='When stopping, kill the subprocess after the specified timeout '
-                   'in seconds (default 10.0).')])
+                   'in seconds (default 10.0).'),
+          argument('--debounce-interval',
+                   dest='debounce_interval',
+                   default=0.0,
+                   type=float,
+                   help='After a file change, Wait until the specified interval (in '
+                   'seconds) passes with no file changes, and only then restart.')])
 def auto_restart(args):
     """
     Command to start a long-running subprocess and restart it on matched events.
@@ -633,7 +639,8 @@ def auto_restart(args):
                                ignore_patterns=ignore_patterns,
                                ignore_directories=args.ignore_directories,
                                stop_signal=stop_signal,
-                               kill_after=args.kill_after)
+                               kill_after=args.kill_after,
+                               debounce_interval_seconds=args.debounce_interval)
     handler.start()
     observer = Observer(timeout=args.timeout)
     try:

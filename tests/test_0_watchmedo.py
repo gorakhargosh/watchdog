@@ -115,10 +115,32 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     trick.start()
     time.sleep(1)
     trick.on_any_event("foo/bar.baz")
+    trick.on_any_event("foo/bar2.baz")
+    trick.on_any_event("foo/bar3.baz")
     time.sleep(1)
     trick.stop()
     cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count('+++++ 0') == 2
+    assert cap.out.splitlines(keepends=False).count('+++++ 0') >= 2
+
+
+def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
+    from watchdog.tricks import AutoRestartTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir, n=2)
+    trick = AutoRestartTrick([sys.executable, script], debounce_interval_seconds=0.5)
+    trick.start()
+    time.sleep(1)
+    trick.on_any_event("foo/bar.baz")
+    trick.on_any_event("foo/bar2.baz")
+    time.sleep(0.1)
+    trick.on_any_event("foo/bar3.baz")
+    time.sleep(1)
+    trick.on_any_event("foo/bar.baz")
+    time.sleep(1)
+    trick.stop()
+    cap = capfd.readouterr()
+    assert cap.out.splitlines(keepends=False).count('+++++ 0') == 3
 
 
 def test_auto_restart_subprocess_termination(tmpdir, capfd):
@@ -144,11 +166,12 @@ def test_auto_restart_arg_parsing_basic():
 
 
 def test_auto_restart_arg_parsing():
-    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--kill-after", "12.5", "cmd"])
+    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--kill-after", "12.5", "--debounce-interval=0.2", "cmd"])
     assert args.func is watchmedo.auto_restart
     assert args.command == "cmd"
     assert args.directories == ["."]
     assert args.kill_after == pytest.approx(12.5)
+    assert args.debounce_interval == pytest.approx(0.2)
 
 
 def test_shell_command_arg_parsing():

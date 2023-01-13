@@ -46,10 +46,12 @@ import logging
 import os
 import signal
 import subprocess
+import threading
 import time
 
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.utils import echo
+from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
 
 logger = logging.getLogger(__name__)
@@ -177,24 +179,58 @@ class AutoRestartTrick(Trick):
 
     def __init__(self, command, patterns=None, ignore_patterns=None,
                  ignore_directories=False, stop_signal=signal.SIGINT,
-                 kill_after=10):
+                 kill_after=10, debounce_interval_seconds=0):
         super().__init__(
             patterns=patterns, ignore_patterns=ignore_patterns,
             ignore_directories=ignore_directories)
+
+        if kill_after < 0:
+            raise ValueError("kill_after must be non-negative.")
+        if debounce_interval_seconds < 0:
+            raise ValueError("debounce_interval_seconds must be non-negative.")
+
         self.command = command
         self.stop_signal = stop_signal
         self.kill_after = kill_after
+        self.debounce_interval_seconds = debounce_interval_seconds
 
         self.process = None
         self.process_watcher = None
+        self.event_debouncer = None
+
+        self._is_stopping = False
+        self._stopping_lock = threading.Lock()
 
     def start(self):
-        # windows doesn't have setsid
-        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, 'setsid', None))
-        self.process_watcher = ProcessWatcher(self.process, self._restart)
-        self.process_watcher.start()
+        self.event_debouncer = EventDebouncer(self.debounce_interval_seconds, lambda events: self._restart_process())
+        self.event_debouncer.start()
+        self._start_process()
 
     def stop(self):
+        # Ensure the body of the function is only run once.
+        with self._stopping_lock:
+            if self._is_stopping:
+                return
+            self._is_stopping = True
+
+        process_watcher = self.process_watcher
+        self.event_debouncer.stop()
+        self._stop_process()
+
+        # Don't leak threads: Wait for background threads to stop.
+        self.event_debouncer.join()
+        process_watcher.join()
+
+    def _start_process(self):
+        if self._is_stopping:
+            return
+
+        # windows doesn't have setsid
+        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, 'setsid', None))
+        self.process_watcher = ProcessWatcher(self.process, self._restart_process)
+        self.process_watcher.start()
+
+    def _stop_process(self):
         if self.process is None:
             return
 
@@ -229,8 +265,10 @@ class AutoRestartTrick(Trick):
 
     @echo_events
     def on_any_event(self, event):
-        self._restart()
+        self.event_debouncer.handle_event(event)
 
-    def _restart(self):
-        self.stop()
-        self.start()
+    def _restart_process(self):
+        if self._is_stopping:
+            return
+        self._stop_process()
+        self._start_process()
