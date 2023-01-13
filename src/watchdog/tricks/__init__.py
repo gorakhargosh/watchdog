@@ -198,8 +198,9 @@ class AutoRestartTrick(Trick):
         self.process_watcher = None
         self.event_debouncer = None
 
-        self._is_stopping = False
-        self._stopping_lock = threading.Lock()
+        self._is_process_stopping = False
+        self._is_trick_stopping = False
+        self._stopping_lock = threading.RLock()
 
     def start(self):
         self.event_debouncer = EventDebouncer(self.debounce_interval_seconds, lambda events: self._restart_process())
@@ -209,9 +210,9 @@ class AutoRestartTrick(Trick):
     def stop(self):
         # Ensure the body of the function is only run once.
         with self._stopping_lock:
-            if self._is_stopping:
+            if self._is_trick_stopping:
                 return
-            self._is_stopping = True
+            self._is_trick_stopping = True
 
         process_watcher = self.process_watcher
         self.event_debouncer.stop()
@@ -222,7 +223,7 @@ class AutoRestartTrick(Trick):
         process_watcher.join()
 
     def _start_process(self):
-        if self._is_stopping:
+        if self._is_trick_stopping:
             return
 
         # windows doesn't have setsid
@@ -231,44 +232,53 @@ class AutoRestartTrick(Trick):
         self.process_watcher.start()
 
     def _stop_process(self):
-        if self.process is None:
-            return
-
-        if self.process_watcher is not None:
-            self.process_watcher.stop()
-            self.process_watcher = None
-
-        def kill_process(stop_signal):
-            if hasattr(os, 'getpgid') and hasattr(os, 'killpg'):
-                os.killpg(os.getpgid(self.process.pid), stop_signal)
-            else:
-                os.kill(self.process.pid, self.stop_signal)
+        # Ensure the body of the function is not run in parallel in different threads.
+        with self._stopping_lock:
+            if self._is_process_stopping:
+                return
+            self._is_process_stopping = True
 
         try:
-            kill_process(self.stop_signal)
-        except OSError:
-            # Process is already gone
-            pass
-        else:
-            kill_time = time.time() + self.kill_after
-            while time.time() < kill_time:
-                if self.process.poll() is not None:
-                    break
-                time.sleep(0.25)
-            else:
+            if self.process_watcher is not None:
+                self.process_watcher.stop()
+                self.process_watcher = None
+
+            if self.process is not None:
                 try:
-                    kill_process(9)
+                    kill_process(self.process.pid, self.stop_signal)
                 except OSError:
                     # Process is already gone
                     pass
-        self.process = None
+                else:
+                    kill_time = time.time() + self.kill_after
+                    while time.time() < kill_time:
+                        if self.process.poll() is not None:
+                            break
+                        time.sleep(0.25)
+                    else:
+                        try:
+                            kill_process(self.process.pid, 9)
+                        except OSError:
+                            # Process is already gone
+                            pass
+                self.process = None
+        finally:
+            self._is_process_stopping = False
 
     @echo_events
     def on_any_event(self, event):
         self.event_debouncer.handle_event(event)
 
     def _restart_process(self):
-        if self._is_stopping:
+        if self._is_trick_stopping:
             return
         self._stop_process()
         self._start_process()
+
+
+if hasattr(os, 'getpgid') and hasattr(os, 'killpg'):
+    def kill_process(pid, stop_signal):
+        os.killpg(os.getpgid(pid), stop_signal)
+else:
+    def kill_process(pid, stop_signal):
+        os.kill(pid, stop_signal)
