@@ -166,7 +166,9 @@ def test_auto_restart_arg_parsing_basic():
 
 
 def test_auto_restart_arg_parsing():
-    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--kill-after", "12.5", "--debounce-interval=0.2", "cmd"])
+    args = watchmedo.cli.parse_args(
+        ["auto-restart", "-d", ".", "--kill-after", "12.5", "--debounce-interval=0.2", "cmd"]
+    )
     assert args.func is watchmedo.auto_restart
     assert args.command == "cmd"
     assert args.directories == ["."]
