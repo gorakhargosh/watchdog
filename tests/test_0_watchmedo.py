@@ -106,6 +106,21 @@ def test_shell_command_subprocess_termination_nowait(tmpdir):
     assert not trick.is_process_running()
 
 
+def test_auto_restart_on_file_change(tmpdir, capfd):
+    from watchdog.tricks import AutoRestartTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir, n=2)
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
+    time.sleep(1)
+    trick.on_any_event("foo/bar.baz")
+    time.sleep(1)
+    trick.stop()
+    cap = capfd.readouterr()
+    assert cap.out.splitlines(keepends=False).count('+++++ 0') == 2
+
+
 def test_auto_restart_subprocess_termination(tmpdir, capfd):
     from watchdog.tricks import AutoRestartTrick
     import sys
