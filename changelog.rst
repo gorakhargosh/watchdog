@@ -8,8 +8,8 @@ Changelog
 
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.1...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @BoboTiG
+- [watchmedo] Add optional event debouncing for ``auto-restart``, only restarting once if many events happen in quick succession (`#940 <https://github.com/gorakhargosh/watchdog/pull/940>`__)
+- Thanks to our beloved contributors: @BoboTiG, @taleinat
 
 2.2.1
 ~~~~~
