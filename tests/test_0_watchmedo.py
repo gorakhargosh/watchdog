@@ -107,6 +107,10 @@ def test_shell_command_subprocess_termination_nowait(tmpdir):
 
 
 def test_auto_restart_on_file_change(tmpdir, capfd):
+    """Simulate changing 3 files.
+
+    Expect 3 restarts.
+    """
     from watchdog.tricks import AutoRestartTrick
     import sys
     import time
@@ -125,6 +129,10 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
 
 
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
+    """Simulate changing 3 files quickly and then another change later.
+
+    Expect 2 restarts due to debouncing.
+    """
     from watchdog.tricks import AutoRestartTrick
     import sys
     import time
@@ -145,6 +153,10 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
 
 
 def test_auto_restart_subprocess_termination(tmpdir, capfd):
+    """Run auto-restart with a script that terminates in about 2 seconds.
+
+    After 5 seconds, expect it to have been restarted at least once.
+    """
     from watchdog.tricks import AutoRestartTrick
     import sys
     import time
