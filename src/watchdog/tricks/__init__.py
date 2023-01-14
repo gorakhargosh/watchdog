@@ -180,14 +180,14 @@ class AutoRestartTrick(Trick):
     def __init__(self, command, patterns=None, ignore_patterns=None,
                  ignore_directories=False, stop_signal=signal.SIGINT,
                  kill_after=10, debounce_interval_seconds=0):
-        super().__init__(
-            patterns=patterns, ignore_patterns=ignore_patterns,
-            ignore_directories=ignore_directories)
-
         if kill_after < 0:
             raise ValueError("kill_after must be non-negative.")
         if debounce_interval_seconds < 0:
             raise ValueError("debounce_interval_seconds must be non-negative.")
+
+        super().__init__(
+            patterns=patterns, ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories)
 
         self.command = command
         self.stop_signal = stop_signal
