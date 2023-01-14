@@ -121,6 +121,7 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     trick.stop()
     cap = capfd.readouterr()
     assert cap.out.splitlines(keepends=False).count('+++++ 0') >= 2
+    assert trick.restart_count == 3
 
 
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
@@ -148,12 +149,13 @@ def test_auto_restart_subprocess_termination(tmpdir, capfd):
     import sys
     import time
     script = make_dummy_script(tmpdir, n=2)
-    a = AutoRestartTrick([sys.executable, script])
-    a.start()
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
     time.sleep(5)
-    a.stop()
+    trick.stop()
     cap = capfd.readouterr()
     assert cap.out.splitlines(keepends=False).count('+++++ 0') > 1
+    assert trick.restart_count >= 1
 
 
 def test_auto_restart_arg_parsing_basic():

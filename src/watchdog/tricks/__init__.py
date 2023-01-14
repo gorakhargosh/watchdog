@@ -197,6 +197,7 @@ class AutoRestartTrick(Trick):
         self.process = None
         self.process_watcher = None
         self.event_debouncer = None
+        self.restart_count = 0
 
         self._is_process_stopping = False
         self._is_trick_stopping = False
@@ -274,6 +275,7 @@ class AutoRestartTrick(Trick):
             return
         self._stop_process()
         self._start_process()
+        self.restart_count += 1
 
 
 if hasattr(os, 'getpgid') and hasattr(os, 'killpg'):
