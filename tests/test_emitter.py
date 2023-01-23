@@ -34,6 +34,7 @@ from watchdog.events import (
     DirCreatedEvent,
     DirMovedEvent,
     FileClosedEvent,
+    FileOpenedEvent,
 )
 from watchdog.observers.api import ObservedWatch
 
@@ -124,6 +125,9 @@ def test_create():
     if platform.is_linux():
         event = event_queue.get(timeout=5)[0]
         assert event.src_path == p('a')
+        assert isinstance(event, FileOpenedEvent)
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
         assert isinstance(event, FileClosedEvent)
 
 
@@ -187,6 +191,11 @@ def test_modify():
     start_watching()
 
     touch(p('a'))
+
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('a')
+        assert isinstance(event, FileOpenedEvent)
 
     expect_event(FileModifiedEvent(p('a')))
 
@@ -432,6 +441,10 @@ def test_recursive_on():
         if not platform.is_bsd():
             event = event_queue.get(timeout=5)[0]
             assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
+            assert isinstance(event, FileOpenedEvent)
+
+            event = event_queue.get(timeout=5)[0]
+            assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
             assert isinstance(event, FileModifiedEvent)
 
 
@@ -450,6 +463,7 @@ def test_recursive_off():
         expect_event(DirModifiedEvent(p()))
 
         if platform.is_linux():
+            expect_event(FileOpenedEvent(p('b')))
             expect_event(FileClosedEvent(p('b')))
 
     # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
@@ -505,7 +519,7 @@ def test_renaming_top_level_directory():
         if event_queue.empty():
             break
 
-    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, DirModifiedEvent, FileClosedEvent)) for e in events])
+    assert all([isinstance(e, (FileCreatedEvent, FileMovedEvent, FileOpenedEvent, DirModifiedEvent, FileClosedEvent)) for e in events])
 
     for event in events:
         if isinstance(event, FileCreatedEvent):
@@ -597,6 +611,10 @@ def test_move_nested_subdirectories():
 
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('dir2/dir3', 'a')
+    assert isinstance(event, FileOpenedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p('dir2/dir3', 'a')
     assert isinstance(event, FileModifiedEvent)
 
 
@@ -658,8 +676,10 @@ def test_file_lifecyle():
         expect_event(DirModifiedEvent(p()))
 
     if platform.is_linux():
+        expect_event(FileOpenedEvent(p('a')))
         expect_event(FileClosedEvent(p('a')))
         expect_event(DirModifiedEvent(p()))
+        expect_event(FileOpenedEvent(p('a')))
 
     expect_event(FileModifiedEvent(p('a')))
 
