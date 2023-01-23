@@ -1,5 +1,5 @@
 import logging
-import queue
+import threading
 
 from watchdog.utils import BaseThread
 
@@ -21,27 +21,34 @@ class EventDebouncer(BaseThread):
         self.debounce_interval_seconds = debounce_interval_seconds
         self.events_callback = events_callback
 
-        self._event_queue = queue.Queue()
+        self._events = []
+        self._cond = threading.Condition()
 
     def handle_event(self, event):
-        self._event_queue.put(event)
+        with self._cond:
+            self._events.append(event)
+            self._cond.notify()
+
+    def stop(self):
+        with self._cond:
+            super().stop()
+            self._cond.notify()
 
     def run(self):
-        while self.should_keep_running():
-            events = []
+        with self._cond:
+            while True:
+                # Wait for first event (or shutdown).
+                self._cond.wait()
 
-            # Get first event.
-            try:
-                events.append(self._event_queue.get(timeout=0.2))
-            except queue.Empty:
-                continue
+                if self.debounce_interval_seconds:
+                    # Wait for additional events (or shutdown) until the debounce interval passes.
+                    while self.should_keep_running():
+                        if not self._cond.wait(timeout=self.debounce_interval_seconds):
+                            break
 
-            if self.debounce_interval_seconds:
-                # Collect additional events until the debounce interval passes.
-                while self.should_keep_running():
-                    try:
-                        events.append(self._event_queue.get(timeout=self.debounce_interval_seconds))
-                    except queue.Empty:
-                        break
+                if not self.should_keep_running():
+                    break
 
-            self.events_callback(events)
+                events = self._events
+                self._events = []
+                self.events_callback(events)

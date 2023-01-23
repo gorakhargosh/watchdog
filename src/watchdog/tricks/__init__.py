@@ -204,8 +204,9 @@ class AutoRestartTrick(Trick):
         self._stopping_lock = threading.RLock()
 
     def start(self):
-        self.event_debouncer = EventDebouncer(self.debounce_interval_seconds, lambda events: self._restart_process())
-        self.event_debouncer.start()
+        if self.debounce_interval_seconds:
+            self.event_debouncer = EventDebouncer(self.debounce_interval_seconds, lambda events: self._restart_process())
+            self.event_debouncer.start()
         self._start_process()
 
     def stop(self):
@@ -216,11 +217,13 @@ class AutoRestartTrick(Trick):
             self._is_trick_stopping = True
 
         process_watcher = self.process_watcher
-        self.event_debouncer.stop()
+        if self.event_debouncer is not None:
+            self.event_debouncer.stop()
         self._stop_process()
 
         # Don't leak threads: Wait for background threads to stop.
-        self.event_debouncer.join()
+        if self.event_debouncer is not None:
+            self.event_debouncer.join()
         process_watcher.join()
 
     def _start_process(self):
@@ -268,7 +271,10 @@ class AutoRestartTrick(Trick):
 
     @echo_events
     def on_any_event(self, event):
-        self.event_debouncer.handle_event(event)
+        if self.event_debouncer is not None:
+            self.event_debouncer.handle_event(event)
+        else:
+            self._restart_process()
 
     def _restart_process(self):
         if self._is_trick_stopping:
