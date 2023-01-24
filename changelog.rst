@@ -8,8 +8,8 @@ Changelog
 
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.1...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @BoboTiG
+- [inotify] Add support for ``IN_OPEN`` events: a ``FileOpenedEvent`` event will be fired. (`#941 <https://github.com/gorakhargosh/watchdog/pull/941>`__)
+- Thanks to our beloved contributors: @BoboTiG, @dstaple
 
 2.2.1
 ~~~~~

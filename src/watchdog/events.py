@@ -56,6 +56,10 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileOpenedEvent
+   :members:
+   :show-inheritance:
+
 .. autoclass:: DirCreatedEvent
    :members:
    :show-inheritance:
@@ -100,6 +104,7 @@ EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
 EVENT_TYPE_CLOSED = 'closed'
+EVENT_TYPE_OPENED = 'opened'
 
 
 class FileSystemEvent:
@@ -223,6 +228,12 @@ class FileClosedEvent(FileSystemEvent):
     event_type = EVENT_TYPE_CLOSED
 
 
+class FileOpenedEvent(FileSystemEvent):
+    """File system event representing file close on the file system."""
+
+    event_type = EVENT_TYPE_OPENED
+
+
 # Directory events.
 
 
@@ -275,6 +286,7 @@ class FileSystemEventHandler:
             EVENT_TYPE_MODIFIED: self.on_modified,
             EVENT_TYPE_MOVED: self.on_moved,
             EVENT_TYPE_CLOSED: self.on_closed,
+            EVENT_TYPE_OPENED: self.on_opened,
         }[event.event_type](event)
 
     def on_any_event(self, event):
@@ -329,6 +341,15 @@ class FileSystemEventHandler:
             Event representing file closing.
         :type event:
             :class:`FileClosedEvent`
+        """
+
+    def on_opened(self, event):
+        """Called when a file is opened.
+
+        :param event:
+            Event representing file opening.
+        :type event:
+            :class:`FileOpenedEvent`
         """
 
 
