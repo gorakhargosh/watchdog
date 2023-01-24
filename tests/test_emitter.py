@@ -438,11 +438,12 @@ def test_recursive_on():
         assert event.src_path == p('dir1', 'dir2', 'dir3')
         assert isinstance(event, DirModifiedEvent)
 
-        if not platform.is_bsd():
+        if platform.is_linux():
             event = event_queue.get(timeout=5)[0]
             assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
             assert isinstance(event, FileOpenedEvent)
 
+        if not platform.is_bsd():
             event = event_queue.get(timeout=5)[0]
             assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
             assert isinstance(event, FileModifiedEvent)
@@ -609,9 +610,10 @@ def test_move_nested_subdirectories():
 
     touch(p('dir2/dir3', 'a'))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir2/dir3', 'a')
-    assert isinstance(event, FileOpenedEvent)
+    if platform.is_linux():
+        event = event_queue.get(timeout=5)[0]
+        assert event.src_path == p('dir2/dir3', 'a')
+        assert isinstance(event, FileOpenedEvent)
 
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('dir2/dir3', 'a')
