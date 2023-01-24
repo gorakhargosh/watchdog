@@ -148,6 +148,7 @@ def test_file_system_event_handler_dispatch():
         file_cre_event,
         file_mov_event,
         file_cls_event,
+        file_opened_event,
     ]
 
     class TestableEventHandler(FileSystemEventHandler):
