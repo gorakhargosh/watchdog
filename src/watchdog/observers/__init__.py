@@ -56,34 +56,62 @@ import warnings
 from watchdog.utils import platform
 from watchdog.utils import UnsupportedLibc
 
-if platform.is_linux():
-    try:
-        from .inotify import InotifyObserver as Observer
-    except UnsupportedLibc:
-        from .polling import PollingObserver as Observer
+def getPollingObserver():
+    from .polling import PollingObserver
+    return PollingObserver
 
-elif platform.is_darwin():
+def getLinuxObserver():
     try:
-        from .fsevents import FSEventsObserver as Observer
+        from .inotify import InotifyObserver
+        return InotifyObserver
+    except UnsupportedLibc:
+        return getPollingObserver()
+
+def getDarwinObserver():
+    try:
+        from .fsevents import FSEventsObserver
+        return FSEventsObserver
     except Exception:
         try:
-            from .kqueue import KqueueObserver as Observer
+            from .kqueue import KqueueObserver
             warnings.warn("Failed to import fsevents. Fall back to kqueue")
+            return KqueueObserver
         except Exception:
-            from .polling import PollingObserver as Observer
             warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
+            return getPollingObserver()
 
-elif platform.is_bsd():
-    from .kqueue import KqueueObserver as Observer
+def getBsdObserver():
+    from .kqueue import KqueueObserver
+    return KqueueObserver
 
-elif platform.is_windows():
+def getWindowsObserver():
     try:
-        from .read_directory_changes import WindowsApiObserver as Observer
+        from .read_directory_changes import WindowsApiObserver
+        return WindowsApiObserver
     except Exception:
-        from .polling import PollingObserver as Observer
         warnings.warn("Failed to import read_directory_changes. Fall back to polling.")
+        return getPollingObserver()
 
+
+platformModuleMap = {
+    "bsd": getBsdObserver,
+    "linux": getLinuxObserver,
+    "darwin": getDarwinObserver,
+    "windows": getWindowsObserver,
+    "polling": getPollingObserver,
+}
+
+if platform.is_linux():
+    platformName = "linux"
+elif platform.is_darwin():
+    platformName = "darwin"
+elif platform.is_bsd():
+    platformName = "bsd"
+elif platform.is_windows():
+    platformName = "windows"
 else:
-    from .polling import PollingObserver as Observer
+    platformName = "polling"
+
+Observer = platformModuleMap[platformName]()
 
 __all__ = ["Observer"]
