@@ -205,7 +205,10 @@ class AutoRestartTrick(Trick):
 
     def start(self):
         if self.debounce_interval_seconds:
-            self.event_debouncer = EventDebouncer(self.debounce_interval_seconds, lambda events: self._restart_process())
+            self.event_debouncer = EventDebouncer(
+                debounce_interval_seconds=self.debounce_interval_seconds,
+                events_callback=lambda events: self._restart_process(),
+            )
             self.event_debouncer.start()
         self._start_process()
 
