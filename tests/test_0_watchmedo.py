@@ -106,17 +106,69 @@ def test_shell_command_subprocess_termination_nowait(tmpdir):
     assert not trick.is_process_running()
 
 
-def test_auto_restart_subprocess_termination(tmpdir, capfd):
+def test_auto_restart_on_file_change(tmpdir, capfd):
+    """Simulate changing 3 files.
+
+    Expect 3 restarts.
+    """
     from watchdog.tricks import AutoRestartTrick
     import sys
     import time
     script = make_dummy_script(tmpdir, n=2)
-    a = AutoRestartTrick([sys.executable, script])
-    a.start()
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
+    time.sleep(1)
+    trick.on_any_event("foo/bar.baz")
+    trick.on_any_event("foo/bar2.baz")
+    trick.on_any_event("foo/bar3.baz")
+    time.sleep(1)
+    trick.stop()
+    cap = capfd.readouterr()
+    assert cap.out.splitlines(keepends=False).count('+++++ 0') >= 2
+    assert trick.restart_count == 3
+
+
+def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
+    """Simulate changing 3 files quickly and then another change later.
+
+    Expect 2 restarts due to debouncing.
+    """
+    from watchdog.tricks import AutoRestartTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir, n=2)
+    trick = AutoRestartTrick([sys.executable, script], debounce_interval_seconds=0.5)
+    trick.start()
+    time.sleep(1)
+    trick.on_any_event("foo/bar.baz")
+    trick.on_any_event("foo/bar2.baz")
+    time.sleep(0.1)
+    trick.on_any_event("foo/bar3.baz")
+    time.sleep(1)
+    trick.on_any_event("foo/bar.baz")
+    time.sleep(1)
+    trick.stop()
+    cap = capfd.readouterr()
+    assert cap.out.splitlines(keepends=False).count('+++++ 0') == 3
+    assert trick.restart_count == 2
+
+
+def test_auto_restart_subprocess_termination(tmpdir, capfd):
+    """Run auto-restart with a script that terminates in about 2 seconds.
+
+    After 5 seconds, expect it to have been restarted at least once.
+    """
+    from watchdog.tricks import AutoRestartTrick
+    import sys
+    import time
+    script = make_dummy_script(tmpdir, n=2)
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
     time.sleep(5)
-    a.stop()
+    trick.stop()
     cap = capfd.readouterr()
     assert cap.out.splitlines(keepends=False).count('+++++ 0') > 1
+    assert trick.restart_count >= 1
 
 
 def test_auto_restart_arg_parsing_basic():
@@ -129,11 +181,14 @@ def test_auto_restart_arg_parsing_basic():
 
 
 def test_auto_restart_arg_parsing():
-    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--kill-after", "12.5", "cmd"])
+    args = watchmedo.cli.parse_args(
+        ["auto-restart", "-d", ".", "--kill-after", "12.5", "--debounce-interval=0.2", "cmd"]
+    )
     assert args.func is watchmedo.auto_restart
     assert args.command == "cmd"
     assert args.directories == ["."]
     assert args.kill_after == pytest.approx(12.5)
+    assert args.debounce_interval == pytest.approx(0.2)
 
 
 def test_shell_command_arg_parsing():
