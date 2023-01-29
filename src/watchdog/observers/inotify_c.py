@@ -108,6 +108,7 @@ WATCHDOG_ALL_EVENTS = reduce(
         InotifyConstants.IN_DELETE_SELF,
         InotifyConstants.IN_DONT_FOLLOW,
         InotifyConstants.IN_CLOSE_WRITE,
+        InotifyConstants.IN_OPEN,
     ])
 
 
@@ -485,6 +486,10 @@ class InotifyEvent:
     @property
     def is_close_nowrite(self):
         return self._mask & InotifyConstants.IN_CLOSE_NOWRITE > 0
+
+    @property
+    def is_open(self):
+        return self._mask & InotifyConstants.IN_OPEN > 0
 
     @property
     def is_access(self):
