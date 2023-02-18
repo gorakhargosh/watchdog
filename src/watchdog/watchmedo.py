@@ -679,7 +679,11 @@ def main():
         return 1
     logging.getLogger('watchdog').setLevel(log_level)
 
-    args.func(args)
+    try:
+        args.func(args)
+    except KeyboardInterrupt:
+        return 130
+
     return 0
 
 
