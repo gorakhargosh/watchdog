@@ -10,6 +10,7 @@ Changelog
 
 - [inotify] Add support for ``IN_OPEN`` events: a ``FileOpenedEvent`` event will be fired. (`#941 <https://github.com/gorakhargosh/watchdog/pull/941>`__)
 - [watchmedo] Add optional event debouncing for ``auto-restart``, only restarting once if many events happen in quick succession (`#940 <https://github.com/gorakhargosh/watchdog/pull/940>`__)
+- [watchmedo] Exit gracefully on ``KeyboardInterrupt`` exception (Ctrl+C) (`#945 <https://github.com/gorakhargosh/watchdog/pull/945>`__)
 - Thanks to our beloved contributors: @BoboTiG, @dstaple, @taleinat
 
 2.2.1
