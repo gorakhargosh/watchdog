@@ -179,7 +179,8 @@ class AutoRestartTrick(Trick):
 
     def __init__(self, command, patterns=None, ignore_patterns=None,
                  ignore_directories=False, stop_signal=signal.SIGINT,
-                 kill_after=10, debounce_interval_seconds=0):
+                 kill_after=10, debounce_interval_seconds=0,
+                 restart_on_command_exit=True):
         if kill_after < 0:
             raise ValueError("kill_after must be non-negative.")
         if debounce_interval_seconds < 0:
@@ -193,6 +194,7 @@ class AutoRestartTrick(Trick):
         self.stop_signal = stop_signal
         self.kill_after = kill_after
         self.debounce_interval_seconds = debounce_interval_seconds
+        self.restart_on_command_exit = restart_on_command_exit
 
         self.process = None
         self.process_watcher = None
@@ -227,7 +229,8 @@ class AutoRestartTrick(Trick):
         # Don't leak threads: Wait for background threads to stop.
         if self.event_debouncer is not None:
             self.event_debouncer.join()
-        process_watcher.join()
+        if process_watcher is not None:
+            process_watcher.join()
 
     def _start_process(self):
         if self._is_trick_stopping:
@@ -235,8 +238,9 @@ class AutoRestartTrick(Trick):
 
         # windows doesn't have setsid
         self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, 'setsid', None))
-        self.process_watcher = ProcessWatcher(self.process, self._restart_process)
-        self.process_watcher.start()
+        if self.restart_on_command_exit:
+            self.process_watcher = ProcessWatcher(self.process, self._restart_process)
+            self.process_watcher.start()
 
     def _stop_process(self):
         # Ensure the body of the function is not run in parallel in different threads.

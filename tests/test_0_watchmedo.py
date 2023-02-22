@@ -153,7 +153,8 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     assert trick.restart_count == 2
 
 
-def test_auto_restart_subprocess_termination(tmpdir, capfd):
+@pytest.mark.parametrize("restart_on_command_exit", [True, False])
+def test_auto_restart_subprocess_termination(tmpdir, capfd, restart_on_command_exit):
     """Run auto-restart with a script that terminates in about 2 seconds.
 
     After 5 seconds, expect it to have been restarted at least once.
@@ -162,13 +163,17 @@ def test_auto_restart_subprocess_termination(tmpdir, capfd):
     import sys
     import time
     script = make_dummy_script(tmpdir, n=2)
-    trick = AutoRestartTrick([sys.executable, script])
+    trick = AutoRestartTrick([sys.executable, script], restart_on_command_exit=restart_on_command_exit)
     trick.start()
     time.sleep(5)
     trick.stop()
     cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count('+++++ 0') > 1
-    assert trick.restart_count >= 1
+    if restart_on_command_exit:
+        assert cap.out.splitlines(keepends=False).count('+++++ 0') > 1
+        assert trick.restart_count >= 1
+    else:
+        assert cap.out.splitlines(keepends=False).count('+++++ 0') == 1
+        assert trick.restart_count == 0
 
 
 def test_auto_restart_arg_parsing_basic():
