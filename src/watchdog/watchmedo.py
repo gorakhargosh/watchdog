@@ -591,7 +591,12 @@ def shell_command(args):
                    default=0.0,
                    type=float,
                    help='After a file change, Wait until the specified interval (in '
-                   'seconds) passes with no file changes, and only then restart.')])
+                   'seconds) passes with no file changes, and only then restart.'),
+          argument('--no-restart-on-command-exit',
+                   dest='restart_on_command_exit',
+                   default=True,
+                   action='store_false',
+                   help="Don't auto-restart the command after it exits.")])
 def auto_restart(args):
     """
     Command to start a long-running subprocess and restart it on matched events.
@@ -640,7 +645,8 @@ def auto_restart(args):
                                ignore_directories=args.ignore_directories,
                                stop_signal=stop_signal,
                                kill_after=args.kill_after,
-                               debounce_interval_seconds=args.debounce_interval)
+                               debounce_interval_seconds=args.debounce_interval,
+                               restart_on_command_exit=args.restart_on_command_exit)
     handler.start()
     observer = Observer(timeout=args.timeout)
     try:
