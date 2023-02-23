@@ -3,16 +3,16 @@
 Changelog
 ---------
 
-2.2.2
+2.3.0
 ~~~~~
 
-2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.1...HEAD>`__
+2023-02-23 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.2.1...v2.3.0>`__
 
-- [inotify] Add support for ``IN_OPEN`` events: a ``FileOpenedEvent`` event will be fired. (`#941 <https://github.com/gorakhargosh/watchdog/pull/941>`__)
-- [watchmedo] Add optional event debouncing for ``auto-restart``, only restarting once if many events happen in quick succession (`#940 <https://github.com/gorakhargosh/watchdog/pull/940>`__)
+- [inotify] Add support for ``IN_OPEN`` events: a ``FileOpenedEvent`` event will be fired (`#941 <https://github.com/gorakhargosh/watchdog/pull/941>`__)
+- [watchmedo] Add optional event debouncing for ``auto-restart``, only restarting once if many events happen in quick succession (``--debounce-interval``) (`#940 <https://github.com/gorakhargosh/watchdog/pull/940>`__)
 - [watchmedo] Exit gracefully on ``KeyboardInterrupt`` exception (Ctrl+C) (`#945 <https://github.com/gorakhargosh/watchdog/pull/945>`__)
-- [watchmedo] Add option to not auto-restart the command after it exits. (`#946 <https://github.com/gorakhargosh/watchdog/pull/946>`__)
-- Thanks to our beloved contributors: @BoboTiG, @dstaple, @taleinat
+- [watchmedo] Add option to not auto-restart the command after it exits (``--no-restart-on-command-exit``) (`#946 <https://github.com/gorakhargosh/watchdog/pull/946>`__)
+- Thanks to our beloved contributors: @BoboTiG, @dstaple, @taleinat, @cernekj
 
 2.2.1
 ~~~~~
