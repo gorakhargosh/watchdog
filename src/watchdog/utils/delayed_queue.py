@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +18,6 @@ from collections import deque
 
 
 class DelayedQueue:
-
     def __init__(self, delay):
         self.delay_sec = delay
         self._lock = threading.Lock()

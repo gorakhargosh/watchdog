@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,26 +42,26 @@ def observer2():
 
 def test_schedule_should_start_emitter_if_running(observer):
     observer.start()
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     (emitter,) = observer.emitters
     assert emitter.is_alive()
 
 
 def test_schedule_should_not_start_emitter_if_not_running(observer):
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     (emitter,) = observer.emitters
     assert not emitter.is_alive()
 
 
 def test_start_should_start_emitter(observer):
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     observer.start()
     (emitter,) = observer.emitters
     assert emitter.is_alive()
 
 
 def test_stop_should_stop_emitter(observer):
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     observer.start()
     (emitter,) = observer.emitters
     assert emitter.is_alive()
@@ -78,17 +76,18 @@ def test_unschedule_self(observer):
     Tests that unscheduling a watch from within an event handler correctly
     correctly unregisters emitter and handler without deadlocking.
     """
+
     class EventHandler(FileSystemEventHandler):
         def on_modified(self, event):
             observer.unschedule(watch)
             unschedule_finished.set()
 
     unschedule_finished = threading.Event()
-    watch = observer.schedule(EventHandler(), '')
+    watch = observer.schedule(EventHandler(), "")
     observer.start()
 
     (emitter,) = observer.emitters
-    emitter.queue_event(FileModifiedEvent(''))
+    emitter.queue_event(FileModifiedEvent(""))
 
     assert unschedule_finished.wait()
     assert len(observer.emitters) == 0
@@ -96,28 +95,28 @@ def test_unschedule_self(observer):
 
 def test_schedule_after_unschedule_all(observer):
     observer.start()
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     assert len(observer.emitters) == 1
 
     observer.unschedule_all()
     assert len(observer.emitters) == 0
 
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     assert len(observer.emitters) == 1
 
 
 def test_2_observers_on_the_same_path(observer, observer2):
     assert observer is not observer2
 
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     assert len(observer.emitters) == 1
 
-    observer2.schedule(None, '')
+    observer2.schedule(None, "")
     assert len(observer2.emitters) == 1
 
 
 def test_start_failure_should_not_prevent_further_try(observer):
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     emitters = observer.emitters
     assert len(emitters) == 1
 
@@ -138,7 +137,7 @@ def test_start_failure_should_not_prevent_further_try(observer):
     assert len(observer.emitters) == 0
 
     # Re-scheduling the watch should work
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     assert len(observer.emitters) == 1
 
 
@@ -150,10 +149,10 @@ def test_schedule_failure_should_not_prevent_future_schedules(observer):
         raise OSError()
 
     with patch.object(EventEmitter, "start", new=bad_start), pytest.raises(OSError):
-        observer.schedule(None, '')
+        observer.schedule(None, "")
     # The emitter should not be in the list
     assert not observer.emitters
 
     # Re-scheduling the watch should work
-    observer.schedule(None, '')
+    observer.schedule(None, "")
     assert len(observer.emitters) == 1

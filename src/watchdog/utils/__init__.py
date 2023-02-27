@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -42,21 +40,22 @@ class WatchdogShutdown(Exception):
     """
     Semantic exception used to signal an external shutdown event.
     """
+
     pass
 
 
 class BaseThread(threading.Thread):
-    """ Convenience class for creating stoppable threads. """
+    """Convenience class for creating stoppable threads."""
 
     def __init__(self):
         threading.Thread.__init__(self)
-        if hasattr(self, 'daemon'):
+        if hasattr(self, "daemon"):
             self.daemon = True
         else:
             self.setDaemon(True)
         self._stopped_event = threading.Event()
 
-        if not hasattr(self._stopped_event, 'is_set'):
+        if not hasattr(self._stopped_event, "is_set"):
             self._stopped_event.is_set = self._stopped_event.isSet
 
     @property
@@ -99,7 +98,7 @@ def load_module(module_name):
     try:
         __import__(module_name)
     except ImportError:
-        raise ImportError('No module named %s' % module_name)
+        raise ImportError("No module named %s" % module_name)
     return sys.modules[module_name]
 
 
@@ -121,10 +120,10 @@ def load_class(dotted_path):
     - modle.name.ClassName     # Typo in module name.
     - module.name.ClasNam      # Typo in classname.
     """
-    dotted_path_split = dotted_path.split('.')
+    dotted_path_split = dotted_path.split(".")
     if len(dotted_path_split) > 1:
         klass_name = dotted_path_split[-1]
-        module_name = '.'.join(dotted_path_split[:-1])
+        module_name = ".".join(dotted_path_split[:-1])
 
         module = load_module(module_name)
         if hasattr(module, klass_name):
@@ -133,8 +132,11 @@ def load_class(dotted_path):
             # Finally create and return an instance of the class
             # return klass(*args, **kwargs)
         else:
-            raise AttributeError('Module %s does not have class attribute %s' % (
-                                 module_name, klass_name))
+            raise AttributeError(
+                "Module %s does not have class attribute %s" % (module_name, klass_name)
+            )
     else:
         raise ValueError(
-            'Dotted module path %s must contain a module name and a classname' % dotted_path)
+            "Dotted module path %s must contain a module name and a classname"
+            % dotted_path
+        )

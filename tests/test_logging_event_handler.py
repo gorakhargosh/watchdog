@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -31,12 +29,11 @@ from watchdog.events import (
     EVENT_TYPE_MOVED,
 )
 
-path_1 = '/path/xyz'
-path_2 = '/path/abc'
+path_1 = "/path/xyz"
+path_2 = "/path/abc"
 
 
 class _TestableEventHandler(LoggingEventHandler):
-
     def on_any_event(self, event):
         assert True
 
@@ -59,14 +56,14 @@ class _TestableEventHandler(LoggingEventHandler):
 
 def test_logging_event_handler_dispatch():
     # Utilities.
-    dir_del_event = DirDeletedEvent('/path/blah.py')
-    file_del_event = FileDeletedEvent('/path/blah.txt')
-    dir_cre_event = DirCreatedEvent('/path/blah.py')
-    file_cre_event = FileCreatedEvent('/path/blah.txt')
-    dir_mod_event = DirModifiedEvent('/path/blah.py')
-    file_mod_event = FileModifiedEvent('/path/blah.txt')
-    dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
-    file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
+    dir_del_event = DirDeletedEvent("/path/blah.py")
+    file_del_event = FileDeletedEvent("/path/blah.txt")
+    dir_cre_event = DirCreatedEvent("/path/blah.py")
+    file_cre_event = FileCreatedEvent("/path/blah.txt")
+    dir_mod_event = DirModifiedEvent("/path/blah.py")
+    file_mod_event = FileModifiedEvent("/path/blah.txt")
+    dir_mov_event = DirMovedEvent("/path/blah.py", "/path/blah")
+    file_mov_event = FileMovedEvent("/path/blah.txt", "/path/blah")
 
     all_events = [
         dir_mod_event,

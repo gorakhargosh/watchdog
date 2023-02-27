@@ -8,8 +8,8 @@ Changelog
 
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.3.0...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- Run ``black`` on the entire source code
+- Thanks to our beloved contributors: @BoboTiG
 
 2.3.0
 ~~~~~

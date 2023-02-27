@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -74,7 +72,7 @@ from watchdog.observers.api import (
     EventEmitter,
     BaseObserver,
     DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT
+    DEFAULT_OBSERVER_TIMEOUT,
 )
 
 from watchdog.events import (
@@ -189,7 +187,7 @@ class InotifyEmitter(EventEmitter):
                 self.stop()
 
     def _decode_path(self, path):
-        """Decode path only if unicode string was passed to this emitter. """
+        """Decode path only if unicode string was passed to this emitter."""
         if isinstance(self.watch.path, bytes):
             return path
         return os.fsdecode(path)
@@ -211,6 +209,7 @@ class InotifyFullEmitter(InotifyEmitter):
     :type timeout:
         ``float``
     """
+
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         super().__init__(event_queue, watch, timeout)
 

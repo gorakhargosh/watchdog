@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -64,8 +62,7 @@ class Trick(PatternMatchingEventHandler):
 
     @classmethod
     def generate_yaml(cls):
-        context = dict(module_name=cls.__module__,
-                       klass_name=cls.__name__)
+        context = dict(module_name=cls.__module__, klass_name=cls.__name__)
         template_yaml = """- %(module_name)s.%(klass_name)s:
   args:
   - argument1
@@ -109,12 +106,20 @@ class ShellCommandTrick(Trick):
 
     """Executes shell commands in response to matched events."""
 
-    def __init__(self, shell_command=None, patterns=None, ignore_patterns=None,
-                 ignore_directories=False, wait_for_process=False,
-                 drop_during_process=False):
+    def __init__(
+        self,
+        shell_command=None,
+        patterns=None,
+        ignore_patterns=None,
+        ignore_directories=False,
+        wait_for_process=False,
+        drop_during_process=False,
+    ):
         super().__init__(
-            patterns=patterns, ignore_patterns=ignore_patterns,
-            ignore_directories=ignore_directories)
+            patterns=patterns,
+            ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories,
+        )
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
@@ -128,27 +133,23 @@ class ShellCommandTrick(Trick):
         if self.drop_during_process and self.is_process_running():
             return
 
-        if event.is_directory:
-            object_type = 'directory'
-        else:
-            object_type = 'file'
-
+        object_type = "directory" if event.is_directory else "file"
         context = {
-            'watch_src_path': event.src_path,
-            'watch_dest_path': '',
-            'watch_event_type': event.event_type,
-            'watch_object': object_type,
+            "watch_src_path": event.src_path,
+            "watch_dest_path": "",
+            "watch_event_type": event.event_type,
+            "watch_object": object_type,
         }
 
         if self.shell_command is None:
-            if hasattr(event, 'dest_path'):
-                context.update({'dest_path': event.dest_path})
+            if hasattr(event, "dest_path"):
+                context["dest_path"] = event.dest_path
                 command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
             else:
                 command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
         else:
-            if hasattr(event, 'dest_path'):
-                context.update({'watch_dest_path': event.dest_path})
+            if hasattr(event, "dest_path"):
+                context["watch_dest_path"] = event.dest_path
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
@@ -158,12 +159,15 @@ class ShellCommandTrick(Trick):
         else:
             process_watcher = ProcessWatcher(self.process, None)
             self._process_watchers.add(process_watcher)
-            process_watcher.process_termination_callback = \
-                functools.partial(self._process_watchers.discard, process_watcher)
+            process_watcher.process_termination_callback = functools.partial(
+                self._process_watchers.discard, process_watcher
+            )
             process_watcher.start()
 
     def is_process_running(self):
-        return self._process_watchers or (self.process is not None and self.process.poll() is None)
+        return self._process_watchers or (
+            self.process is not None and self.process.poll() is None
+        )
 
 
 class AutoRestartTrick(Trick):
@@ -177,18 +181,27 @@ class AutoRestartTrick(Trick):
     the process.
     """
 
-    def __init__(self, command, patterns=None, ignore_patterns=None,
-                 ignore_directories=False, stop_signal=signal.SIGINT,
-                 kill_after=10, debounce_interval_seconds=0,
-                 restart_on_command_exit=True):
+    def __init__(
+        self,
+        command,
+        patterns=None,
+        ignore_patterns=None,
+        ignore_directories=False,
+        stop_signal=signal.SIGINT,
+        kill_after=10,
+        debounce_interval_seconds=0,
+        restart_on_command_exit=True,
+    ):
         if kill_after < 0:
             raise ValueError("kill_after must be non-negative.")
         if debounce_interval_seconds < 0:
             raise ValueError("debounce_interval_seconds must be non-negative.")
 
         super().__init__(
-            patterns=patterns, ignore_patterns=ignore_patterns,
-            ignore_directories=ignore_directories)
+            patterns=patterns,
+            ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories,
+        )
 
         self.command = command
         self.stop_signal = stop_signal
@@ -237,7 +250,9 @@ class AutoRestartTrick(Trick):
             return
 
         # windows doesn't have setsid
-        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, 'setsid', None))
+        self.process = subprocess.Popen(
+            self.command, preexec_fn=getattr(os, "setsid", None)
+        )
         if self.restart_on_command_exit:
             self.process_watcher = ProcessWatcher(self.process, self._restart_process)
             self.process_watcher.start()
@@ -291,9 +306,12 @@ class AutoRestartTrick(Trick):
         self.restart_count += 1
 
 
-if hasattr(os, 'getpgid') and hasattr(os, 'killpg'):
+if hasattr(os, "getpgid") and hasattr(os, "killpg"):
+
     def kill_process(pid, stop_signal):
         os.killpg(os.getpgid(pid), stop_signal)
+
 else:
+
     def kill_process(pid, stop_signal):
         os.kill(pid, stop_signal)

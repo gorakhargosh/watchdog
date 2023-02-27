@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import pytest
 from watchdog.utils import platform
 
@@ -49,7 +47,9 @@ def teardown_function(function):
 def start_watching(path=None, recursive=True, use_full_emitter=False):
     global emitter
     path = p("") if path is None else path
-    emitter = FSEventsEmitter(event_queue, ObservedWatch(path, recursive=recursive), suppress_history=True)
+    emitter = FSEventsEmitter(
+        event_queue, ObservedWatch(path, recursive=recursive), suppress_history=True
+    )
     emitter.start()
 
 
@@ -65,26 +65,39 @@ def observer():
         pass
 
 
-@pytest.mark.parametrize('event,expectation', [
-    # invalid flags
-    (_fsevents.NativeEvent('', 0, 0, 0), False),
-    # renamed
-    (_fsevents.NativeEvent('', 0, 0x00000800, 0), False),
-    # renamed, removed
-    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200, 0), True),
-    # renamed, removed, created
-    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200 | 0x00000100, 0), True),
-    # renamed, removed, created, itemfindermod
-    (_fsevents.NativeEvent('', 0, 0x00000800 | 0x00000200 | 0x00000100 | 0x00002000, 0), True),
-    # xattr, removed, modified, itemfindermod
-    (_fsevents.NativeEvent('', 0, 0x00008000 | 0x00000200 | 0x00001000 | 0x00002000, 0), False),
-])
+@pytest.mark.parametrize(
+    "event,expectation",
+    [
+        # invalid flags
+        (_fsevents.NativeEvent("", 0, 0, 0), False),
+        # renamed
+        (_fsevents.NativeEvent("", 0, 0x00000800, 0), False),
+        # renamed, removed
+        (_fsevents.NativeEvent("", 0, 0x00000800 | 0x00000200, 0), True),
+        # renamed, removed, created
+        (_fsevents.NativeEvent("", 0, 0x00000800 | 0x00000200 | 0x00000100, 0), True),
+        # renamed, removed, created, itemfindermod
+        (
+            _fsevents.NativeEvent(
+                "", 0, 0x00000800 | 0x00000200 | 0x00000100 | 0x00002000, 0
+            ),
+            True,
+        ),
+        # xattr, removed, modified, itemfindermod
+        (
+            _fsevents.NativeEvent(
+                "", 0, 0x00008000 | 0x00000200 | 0x00001000 | 0x00002000, 0
+            ),
+            False,
+        ),
+    ],
+)
 def test_coalesced_event_check(event, expectation):
     assert event.is_coalesced == expectation
 
 
 def test_add_watch_twice(observer):
-    """ Adding the same watch twice used to result in a null pointer return without an exception.
+    """Adding the same watch twice used to result in a null pointer return without an exception.
 
     See https://github.com/gorakhargosh/watchdog/issues/765
     """
@@ -125,7 +138,9 @@ def test_watcher_deletion_while_receiving_events_1(caplog, observer):
         FSEventsEmitter.stop(emitter)
         orig(*args)
 
-    with caplog.at_level(logging.ERROR), patch.object(FSEventsEmitter, "events_callback", new=cb):
+    with caplog.at_level(logging.ERROR), patch.object(
+        FSEventsEmitter, "events_callback", new=cb
+    ):
         start_watching(tmpdir)
         # Less than 100 is not enough events to trigger the error
         for n in range(100):
@@ -159,7 +174,7 @@ def test_watcher_deletion_while_receiving_events_2(caplog):
         def create_files():
             # Less than 2000 is not enough events to trigger the error
             for n in range(2000):
-                touch(p(str(n) + ".txt"))
+                touch(p(f"{n}.txt"))
 
         def stop(em):
             sleep(random())
@@ -187,20 +202,20 @@ def test_watcher_deletion_while_receiving_events_2(caplog):
 
 def test_remove_watch_twice():
     """
-ValueError: PyCapsule_GetPointer called with invalid PyCapsule object
-The above exception was the direct cause of the following exception:
+    ValueError: PyCapsule_GetPointer called with invalid PyCapsule object
+    The above exception was the direct cause of the following exception:
 
-src/watchdog/utils/__init__.py:92: in stop
-    self.on_thread_stop()
+    src/watchdog/utils/__init__.py:92: in stop
+        self.on_thread_stop()
 
-src/watchdog/observers/fsevents.py:73: SystemError
-    def on_thread_stop(self):
->       _fsevents.remove_watch(self.watch)
-E       SystemError: <built-in function remove_watch> returned a result with an error set
+    src/watchdog/observers/fsevents.py:73: SystemError
+        def on_thread_stop(self):
+    >       _fsevents.remove_watch(self.watch)
+    E       SystemError: <built-in function remove_watch> returned a result with an error set
 
-(FSEvents.framework) FSEventStreamStop(): failed assertion 'streamRef != NULL'
-(FSEvents.framework) FSEventStreamInvalidate(): failed assertion 'streamRef != NULL'
-(FSEvents.framework) FSEventStreamRelease(): failed assertion 'streamRef != NULL'
+    (FSEvents.framework) FSEventStreamStop(): failed assertion 'streamRef != NULL'
+    (FSEvents.framework) FSEventStreamInvalidate(): failed assertion 'streamRef != NULL'
+    (FSEvents.framework) FSEventStreamRelease(): failed assertion 'streamRef != NULL'
     """
     start_watching()
     # This one must work
@@ -211,17 +226,17 @@ E       SystemError: <built-in function remove_watch> returned a result with an 
 
 def test_unschedule_removed_folder(observer):
     """
-TypeError: PyCObject_AsVoidPtr called with null pointer
-The above exception was the direct cause of the following exception:
+    TypeError: PyCObject_AsVoidPtr called with null pointer
+    The above exception was the direct cause of the following exception:
 
-def on_thread_stop(self):
-    if self.watch:
-        _fsevents.remove_watch(self.watch)
-E       SystemError: <built-in function stop> returned a result with an error set
+    def on_thread_stop(self):
+        if self.watch:
+            _fsevents.remove_watch(self.watch)
+    E       SystemError: <built-in function stop> returned a result with an error set
 
-(FSEvents.framework) FSEventStreamStop(): failed assertion 'streamRef != NULL'
-(FSEvents.framework) FSEventStreamInvalidate(): failed assertion 'streamRef != NULL'
-(FSEvents.framework) FSEventStreamRelease(): failed assertion 'streamRef != NULL'
+    (FSEvents.framework) FSEventStreamStop(): failed assertion 'streamRef != NULL'
+    (FSEvents.framework) FSEventStreamInvalidate(): failed assertion 'streamRef != NULL'
+    (FSEvents.framework) FSEventStreamRelease(): failed assertion 'streamRef != NULL'
     """
     a = p("a")
     mkdir(a)
@@ -232,8 +247,7 @@ E       SystemError: <built-in function stop> returned a result with an error se
 
 
 def test_converting_cfstring_to_pyunicode():
-    """See https://github.com/gorakhargosh/watchdog/issues/762
-    """
+    """See https://github.com/gorakhargosh/watchdog/issues/762"""
 
     tmpdir = p()
     start_watching(tmpdir)
@@ -258,7 +272,7 @@ def test_recursive_check_accepts_relative_paths():
     from watchdog.events import (
         PatternMatchingEventHandler,
         FileCreatedEvent,
-        FileModifiedEvent
+        FileModifiedEvent,
     )
 
     class TestEventHandler(PatternMatchingEventHandler):
@@ -267,8 +281,8 @@ def test_recursive_check_accepts_relative_paths():
             # the TestEventHandler instance is set to ignore_directories,
             # as such we won't get a DirModifiedEvent(p()) here.
             self.expected_events = [
-                FileCreatedEvent(p('foo.json')),
-                FileModifiedEvent(p('foo.json'))
+                FileCreatedEvent(p("foo.json")),
+                FileModifiedEvent(p("foo.json")),
             ]
             self.observed_events = set()
 
@@ -281,14 +295,16 @@ def test_recursive_check_accepts_relative_paths():
 
     cwd = os.getcwd()
     os.chdir(p())
-    event_handler = TestEventHandler(patterns=["*.json"], ignore_patterns=[], ignore_directories=True)
+    event_handler = TestEventHandler(
+        patterns=["*.json"], ignore_patterns=[], ignore_directories=True
+    )
     observer = Observer()
     observer.schedule(event_handler, ".")
     observer.start()
     time.sleep(0.1)
 
     try:
-        touch(p('foo.json'))
+        touch(p("foo.json"))
         timeout_at = time.time() + 5
         while not event_handler.done() and time.time() < timeout_at:
             time.sleep(0.1)
@@ -301,8 +317,7 @@ def test_recursive_check_accepts_relative_paths():
 
 
 def test_watchdog_recursive():
-    """ See https://github.com/gorakhargosh/watchdog/issues/706
-    """
+    """See https://github.com/gorakhargosh/watchdog/issues/706"""
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
     import os.path
@@ -318,23 +333,23 @@ def test_watchdog_recursive():
     handler = Handler()
     observer = Observer()
 
-    watches = []
-    watches.append(observer.schedule(handler, str(p('')), recursive=True))
-
+    watches = [observer.schedule(handler, str(p("")), recursive=True)]
     try:
         observer.start()
         time.sleep(0.1)
 
-        touch(p('my0.txt'))
-        mkdir(p('dir_rec'))
-        touch(p('dir_rec', 'my1.txt'))
+        touch(p("my0.txt"))
+        mkdir(p("dir_rec"))
+        touch(p("dir_rec", "my1.txt"))
 
         expected = {"dir_rec", "my0.txt", "my1.txt"}
         timeout_at = time.time() + 5
         while not expected.issubset(handler.changes) and time.time() < timeout_at:
             time.sleep(0.2)
 
-        assert expected.issubset(handler.changes), "Did not find expected changes. Found: {}".format(handler.changes)
+        assert expected.issubset(
+            handler.changes
+        ), f"Did not find expected changes. Found: {handler.changes}"
     finally:
         for watch in watches:
             observer.unschedule(watch)

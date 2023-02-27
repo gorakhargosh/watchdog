@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -18,21 +16,21 @@
 
 import sys
 
-PLATFORM_WINDOWS = 'windows'
-PLATFORM_LINUX = 'linux'
-PLATFORM_BSD = 'bsd'
-PLATFORM_DARWIN = 'darwin'
-PLATFORM_UNKNOWN = 'unknown'
+PLATFORM_WINDOWS = "windows"
+PLATFORM_LINUX = "linux"
+PLATFORM_BSD = "bsd"
+PLATFORM_DARWIN = "darwin"
+PLATFORM_UNKNOWN = "unknown"
 
 
 def get_platform_name():
     if sys.platform.startswith("win"):
         return PLATFORM_WINDOWS
-    elif sys.platform.startswith('darwin'):
+    elif sys.platform.startswith("darwin"):
         return PLATFORM_DARWIN
-    elif sys.platform.startswith('linux'):
+    elif sys.platform.startswith("linux"):
         return PLATFORM_LINUX
-    elif sys.platform.startswith(('dragonfly', 'freebsd', 'netbsd', 'openbsd', 'bsd')):
+    elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
         return PLATFORM_BSD
     else:
         return PLATFORM_UNKNOWN

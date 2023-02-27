@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
@@ -84,9 +82,12 @@ class DirectorySnapshotDiff:
         deleted = ref.paths - snapshot.paths
 
         if ignore_device:
+
             def get_inode(directory, full_path):
                 return directory.inode(full_path)[0]
+
         else:
+
             def get_inode(directory, full_path):
                 return directory.inode(full_path)
 
@@ -118,11 +119,15 @@ class DirectorySnapshotDiff:
         modified = set()
         for path in ref.paths & snapshot.paths:
             if get_inode(ref, path) == get_inode(snapshot, path):
-                if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
+                if ref.mtime(path) != snapshot.mtime(path) or ref.size(
+                    path
+                ) != snapshot.size(path):
                     modified.add(path)
 
-        for (old_path, new_path) in moved:
-            if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(old_path) != snapshot.size(new_path):
+        for old_path, new_path in moved:
+            if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(
+                old_path
+            ) != snapshot.size(new_path):
                 modified.add(old_path)
 
         self._dirs_created = [path for path in created if snapshot.isdir(path)]
@@ -140,8 +145,8 @@ class DirectorySnapshotDiff:
 
     def __repr__(self):
         fmt = (
-            '<{0} files(created={1}, deleted={2}, modified={3}, moved={4}),'
-            ' folders(created={5}, deleted={6}, modified={7}, moved={8})>'
+            "<{0} files(created={1}, deleted={2}, modified={3}, moved={4}),"
+            " folders(created={5}, deleted={6}, modified={7}, moved={8})>"
         )
         return fmt.format(
             type(self).__name__,
@@ -152,7 +157,7 @@ class DirectorySnapshotDiff:
             len(self._dirs_created),
             len(self._dirs_deleted),
             len(self._dirs_modified),
-            len(self._dirs_moved)
+            len(self._dirs_moved),
         )
 
     @property
@@ -235,8 +240,7 @@ class DirectorySnapshot:
         Use custom listdir function. For details see ``os.scandir``.
     """
 
-    def __init__(self, path, recursive=True,
-                 stat=os.stat, listdir=os.scandir):
+    def __init__(self, path, recursive=True, stat=os.stat, listdir=os.scandir):
         self.recursive = recursive
         self.stat = stat
         self.listdir = listdir
@@ -298,7 +302,7 @@ class DirectorySnapshot:
         return self._inode_to_path.get(id)
 
     def inode(self, path):
-        """ Returns an id for path. """
+        """Returns an id for path."""
         st = self._stat_info[path]
         return (st.st_ino, st.st_dev)
 

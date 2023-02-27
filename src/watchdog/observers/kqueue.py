@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -80,7 +78,7 @@ from watchdog.observers.api import (
     BaseObserver,
     EventEmitter,
     DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
+    DEFAULT_EMITTER_TIMEOUT,
 )
 
 from watchdog.utils.dirsnapshot import DirectorySnapshot
@@ -126,6 +124,7 @@ WATCHDOG_KQ_FFLAGS = (
 
 def absolute_path(path):
     return os.path.abspath(os.path.normpath(path))
+
 
 # Flag tests.
 
@@ -277,7 +276,7 @@ class KeventDescriptorSet:
 
     def _has_path(self, path):
         """Determines whether a :class:`KeventDescriptor` for the specified
-   path exists already in the collection."""
+        path exists already in the collection."""
         return path in self._descriptor_for_path
 
     def _add_descriptor(self, descriptor):
@@ -328,10 +327,12 @@ class KeventDescriptor:
         self._path = absolute_path(path)
         self._is_directory = is_directory
         self._fd = os.open(path, WATCHDOG_OS_OPEN_FLAGS)
-        self._kev = select.kevent(self._fd,
-                                  filter=WATCHDOG_KQ_FILTER,
-                                  flags=WATCHDOG_KQ_EV_FLAGS,
-                                  fflags=WATCHDOG_KQ_FFLAGS)
+        self._kev = select.kevent(
+            self._fd,
+            filter=WATCHDOG_KQ_FILTER,
+            flags=WATCHDOG_KQ_EV_FLAGS,
+            fflags=WATCHDOG_KQ_FFLAGS,
+        )
 
     @property
     def fd(self):
@@ -380,8 +381,11 @@ class KeventDescriptor:
         return hash(self.key)
 
     def __repr__(self):
-        return "<%s: path=%s, is_directory=%s>"\
-            % (type(self).__name__, self.path, self.is_directory)
+        return "<%s: path=%s, is_directory=%s>" % (
+            type(self).__name__,
+            self.path,
+            self.is_directory,
+        )
 
 
 class KqueueEmitter(EventEmitter):
@@ -430,8 +434,9 @@ class KqueueEmitter(EventEmitter):
     :param stat: stat function. See ``os.stat`` for details.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
-                 stat=os.stat):
+    def __init__(
+        self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, stat=os.stat
+    ):
         super().__init__(event_queue, watch, timeout)
 
         self._kq = select.kqueue()
@@ -445,9 +450,9 @@ class KqueueEmitter(EventEmitter):
             self._register_kevent(path, S_ISDIR(stat_info.st_mode))
             return stat_info
 
-        self._snapshot = DirectorySnapshot(watch.path,
-                                           recursive=watch.is_recursive,
-                                           stat=custom_stat)
+        self._snapshot = DirectorySnapshot(
+            watch.path, recursive=watch.is_recursive, stat=custom_stat
+        )
 
     def _register_kevent(self, path, is_directory):
         """
@@ -523,10 +528,7 @@ class KqueueEmitter(EventEmitter):
         elif event.event_type == EVENT_TYPE_DELETED:
             self._unregister_kevent(event.src_path)
 
-    def _gen_kqueue_events(self,
-                           kev,
-                           ref_snapshot,
-                           new_snapshot):
+    def _gen_kqueue_events(self, kev, ref_snapshot, new_snapshot):
         """
         Generate events from the kevent list returned from the call to
         :meth:`select.kqueue.control`.
@@ -544,10 +546,9 @@ class KqueueEmitter(EventEmitter):
             # Kqueue does not specify the destination names for renames
             # to, so we have to process these using the a snapshot
             # of the directory.
-            for event in self._gen_renamed_events(src_path,
-                                                  descriptor.is_directory,
-                                                  ref_snapshot,
-                                                  new_snapshot):
+            for event in self._gen_renamed_events(
+                src_path, descriptor.is_directory, ref_snapshot, new_snapshot
+            ):
                 yield event
         elif is_attrib_modified(kev):
             if descriptor.is_directory:
@@ -576,11 +577,7 @@ class KqueueEmitter(EventEmitter):
         """
         return DirModifiedEvent(os.path.dirname(src_path))
 
-    def _gen_renamed_events(self,
-                            src_path,
-                            is_directory,
-                            ref_snapshot,
-                            new_snapshot):
+    def _gen_renamed_events(self, src_path, is_directory, ref_snapshot, new_snapshot):
         """
         Compares information from two directory snapshots (one taken before
         the rename operation and another taken right after) to determine the
@@ -642,9 +639,7 @@ class KqueueEmitter(EventEmitter):
         :type timeout:
             ``float`` (seconds)
         """
-        return self._kq.control(self._descriptors.kevents,
-                                MAX_EVENTS,
-                                timeout)
+        return self._kq.control(self._descriptors.kevents, MAX_EVENTS, timeout)
 
     def queue_events(self, timeout):
         """
@@ -664,8 +659,9 @@ class KqueueEmitter(EventEmitter):
 
                 # Take a fresh snapshot of the directory and update the
                 # saved snapshot.
-                new_snapshot = DirectorySnapshot(self.watch.path,
-                                                 self.watch.is_recursive)
+                new_snapshot = DirectorySnapshot(
+                    self.watch.path, self.watch.is_recursive
+                )
                 ref_snapshot = self._snapshot
                 self._snapshot = new_snapshot
                 diff_events = new_snapshot - ref_snapshot
@@ -679,9 +675,9 @@ class KqueueEmitter(EventEmitter):
                     self.queue_event(FileModifiedEvent(file_modified))
 
                 for kev in event_list:
-                    for event in self._gen_kqueue_events(kev,
-                                                         ref_snapshot,
-                                                         new_snapshot):
+                    for event in self._gen_kqueue_events(
+                        kev, ref_snapshot, new_snapshot
+                    ):
                         self.queue_event(event)
 
             except OSError as e:

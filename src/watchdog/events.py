@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -99,12 +97,12 @@ import re
 from watchdog.utils.patterns import match_any_paths
 
 
-EVENT_TYPE_MOVED = 'moved'
-EVENT_TYPE_DELETED = 'deleted'
-EVENT_TYPE_CREATED = 'created'
-EVENT_TYPE_MODIFIED = 'modified'
-EVENT_TYPE_CLOSED = 'closed'
-EVENT_TYPE_OPENED = 'opened'
+EVENT_TYPE_MOVED = "moved"
+EVENT_TYPE_DELETED = "deleted"
+EVENT_TYPE_CREATED = "created"
+EVENT_TYPE_MODIFIED = "modified"
+EVENT_TYPE_CLOSED = "closed"
+EVENT_TYPE_OPENED = "opened"
 
 
 class FileSystemEvent:
@@ -142,14 +140,10 @@ class FileSystemEvent:
         return self.__repr__()
 
     def __repr__(self):
-        return ("<%(class_name)s: event_type=%(event_type)s, "
-                "src_path=%(src_path)r, "
-                "is_directory=%(is_directory)s>"
-                ) % (dict(
-                     class_name=self.__class__.__name__,
-                     event_type=self.event_type,
-                     src_path=self.src_path,
-                     is_directory=self.is_directory))
+        return (
+            f"<{type(self).__name__}: event_type={self.event_type}, "
+            f"src_path={self.src_path!r}, is_directory={self.is_directory}"
+        )
 
     # Used for comparison of events.
     @property
@@ -188,13 +182,18 @@ class FileSystemMovedEvent(FileSystemEvent):
         return (self.event_type, self.src_path, self.dest_path, self.is_directory)
 
     def __repr__(self):
-        return ("<%(class_name)s: src_path=%(src_path)r, "
-                "dest_path=%(dest_path)r, "
-                "is_directory=%(is_directory)s>"
-                ) % (dict(class_name=self.__class__.__name__,
-                          src_path=self.src_path,
-                          dest_path=self.dest_path,
-                          is_directory=self.is_directory))
+        return (
+            "<%(class_name)s: src_path=%(src_path)r, "
+            "dest_path=%(dest_path)r, "
+            "is_directory=%(is_directory)s>"
+        ) % (
+            dict(
+                class_name=self.__class__.__name__,
+                src_path=self.src_path,
+                dest_path=self.dest_path,
+                is_directory=self.is_directory,
+            )
+        )
 
 
 # File events.
@@ -358,8 +357,13 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     Matches given patterns with file paths associated with occurring events.
     """
 
-    def __init__(self, patterns=None, ignore_patterns=None,
-                 ignore_directories=False, case_sensitive=False):
+    def __init__(
+        self,
+        patterns=None,
+        ignore_patterns=None,
+        ignore_directories=False,
+        case_sensitive=False,
+    ):
         super().__init__()
 
         self._patterns = patterns
@@ -412,15 +416,17 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
             return
 
         paths = []
-        if hasattr(event, 'dest_path'):
+        if hasattr(event, "dest_path"):
             paths.append(os.fsdecode(event.dest_path))
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
 
-        if match_any_paths(paths,
-                           included_patterns=self.patterns,
-                           excluded_patterns=self.ignore_patterns,
-                           case_sensitive=self.case_sensitive):
+        if match_any_paths(
+            paths,
+            included_patterns=self.patterns,
+            excluded_patterns=self.ignore_patterns,
+            case_sensitive=self.case_sensitive,
+        ):
             super().dispatch(event)
 
 
@@ -429,8 +435,13 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
     Matches given regexes with file paths associated with occurring events.
     """
 
-    def __init__(self, regexes=None, ignore_regexes=None,
-                 ignore_directories=False, case_sensitive=False):
+    def __init__(
+        self,
+        regexes=None,
+        ignore_regexes=None,
+        ignore_directories=False,
+        case_sensitive=False,
+    ):
         super().__init__()
 
         if regexes is None:
@@ -493,7 +504,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             return
 
         paths = []
-        if hasattr(event, 'dest_path'):
+        if hasattr(event, "dest_path"):
             paths.append(os.fsdecode(event.dest_path))
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
@@ -516,26 +527,27 @@ class LoggingEventHandler(FileSystemEventHandler):
     def on_moved(self, event):
         super().on_moved(event)
 
-        what = 'directory' if event.is_directory else 'file'
-        self.logger.info("Moved %s: from %s to %s", what, event.src_path,
-                         event.dest_path)
+        what = "directory" if event.is_directory else "file"
+        self.logger.info(
+            "Moved %s: from %s to %s", what, event.src_path, event.dest_path
+        )
 
     def on_created(self, event):
         super().on_created(event)
 
-        what = 'directory' if event.is_directory else 'file'
+        what = "directory" if event.is_directory else "file"
         self.logger.info("Created %s: %s", what, event.src_path)
 
     def on_deleted(self, event):
         super().on_deleted(event)
 
-        what = 'directory' if event.is_directory else 'file'
+        what = "directory" if event.is_directory else "file"
         self.logger.info("Deleted %s: %s", what, event.src_path)
 
     def on_modified(self, event):
         super().on_modified(event)
 
-        what = 'directory' if event.is_directory else 'file'
+        what = "directory" if event.is_directory else "file"
         self.logger.info("Modified %s: %s", what, event.src_path)
 
 
@@ -555,13 +567,17 @@ def generate_sub_moved_events(src_dir_path, dest_dir_path):
     for root, directories, filenames in os.walk(dest_dir_path):
         for directory in directories:
             full_path = os.path.join(root, directory)
-            renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
+            renamed_path = (
+                full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
+            )
             event = DirMovedEvent(renamed_path, full_path)
             event.is_synthetic = True
             yield event
         for filename in filenames:
             full_path = os.path.join(root, filename)
-            renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
+            renamed_path = (
+                full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
+            )
             event = FileMovedEvent(renamed_path, full_path)
             event.is_synthetic = True
             yield event

@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +33,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
-    DirMovedEvent
+    DirMovedEvent,
 )
 from watchdog.observers.api import (
     BaseObserver,
@@ -84,7 +82,7 @@ logger.warning(message)
 
 
 class FSEventsQueue(Thread):
-    """ Low level FSEvents client. """
+    """Low level FSEvents client."""
 
     def __init__(self, path):
         Thread.__init__(self)
@@ -93,14 +91,19 @@ class FSEventsQueue(Thread):
 
         if isinstance(path, bytes):
             path = os.fsdecode(path)
-        self._path = unicodedata.normalize('NFC', path)
+        self._path = unicodedata.normalize("NFC", path)
 
         context = None
         latency = 1.0
         self._stream_ref = FSEventStreamCreate(
-            kCFAllocatorDefault, self._callback, context, [self._path],
-            kFSEventStreamEventIdSinceNow, latency,
-            kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents)
+            kCFAllocatorDefault,
+            self._callback,
+            context,
+            [self._path],
+            kFSEventStreamEventIdSinceNow,
+            latency,
+            kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents,
+        )
         if self._stream_ref is None:
             raise OSError("FSEvents. Could not create stream.")
 
@@ -108,7 +111,8 @@ class FSEventsQueue(Thread):
         pool = AppKit.NSAutoreleasePool.alloc().init()
         self._run_loop = CFRunLoopGetCurrent()
         FSEventStreamScheduleWithRunLoop(
-            self._stream_ref, self._run_loop, kCFRunLoopDefaultMode)
+            self._stream_ref, self._run_loop, kCFRunLoopDefaultMode
+        )
         if not FSEventStreamStart(self._stream_ref):
             FSEventStreamInvalidate(self._stream_ref)
             FSEventStreamRelease(self._stream_ref)
@@ -126,9 +130,13 @@ class FSEventsQueue(Thread):
         if self._run_loop is not None:
             CFRunLoopStop(self._run_loop)
 
-    def _callback(self, streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIDs):
-        events = [NativeEvent(path, flags, _id) for path, flags, _id in
-                  zip(eventPaths, eventFlags, eventIDs)]
+    def _callback(
+        self, streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIDs
+    ):
+        events = [
+            NativeEvent(path, flags, _id)
+            for path, flags, _id in zip(eventPaths, eventFlags, eventIDs)
+        ]
         logger.debug("FSEvents callback. Got %d events:" % numEvents)
         for e in events:
             logger.debug(e)
@@ -178,8 +186,14 @@ class NativeEvent:
 
     def __repr__(self):
         s = "<%s: path=%s, type=%s, is_dir=%s, flags=%s, id=%s>"
-        return s % (type(self).__name__, repr(self.path), self._event_type,
-                    self.is_directory, hex(self.flags), self.event_id)
+        return s % (
+            type(self).__name__,
+            repr(self.path),
+            self._event_type,
+            self.is_directory,
+            hex(self.flags),
+            self.event_id,
+        )
 
 
 class FSEventsEmitter(EventEmitter):
@@ -213,12 +227,17 @@ class FSEventsEmitter(EventEmitter):
                 # from a single move operation. (None of this is documented!)
                 # Otherwise, guess whether file was moved in or out.
                 # TODO: handle id wrapping
-                if (i + 1 < len(events) and events[i + 1].is_renamed
-                        and events[i + 1].event_id == event.event_id + 1):
+                if (
+                    i + 1 < len(events)
+                    and events[i + 1].is_renamed
+                    and events[i + 1].event_id == event.event_id + 1
+                ):
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
                     self.queue_event(cls(event.path, events[i + 1].path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(events[i + 1].path)))
+                    self.queue_event(
+                        DirModifiedEvent(os.path.dirname(events[i + 1].path))
+                    )
                     i += 1
                 elif os.path.exists(event.path):
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent

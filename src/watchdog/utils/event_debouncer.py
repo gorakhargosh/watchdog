@@ -16,6 +16,7 @@ class EventDebouncer(BaseThread):
     debouncing interval passes, the callback will be called with a list of
     events in the order in which they were received.
     """
+
     def __init__(self, debounce_interval_seconds, events_callback):
         super().__init__()
         self.debounce_interval_seconds = debounce_interval_seconds

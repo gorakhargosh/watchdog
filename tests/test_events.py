@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -35,8 +33,8 @@ from watchdog.events import (
     EVENT_TYPE_OPENED,
 )
 
-path_1 = '/path/xyz'
-path_2 = '/path/abc'
+path_1 = "/path/xyz"
+path_2 = "/path/abc"
 
 
 def test_file_deleted_event():
@@ -127,16 +125,16 @@ def test_dir_created_event():
 
 
 def test_file_system_event_handler_dispatch():
-    dir_del_event = DirDeletedEvent('/path/blah.py')
-    file_del_event = FileDeletedEvent('/path/blah.txt')
-    dir_cre_event = DirCreatedEvent('/path/blah.py')
-    file_cre_event = FileCreatedEvent('/path/blah.txt')
-    file_cls_event = FileClosedEvent('/path/blah.txt')
-    file_opened_event = FileOpenedEvent('/path/blah.txt')
-    dir_mod_event = DirModifiedEvent('/path/blah.py')
-    file_mod_event = FileModifiedEvent('/path/blah.txt')
-    dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
-    file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
+    dir_del_event = DirDeletedEvent("/path/blah.py")
+    file_del_event = FileDeletedEvent("/path/blah.txt")
+    dir_cre_event = DirCreatedEvent("/path/blah.py")
+    file_cre_event = FileCreatedEvent("/path/blah.txt")
+    file_cls_event = FileClosedEvent("/path/blah.txt")
+    file_opened_event = FileOpenedEvent("/path/blah.txt")
+    dir_mod_event = DirModifiedEvent("/path/blah.py")
+    file_mod_event = FileModifiedEvent("/path/blah.txt")
+    dir_mov_event = DirMovedEvent("/path/blah.py", "/path/blah")
+    file_mov_event = FileMovedEvent("/path/blah.txt", "/path/blah")
 
     all_events = [
         dir_mod_event,
@@ -152,9 +150,8 @@ def test_file_system_event_handler_dispatch():
     ]
 
     class TestableEventHandler(FileSystemEventHandler):
-
         def on_any_event(self, event):
-            assert True
+            pass
 
         def on_modified(self, event):
             assert event.event_type == EVENT_TYPE_MODIFIED

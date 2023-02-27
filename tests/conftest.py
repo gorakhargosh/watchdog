@@ -31,7 +31,9 @@ def no_thread_leaks():
     old_thread_count = threading.active_count()
     yield
     gc.collect()  # Clear the stuff from other function-level fixtures
-    assert threading.active_count() == old_thread_count  # Only previously existing threads
+    assert (
+        threading.active_count() == old_thread_count
+    )  # Only previously existing threads
 
 
 @pytest.fixture(autouse=True)

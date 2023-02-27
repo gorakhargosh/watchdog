@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 # Copyright 2014 Thomas Amland
@@ -38,7 +36,7 @@ from watchdog.observers.api import (
     EventEmitter,
     BaseObserver,
     DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
+    DEFAULT_EMITTER_TIMEOUT,
 )
 
 from watchdog.observers.winapi import (
@@ -49,7 +47,7 @@ from watchdog.observers.winapi import (
 
 
 # HACK:
-WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1   # seconds
+WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1  # seconds
 
 
 class WindowsApiEmitter(EventEmitter):
@@ -66,7 +64,8 @@ class WindowsApiEmitter(EventEmitter):
     def on_thread_start(self):
         self._handle = get_directory_handle(self.watch.path)
 
-    if platform.python_implementation() == 'PyPy':
+    if platform.python_implementation() == "PyPy":
+
         def start(self):
             """PyPy needs some time before receiving events, see #792."""
             super().start()
@@ -106,13 +105,19 @@ class WindowsApiEmitter(EventEmitter):
                             # TODO: Come up with a better solution, possibly
                             # a way to wait for I/O to complete before
                             # queuing events.
-                            for sub_moved_event in generate_sub_moved_events(src_path, dest_path):
+                            for sub_moved_event in generate_sub_moved_events(
+                                src_path, dest_path
+                            ):
                                 self.queue_event(sub_moved_event)
                         self.queue_event(event)
                     else:
                         self.queue_event(FileMovedEvent(src_path, dest_path))
                 elif winapi_event.is_modified:
-                    cls = DirModifiedEvent if os.path.isdir(src_path) else FileModifiedEvent
+                    cls = (
+                        DirModifiedEvent
+                        if os.path.isdir(src_path)
+                        else FileModifiedEvent
+                    )
                     self.queue_event(cls(src_path))
                 elif winapi_event.is_added:
                     isdir = os.path.isdir(src_path)

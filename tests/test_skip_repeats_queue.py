@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -25,9 +23,9 @@ from .markers import cpython_only
 def basic_actions():
     q = SkipRepeatsQueue()
 
-    e1 = (2, 'fred')
-    e2 = (2, 'george')
-    e3 = (4, 'sally')
+    e1 = (2, "fred")
+    e2 = (2, "george")
+    e3 = (4, "sally")
 
     q.put(e1)
     q.put(e2)
@@ -46,12 +44,12 @@ def test_basic_queue():
 def test_allow_nonconsecutive():
     q = SkipRepeatsQueue()
 
-    e1 = (2, 'fred')
-    e2 = (2, 'george')
+    e1 = (2, "fred")
+    e2 = (2, "george")
 
     q.put(e1)
     q.put(e2)
-    q.put(e1)       # repeat the first entry
+    q.put(e1)  # repeat the first entry
 
     assert e1 == q.get()
     assert e2 == q.get()
@@ -65,7 +63,7 @@ def test_put_with_watchdog_events():
     # None in __init__(), an AttributeError is raised when
     # FileSystemEvent.__ne__() tries to use None.key
     queue = SkipRepeatsQueue()
-    dummy_file = 'dummy.txt'
+    dummy_file = "dummy.txt"
     event = events.FileCreatedEvent(dummy_file)
     queue.put(event)
     assert queue.get() is event
@@ -74,8 +72,8 @@ def test_put_with_watchdog_events():
 def test_prevent_consecutive():
     q = SkipRepeatsQueue()
 
-    e1 = (2, 'fred')
-    e2 = (2, 'george')
+    e1 = (2, "fred")
+    e2 = (2, "george")
 
     q.put(e1)
     q.put(e1)  # repeat the first entry (this shouldn't get added)
@@ -89,10 +87,10 @@ def test_prevent_consecutive():
 def test_consecutives_allowed_across_empties():
     q = SkipRepeatsQueue()
 
-    e1 = (2, 'fred')
+    e1 = (2, "fred")
 
     q.put(e1)
-    q.put(e1)   # repeat the first entry (this shouldn't get added)
+    q.put(e1)  # repeat the first entry (this shouldn't get added)
 
     assert e1 == q.get()
     assert q.empty()

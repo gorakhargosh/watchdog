@@ -36,8 +36,8 @@ from watchdog.version import VERSION_STRING
 
 logging.basicConfig(level=logging.INFO)
 
-CONFIG_KEY_TRICKS = 'tricks'
-CONFIG_KEY_PYTHON_PATH = 'python-path'
+CONFIG_KEY_TRICKS = "tricks"
+CONFIG_KEY_PYTHON_PATH = "python-path"
 
 
 class HelpFormatter(RawDescriptionHelpFormatter):
@@ -52,60 +52,63 @@ class HelpFormatter(RawDescriptionHelpFormatter):
 
     def __init__(self, *args, max_help_position=6, **kwargs):
         # A smaller indent for args help.
-        kwargs['max_help_position'] = max_help_position
+        kwargs["max_help_position"] = max_help_position
         super().__init__(*args, **kwargs)
 
     def _split_lines(self, text, width):
-        text = dedent(text).strip() + '\n\n'
+        text = dedent(text).strip() + "\n\n"
         return text.splitlines()
 
 
-epilog = '''\
+epilog = """\
 Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
 Copyright 2012 Google, Inc & contributors.
 
 Licensed under the terms of the Apache license, version 2.0. Please see
-LICENSE in the source code for more information.'''
+LICENSE in the source code for more information."""
 
 cli = ArgumentParser(epilog=epilog, formatter_class=HelpFormatter)
-cli.add_argument('--version', action='version', version=VERSION_STRING)
-subparsers = cli.add_subparsers(dest='top_command')
+cli.add_argument("--version", action="version", version=VERSION_STRING)
+subparsers = cli.add_subparsers(dest="top_command")
 command_parsers = {}
 
 
 def argument(*name_or_flags, **kwargs):
     """Convenience function to properly format arguments to pass to the
-      command decorator.
+    command decorator.
     """
     return list(name_or_flags), kwargs
 
 
 def command(args=[], parent=subparsers, cmd_aliases=[]):
     """Decorator to define a new command in a sanity-preserving way.
-      The function will be stored in the ``func`` variable when the parser
-      parses arguments so that it can be called directly like so::
+    The function will be stored in the ``func`` variable when the parser
+    parses arguments so that it can be called directly like so::
 
-        >>> args = cli.parse_args()
-        >>> args.func(args)
+      >>> args = cli.parse_args()
+      >>> args.func(args)
 
     """
+
     def decorator(func):
-        name = func.__name__.replace('_', '-')
+        name = func.__name__.replace("_", "-")
         desc = dedent(func.__doc__)
-        parser = parent.add_parser(name,
-                                   description=desc,
-                                   aliases=cmd_aliases,
-                                   formatter_class=HelpFormatter)
+        parser = parent.add_parser(
+            name, description=desc, aliases=cmd_aliases, formatter_class=HelpFormatter
+        )
         command_parsers[name] = parser
         verbosity_group = parser.add_mutually_exclusive_group()
-        verbosity_group.add_argument('-q', '--quiet', dest='verbosity',
-                                     action='append_const', const=-1)
-        verbosity_group.add_argument('-v', '--verbose', dest='verbosity',
-                                     action='append_const', const=1)
+        verbosity_group.add_argument(
+            "-q", "--quiet", dest="verbosity", action="append_const", const=-1
+        )
+        verbosity_group.add_argument(
+            "-v", "--verbose", dest="verbosity", action="append_const", const=1
+        )
         for arg in args:
             parser.add_argument(*arg[0], **arg[1])
             parser.set_defaults(func=func)
         return func
+
     return decorator
 
 
@@ -146,18 +149,18 @@ def load_config(tricks_file_pathname):
     """
     import yaml
 
-    with open(tricks_file_pathname, 'rb') as f:
+    with open(tricks_file_pathname, "rb") as f:
         return yaml.safe_load(f.read())
 
 
-def parse_patterns(patterns_spec, ignore_patterns_spec, separator=';'):
+def parse_patterns(patterns_spec, ignore_patterns_spec, separator=";"):
     """
     Parses pattern argument specs and returns a two-tuple of
     (patterns, ignore_patterns).
     """
     patterns = patterns_spec.split(separator)
     ignore_patterns = ignore_patterns_spec.split(separator)
-    if ignore_patterns == ['']:
+    if ignore_patterns == [""]:
         ignore_patterns = []
     return (patterns, ignore_patterns)
 
@@ -204,42 +207,58 @@ def schedule_tricks(observer, tricks, pathname, recursive):
         for name, value in list(trick.items()):
             TrickClass = load_class(name)
             handler = TrickClass(**value)
-            trick_pathname = getattr(handler, 'source_directory', None) or pathname
+            trick_pathname = getattr(handler, "source_directory", None) or pathname
             observer.schedule(handler, trick_pathname, recursive)
 
 
-@command([argument('files',
-                   nargs='*',
-                   help='perform tricks from given file'),
-          argument('--python-path',
-                   default='.',
-                   help=f'Paths separated by {os.pathsep!r} to add to the Python path.'),
-          argument('--interval',
-                   '--timeout',
-                   dest='timeout',
-                   default=1.0,
-                   type=float,
-                   help='Use this as the polling interval/blocking timeout (in seconds).'),
-          argument('--recursive',
-                   action='store_true',
-                   default=True,
-                   help='Recursively monitor paths (defaults to True).'),
-          argument('--debug-force-polling',
-                   action='store_true',
-                   help='[debug] Forces polling.'),
-          argument('--debug-force-kqueue',
-                   action='store_true',
-                   help='[debug] Forces BSD kqueue(2).'),
-          argument('--debug-force-winapi',
-                   action='store_true',
-                   help='[debug] Forces Windows API.'),
-          argument('--debug-force-fsevents',
-                   action='store_true',
-                   help='[debug] Forces macOS FSEvents.'),
-          argument('--debug-force-inotify',
-                   action='store_true',
-                   help='[debug] Forces Linux inotify(7).')],
-         cmd_aliases=['tricks'])
+@command(
+    [
+        argument("files", nargs="*", help="perform tricks from given file"),
+        argument(
+            "--python-path",
+            default=".",
+            help=f"Paths separated by {os.pathsep!r} to add to the Python path.",
+        ),
+        argument(
+            "--interval",
+            "--timeout",
+            dest="timeout",
+            default=1.0,
+            type=float,
+            help="Use this as the polling interval/blocking timeout (in seconds).",
+        ),
+        argument(
+            "--recursive",
+            action="store_true",
+            default=True,
+            help="Recursively monitor paths (defaults to True).",
+        ),
+        argument(
+            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
+        ),
+        argument(
+            "--debug-force-kqueue",
+            action="store_true",
+            help="[debug] Forces BSD kqueue(2).",
+        ),
+        argument(
+            "--debug-force-winapi",
+            action="store_true",
+            help="[debug] Forces Windows API.",
+        ),
+        argument(
+            "--debug-force-fsevents",
+            action="store_true",
+            help="[debug] Forces macOS FSEvents.",
+        ),
+        argument(
+            "--debug-force-inotify",
+            action="store_true",
+            help="[debug] Forces Linux inotify(7).",
+        ),
+    ],
+    cmd_aliases=["tricks"],
+)
 def tricks_from(args):
     """
     Command to execute tricks from a tricks configuration file.
@@ -249,8 +268,9 @@ def tricks_from(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import\
-            WindowsApiObserver as Observer
+        from watchdog.observers.read_directory_changes import (
+            WindowsApiObserver as Observer,
+        )
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
     elif args.debug_force_fsevents:
@@ -273,8 +293,9 @@ def tricks_from(args):
         try:
             tricks = config[CONFIG_KEY_TRICKS]
         except KeyError:
-            raise KeyError("No %r key specified in %s." % (
-                           CONFIG_KEY_TRICKS, tricks_file))
+            raise KeyError(
+                "No %r key specified in %s." % (CONFIG_KEY_TRICKS, tricks_file)
+            )
 
         if CONFIG_KEY_PYTHON_PATH in config:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
@@ -297,25 +318,37 @@ def tricks_from(args):
         o.join()
 
 
-@command([argument('trick_paths',
-                   nargs='*',
-                   help='Dotted paths for all the tricks you want to generate.'),
-          argument('--python-path',
-                   default='.',
-                   help=f'Paths separated by {os.pathsep!r} to add to the Python path.'),
-          argument('--append-to-file',
-                   default=None,
-                   help='''
+@command(
+    [
+        argument(
+            "trick_paths",
+            nargs="*",
+            help="Dotted paths for all the tricks you want to generate.",
+        ),
+        argument(
+            "--python-path",
+            default=".",
+            help=f"Paths separated by {os.pathsep!r} to add to the Python path.",
+        ),
+        argument(
+            "--append-to-file",
+            default=None,
+            help="""
                    Appends the generated tricks YAML to a file.
-                   If not specified, prints to standard output.'''),
-          argument('-a',
-                   '--append-only',
-                   dest='append_only',
-                   action='store_true',
-                   help='''
+                   If not specified, prints to standard output.""",
+        ),
+        argument(
+            "-a",
+            "--append-only",
+            dest="append_only",
+            action="store_true",
+            help="""
                    If --append-to-file is not specified, produces output for
-                   appending instead of a complete tricks YAML file.''')],
-         cmd_aliases=['generate-tricks-yaml'])
+                   appending instead of a complete tricks YAML file.""",
+        ),
+    ],
+    cmd_aliases=["generate-tricks-yaml"],
+)
 def tricks_generate_yaml(args):
     """
     Command to generate Yaml configuration for tricks named on the command line.
@@ -343,60 +376,84 @@ def tricks_generate_yaml(args):
     else:
         if not os.path.exists(args.append_to_file):
             content = header + content
-        with open(args.append_to_file, 'ab') as output:
+        with open(args.append_to_file, "ab") as output:
             output.write(content)
 
 
-@command([argument('directories',
-                   nargs='*',
-                   default='.',
-                   help='Directories to watch. (default: \'.\').'),
-          argument('-p',
-                   '--pattern',
-                   '--patterns',
-                   dest='patterns',
-                   default='*',
-                   help='Matches event paths with these patterns (separated by ;).'),
-          argument('-i',
-                   '--ignore-pattern',
-                   '--ignore-patterns',
-                   dest='ignore_patterns',
-                   default='',
-                   help='Ignores event paths with these patterns (separated by ;).'),
-          argument('-D',
-                   '--ignore-directories',
-                   dest='ignore_directories',
-                   action='store_true',
-                   help='Ignores events for directories.'),
-          argument('-R',
-                   '--recursive',
-                   dest='recursive',
-                   action='store_true',
-                   help='Monitors the directories recursively.'),
-          argument('--interval',
-                   '--timeout',
-                   dest='timeout',
-                   default=1.0,
-                   type=float,
-                   help='Use this as the polling interval/blocking timeout.'),
-          argument('--trace',
-                   action='store_true',
-                   help='Dumps complete dispatching trace.'),
-          argument('--debug-force-polling',
-                   action='store_true',
-                   help='[debug] Forces polling.'),
-          argument('--debug-force-kqueue',
-                   action='store_true',
-                   help='[debug] Forces BSD kqueue(2).'),
-          argument('--debug-force-winapi',
-                   action='store_true',
-                   help='[debug] Forces Windows API.'),
-          argument('--debug-force-fsevents',
-                   action='store_true',
-                   help='[debug] Forces macOS FSEvents.'),
-          argument('--debug-force-inotify',
-                   action='store_true',
-                   help='[debug] Forces Linux inotify(7).')])
+@command(
+    [
+        argument(
+            "directories",
+            nargs="*",
+            default=".",
+            help="Directories to watch. (default: '.').",
+        ),
+        argument(
+            "-p",
+            "--pattern",
+            "--patterns",
+            dest="patterns",
+            default="*",
+            help="Matches event paths with these patterns (separated by ;).",
+        ),
+        argument(
+            "-i",
+            "--ignore-pattern",
+            "--ignore-patterns",
+            dest="ignore_patterns",
+            default="",
+            help="Ignores event paths with these patterns (separated by ;).",
+        ),
+        argument(
+            "-D",
+            "--ignore-directories",
+            dest="ignore_directories",
+            action="store_true",
+            help="Ignores events for directories.",
+        ),
+        argument(
+            "-R",
+            "--recursive",
+            dest="recursive",
+            action="store_true",
+            help="Monitors the directories recursively.",
+        ),
+        argument(
+            "--interval",
+            "--timeout",
+            dest="timeout",
+            default=1.0,
+            type=float,
+            help="Use this as the polling interval/blocking timeout.",
+        ),
+        argument(
+            "--trace", action="store_true", help="Dumps complete dispatching trace."
+        ),
+        argument(
+            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
+        ),
+        argument(
+            "--debug-force-kqueue",
+            action="store_true",
+            help="[debug] Forces BSD kqueue(2).",
+        ),
+        argument(
+            "--debug-force-winapi",
+            action="store_true",
+            help="[debug] Forces Windows API.",
+        ),
+        argument(
+            "--debug-force-fsevents",
+            action="store_true",
+            help="[debug] Forces macOS FSEvents.",
+        ),
+        argument(
+            "--debug-force-inotify",
+            action="store_true",
+            help="[debug] Forces Linux inotify(7).",
+        ),
+    ]
+)
 def log(args):
     """
     Command to log file system events to the console.
@@ -408,18 +465,20 @@ def log(args):
         class_module_logger = logging.getLogger(LoggerTrick.__module__)
         echo.echo_class(LoggerTrick, write=lambda msg: class_module_logger.info(msg))
 
-    patterns, ignore_patterns =\
-        parse_patterns(args.patterns, args.ignore_patterns)
-    handler = LoggerTrick(patterns=patterns,
-                          ignore_patterns=ignore_patterns,
-                          ignore_directories=args.ignore_directories)
+    patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
+    handler = LoggerTrick(
+        patterns=patterns,
+        ignore_patterns=ignore_patterns,
+        ignore_directories=args.ignore_directories,
+    )
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import\
-            WindowsApiObserver as Observer
+        from watchdog.observers.read_directory_changes import (
+            WindowsApiObserver as Observer,
+        )
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
     elif args.debug_force_fsevents:
@@ -432,15 +491,15 @@ def log(args):
     observe_with(observer, handler, args.directories, args.recursive)
 
 
-@command([argument('directories',
-                   nargs='*',
-                   default='.',
-                   help='Directories to watch.'),
-          argument('-c',
-                   '--command',
-                   dest='command',
-                   default=None,
-                   help='''
+@command(
+    [
+        argument("directories", nargs="*", default=".", help="Directories to watch."),
+        argument(
+            "-c",
+            "--command",
+            dest="command",
+            default=None,
+            help="""
     Shell command executed in response to matching events.
     These interpolation variables are available to your command string:
 
@@ -458,48 +517,67 @@ def log(args):
     Example:
 
         --command='echo "${watch_src_path}"'
-    '''),
-          argument('-p',
-                   '--pattern',
-                   '--patterns',
-                   dest='patterns',
-                   default='*',
-                   help='Matches event paths with these patterns (separated by ;).'),
-          argument('-i',
-                   '--ignore-pattern',
-                   '--ignore-patterns',
-                   dest='ignore_patterns',
-                   default='',
-                   help='Ignores event paths with these patterns (separated by ;).'),
-          argument('-D',
-                   '--ignore-directories',
-                   dest='ignore_directories',
-                   default=False,
-                   action='store_true',
-                   help='Ignores events for directories.'),
-          argument('-R',
-                   '--recursive',
-                   dest='recursive',
-                   action='store_true',
-                   help='Monitors the directories recursively.'),
-          argument('--interval',
-                   '--timeout',
-                   dest='timeout',
-                   default=1.0,
-                   type=float,
-                   help='Use this as the polling interval/blocking timeout.'),
-          argument('-w', '--wait',
-                   dest='wait_for_process',
-                   action='store_true',
-                   help='Wait for process to finish to avoid multiple simultaneous instances.'),
-          argument('-W', '--drop',
-                   dest='drop_during_process',
-                   action='store_true',
-                   help='Ignore events that occur while command is still being'
-                   ' executed to avoid multiple simultaneous instances.'),
-          argument('--debug-force-polling',
-                   action='store_true',
-                   help='[debug] Forces polling.')])
+    """,
+        ),
+        argument(
+            "-p",
+            "--pattern",
+            "--patterns",
+            dest="patterns",
+            default="*",
+            help="Matches event paths with these patterns (separated by ;).",
+        ),
+        argument(
+            "-i",
+            "--ignore-pattern",
+            "--ignore-patterns",
+            dest="ignore_patterns",
+            default="",
+            help="Ignores event paths with these patterns (separated by ;).",
+        ),
+        argument(
+            "-D",
+            "--ignore-directories",
+            dest="ignore_directories",
+            default=False,
+            action="store_true",
+            help="Ignores events for directories.",
+        ),
+        argument(
+            "-R",
+            "--recursive",
+            dest="recursive",
+            action="store_true",
+            help="Monitors the directories recursively.",
+        ),
+        argument(
+            "--interval",
+            "--timeout",
+            dest="timeout",
+            default=1.0,
+            type=float,
+            help="Use this as the polling interval/blocking timeout.",
+        ),
+        argument(
+            "-w",
+            "--wait",
+            dest="wait_for_process",
+            action="store_true",
+            help="Wait for process to finish to avoid multiple simultaneous instances.",
+        ),
+        argument(
+            "-W",
+            "--drop",
+            dest="drop_during_process",
+            action="store_true",
+            help="Ignore events that occur while command is still being"
+            " executed to avoid multiple simultaneous instances.",
+        ),
+        argument(
+            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
+        ),
+    ]
+)
 def shell_command(args):
     """
     Command to execute shell commands in response to file system events.
@@ -514,89 +592,115 @@ def shell_command(args):
     else:
         from watchdog.observers import Observer
 
-    patterns, ignore_patterns = parse_patterns(args.patterns,
-                                               args.ignore_patterns)
-    handler = ShellCommandTrick(shell_command=args.command,
-                                patterns=patterns,
-                                ignore_patterns=ignore_patterns,
-                                ignore_directories=args.ignore_directories,
-                                wait_for_process=args.wait_for_process,
-                                drop_during_process=args.drop_during_process)
+    patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
+    handler = ShellCommandTrick(
+        shell_command=args.command,
+        patterns=patterns,
+        ignore_patterns=ignore_patterns,
+        ignore_directories=args.ignore_directories,
+        wait_for_process=args.wait_for_process,
+        drop_during_process=args.drop_during_process,
+    )
     observer = Observer(timeout=args.timeout)
     observe_with(observer, handler, args.directories, args.recursive)
 
 
-@command([argument('command',
-                   help='Long-running command to run in a subprocess.'),
-          argument('command_args',
-                   metavar='arg',
-                   nargs='*',
-                   help='''
+@command(
+    [
+        argument("command", help="Long-running command to run in a subprocess."),
+        argument(
+            "command_args",
+            metavar="arg",
+            nargs="*",
+            help="""
     Command arguments.
 
     Note: Use -- before the command arguments, otherwise watchmedo will
     try to interpret them.
-    '''),
-          argument('-d',
-                   '--directory',
-                   dest='directories',
-                   metavar='DIRECTORY',
-                   action='append',
-                   help='Directory to watch. Use another -d or --directory option '
-                   'for each directory.'),
-          argument('-p',
-                   '--pattern',
-                   '--patterns',
-                   dest='patterns',
-                   default='*',
-                   help='Matches event paths with these patterns (separated by ;).'),
-          argument('-i',
-                   '--ignore-pattern',
-                   '--ignore-patterns',
-                   dest='ignore_patterns',
-                   default='',
-                   help='Ignores event paths with these patterns (separated by ;).'),
-          argument('-D',
-                   '--ignore-directories',
-                   dest='ignore_directories',
-                   default=False,
-                   action='store_true',
-                   help='Ignores events for directories.'),
-          argument('-R',
-                   '--recursive',
-                   dest='recursive',
-                   action='store_true',
-                   help='Monitors the directories recursively.'),
-          argument('--interval',
-                   '--timeout',
-                   dest='timeout',
-                   default=1.0,
-                   type=float,
-                   help='Use this as the polling interval/blocking timeout.'),
-          argument('--signal',
-                   dest='signal',
-                   default='SIGINT',
-                   help='Stop the subprocess with this signal (default SIGINT).'),
-          argument('--debug-force-polling',
-                   action='store_true',
-                   help='[debug] Forces polling.'),
-          argument('--kill-after',
-                   dest='kill_after',
-                   default=10.0,
-                   type=float,
-                   help='When stopping, kill the subprocess after the specified timeout '
-                   'in seconds (default 10.0).'),
-          argument('--debounce-interval',
-                   dest='debounce_interval',
-                   default=0.0,
-                   type=float,
-                   help='After a file change, Wait until the specified interval (in '
-                   'seconds) passes with no file changes, and only then restart.'),
-          argument('--no-restart-on-command-exit',
-                   dest='restart_on_command_exit',
-                   default=True,
-                   action='store_false',
-                   help="Don't auto-restart the command after it exits.")])
+    """,
+        ),
+        argument(
+            "-d",
+            "--directory",
+            dest="directories",
+            metavar="DIRECTORY",
+            action="append",
+            help="Directory to watch. Use another -d or --directory option "
+            "for each directory.",
+        ),
+        argument(
+            "-p",
+            "--pattern",
+            "--patterns",
+            dest="patterns",
+            default="*",
+            help="Matches event paths with these patterns (separated by ;).",
+        ),
+        argument(
+            "-i",
+            "--ignore-pattern",
+            "--ignore-patterns",
+            dest="ignore_patterns",
+            default="",
+            help="Ignores event paths with these patterns (separated by ;).",
+        ),
+        argument(
+            "-D",
+            "--ignore-directories",
+            dest="ignore_directories",
+            default=False,
+            action="store_true",
+            help="Ignores events for directories.",
+        ),
+        argument(
+            "-R",
+            "--recursive",
+            dest="recursive",
+            action="store_true",
+            help="Monitors the directories recursively.",
+        ),
+        argument(
+            "--interval",
+            "--timeout",
+            dest="timeout",
+            default=1.0,
+            type=float,
+            help="Use this as the polling interval/blocking timeout.",
+        ),
+        argument(
+            "--signal",
+            dest="signal",
+            default="SIGINT",
+            help="Stop the subprocess with this signal (default SIGINT).",
+        ),
+        argument(
+            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
+        ),
+        argument(
+            "--kill-after",
+            dest="kill_after",
+            default=10.0,
+            type=float,
+            help="When stopping, kill the subprocess after the specified timeout "
+            "in seconds (default 10.0).",
+        ),
+        argument(
+            "--debounce-interval",
+            dest="debounce_interval",
+            default=0.0,
+            type=float,
+            help="After a file change, Wait until the specified interval (in "
+            "seconds) passes with no file changes, and only then restart.",
+        ),
+        argument(
+            "--no-restart-on-command-exit",
+            dest="restart_on_command_exit",
+            default=True,
+            action="store_false",
+            help="Don't auto-restart the command after it exits.",
+        ),
+    ]
+)
 def auto_restart(args):
     """
     Command to start a long-running subprocess and restart it on matched events.
@@ -611,7 +715,7 @@ def auto_restart(args):
     import signal
 
     if not args.directories:
-        args.directories = ['.']
+        args.directories = ["."]
 
     # Allow either signal name or number.
     if args.signal.startswith("SIG"):
@@ -635,18 +739,19 @@ def auto_restart(args):
     for signum in termination_signals:
         signal.signal(signum, handler_termination_signal)
 
-    patterns, ignore_patterns = parse_patterns(args.patterns,
-                                               args.ignore_patterns)
+    patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     command = [args.command]
     command.extend(args.command_args)
-    handler = AutoRestartTrick(command=command,
-                               patterns=patterns,
-                               ignore_patterns=ignore_patterns,
-                               ignore_directories=args.ignore_directories,
-                               stop_signal=stop_signal,
-                               kill_after=args.kill_after,
-                               debounce_interval_seconds=args.debounce_interval,
-                               restart_on_command_exit=args.restart_on_command_exit)
+    handler = AutoRestartTrick(
+        command=command,
+        patterns=patterns,
+        ignore_patterns=ignore_patterns,
+        ignore_directories=args.ignore_directories,
+        stop_signal=stop_signal,
+        kill_after=args.kill_after,
+        debounce_interval_seconds=args.debounce_interval,
+        restart_on_command_exit=args.restart_on_command_exit,
+    )
     handler.start()
     observer = Observer(timeout=args.timeout)
     try:
@@ -667,7 +772,7 @@ def _get_log_level_from_args(args):
         raise LogLevelException("-q/--quiet may be specified only once.")
     if verbosity > 2:
         raise LogLevelException("-v/--verbose may be specified up to 2 times.")
-    return ['ERROR', 'WARNING', 'INFO', 'DEBUG'][1 + verbosity]
+    return ["ERROR", "WARNING", "INFO", "DEBUG"][1 + verbosity]
 
 
 def main():
@@ -683,7 +788,7 @@ def main():
         print("Error: " + exc.args[0], file=sys.stderr)
         command_parsers[args.top_command].print_help()
         return 1
-    logging.getLogger('watchdog').setLevel(log_level)
+    logging.getLogger("watchdog").setLevel(log_level)
 
     try:
         args.func(args)
@@ -693,5 +798,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
