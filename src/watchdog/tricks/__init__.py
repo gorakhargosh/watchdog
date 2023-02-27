@@ -101,6 +101,14 @@ class LoggerTrick(Trick):
     def on_moved(self, event):
         pass
 
+    @echo_events
+    def on_closed(self, event):
+        pass
+
+    @echo_events
+    def on_opened(self, event):
+        pass
+
 
 class ShellCommandTrick(Trick):
 
