@@ -10,6 +10,7 @@ include docs/*.txt
 include docs/*.xml
 include docs/Makefile
 include docs/make.bat
+include requirements-tests.txt
 recursive-include docs/source *
 recursive-include tests *.py
 #global-exclude .DS_Store

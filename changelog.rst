@@ -9,6 +9,7 @@ Changelog
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.3.0...HEAD>`__
 
 - Run ``black`` on the entire source code
+- Bundle the ``requirements-tests.txt`` file in the source distribution (`#939 <https://github.com/gorakhargosh/watchdog/pull/939>`__)
 - [watchmedo] Exclude ``FileOpenedEvent`` events from ``AutoRestartTrick``, and ``ShellCommandTrick``, to restore watchdog < 2.3.0 behavior. A better solution should be found in the future. (`#949 <https://github.com/gorakhargosh/watchdog/pull/949>`__)
 - [watchmedo] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggerTrick``
 - Thanks to our beloved contributors: @BoboTiG
