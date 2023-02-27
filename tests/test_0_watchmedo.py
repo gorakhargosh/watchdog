@@ -100,6 +100,36 @@ def test_shell_command_subprocess_termination_nowait(tmpdir):
     assert not trick.is_process_running()
 
 
+def test_shell_command_subprocess_termination_not_happening_on_file_opened_event(
+    tmpdir,
+):
+    # FIXME: see issue #949, and find a way to better handle that scenario
+    script = make_dummy_script(tmpdir, n=1)
+    command = " ".join([sys.executable, script])
+    trick = ShellCommandTrick(command, wait_for_process=False)
+    assert not trick.is_process_running()
+    trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
+    assert not trick.is_process_running()
+    time.sleep(5)
+    assert not trick.is_process_running()
+
+
+def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
+    # FIXME: see issue #949, and find a way to better handle that scenario
+    script = make_dummy_script(tmpdir, n=2)
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
+    time.sleep(1)
+    trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
+    trick.on_any_event(FileOpenedEvent("foo/bar2.baz"))
+    trick.on_any_event(FileOpenedEvent("foo/bar3.baz"))
+    time.sleep(1)
+    trick.stop()
+    cap = capfd.readouterr()
+    assert cap.out.splitlines(keepends=False).count("+++++ 0") == 1
+    assert trick.restart_count == 0
+
+
 def test_auto_restart_on_file_change(tmpdir, capfd):
     """Simulate changing 3 files.
 

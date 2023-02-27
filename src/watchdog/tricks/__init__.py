@@ -47,7 +47,7 @@ import subprocess
 import threading
 import time
 
-from watchdog.events import PatternMatchingEventHandler
+from watchdog.events import PatternMatchingEventHandler, EVENT_TYPE_OPENED
 from watchdog.utils import echo
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
@@ -128,6 +128,10 @@ class ShellCommandTrick(Trick):
         self._process_watchers = set()
 
     def on_any_event(self, event):
+        if event.event_type == EVENT_TYPE_OPENED:
+            # FIXME: see issue #949, and find a way to better handle that scenario
+            return
+
         from string import Template
 
         if self.drop_during_process and self.is_process_running():
@@ -293,6 +297,10 @@ class AutoRestartTrick(Trick):
 
     @echo_events
     def on_any_event(self, event):
+        if event.event_type == EVENT_TYPE_OPENED:
+            # FIXME: see issue #949, and find a way to better handle that scenario
+            return
+
         if self.event_debouncer is not None:
             self.event_debouncer.handle_event(event)
         else:
