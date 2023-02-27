@@ -30,7 +30,7 @@ if (
     or not hasattr(libc, "inotify_add_watch")
     or not hasattr(libc, "inotify_rm_watch")
 ):
-    raise UnsupportedLibc("Unsupported libc version found: %s" % libc._name)
+    raise UnsupportedLibc(f"Unsupported libc version found: {libc._name}")
 
 inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
     ("inotify_add_watch", libc)
@@ -166,8 +166,8 @@ class Inotify:
         self._lock = threading.Lock()
 
         # Stores the watch descriptor for a given path.
-        self._wd_for_path = dict()
-        self._path_for_wd = dict()
+        self._wd_for_path = {}
+        self._path_for_wd = {}
 
         self._path = path
         self._event_mask = event_mask
@@ -176,7 +176,7 @@ class Inotify:
             self._add_dir_watch(path, recursive, event_mask)
         else:
             self._add_watch(path, event_mask)
-        self._moved_from_events = dict()
+        self._moved_from_events = {}
 
     @property
     def event_mask(self):
@@ -200,7 +200,7 @@ class Inotify:
 
     def clear_move_records(self):
         """Clear cached records of MOVED_FROM events"""
-        self._moved_from_events = dict()
+        self._moved_from_events = {}
 
     def source_for_move(self, destination_event):
         """
@@ -425,11 +425,7 @@ class Inotify:
             raise OSError(errno.ENOSPC, "inotify watch limit reached")
         elif err == errno.EMFILE:
             raise OSError(errno.EMFILE, "inotify instance limit reached")
-        elif err == errno.EACCES:
-            # Prevent raising an exception when a file with no permissions
-            # changes
-            pass
-        else:
+        elif err != errno.EACCES:
             raise OSError(err, os.strerror(err))
 
     @staticmethod
@@ -593,17 +589,11 @@ class InotifyEvent:
                 c_val = getattr(InotifyConstants, c)
                 if mask & c_val:
                     masks.append(c)
-        mask_string = "|".join(masks)
-        return mask_string
+        return "|".join(masks)
 
     def __repr__(self):
-        mask_string = self._get_mask_string(self.mask)
-        s = "<%s: src_path=%r, wd=%d, mask=%s, cookie=%d, name=%s>"
-        return s % (
-            type(self).__name__,
-            self.src_path,
-            self.wd,
-            mask_string,
-            self.cookie,
-            os.fsdecode(self.name),
+        return (
+            f"<{type(self).__name__}: src_path={self.src_path!r}, wd={self.wd},"
+            f" mask={self._get_mask_string(self.mask)}, cookie={self.cookie},"
+            f" name={os.fsdecode(self.name)!r}>"
         )

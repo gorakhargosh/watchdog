@@ -294,7 +294,7 @@ def tricks_from(args):
             tricks = config[CONFIG_KEY_TRICKS]
         except KeyError:
             raise KeyError(
-                "No %r key specified in %s." % (CONFIG_KEY_TRICKS, tricks_file)
+                f"No {CONFIG_KEY_TRICKS!r} key specified in {tricks_file!r}."
             )
 
         if CONFIG_KEY_PYTHON_PATH in config:
@@ -367,7 +367,7 @@ def tricks_generate_yaml(args):
     output.close()
 
     header = yaml.dump({CONFIG_KEY_PYTHON_PATH: python_paths})
-    header += "%s:\n" % CONFIG_KEY_TRICKS
+    header += f"{CONFIG_KEY_TRICKS}:\n"
     if args.append_to_file is None:
         # Output to standard output.
         if not args.append_only:
@@ -785,7 +785,7 @@ def main():
     try:
         log_level = _get_log_level_from_args(args)
     except LogLevelException as exc:
-        print("Error: " + exc.args[0], file=sys.stderr)
+        print(f"Error: {exc.args[0]}", file=sys.stderr)
         command_parsers[args.top_command].print_help()
         return 1
     logging.getLogger("watchdog").setLevel(log_level)

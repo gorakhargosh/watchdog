@@ -81,7 +81,7 @@ def format_arg_value(arg_val):
     'x=(1, 2, 3)'
     """
     arg, val = arg_val
-    return "%s=%r" % (arg, val)
+    return f"{arg}={val!r}"
 
 
 def echo(fn, write=sys.stdout.write):
@@ -139,15 +139,13 @@ def echo_instancemethod(klass, method, write=sys.stdout.write):
 def echo_class(klass, write=sys.stdout.write):
     """Echo calls to class methods and static functions"""
     for _, method in inspect.getmembers(klass, inspect.ismethod):
-        assert 0
-        # In python 3 only class methods are returned here, but in python2 instance methods are too.
+        # In python 3 only class methods are returned here
         echo_instancemethod(klass, method, write)
     for _, fn in inspect.getmembers(klass, inspect.isfunction):
         if is_static_method(fn, klass):
             setattr(klass, name(fn), staticmethod(echo(fn, write)))
         else:
             # It's not a class or a static method, so it must be an instance method.
-            # This should only be called in python 3, because in python 3 instance methods are considered functions.
             echo_instancemethod(klass, fn, write)
 
 

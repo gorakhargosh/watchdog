@@ -183,16 +183,8 @@ class FileSystemMovedEvent(FileSystemEvent):
 
     def __repr__(self):
         return (
-            "<%(class_name)s: src_path=%(src_path)r, "
-            "dest_path=%(dest_path)r, "
-            "is_directory=%(is_directory)s>"
-        ) % (
-            dict(
-                class_name=self.__class__.__name__,
-                src_path=self.src_path,
-                dest_path=self.dest_path,
-                is_directory=self.is_directory,
-            )
+            f"<{type(self).__name__}: src_path={self.src_path!r}, "
+            f"dest_path={self.dest_path!r}, is_directory={self.is_directory}>"
         )
 
 

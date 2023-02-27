@@ -81,7 +81,7 @@ def test_move_internal_batch(p):
     n = 100
     mkdir(p("dir1"))
     mkdir(p("dir2"))
-    files = ["%d" % i for i in range(n)]
+    files = [str(i) for i in range(n)]
     for f in files:
         touch(p("dir1", f))
 

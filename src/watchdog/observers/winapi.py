@@ -400,10 +400,8 @@ class WinAPINativeEvent:
         return self.action == FILE_ACTION_REMOVED_SELF
 
     def __repr__(self):
-        return "<%s: action=%d, src_path=%r>" % (
-            type(self).__name__,
-            self.action,
-            self.src_path,
+        return (
+            f"<{type(self).__name__}: action={self.action}, src_path={self.src_path!r}>"
         )
 
 

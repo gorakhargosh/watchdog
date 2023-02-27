@@ -54,7 +54,7 @@ def test_load_config_invalid(tmpdir):
 
 
 def make_dummy_script(tmpdir, n=10):
-    script = os.path.join(tmpdir, "auto-test-%d.py" % n)
+    script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
         f.write(
             'import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i, flush=True)\n\ttime.sleep(1)\n'

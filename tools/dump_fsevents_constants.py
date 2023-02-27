@@ -18,7 +18,7 @@ def dump_constants(header):
     for attribute in dir(FSEvents):
         value = getattr(FSEvents, attribute)
         if attribute.startswith("k") and isinstance(value, int):
-            output.write("    %s = %s\n" % (attribute, hex(value)))
+            output.write(f"    {attribute} = {hex(value)}\n")
     content = output.getvalue()
     output.close()
     return content

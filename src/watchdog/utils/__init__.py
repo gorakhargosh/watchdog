@@ -98,7 +98,7 @@ def load_module(module_name):
     try:
         __import__(module_name)
     except ImportError:
-        raise ImportError("No module named %s" % module_name)
+        raise ImportError(f"No module named {module_name}")
     return sys.modules[module_name]
 
 
@@ -121,22 +121,19 @@ def load_class(dotted_path):
     - module.name.ClasNam      # Typo in classname.
     """
     dotted_path_split = dotted_path.split(".")
-    if len(dotted_path_split) > 1:
-        klass_name = dotted_path_split[-1]
-        module_name = ".".join(dotted_path_split[:-1])
-
-        module = load_module(module_name)
-        if hasattr(module, klass_name):
-            klass = getattr(module, klass_name)
-            return klass
-            # Finally create and return an instance of the class
-            # return klass(*args, **kwargs)
-        else:
-            raise AttributeError(
-                "Module %s does not have class attribute %s" % (module_name, klass_name)
-            )
-    else:
+    if len(dotted_path_split) <= 1:
         raise ValueError(
-            "Dotted module path %s must contain a module name and a classname"
-            % dotted_path
+            f"Dotted module path {dotted_path} must contain a module name and a classname"
+        )
+    klass_name = dotted_path_split[-1]
+    module_name = ".".join(dotted_path_split[:-1])
+
+    module = load_module(module_name)
+    if hasattr(module, klass_name):
+        return getattr(module, klass_name)
+        # Finally create and return an instance of the class
+        # return klass(*args, **kwargs)
+    else:
+        raise AttributeError(
+            f"Module {module_name} does not have class attribute {klass_name}"
         )

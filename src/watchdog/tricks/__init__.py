@@ -62,8 +62,7 @@ class Trick(PatternMatchingEventHandler):
 
     @classmethod
     def generate_yaml(cls):
-        context = dict(module_name=cls.__module__, klass_name=cls.__name__)
-        template_yaml = """- %(module_name)s.%(klass_name)s:
+        return f"""- {cls.__module__}.{cls.__name__}:
   args:
   - argument1
   - argument2
@@ -75,7 +74,6 @@ class Trick(PatternMatchingEventHandler):
     - "version.py"
     ignore_directories: false
 """
-        return template_yaml % context
 
 
 class LoggerTrick(Trick):

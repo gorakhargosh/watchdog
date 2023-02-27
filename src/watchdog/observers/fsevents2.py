@@ -137,7 +137,7 @@ class FSEventsQueue(Thread):
             NativeEvent(path, flags, _id)
             for path, flags, _id in zip(eventPaths, eventFlags, eventIDs)
         ]
-        logger.debug("FSEvents callback. Got %d events:" % numEvents)
+        logger.debug(f"FSEvents callback. Got {numEvents} events:")
         for e in events:
             logger.debug(e)
         self._queue.put(events)
@@ -185,14 +185,9 @@ class NativeEvent:
         return "Unknown"
 
     def __repr__(self):
-        s = "<%s: path=%s, type=%s, is_dir=%s, flags=%s, id=%s>"
-        return s % (
-            type(self).__name__,
-            repr(self.path),
-            self._event_type,
-            self.is_directory,
-            hex(self.flags),
-            self.event_id,
+        return (
+            f"<{type(self).__name__}: path={self.path!r}, type={self._event_type},"
+            f" is_dir={self.is_directory}, flags={hex(self.flags)}, id={self.event_id}>"
         )
 
 

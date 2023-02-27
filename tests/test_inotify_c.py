@@ -59,13 +59,13 @@ def struct_inotify(wd, mask, cookie=0, length=0, name=b""):
         "i"  # uint32_t mask
         "i"  # uint32_t cookie
         "i"  # uint32_t len
-        "%ds" % (length,)  # char[] name
+        f"{length}s"  # char[] name
     )
     return struct.pack(struct_format, wd, mask, cookie, length, name)
 
 
 def test_late_double_deletion():
-    inotify_fd = type(str("FD"), (object,), {})()  # Empty object
+    inotify_fd = type("FD", (object,), {})()
     inotify_fd.last = 0
     inotify_fd.wds = []
 
@@ -105,12 +105,12 @@ def test_late_double_deletion():
 
     def inotify_add_watch(fd, path, mask):
         fd.last += 1
-        logger.debug("New wd = %d" % fd.last)
+        logger.debug(f"New wd = {fd.last}")
         fd.wds.append(fd.last)
         return fd.last
 
     def inotify_rm_watch(fd, wd):
-        logger.debug("Removing wd = %d" % wd)
+        logger.debug(f"Removing wd = {wd}")
         fd.wds.remove(wd)
         return 0
 
