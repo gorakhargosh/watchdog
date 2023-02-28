@@ -6,7 +6,7 @@ Changelog
 2.3.1
 ~~~~~
 
-2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.3.0...HEAD>`__
+2023-02-28 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.3.0...v2.3.1>`__
 
 - Run ``black`` on the entire source code
 - Bundle the ``requirements-tests.txt`` file in the source distribution (`#939 <https://github.com/gorakhargosh/watchdog/pull/939>`__)
