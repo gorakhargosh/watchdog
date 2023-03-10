@@ -114,7 +114,7 @@ class FileSystemEvent:
     can be used as keys in dictionaries or be added to sets.
     """
 
-    event_type = None
+    event_type = ""
     """The type of the event as a string."""
 
     is_directory = False

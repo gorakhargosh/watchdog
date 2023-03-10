@@ -50,33 +50,38 @@ Class          Platforms                        Note
 
 """
 
+import sys
 import warnings
-from watchdog.utils import platform
-from watchdog.utils import UnsupportedLibc
+from typing import Type
 
-if platform.is_linux():
+from watchdog.utils import UnsupportedLibc
+from .api import BaseObserver
+
+Observer: Type[BaseObserver]
+
+
+if sys.platform.startswith("linux"):
     try:
         from .inotify import InotifyObserver as Observer
     except UnsupportedLibc:
         from .polling import PollingObserver as Observer
 
-elif platform.is_darwin():
+elif sys.platform.startswith("darwin"):
     try:
         from .fsevents import FSEventsObserver as Observer
     except Exception:
         try:
-            from .kqueue import KqueueObserver as Observer
-
+            from .kqueue import KqueueObserver as Observer  # type: ignore[attr-defined,no-redef]
             warnings.warn("Failed to import fsevents. Fall back to kqueue")
         except Exception:
             from .polling import PollingObserver as Observer
 
             warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
 
-elif platform.is_bsd():
-    from .kqueue import KqueueObserver as Observer
+elif sys.platform in ("dragonfly", "freebsd", "netbsd", "openbsd", "bsd"):
+    from .kqueue import KqueueObserver as Observer  # type: ignore[attr-defined,no-redef]
 
-elif platform.is_windows():
+elif sys.platform.startswith("win"):
     try:
         from .read_directory_changes import WindowsApiObserver as Observer
     except Exception:

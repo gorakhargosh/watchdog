@@ -5,3 +5,6 @@ pytest
 pytest-cov
 pytest-timeout
 sphinx
+# mypy testing
+mypy
+types-PyYAML
