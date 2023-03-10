@@ -45,15 +45,6 @@ jobs:
           - "3.10"
           - "3.11"
           - "pypy-3.7"
-        include:
-          # Python 3.6 is unavailable on ubuntu-latest.
-          # It must be included manually for each OS.
-          - os: ubuntu-20.04
-            python: "3.6"
-          - os: windows-latest
-            python: "3.6"
-          - os: macos-latest
-            python: "3.6"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
