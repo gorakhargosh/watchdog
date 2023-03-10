@@ -18,7 +18,7 @@
 # depending on which platform it's running on.
 # The comment below disables mypy's attribute check.
 #
-# type: ignore[attr-defined]
+# mypy: disable-error-code=attr-defined
 #
 
 """
