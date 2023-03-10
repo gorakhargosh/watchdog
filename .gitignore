@@ -44,3 +44,4 @@ include/
 lib/
 /bootstrap.py
 venv/
+.venv/
