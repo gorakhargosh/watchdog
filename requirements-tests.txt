@@ -5,5 +5,5 @@ pytest
 pytest-cov
 pytest-timeout
 sphinx
-mypy; implementation_name != "pypy" or python_version >= "3.8"
-types-PyYAML; implementation_name != "pypy" or python_version >= "3.8"
+mypy
+types-PyYAML
