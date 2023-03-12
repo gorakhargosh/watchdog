@@ -13,11 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import pytest
-from watchdog.utils import platform
 
-if not platform.is_windows():  # noqa
+# make pytest aware this is windows only
+if not sys.platform.startswith("win"):  # noqa
     pytest.skip("Windows only.", allow_module_level=True)
+
+# make mypy aware this is windows only and provide a clear runtime error just in case
+assert sys.platform.startswith("win"), f"{__name__} requires Windows"
 
 import os
 import os.path
