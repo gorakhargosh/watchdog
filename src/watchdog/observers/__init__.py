@@ -71,7 +71,7 @@ elif sys.platform.startswith("darwin"):
         from .fsevents import FSEventsObserver as Observer
     except Exception:
         try:
-            from .kqueue import KqueueObserver as Observer  # type: ignore[attr-defined,no-redef]
+            from .kqueue import KqueueObserver as Observer
             warnings.warn("Failed to import fsevents. Fall back to kqueue")
         except Exception:
             from .polling import PollingObserver as Observer
@@ -79,7 +79,7 @@ elif sys.platform.startswith("darwin"):
             warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
 
 elif sys.platform in ("dragonfly", "freebsd", "netbsd", "openbsd", "bsd"):
-    from .kqueue import KqueueObserver as Observer  # type: ignore[attr-defined,no-redef]
+    from .kqueue import KqueueObserver as Observer
 
 elif sys.platform.startswith("win"):
     try:
