@@ -20,9 +20,8 @@ on:
     branches:
       - master
   pull_request:
-    paths:
-      - ".github/workflows/build-and-publish.yml"
-      - "setup.*"
+    branches:
+      - '**'
 
   workflow_dispatch:
     inputs:
