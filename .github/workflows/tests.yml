@@ -15,16 +15,26 @@ on:
 
 jobs:
   tox:
-    name: ${{ matrix.tox.name }} ${{ matrix.os.name }} ${{ matrix.python }}
+    name: ${{ matrix.tox.name }} ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
     runs-on: ${{ matrix.os.runs-on }}
     strategy:
       fail-fast: false
       matrix:
         tox:
-          - name: mypy
-            environment: mypy
           - name: Test
             environment: py
+          - name: mypy
+            environment: mypy
+        os:
+          - name: Linux
+            emoji: 🐧
+            runs-on: [ubuntu-latest]
+          - name: macOS
+            emoji: 🍎
+            runs-on: [macos-latest]
+          - name: Windows
+            emoji: 🪟
+            runs-on: [windows-latest]
         python:
           - "3.7"
           - "3.8"
@@ -33,13 +43,6 @@ jobs:
           - "3.11"
           - "pypy-3.8"
           - "pypy-3.9"
-        os:
-          - name: Linux
-            runs-on: [ubuntu-latest]
-          - name: macOS
-            runs-on: [macos-latest]
-          - name: Windows
-            runs-on: [windows-latest]
         include:
           - tox:
               name: Flake8
