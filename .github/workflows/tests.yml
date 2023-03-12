@@ -50,6 +50,7 @@ jobs:
             python: "3.11"
             os:
               name: Linux
+              emoji: 🐧
               runs-on: [ubuntu-latest]
           - tox:
               name: Docs
@@ -57,6 +58,7 @@ jobs:
             python: "3.11"
             os:
               name: Linux
+              emoji: 🐧
               runs-on: [ubuntu-latest]
 
     steps:
