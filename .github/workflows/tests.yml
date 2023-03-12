@@ -5,13 +5,8 @@ on:
     branches:
       - master
   pull_request:
-    paths:
-      - ".github/workflows/tests.yml"
-      - "requirements-tests.txt"
-      - "setup.*"
-      - "src/**/*"
-      - "tests/*.py"
-      - "docs/**/*"
+    branches:
+      - '**'
 
 jobs:
   lint:
