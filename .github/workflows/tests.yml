@@ -8,6 +8,10 @@ on:
     branches:
       - '**'
 
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && '' || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Linting
