@@ -26,7 +26,7 @@ import logging
 import os
 import threading
 import unicodedata
-import _watchdog_fsevents as _fsevents  # type: ignore
+import _watchdog_fsevents as _fsevents  # type: ignore[import]
 
 from watchdog.events import (
     FileDeletedEvent,
