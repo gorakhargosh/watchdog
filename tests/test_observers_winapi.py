@@ -30,7 +30,7 @@ from watchdog.observers.api import ObservedWatch
 from .shell import mkdir, mkdtemp, mv, rm
 
 # make pytest aware this is windows only
-if not sys.platform.startswith("win"):  # noqa
+if not sys.platform.startswith("win"):
     pytest.skip("Windows only.", allow_module_level=True)
 
 # make mypy aware this is windows only and provide a clear runtime error just in case
