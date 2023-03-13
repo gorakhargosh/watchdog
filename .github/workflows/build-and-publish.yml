@@ -38,6 +38,7 @@ jobs:
   macos-built-distributions:
     name: Build macOS wheels
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -62,6 +63,7 @@ jobs:
   pure-built-distributions:
     name: Build pure wheels
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -87,6 +89,7 @@ jobs:
   source-distribution:
     name: Build source distribution
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -111,6 +114,7 @@ jobs:
       - pure-built-distributions
       - source-distribution
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@v2
