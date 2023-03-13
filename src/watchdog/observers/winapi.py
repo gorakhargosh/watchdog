@@ -35,10 +35,10 @@
 # new BSD license.
 
 import sys
-assert sys.platform.startswith("win"), f"{__name__} requires Windows"
-
-import ctypes.wintypes
 from functools import reduce
+
+assert sys.platform.startswith("win"), f"{__name__} requires Windows"
+import ctypes.wintypes  # noqa: E402
 
 LPVOID = ctypes.wintypes.LPVOID
 

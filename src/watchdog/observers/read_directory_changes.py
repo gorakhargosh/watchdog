@@ -15,8 +15,6 @@
 # limitations under the License.
 
 import sys
-assert sys.platform.startswith("win"), f"{__name__} requires Windows"
-
 import threading
 import os.path
 import time
@@ -42,7 +40,9 @@ from watchdog.observers.api import (
     DEFAULT_EMITTER_TIMEOUT,
 )
 
-from watchdog.observers.winapi import (
+assert sys.platform.startswith("win"), f"{__name__} requires Windows"
+
+from watchdog.observers.winapi import (  # noqa: E402
     read_events,
     get_directory_handle,
     close_directory_handle,
