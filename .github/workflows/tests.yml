@@ -16,14 +16,17 @@ jobs:
   tox:
     name: ${{ matrix.tox.name }} ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
     runs-on: ${{ matrix.os.runs-on }}
+    timeout-minutes: ${{ matrix.tox.timeout }}
     strategy:
       fail-fast: false
       matrix:
         tox:
           - name: Test
             environment: py
+            timeout: 15
           - name: mypy
             environment: mypy
+            timeout: 15
         os:
           - name: Linux
             emoji: 🐧
@@ -46,6 +49,7 @@ jobs:
           - tox:
               name: Flake8
               environment: flake8
+              timeout: 5
             python: "3.11"
             os:
               name: Linux
@@ -54,6 +58,7 @@ jobs:
           - tox:
               name: Docs
               environment: docs
+              timeout: 5
             python: "3.11"
             os:
               name: Linux
