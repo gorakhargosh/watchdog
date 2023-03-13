@@ -55,9 +55,6 @@ class BaseThread(threading.Thread):
             self.setDaemon(True)
         self._stopped_event = threading.Event()
 
-        if not hasattr(self._stopped_event, "is_set"):
-            self._stopped_event.is_set = self._stopped_event.isSet
-
     @property
     def stopped_event(self):
         return self._stopped_event
