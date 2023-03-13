@@ -14,6 +14,7 @@
 
 import os
 import stat
+import sys
 import time
 import pytest
 import logging
@@ -39,17 +40,17 @@ from watchdog.observers.api import EventEmitter, ObservedWatch
 
 Emitter: Type[EventEmitter]
 
-if platform.is_linux():
+if sys.platform.startswith("linux"):
     from watchdog.observers.inotify import (
         InotifyEmitter as Emitter,
         InotifyFullEmitter,
     )
-elif platform.is_darwin():
+elif sys.platform.startswith("darwin"):
     from watchdog.observers.fsevents import FSEventsEmitter as Emitter
-elif platform.is_windows():
+elif sys.platform.startswith("win"):
     from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
-elif platform.is_bsd():
-    from watchdog.observers.kqueue import (  # type: ignore[attr-defined,no-redef]
+elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
+    from watchdog.observers.kqueue import (
         KqueueEmitter as Emitter
     )
 
