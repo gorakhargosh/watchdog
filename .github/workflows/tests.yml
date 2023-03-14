@@ -57,7 +57,7 @@ jobs:
               runs-on: [ubuntu-latest]
           - tox:
               name: isort
-              environment: isort
+              environment: isort-ci
               timeout: 5
             python: "3.11"
             os:
