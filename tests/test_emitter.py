@@ -106,6 +106,8 @@ class Helper:
     ) -> EventEmitter:
         # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
         path = self.tmp if path is None else path
+
+        emitter: EventEmitter
         if sys.platform.startswith("linux") and use_full_emitter:
             emitter = InotifyFullEmitter(
                 self.event_queue, ObservedWatch(path, recursive=recursive)
