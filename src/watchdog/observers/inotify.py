@@ -66,6 +66,7 @@ Some extremely useful articles and documentation:
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 
@@ -86,6 +87,9 @@ from watchdog.events import (
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
 from .inotify_buffer import InotifyBuffer
+
+
+logger = logging.getLogger(__name__)
 
 
 class InotifyEmitter(EventEmitter):
@@ -121,6 +125,9 @@ class InotifyEmitter(EventEmitter):
     def queue_events(self, timeout, full_events=False):
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
+        if self._inotify is None:
+            logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+            return
         with self._lock:
             event = self._inotify.read_event()
             if event is None:

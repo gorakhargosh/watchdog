@@ -376,7 +376,7 @@ def tricks_generate_yaml(args):
     else:
         if not os.path.exists(args.append_to_file):
             content = header + content
-        with open(args.append_to_file, "ab") as output:
+        with open(args.append_to_file, "a", encoding="utf-8") as output:
             output.write(content)
 
 
