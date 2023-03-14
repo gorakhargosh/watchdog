@@ -52,7 +52,6 @@ Class          Platforms                        Note
 
 import sys
 import warnings
-from typing import Type
 
 from watchdog.utils import UnsupportedLibc
 from .api import BaseObserverSubclassCallable

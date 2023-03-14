@@ -30,7 +30,6 @@ import time
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from textwrap import dedent
-from typing import TYPE_CHECKING, Type
 
 from watchdog.observers.api import BaseObserverSubclassCallable
 from watchdog.utils import WatchdogShutdown, load_class

@@ -20,7 +20,7 @@ import pytest
 import logging
 from functools import partial
 from queue import Queue, Empty
-from typing import Callable, Protocol, Tuple, Type, Union
+from typing import Protocol, Tuple
 
 from .shell import mkfile, mkdir, touch, mv, rm
 from watchdog.utils import platform
@@ -67,9 +67,13 @@ if platform.is_darwin():
 class P(Protocol):
     def __call__(self, *args: str) -> str:
         ...
+
+
 p: P
 emitter: EventEmitter
 event_queue: Queue[Tuple[FileSystemEvent, ObservedWatch]]
+
+
 @pytest.fixture(autouse=True)
 def setup_teardown(tmpdir):
     global p, emitter, event_queue
