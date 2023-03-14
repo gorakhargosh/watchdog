@@ -17,7 +17,7 @@ from unittest.mock import patch
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
 
-from .util import TestEventQueue, P, StartWatching
+from .util import Helper, TestEventQueue, P, StartWatching
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def struct_inotify(wd, mask, cookie=0, length=0, name=b""):
     return struct.pack(struct_format, wd, mask, cookie, length, name)
 
 
-def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching):
+def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     inotify_fd = type("FD", (object,), {})()
     inotify_fd.last = 0
     inotify_fd.wds = []
@@ -131,7 +131,7 @@ def test_raise_error(error, patterns):
     assert any(pattern in str(exc.value) for pattern in patterns)
 
 
-def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
+def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     """
     Inotify can construct an event for a path containing non-ASCII.
     """
@@ -145,7 +145,7 @@ def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: Start
     assert repr(event)
 
 
-def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
+def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     path = p("this_is_a_file")
     with open(path, "a"):
         pass
@@ -155,7 +155,7 @@ def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatc
     assert repr(event)
 
 
-def test_event_equality(p: P):
+def test_event_equality(p: P) -> None:
     wd_parent_dir = 42
     filename = "file.ext"
     full_path = p(filename)

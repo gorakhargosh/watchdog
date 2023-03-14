@@ -4,8 +4,9 @@ import dataclasses
 import os
 import sys
 from queue import Empty, Queue
-from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union
+from typing import List, Optional, Tuple, Type, Union
 from watchdog.observers.api import EventEmitter, ObservedWatch
+from watchdog.utils import Protocol
 
 
 from watchdog.events import FileSystemEvent
@@ -21,15 +22,6 @@ elif sys.platform.startswith("win"):
     from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
 elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
     from watchdog.observers.kqueue import KqueueEmitter as Emitter
-
-
-if TYPE_CHECKING or sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    # Provide a dummy Protocol class when not available from stdlib.  Should be used
-    # only for hinting.
-    class Protocol:
-        ...
 
 
 class P(Protocol):
@@ -52,8 +44,6 @@ class ExpectEvent(Protocol):
         ...
 
 
-# if TYPE_CHECKING:
-#     TestEventQueue = Queue[Tuple[FileSystemEvent, ObservedWatch]]
 TestEventQueue = Union["Queue[Tuple[FileSystemEvent, ObservedWatch]]"]
 
 

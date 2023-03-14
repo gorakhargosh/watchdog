@@ -54,13 +54,12 @@ from __future__ import annotations
 
 import sys
 import warnings
-from typing import Type
 
 from watchdog.utils import UnsupportedLibc
 
-from .api import BaseObserver
+from .api import BaseObserverSubclassCallable
 
-Observer: Type[BaseObserver]
+Observer: BaseObserverSubclassCallable
 
 
 if sys.platform.startswith("linux"):

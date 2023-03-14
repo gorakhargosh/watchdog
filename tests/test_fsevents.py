@@ -20,7 +20,7 @@ import _watchdog_fsevents as _fsevents  # type: ignore[import]
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.observers.api import ObservedWatch
+from watchdog.observers.api import BaseObserver, ObservedWatch
 from watchdog.observers.fsevents import FSEventsEmitter
 
 from .shell import touch
@@ -73,7 +73,7 @@ def test_coalesced_event_check(event, expectation):
     assert event.is_coalesced == expectation
 
 
-def test_add_watch_twice(observer: Observer, p: P):
+def test_add_watch_twice(observer: BaseObserver, p: P) -> None:
     """Adding the same watch twice used to result in a null pointer return without an exception.
 
     See https://github.com/gorakhargosh/watchdog/issues/765
@@ -95,7 +95,7 @@ def test_add_watch_twice(observer: Observer, p: P):
 
 
 def test_watcher_deletion_while_receiving_events_1(
-    caplog,
+    caplog: pytest.LogCaptureFixture,
     p: P,
     emitter: FSEventsEmitter,
     start_watching: StartWatching,
@@ -132,7 +132,7 @@ def test_watcher_deletion_while_receiving_events_1(
 
 
 def test_watcher_deletion_while_receiving_events_2(
-    caplog,
+    caplog: pytest.LogCaptureFixture,
     p: P,
     start_watching: StartWatching,
     emitter: FSEventsEmitter,
@@ -211,7 +211,7 @@ def test_remove_watch_twice(start_watching: StartWatching, emitter: FSEventsEmit
     emitter.stop()
 
 
-def test_unschedule_removed_folder(observer, p: P) -> None:
+def test_unschedule_removed_folder(observer: BaseObserver, p: P) -> None:
     """
     TypeError: PyCObject_AsVoidPtr called with null pointer
     The above exception was the direct cause of the following exception:
