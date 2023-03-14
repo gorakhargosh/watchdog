@@ -9,7 +9,7 @@ from functools import partial
 
 import pytest
 
-from .util import Helper, TestEventQueue, P, StartWatching, ExpectEvent
+from .utils import Helper, TestEventQueue, P, StartWatching, ExpectEvent
 
 
 @pytest.fixture()

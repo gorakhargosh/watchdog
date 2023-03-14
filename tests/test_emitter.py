@@ -38,7 +38,7 @@ from watchdog.events import (
 from watchdog.utils import platform
 
 from .shell import mkdir, mkfile, mv, rm, touch
-from .util import TestEventQueue, P, StartWatching, ExpectEvent
+from .utils import TestEventQueue, P, StartWatching, ExpectEvent
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
