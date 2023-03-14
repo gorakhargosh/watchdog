@@ -88,7 +88,6 @@ from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIM
 
 from .inotify_buffer import InotifyBuffer
 
-
 logger = logging.getLogger(__name__)
 
 
