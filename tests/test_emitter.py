@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import dataclasses
 import os
 import stat
 import sys
 import time
 import pytest
 import logging
-from functools import partial
 from queue import Queue, Empty
-from typing import Type
+from typing import List, Optional, Protocol, Tuple, Type
 
 from .shell import mkfile, mkdir, touch, mv, rm
 from watchdog.utils import platform
@@ -29,6 +30,7 @@ from watchdog.events import (
     FileModifiedEvent,
     FileCreatedEvent,
     FileMovedEvent,
+    FileSystemEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
@@ -64,34 +66,98 @@ if platform.is_darwin():
     fsevents_logger.setLevel(logging.DEBUG)
 
 
-@pytest.fixture(autouse=True)
-def setup_teardown(tmpdir):
-    global p, emitter, event_queue
-    p = partial(os.path.join, tmpdir)
-    event_queue = Queue()
-
-    yield
-
-    emitter.stop()
-    emitter.join(5)
-    assert not emitter.is_alive()
+class P(Protocol):
+    def __call__(self, *args: str) -> str:
+        ...
 
 
-def start_watching(path=None, use_full_emitter=False, recursive=True):
-    # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
-    path = p() if path is None else path
-    global emitter
-    if platform.is_linux() and use_full_emitter:
-        emitter = InotifyFullEmitter(
-            event_queue, ObservedWatch(path, recursive=recursive)
-        )
-    else:
-        emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive))
+class StartWatching(Protocol):
+    def __call__(self, path: Optional[str] = ..., use_full_emitter: bool = ..., recursive: bool = ...) -> str:
+        ...
 
-    if platform.is_darwin():
-        emitter.suppress_history = True
 
-    emitter.start()
+class ExpectEvent(Protocol):
+    def __call__(self, expected_event: FileSystemEvent, timeout: float = ...) -> str:
+        ...
+
+
+TestEventQueue = Queue[Tuple[FileSystemEvent, ObservedWatch]]
+
+
+@dataclasses.dataclass()
+class Helper:
+    tmp: str
+    emitters: List[EventEmitter] = dataclasses.field(default_factory=list)
+    event_queue: TestEventQueue = dataclasses.field(default_factory=Queue)
+
+    def joinpath(self, *args: str) -> str:
+        return os.path.join(self.tmp, *args)
+
+    def start_watching(self, path=None, use_full_emitter=False, recursive=True):
+        # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
+        path = self.tmp if path is None else path
+        if platform.is_linux() and use_full_emitter:
+            emitter = InotifyFullEmitter(
+                self.event_queue, ObservedWatch(path, recursive=recursive)
+            )
+        else:
+            emitter = Emitter(self.event_queue, ObservedWatch(path, recursive=recursive))
+
+        self.emitters.append(emitter)
+
+        if platform.is_darwin():
+            emitter.suppress_history = True
+
+        emitter.start()
+
+        return emitter
+
+    def expect_event(self, expected_event: FileSystemEvent, timeout=2):
+        """Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
+
+        Provides some robustness for the otherwise flaky nature of asynchronous notifications.
+        """
+        try:
+            event = self.event_queue.get(timeout=timeout)[0]
+            assert event == expected_event
+        except Empty:
+            raise
+
+    def close(self) -> None:
+        for emitter in self.emitters:
+            emitter.stop()
+
+        for emitter in self.emitters:
+            emitter.join(5)
+
+        alive = [emitter.is_alive() for emitter in self.emitters]
+        assert alive == [False] * len(alive)
+
+
+@pytest.fixture(name="helper")
+def helper_fixture(tmpdir):
+    with contextlib.closing(Helper(tmp=os.fspath(tmpdir))) as helper:
+        yield helper
+
+
+@pytest.fixture(name="p")
+def p_fixture(helper: Helper) -> P:
+    return helper.joinpath
+
+
+@pytest.fixture(name="event_queue")
+def event_queue_fixture(helper: Helper) -> TestEventQueue:
+    return helper.event_queue
+
+
+@pytest.fixture(name="start_watching")
+def start_watching_fixture(helper: Helper) -> StartWatching:
+    return helper.start_watching
+
+
+@pytest.fixture(name="expect_event")
+def expect_event_fixture(helper: Helper) -> StartWatching:
+    return helper.expect_event
 
 
 def rerun_filter(exc, *args):
@@ -102,20 +168,8 @@ def rerun_filter(exc, *args):
     return False
 
 
-def expect_event(expected_event, timeout=2):
-    """Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
-
-    Provides some robustness for the otherwise flaky nature of asynchronous notifications.
-    """
-    try:
-        event = event_queue.get(timeout=timeout)[0]
-        assert event == expected_event
-    except Empty:
-        raise
-
-
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_create():
+def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent):
     start_watching()
     open(p("a"), "a").close()
 
@@ -137,7 +191,7 @@ def test_create():
     not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux"
 )
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_close():
+def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     f_d = open(p("a"), "a")
     start_watching()
     f_d.close()
@@ -162,7 +216,7 @@ def test_close():
     platform.is_darwin() or platform.is_windows(),
     reason="Windows and macOS enforce proper encoding",
 )
-def test_create_wrong_encoding():
+def test_create_wrong_encoding(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     start_watching()
     open(p("a_\udce4"), "a").close()
 
@@ -177,7 +231,7 @@ def test_create_wrong_encoding():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_delete():
+def test_delete(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
     mkfile(p("a"))
 
     start_watching()
@@ -190,7 +244,7 @@ def test_delete():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_modify():
+def test_modify(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent):
     mkfile(p("a"))
     start_watching()
 
@@ -210,7 +264,7 @@ def test_modify():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_chmod():
+def test_chmod(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
     mkfile(p("a"))
     start_watching()
 
@@ -225,7 +279,7 @@ def test_chmod():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_move():
+def test_move(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
@@ -254,7 +308,7 @@ def test_move():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_case_change():
+def test_case_change(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "file"))
@@ -283,7 +337,7 @@ def test_case_change():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_move_to():
+def test_move_to(p: P, start_watching: StartWatching):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
@@ -300,7 +354,7 @@ def test_move_to():
 @pytest.mark.skipif(
     not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux"
 )
-def test_move_to_full():
+def test_move_to_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
@@ -314,7 +368,7 @@ def test_move_to_full():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_move_from():
+def test_move_from(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
@@ -331,7 +385,7 @@ def test_move_from():
 @pytest.mark.skipif(
     not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux"
 )
-def test_move_from_full():
+def test_move_from_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
@@ -345,7 +399,7 @@ def test_move_from_full():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_separate_consecutive_moves():
+def test_separate_consecutive_moves(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
     mkdir(p("dir1"))
     mkfile(p("dir1", "a"))
     mkfile(p("b"))
@@ -375,9 +429,9 @@ def test_separate_consecutive_moves():
 @pytest.mark.skipif(
     platform.is_bsd(), reason="BSD create another set of events for this test"
 )
-def test_delete_self():
+def test_delete_self(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
     mkdir(p("dir1"))
-    start_watching(p("dir1"))
+    emitter = start_watching(p("dir1"))
     rm(p("dir1"), True)
     expect_event(DirDeletedEvent(p("dir1")))
     emitter.join(5)
@@ -388,7 +442,7 @@ def test_delete_self():
     platform.is_windows() or platform.is_bsd(),
     reason="Windows|BSD create another set of events for this test",
 )
-def test_fast_subdirectory_creation_deletion():
+def test_fast_subdirectory_creation_deletion(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     root_dir = p("dir1")
     sub_dir = p("dir1", "subdir1")
     times = 30
@@ -422,7 +476,7 @@ def test_fast_subdirectory_creation_deletion():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_passing_unicode_should_give_unicode():
+def test_passing_unicode_should_give_unicode(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     start_watching(str(p()))
     mkfile(p("a"))
     event = event_queue.get(timeout=5)[0]
@@ -433,7 +487,7 @@ def test_passing_unicode_should_give_unicode():
     platform.is_windows(),
     reason="Windows ReadDirectoryChangesW supports only" " unicode for paths.",
 )
-def test_passing_bytes_should_give_bytes():
+def test_passing_bytes_should_give_bytes(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     start_watching(p().encode())
     mkfile(p("a"))
     event = event_queue.get(timeout=5)[0]
@@ -441,7 +495,7 @@ def test_passing_bytes_should_give_bytes():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_recursive_on():
+def test_recursive_on(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     mkdir(p("dir1", "dir2", "dir3"), True)
     start_watching()
     touch(p("dir1", "dir2", "dir3", "a"))
@@ -467,7 +521,7 @@ def test_recursive_on():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_recursive_off():
+def test_recursive_off(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent):
     mkdir(p("dir1"))
     start_watching(recursive=False)
     touch(p("dir1", "a"))
@@ -510,7 +564,12 @@ def test_recursive_off():
 @pytest.mark.skipif(
     platform.is_windows(), reason="Windows create another set of events for this test"
 )
-def test_renaming_top_level_directory():
+def test_renaming_top_level_directory(
+    p: P,
+    event_queue: TestEventQueue,
+    start_watching: StartWatching,
+    expect_event: ExpectEvent,
+):
     start_watching()
 
     mkdir(p("a"))
@@ -571,7 +630,7 @@ def test_renaming_top_level_directory():
     not platform.is_windows(),
     reason="Non-Windows create another set of events for this test",
 )
-def test_renaming_top_level_directory_on_windows():
+def test_renaming_top_level_directory_on_windows(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     start_watching()
 
     mkdir(p("a"))
@@ -630,7 +689,12 @@ def test_renaming_top_level_directory_on_windows():
 @pytest.mark.skipif(
     platform.is_windows(), reason="Windows create another set of events for this test"
 )
-def test_move_nested_subdirectories():
+def test_move_nested_subdirectories(
+    p: P,
+    event_queue: TestEventQueue,
+    start_watching: StartWatching,
+    expect_event: ExpectEvent,
+):
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
     start_watching()
@@ -669,7 +733,7 @@ def test_move_nested_subdirectories():
     not platform.is_windows(),
     reason="Non-Windows create another set of events for this test",
 )
-def test_move_nested_subdirectories_on_windows():
+def test_move_nested_subdirectories_on_windows(p: P, event_queue: TestEventQueue, start_watching: StartWatching):
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
     start_watching(p(""))
@@ -712,7 +776,7 @@ def test_move_nested_subdirectories_on_windows():
 @pytest.mark.skipif(
     platform.is_bsd(), reason="BSD create another set of events for this test"
 )
-def test_file_lifecyle():
+def test_file_lifecyle(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
     start_watching()
 
     mkfile(p("a"))
