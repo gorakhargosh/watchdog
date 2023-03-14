@@ -44,6 +44,7 @@ import logging
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
 
@@ -320,7 +321,7 @@ class AutoRestartTrick(Trick):
         self.restart_count += 1
 
 
-if hasattr(os, "getpgid") and hasattr(os, "killpg"):
+if not sys.platform.startswith("win"):
 
     def kill_process(pid, stop_signal):
         os.killpg(os.getpgid(pid), stop_signal)

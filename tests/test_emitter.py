@@ -20,7 +20,7 @@ import pytest
 import logging
 from functools import partial
 from queue import Queue, Empty
-from typing import Type
+from typing import Callable, Protocol, Tuple, Type, Union
 
 from .shell import mkfile, mkdir, touch, mv, rm
 from watchdog.utils import platform
@@ -29,6 +29,7 @@ from watchdog.events import (
     FileModifiedEvent,
     FileCreatedEvent,
     FileMovedEvent,
+    FileSystemEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirCreatedEvent,
@@ -64,6 +65,12 @@ if platform.is_darwin():
     fsevents_logger.setLevel(logging.DEBUG)
 
 
+class P(Protocol):
+    def __call__(self, *args: str) -> str:
+        ...
+p: P
+emitter: EventEmitter
+event_queue: Queue[Tuple[FileSystemEvent, ObservedWatch]]
 @pytest.fixture(autouse=True)
 def setup_teardown(tmpdir):
     global p, emitter, event_queue
@@ -81,14 +88,14 @@ def start_watching(path=None, use_full_emitter=False, recursive=True):
     # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
     path = p() if path is None else path
     global emitter
-    if platform.is_linux() and use_full_emitter:
+    if sys.platform.startswith("linux") and use_full_emitter:
         emitter = InotifyFullEmitter(
             event_queue, ObservedWatch(path, recursive=recursive)
         )
     else:
         emitter = Emitter(event_queue, ObservedWatch(path, recursive=recursive))
 
-    if platform.is_darwin():
+    if sys.platform.startswith("darwin"):
         emitter.suppress_history = True
 
     emitter.start()

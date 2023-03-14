@@ -143,8 +143,9 @@ def delay_call(function, seconds):
 class InotifyBufferDelayedRead(InotifyBuffer):
     def run(self, *args, **kwargs):
         # Introduce a delay to trigger the race condition where the file descriptor is
-        # closed prior to a read being triggered.
-        self._inotify.read_events = delay_call(
+        # closed prior to a read being triggered.  Ignoring type concerns since we are
+        # intentionally doing something odd.
+        self._inotify.read_events = delay_call(  # type: ignore[method-assign]
             function=self._inotify.read_events, seconds=1
         )
 

@@ -562,17 +562,17 @@ def generate_sub_moved_events(src_dir_path, dest_dir_path):
             renamed_path = (
                 full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
             )
-            event = DirMovedEvent(renamed_path, full_path)
-            event.is_synthetic = True
-            yield event
+            dir_moved_event = DirMovedEvent(renamed_path, full_path)
+            dir_moved_event.is_synthetic = True
+            yield dir_moved_event
         for filename in filenames:
             full_path = os.path.join(root, filename)
             renamed_path = (
                 full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else None
             )
-            event = FileMovedEvent(renamed_path, full_path)
-            event.is_synthetic = True
-            yield event
+            file_moved_event = FileMovedEvent(renamed_path, full_path)
+            file_moved_event.is_synthetic = True
+            yield file_moved_event
 
 
 def generate_sub_created_events(src_dir_path):
@@ -588,10 +588,10 @@ def generate_sub_created_events(src_dir_path):
     """
     for root, directories, filenames in os.walk(src_dir_path):
         for directory in directories:
-            event = DirCreatedEvent(os.path.join(root, directory))
-            event.is_synthetic = True
-            yield event
+            dir_created_event = DirCreatedEvent(os.path.join(root, directory))
+            dir_created_event.is_synthetic = True
+            yield dir_created_event
         for filename in filenames:
-            event = FileCreatedEvent(os.path.join(root, filename))
-            event.is_synthetic = True
-            yield event
+            file_created_event = FileCreatedEvent(os.path.join(root, filename))
+            file_created_event.is_synthetic = True
+            yield file_created_event

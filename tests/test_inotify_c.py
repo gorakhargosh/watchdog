@@ -12,9 +12,10 @@ import os
 import struct
 from functools import partial
 from queue import Queue
+from typing import Callable, Protocol, Tuple, Union
 from unittest.mock import patch
 
-from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
+from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent, FileSystemEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
 from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
@@ -26,6 +27,12 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+class P(Protocol):
+    def __call__(self, *args: str) -> str:
+        ...
+p: P
+emitter: InotifyEmitter
+event_queue: Queue[Tuple[FileSystemEvent, ObservedWatch]]
 def setup_function(function):
     global p, event_queue
     tmpdir = os.path.realpath(mkdtemp())

@@ -16,6 +16,7 @@
 import queue
 import threading
 from pathlib import Path
+from typing import Protocol
 
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
@@ -377,3 +378,8 @@ class BaseObserver(EventDispatcher):
                 if handler in self._handlers.get(watch, []):
                     handler.dispatch(event)
         event_queue.task_done()
+
+
+class BaseObserverSubclassCallable(Protocol):
+    def __call__(self, timeout: float = ...) -> BaseObserver:
+        ...

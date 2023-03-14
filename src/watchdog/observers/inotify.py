@@ -64,8 +64,10 @@ Some extremely useful articles and documentation:
 
 """
 
+import logging
 import os
 import threading
+from typing import Type
 from .inotify_buffer import InotifyBuffer
 
 from watchdog.observers.api import (
@@ -86,9 +88,13 @@ from watchdog.events import (
     FileCreatedEvent,
     FileClosedEvent,
     FileOpenedEvent,
+    FileSystemEvent,
     generate_sub_moved_events,
     generate_sub_created_events,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class InotifyEmitter(EventEmitter):
@@ -125,9 +131,14 @@ class InotifyEmitter(EventEmitter):
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         with self._lock:
+            if self._inotify is None:
+                logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+                return
             event = self._inotify.read_event()
             if event is None:
                 return
+
+            cls: Type[FileSystemEvent]
             if isinstance(event, tuple):
                 move_from, move_to = event
                 src_path = self._decode_path(move_from.src_path)

@@ -172,14 +172,15 @@ def test_ignore_device(p):
 
     inode_orig = DirectorySnapshot.inode
 
+    inode_times = 0
+
     def inode(self, path):
         # This function will always return a different device_id,
         # even for the same file.
+        nonlocal inode_times
         result = inode_orig(self, path)
-        inode.times += 1
-        return result[0], result[1] + inode.times
-
-    inode.times = 0
+        inode_times += 1
+        return result[0], result[1] + inode_times
 
     # Set the custom inode function.
     with patch.object(DirectorySnapshot, "inode", new=inode):

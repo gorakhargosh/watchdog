@@ -15,17 +15,21 @@
 import time
 import threading
 from collections import deque
+from typing import Callable, Deque, Generic, Optional, Tuple, TypeVar
 
 
-class DelayedQueue:
+T = TypeVar("T")
+
+
+class DelayedQueue(Generic[T]):
     def __init__(self, delay):
         self.delay_sec = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
-        self._queue = deque()
+        self._queue: Deque[Tuple[T, float, bool]] = deque()
         self._closed = False
 
-    def put(self, element, delay=False):
+    def put(self, element: T, delay: bool = False) -> None:
         """Add element to queue."""
         self._lock.acquire()
         self._queue.append((element, time.time(), delay))
@@ -40,7 +44,7 @@ class DelayedQueue:
         self._not_empty.notify()
         self._not_empty.release()
 
-    def get(self):
+    def get(self) -> Optional[T]:
         """Remove and return an element from the queue, or this queue has been
         closed raise the Closed exception.
         """
@@ -69,7 +73,7 @@ class DelayedQueue:
                     self._queue.popleft()
                     return head
 
-    def remove(self, predicate):
+    def remove(self, predicate: Callable[[T], bool]) -> Optional[T]:
         """Remove and return the first items for which predicate is True,
         ignoring delay."""
         with self._lock:
