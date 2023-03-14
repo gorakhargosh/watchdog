@@ -17,7 +17,7 @@ from unittest.mock import patch
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
 
-from .utils import Helper, TestEventQueue, P, StartWatching
+from .utils import Helper, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

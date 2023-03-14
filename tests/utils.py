@@ -5,11 +5,10 @@ import os
 import sys
 from queue import Empty, Queue
 from typing import List, Optional, Tuple, Type, Union
-from watchdog.observers.api import EventEmitter, ObservedWatch
-from watchdog.utils import Protocol
-
 
 from watchdog.events import FileSystemEvent
+from watchdog.observers.api import EventEmitter, ObservedWatch
+from watchdog.utils import Protocol
 
 Emitter: Type[EventEmitter]
 

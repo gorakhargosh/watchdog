@@ -4,12 +4,12 @@ import contextlib
 import gc
 import os
 import threading
-from typing import TYPE_CHECKING
 from functools import partial
+from typing import TYPE_CHECKING
 
 import pytest
 
-from .utils import Helper, TestEventQueue, P, StartWatching, ExpectEvent
+from .utils import ExpectEvent, Helper, P, StartWatching, TestEventQueue
 
 
 @pytest.fixture()

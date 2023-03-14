@@ -24,7 +24,7 @@ from watchdog.observers.api import BaseObserver, ObservedWatch
 from watchdog.observers.fsevents import FSEventsEmitter
 
 from .shell import touch
-from .utils import TestEventQueue, P, StartWatching
+from .utils import P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
