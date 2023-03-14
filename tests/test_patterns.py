@@ -1,7 +1,10 @@
 # Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2020 Boris Staletic <boris.staletic@gmail.com>
 
+from __future__ import annotations
+
 import pytest
+
 from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
 
 

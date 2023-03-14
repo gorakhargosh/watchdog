@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import logging
 import threading
 
 from watchdog.utils import BaseThread
-
 
 logger = logging.getLogger(__name__)
 

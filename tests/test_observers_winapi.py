@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import os.path
 import sys
@@ -21,10 +23,7 @@ from time import sleep
 
 import pytest
 
-from watchdog.events import (
-    DirCreatedEvent,
-    DirMovedEvent,
-)
+from watchdog.events import DirCreatedEvent, DirMovedEvent
 from watchdog.observers.api import ObservedWatch
 
 from .shell import mkdir, mkdtemp, mv, rm
@@ -37,7 +36,6 @@ if not sys.platform.startswith("win"):
 assert sys.platform.startswith("win"), f"{__name__} requires Windows"
 
 from watchdog.observers.read_directory_changes import WindowsApiEmitter  # noqa: E402
-
 
 SLEEP_TIME = 2
 

@@ -12,49 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import contextlib
 import dataclasses
+import logging
 import os
 import stat
 import sys
 import time
-import pytest
-import logging
-from queue import Queue, Empty
+from queue import Empty, Queue
 from typing import List, Optional, Protocol, Tuple, Type, Union
 
-from .shell import mkfile, mkdir, touch, mv, rm
-from watchdog.utils import platform
+import pytest
+
 from watchdog.events import (
-    FileDeletedEvent,
-    FileModifiedEvent,
-    FileCreatedEvent,
-    FileMovedEvent,
-    FileSystemEvent,
+    DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
-    DirCreatedEvent,
     DirMovedEvent,
     FileClosedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
     FileOpenedEvent,
+    FileSystemEvent,
 )
 from watchdog.observers.api import EventEmitter, ObservedWatch
+from watchdog.utils import platform
+
+from .shell import mkdir, mkfile, mv, rm, touch
 
 Emitter: Type[EventEmitter]
 
 if sys.platform.startswith("linux"):
-    from watchdog.observers.inotify import (
-        InotifyEmitter as Emitter,
-        InotifyFullEmitter,
-    )
+    from watchdog.observers.inotify import InotifyEmitter as Emitter
+    from watchdog.observers.inotify import InotifyFullEmitter
 elif sys.platform.startswith("darwin"):
     from watchdog.observers.fsevents import FSEventsEmitter as Emitter
 elif sys.platform.startswith("win"):
     from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
 elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
-    from watchdog.observers.kqueue import (
-        KqueueEmitter as Emitter
-    )
+    from watchdog.observers.kqueue import KqueueEmitter as Emitter
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

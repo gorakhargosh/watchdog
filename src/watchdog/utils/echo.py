@@ -30,6 +30,8 @@ Example:
   def my_function(args):
       pass
 """
+from __future__ import annotations
+
 import inspect
 import sys
 
