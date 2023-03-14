@@ -272,8 +272,8 @@ def tricks_from(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import (
-            WindowsApiObserver as Observer,  # type:ignore[attr-defined,no-redef]
+        from watchdog.observers.read_directory_changes import (  # type:ignore[attr-defined,no-redef]
+            WindowsApiObserver as Observer,
         )
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
@@ -482,8 +482,8 @@ def log(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import (
-            WindowsApiObserver as Observer,  # type:ignore[attr-defined,no-redef]
+        from watchdog.observers.read_directory_changes import (  # type:ignore[attr-defined,no-redef]
+            WindowsApiObserver as Observer,
         )
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
