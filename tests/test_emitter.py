@@ -39,7 +39,6 @@ from watchdog.events import (
 )
 from watchdog.observers.api import EventEmitter, ObservedWatch
 
-Emitter: Type[EventEmitter]
 
 if sys.platform.startswith("linux"):
     from watchdog.observers.inotify import (
