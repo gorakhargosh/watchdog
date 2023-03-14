@@ -231,11 +231,7 @@ def test_unschedule_removed_folder(observer: BaseObserver, p: P) -> None:
     observer.unschedule(w)
 
 
-def test_converting_cfstring_to_pyunicode(
-    p: P,
-    start_watching: StartWatching,
-    event_queue: TestEventQueue,
-) -> None:
+def test_converting_cfstring_to_pyunicode(p: P, start_watching: StartWatching, event_queue: TestEventQueue) -> None:
     """See https://github.com/gorakhargosh/watchdog/issues/762"""
 
     tmpdir = p()
