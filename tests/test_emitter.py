@@ -127,6 +127,10 @@ class Helper:
         self.emitters.append(emitter)
 
         if sys.platform.startswith("darwin"):
+            # TODO: I think this could be better...  .suppress_history should maybe
+            #       become a common attribute.
+            from watchdog.observers.fsevents import FSEventsEmitter
+            assert isinstance(emitter, FSEventsEmitter)
             emitter.suppress_history = True
 
         emitter.start()
