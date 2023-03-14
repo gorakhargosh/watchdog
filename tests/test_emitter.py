@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from queue import Empty, Queue
-from typing import List, Optional, Protocol, Tuple, Type, Union
+from typing import List, Optional, TYPE_CHECKING, Tuple, Type, Union
 
 import pytest
 
@@ -55,6 +55,14 @@ elif sys.platform.startswith("win"):
     from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
 elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
     from watchdog.observers.kqueue import KqueueEmitter as Emitter
+
+if TYPE_CHECKING or sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    # Provide a dummy Protocol class when not available from stdlib.  Should be used
+    # only for hinting.
+    class Protocol:
+        ...
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
