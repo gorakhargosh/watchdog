@@ -129,7 +129,7 @@ class InotifyEmitter(EventEmitter):
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         if self._inotify is None:
-            logger.error("InotifyEmitter.queue_events() called when the thread is inactive"
+            logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
             return
         with self._lock:
             event = self._inotify.read_event()
