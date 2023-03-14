@@ -18,63 +18,57 @@
 :platforms: macOS
 """
 
-import os
+from __future__ import annotations
+
 import logging
+import os
 import queue
 import unicodedata
 import warnings
 from threading import Thread
 from typing import List, Optional, Type
 
-from watchdog.events import (
-    FileDeletedEvent,
-    FileModifiedEvent,
-    FileCreatedEvent,
-    FileMovedEvent,
-    FileSystemEvent,
-    DirDeletedEvent,
-    DirModifiedEvent,
-    DirCreatedEvent,
-    DirMovedEvent,
-)
-from watchdog.observers.api import (
-    BaseObserver,
-    EventEmitter,
-    DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT,
-)
-
 # pyobjc
 import AppKit  # type: ignore[import]
 from FSEvents import (  # type: ignore[import]
-    FSEventStreamCreate,
     CFRunLoopGetCurrent,
-    FSEventStreamScheduleWithRunLoop,
-    FSEventStreamStart,
     CFRunLoopRun,
     CFRunLoopStop,
-    FSEventStreamStop,
+    FSEventStreamCreate,
     FSEventStreamInvalidate,
     FSEventStreamRelease,
-)
-
-from FSEvents import (
+    FSEventStreamScheduleWithRunLoop,
+    FSEventStreamStart,
+    FSEventStreamStop,
     kCFAllocatorDefault,
     kCFRunLoopDefaultMode,
-    kFSEventStreamEventIdSinceNow,
-    kFSEventStreamCreateFlagNoDefer,
     kFSEventStreamCreateFlagFileEvents,
-    kFSEventStreamEventFlagItemCreated,
-    kFSEventStreamEventFlagItemRemoved,
-    kFSEventStreamEventFlagItemInodeMetaMod,
-    kFSEventStreamEventFlagItemRenamed,
-    kFSEventStreamEventFlagItemModified,
-    kFSEventStreamEventFlagItemFinderInfoMod,
+    kFSEventStreamCreateFlagNoDefer,
     kFSEventStreamEventFlagItemChangeOwner,
-    kFSEventStreamEventFlagItemXattrMod,
+    kFSEventStreamEventFlagItemCreated,
+    kFSEventStreamEventFlagItemFinderInfoMod,
+    kFSEventStreamEventFlagItemInodeMetaMod,
     kFSEventStreamEventFlagItemIsDir,
     kFSEventStreamEventFlagItemIsSymlink,
+    kFSEventStreamEventFlagItemModified,
+    kFSEventStreamEventFlagItemRemoved,
+    kFSEventStreamEventFlagItemRenamed,
+    kFSEventStreamEventFlagItemXattrMod,
+    kFSEventStreamEventIdSinceNow,
 )
+
+from watchdog.events import (
+    DirCreatedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileSystemEvent,
+)
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
 logger = logging.getLogger(__name__)
 

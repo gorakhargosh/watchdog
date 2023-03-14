@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 from typing import List, TYPE_CHECKING, Tuple, Union
 
+from watchdog.observers.inotify_c import Inotify, InotifyEvent
 from watchdog.utils import BaseThread
 from watchdog.utils.delayed_queue import DelayedQueue
-from watchdog.observers.inotify_c import Inotify, InotifyEvent
 
 logger = logging.getLogger(__name__)
 

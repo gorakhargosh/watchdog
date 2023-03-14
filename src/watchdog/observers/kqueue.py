@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 # The `select` module varies between platforms.
 # mypy may complain about missing module attributes
 # depending on which platform it's running on.
@@ -20,7 +22,6 @@
 #
 # mypy: disable-error-code=attr-defined
 #
-
 """
 :module: watchdog.observers.kqueue
 :synopsis: ``kqueue(2)`` based emitter implementation.
@@ -73,38 +74,30 @@ Collections and Utility Classes
 
 """
 
-from watchdog.utils import platform
-
-import threading
 import errno
-from stat import S_ISDIR
 import os
 import os.path
 import select
-
-from watchdog.observers.api import (
-    BaseObserver,
-    EventEmitter,
-    DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT,
-)
-
-from watchdog.utils.dirsnapshot import DirectorySnapshot
+import threading
+from stat import S_ISDIR
 
 from watchdog.events import (
-    DirMovedEvent,
-    DirDeletedEvent,
-    DirCreatedEvent,
-    DirModifiedEvent,
-    FileMovedEvent,
-    FileDeletedEvent,
-    FileCreatedEvent,
-    FileModifiedEvent,
-    EVENT_TYPE_MOVED,
-    EVENT_TYPE_DELETED,
     EVENT_TYPE_CREATED,
+    EVENT_TYPE_DELETED,
+    EVENT_TYPE_MOVED,
+    DirCreatedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
     generate_sub_moved_events,
 )
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+from watchdog.utils import platform
+from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 # Maximum number of events to process.
 MAX_EVENTS = 4096

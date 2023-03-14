@@ -91,11 +91,13 @@ Event Handler Classes
 
 """
 
-import os.path
-import logging
-import re
-from watchdog.utils.patterns import match_any_paths
+from __future__ import annotations
 
+import logging
+import os.path
+import re
+
+from watchdog.utils.patterns import match_any_paths
 
 EVENT_TYPE_MOVED = "moved"
 EVENT_TYPE_DELETED = "deleted"

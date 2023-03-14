@@ -1,16 +1,11 @@
-from functools import partial
+from __future__ import annotations
+
 import gc
 import os
 import threading
+from functools import partial
+
 import pytest
-from . import shell
-
-
-@pytest.fixture()
-def tmpdir(request):
-    path = os.path.realpath(shell.mkdtemp())
-    yield path
-    shell.rm(path, recursive=True)
 
 
 @pytest.fixture()

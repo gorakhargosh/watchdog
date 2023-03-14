@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import pytest
+
 from watchdog.utils import platform
 
 if not platform.is_linux():  # noqa
@@ -17,11 +20,10 @@ from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent, FileSystemEvent
 from watchdog.observers.api import ObservedWatch
-from watchdog.observers.inotify import InotifyFullEmitter, InotifyEmitter
+from watchdog.observers.inotify import InotifyEmitter, InotifyFullEmitter
 from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
 
 from .shell import mkdtemp, rm
-
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

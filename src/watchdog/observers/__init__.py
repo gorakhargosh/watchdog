@@ -50,10 +50,13 @@ Class          Platforms                        Note
 
 """
 
+from __future__ import annotations
+
 import sys
 import warnings
 
 from watchdog.utils import UnsupportedLibc
+
 from .api import BaseObserverSubclassCallable
 
 Observer: BaseObserverSubclassCallable

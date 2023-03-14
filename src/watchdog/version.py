@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 # When updating this version number, please update the
 # ``docs/source/global.rst.inc`` file as well.
 VERSION_MAJOR = 2

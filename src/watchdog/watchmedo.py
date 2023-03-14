@@ -21,6 +21,8 @@
 :synopsis: ``watchmedo`` shell script utility.
 """
 
+from __future__ import annotations
+
 import errno
 import logging
 import os
@@ -270,9 +272,7 @@ def tricks_from(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import (  # type:ignore[attr-defined,no-redef]
-            WindowsApiObserver as Observer,
-        )
+        from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer  # type:ignore[attr-defined,no-redef]
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
     elif args.debug_force_fsevents:
@@ -460,8 +460,8 @@ def log(args):
     """
     Command to log file system events to the console.
     """
-    from watchdog.utils import echo
     from watchdog.tricks import LoggerTrick
+    from watchdog.utils import echo
 
     if args.trace:
         class_module_logger = logging.getLogger(LoggerTrick.__module__)
@@ -480,9 +480,7 @@ def log(args):
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
     elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import (  # type:ignore[attr-defined,no-redef]
-            WindowsApiObserver as Observer,
-        )
+        from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer  # type:ignore[attr-defined,no-redef]
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
     elif args.debug_force_fsevents:
@@ -717,8 +715,9 @@ def auto_restart(args):
     else:
         from watchdog.observers import Observer
 
-    from watchdog.tricks import AutoRestartTrick
     import signal
+
+    from watchdog.tricks import AutoRestartTrick
 
     if not args.directories:
         args.directories = ["."]

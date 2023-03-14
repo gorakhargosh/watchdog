@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from time import time
 
 import pytest
+
 from watchdog.utils.delayed_queue import DelayedQueue
 
 

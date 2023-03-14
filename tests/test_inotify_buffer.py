@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import pytest
+
 from watchdog.utils import platform
 
 if not platform.is_linux():  # noqa
@@ -24,7 +27,7 @@ import time
 
 from watchdog.observers.inotify_buffer import InotifyBuffer
 
-from .shell import mkdir, touch, mv, rm, mount_tmpfs, unmount
+from .shell import mkdir, mount_tmpfs, mv, rm, touch, unmount
 
 
 def wait_for_move_event(read_event):

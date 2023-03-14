@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import time
@@ -5,19 +7,19 @@ from unittest.mock import patch
 
 import pytest
 
-
 # Skip if import PyYAML failed. PyYAML missing possible because
 # watchdog installed without watchmedo. See Installation section
 # in README.rst
 yaml = pytest.importorskip("yaml")  # noqa
 
 
+from yaml.constructor import ConstructorError  # noqa
+from yaml.scanner import ScannerError  # noqa
+
 from watchdog import watchmedo  # noqa
 from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa
 from watchdog.tricks import AutoRestartTrick, ShellCommandTrick  # noqa
 from watchdog.utils import WatchdogShutdown  # noqa
-from yaml.constructor import ConstructorError  # noqa
-from yaml.scanner import ScannerError  # noqa
 
 
 def test_load_config_valid(tmpdir):
