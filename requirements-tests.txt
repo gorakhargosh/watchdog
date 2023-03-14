@@ -1,6 +1,7 @@
 eventlet
 flake8
 flaky
+isort
 pytest
 pytest-cov
 pytest-timeout

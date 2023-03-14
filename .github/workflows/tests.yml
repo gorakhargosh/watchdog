@@ -56,6 +56,15 @@ jobs:
               emoji: 🐧
               runs-on: [ubuntu-latest]
           - tox:
+              name: isort
+              environment: isort
+              timeout: 5
+            python: "3.11"
+            os:
+              name: Linux
+              emoji: 🐧
+              runs-on: [ubuntu-latest]
+          - tox:
               name: Docs
               environment: docs
               timeout: 5
