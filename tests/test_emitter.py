@@ -94,7 +94,8 @@ class ExpectEvent(Protocol):
         ...
 
 
-TestEventQueue = Queue[Tuple[FileSystemEvent, ObservedWatch]]
+if TYPE_CHECKING:
+    TestEventQueue = Queue[Tuple[FileSystemEvent, ObservedWatch]]
 
 
 @dataclasses.dataclass()
