@@ -27,13 +27,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def setup_function(function):
-    global p, event_queue
-    tmpdir = os.path.realpath(mkdtemp())
-    p = partial(os.path.join, tmpdir)
-    event_queue = Queue()
-
-
 def teardown_function(function):
     try:
         emitter.stop()
