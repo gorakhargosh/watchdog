@@ -15,7 +15,7 @@ import os
 import struct
 from functools import partial
 from queue import Queue
-from typing import Callable, Protocol, Tuple, Union
+from typing import Protocol, Tuple
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent, FileSystemEvent
@@ -32,9 +32,13 @@ logger = logging.getLogger(__name__)
 class P(Protocol):
     def __call__(self, *args: str) -> str:
         ...
+
+
 p: P
 emitter: InotifyEmitter
 event_queue: Queue[Tuple[FileSystemEvent, ObservedWatch]]
+
+
 def setup_function(function):
     global p, event_queue
     tmpdir = os.path.realpath(mkdtemp())

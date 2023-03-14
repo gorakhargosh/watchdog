@@ -16,7 +16,7 @@ from queue import Queue
 from random import random
 from threading import Thread
 from time import sleep
-from typing import Protocol, Tuple, Union
+from typing import Protocol, Tuple
 from unittest.mock import patch
 
 import _watchdog_fsevents as _fsevents  # type: ignore[import]
@@ -35,9 +35,13 @@ logger = logging.getLogger(__name__)
 class P(Protocol):
     def __call__(self, *args: str) -> str:
         ...
+
+
 p: P
 emitter: EventEmitter
 event_queue: Queue[Tuple[FileSystemEvent, ObservedWatch]]
+
+
 def setup_function(function):
     global p, event_queue
     tmpdir = os.path.realpath(mkdtemp())
