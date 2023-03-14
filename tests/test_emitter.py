@@ -14,15 +14,12 @@
 
 from __future__ import annotations
 
-import contextlib
-import dataclasses
 import logging
 import os
 import stat
-import sys
 import time
-from queue import Empty, Queue
-from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union
+from queue import Empty
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -37,32 +34,11 @@ from watchdog.events import (
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
-    FileSystemEvent,
 )
-from watchdog.observers.api import EventEmitter, ObservedWatch
 from watchdog.utils import platform
 
 from .shell import mkdir, mkfile, mv, rm, touch
-
-Emitter: Type[EventEmitter]
-
-if sys.platform.startswith("linux"):
-    from watchdog.observers.inotify import InotifyEmitter as Emitter
-    from watchdog.observers.inotify import InotifyFullEmitter
-elif sys.platform.startswith("darwin"):
-    from watchdog.observers.fsevents import FSEventsEmitter as Emitter
-elif sys.platform.startswith("win"):
-    from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
-elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
-    from watchdog.observers.kqueue import KqueueEmitter as Emitter
-
-if TYPE_CHECKING or sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    # Provide a dummy Protocol class when not available from stdlib.  Should be used
-    # only for hinting.
-    class Protocol:
-        ...
+from .util import TestEventQueue, P, StartWatching, ExpectEvent
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -72,117 +48,6 @@ if platform.is_darwin():
     # enable more verbose logs
     fsevents_logger = logging.getLogger("fsevents")
     fsevents_logger.setLevel(logging.DEBUG)
-
-
-class P(Protocol):
-    def __call__(self, *args: str) -> str:
-        ...
-
-
-class StartWatching(Protocol):
-    def __call__(
-        self,
-        path: Optional[Union[str, bytes]] = ...,
-        use_full_emitter: bool = ...,
-        recursive: bool = ...,
-    ) -> EventEmitter:
-        ...
-
-
-class ExpectEvent(Protocol):
-    def __call__(self, expected_event: FileSystemEvent, timeout: float = ...) -> None:
-        ...
-
-
-if TYPE_CHECKING:
-    TestEventQueue = Queue[Tuple[FileSystemEvent, ObservedWatch]]
-
-
-@dataclasses.dataclass()
-class Helper:
-    tmp: str
-    emitters: List[EventEmitter] = dataclasses.field(default_factory=list)
-    event_queue: TestEventQueue = dataclasses.field(default_factory=Queue)
-
-    def joinpath(self, *args: str) -> str:
-        return os.path.join(self.tmp, *args)
-
-    def start_watching(
-        self,
-        path: Optional[Union[str, bytes]] = None,
-        use_full_emitter: bool = False,
-        recursive: bool = True,
-    ) -> EventEmitter:
-        # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
-        path = self.tmp if path is None else path
-
-        emitter: EventEmitter
-        if sys.platform.startswith("linux") and use_full_emitter:
-            emitter = InotifyFullEmitter(
-                self.event_queue, ObservedWatch(path, recursive=recursive)
-            )
-        else:
-            emitter = Emitter(self.event_queue, ObservedWatch(path, recursive=recursive))
-
-        self.emitters.append(emitter)
-
-        if sys.platform.startswith("darwin"):
-            # TODO: I think this could be better...  .suppress_history should maybe
-            #       become a common attribute.
-            from watchdog.observers.fsevents import FSEventsEmitter
-            assert isinstance(emitter, FSEventsEmitter)
-            emitter.suppress_history = True
-
-        emitter.start()
-
-        return emitter
-
-    def expect_event(self, expected_event: FileSystemEvent, timeout: float = 2) -> None:
-        """Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
-
-        Provides some robustness for the otherwise flaky nature of asynchronous notifications.
-        """
-        try:
-            event = self.event_queue.get(timeout=timeout)[0]
-            assert event == expected_event
-        except Empty:
-            raise
-
-    def close(self) -> None:
-        for emitter in self.emitters:
-            emitter.stop()
-
-        for emitter in self.emitters:
-            emitter.join(5)
-
-        alive = [emitter.is_alive() for emitter in self.emitters]
-        assert alive == [False] * len(alive)
-
-
-@pytest.fixture(name="helper")
-def helper_fixture(tmpdir):
-    with contextlib.closing(Helper(tmp=os.fspath(tmpdir))) as helper:
-        yield helper
-
-
-@pytest.fixture(name="p")
-def p_fixture(helper: Helper) -> P:
-    return helper.joinpath
-
-
-@pytest.fixture(name="event_queue")
-def event_queue_fixture(helper: Helper) -> TestEventQueue:
-    return helper.event_queue
-
-
-@pytest.fixture(name="start_watching")
-def start_watching_fixture(helper: Helper) -> StartWatching:
-    return helper.start_watching
-
-
-@pytest.fixture(name="expect_event")
-def expect_event_fixture(helper: Helper) -> ExpectEvent:
-    return helper.expect_event
 
 
 def rerun_filter(exc, *args):
