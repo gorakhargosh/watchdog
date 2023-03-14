@@ -19,7 +19,6 @@ import os
 import stat
 import time
 from queue import Empty
-from typing import TYPE_CHECKING
 
 import pytest
 

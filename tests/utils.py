@@ -107,5 +107,3 @@ class Helper:
         alive = [emitter.is_alive() for emitter in self.emitters]
         self.emitters = []
         assert alive == [False] * len(alive)
-
-
