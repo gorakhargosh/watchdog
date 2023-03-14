@@ -1,8 +1,12 @@
-from functools import partial
+from __future__ import annotations
+
 import gc
 import os
 import threading
+from functools import partial
+
 import pytest
+
 from . import shell
 
 

@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import pytest
+
 import watchdog.events as events
 from watchdog.utils.bricks import SkipRepeatsQueue
 

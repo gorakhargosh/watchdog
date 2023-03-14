@@ -13,19 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import time
 from pathlib import Path
 
 import pytest
 
-from watchdog.events import LoggingEventHandler, FileModifiedEvent
-from watchdog.observers.api import (
-    BaseObserver,
-    EventEmitter,
-    ObservedWatch,
-    EventDispatcher,
-    EventQueue,
-)
+from watchdog.events import FileModifiedEvent, LoggingEventHandler
+from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 
 
 def test_observer_constructor():

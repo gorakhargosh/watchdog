@@ -28,6 +28,8 @@ Classes
    :inherited-members:
 
 """
+from __future__ import annotations
+
 import sys
 import threading
 
