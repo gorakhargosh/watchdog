@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, TYPE_CHECKING, Tuple, Union
+from typing import TYPE_CHECKING, List, Tuple, Union
 
 from watchdog.observers.inotify_c import Inotify, InotifyEvent
 from watchdog.utils import BaseThread

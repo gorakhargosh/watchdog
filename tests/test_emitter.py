@@ -27,7 +27,6 @@ import pytest
 
 from watchdog.events import (
     DirCreatedEvent,
-    FileSystemEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
@@ -37,12 +36,12 @@ from watchdog.events import (
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
+    FileSystemEvent,
 )
 from watchdog.observers.api import EventEmitter, ObservedWatch
 from watchdog.utils import platform
 
 from .shell import mkdir, mkfile, mv, rm, touch
-
 
 if sys.platform.startswith("linux"):
     from watchdog.observers.inotify import InotifyEmitter as Emitter

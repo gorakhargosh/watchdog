@@ -19,7 +19,6 @@ import time
 from collections import deque
 from typing import Callable, Deque, Generic, Optional, Tuple, TypeVar
 
-
 T = TypeVar("T")
 
 
