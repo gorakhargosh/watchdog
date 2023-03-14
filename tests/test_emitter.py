@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from queue import Empty, Queue
-from typing import List, Optional, TYPE_CHECKING, Tuple, Type, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union
 
 import pytest
 
