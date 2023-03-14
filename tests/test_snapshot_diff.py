@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import errno
 import os
 import pickle
 import time
 from unittest.mock import patch
 
-from watchdog.utils.dirsnapshot import DirectorySnapshot
-from watchdog.utils.dirsnapshot import DirectorySnapshotDiff
-from watchdog.utils.dirsnapshot import EmptyDirectorySnapshot
 from watchdog.utils import platform
+from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
-from .shell import mkdir, touch, mv, rm
+from .shell import mkdir, mv, rm, touch
 
 
 def wait():

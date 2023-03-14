@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import contextlib
 import threading
 from unittest.mock import patch
 
 import pytest
 
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent
-from watchdog.observers.api import EventEmitter, BaseObserver
+from watchdog.events import FileModifiedEvent, FileSystemEventHandler
+from watchdog.observers.api import BaseObserver, EventEmitter
 
 
 @pytest.fixture

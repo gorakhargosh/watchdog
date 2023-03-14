@@ -50,11 +50,14 @@ Class          Platforms                        Note
 
 """
 
+from __future__ import annotations
+
 import sys
 import warnings
 from typing import Type
 
 from watchdog.utils import UnsupportedLibc
+
 from .api import BaseObserver
 
 Observer: Type[BaseObserver]

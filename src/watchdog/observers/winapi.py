@@ -34,6 +34,8 @@
 # Portions of this code were taken from pyfilesystem, which uses the above
 # new BSD license.
 
+from __future__ import annotations
+
 import sys
 from functools import reduce
 

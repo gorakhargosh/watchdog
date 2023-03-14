@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import os
 from queue import Empty, Queue
 from time import sleep
@@ -21,20 +23,19 @@ from time import sleep
 import pytest
 
 from watchdog.events import (
-    DirModifiedEvent,
     DirCreatedEvent,
-    FileCreatedEvent,
-    FileMovedEvent,
-    FileModifiedEvent,
-    DirMovedEvent,
-    FileDeletedEvent,
     DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
 )
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
 
-from .shell import mkdir, mkdtemp, touch, rm, mv, msize
-
+from .shell import mkdir, mkdtemp, msize, mv, rm, touch
 
 temp_dir = mkdtemp()
 

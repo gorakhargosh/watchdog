@@ -13,24 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from watchdog.events import (
-    FileDeletedEvent,
-    FileModifiedEvent,
-    FileCreatedEvent,
-    FileClosedEvent,
-    FileOpenedEvent,
-    DirDeletedEvent,
-    DirModifiedEvent,
-    DirCreatedEvent,
-    FileMovedEvent,
-    DirMovedEvent,
-    FileSystemEventHandler,
-    EVENT_TYPE_MODIFIED,
+    EVENT_TYPE_CLOSED,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
+    EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED,
-    EVENT_TYPE_CLOSED,
     EVENT_TYPE_OPENED,
+    DirCreatedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileClosedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileOpenedEvent,
+    FileSystemEventHandler,
 )
 
 path_1 = "/path/xyz"

@@ -46,6 +46,8 @@ Classes
 
 """
 
+from __future__ import annotations
+
 import errno
 import os
 from stat import S_ISDIR

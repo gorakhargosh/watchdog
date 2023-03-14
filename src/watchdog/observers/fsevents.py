@@ -21,32 +21,29 @@
 :platforms: macOS
 """
 
-import time
+from __future__ import annotations
+
 import logging
 import os
 import threading
+import time
 import unicodedata
+
 import _watchdog_fsevents as _fsevents  # type: ignore[import]
 
 from watchdog.events import (
-    FileDeletedEvent,
-    FileModifiedEvent,
-    FileCreatedEvent,
-    FileMovedEvent,
+    DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
-    DirCreatedEvent,
     DirMovedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
     generate_sub_created_events,
     generate_sub_moved_events,
 )
-
-from watchdog.observers.api import (
-    BaseObserver,
-    EventEmitter,
-    DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT,
-)
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 logger = logging.getLogger("fsevents")

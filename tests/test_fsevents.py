@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import pytest
+
 from watchdog.utils import platform
 
 if not platform.is_darwin():  # noqa
@@ -16,6 +19,7 @@ from time import sleep
 from unittest.mock import patch
 
 import _watchdog_fsevents as _fsevents  # type: ignore[import]
+
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import ObservedWatch
@@ -269,11 +273,7 @@ def test_recursive_check_accepts_relative_paths():
     using ".". Since the watch path wasn't normalized then that failed.
     This test emulates the scenario.
     """
-    from watchdog.events import (
-        PatternMatchingEventHandler,
-        FileCreatedEvent,
-        FileModifiedEvent,
-    )
+    from watchdog.events import FileCreatedEvent, FileModifiedEvent, PatternMatchingEventHandler
 
     class TestEventHandler(PatternMatchingEventHandler):
         def __init__(self, *args, **kwargs):
@@ -318,9 +318,10 @@ def test_recursive_check_accepts_relative_paths():
 
 def test_watchdog_recursive():
     """See https://github.com/gorakhargosh/watchdog/issues/706"""
-    from watchdog.observers import Observer
-    from watchdog.events import FileSystemEventHandler
     import os.path
+
+    from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
 
     class Handler(FileSystemEventHandler):
         def __init__(self):

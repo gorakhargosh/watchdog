@@ -64,31 +64,28 @@ Some extremely useful articles and documentation:
 
 """
 
+from __future__ import annotations
+
 import os
 import threading
-from .inotify_buffer import InotifyBuffer
-
-from watchdog.observers.api import (
-    EventEmitter,
-    BaseObserver,
-    DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT,
-)
 
 from watchdog.events import (
+    DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
-    DirCreatedEvent,
+    FileClosedEvent,
+    FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
-    FileCreatedEvent,
-    FileClosedEvent,
     FileOpenedEvent,
-    generate_sub_moved_events,
     generate_sub_created_events,
+    generate_sub_moved_events,
 )
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+
+from .inotify_buffer import InotifyBuffer
 
 
 class InotifyEmitter(EventEmitter):
