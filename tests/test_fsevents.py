@@ -97,7 +97,6 @@ def test_add_watch_twice(observer: BaseObserver, p: P) -> None:
 def test_watcher_deletion_while_receiving_events_1(
     caplog: pytest.LogCaptureFixture,
     p: P,
-    emitter: FSEventsEmitter,
     start_watching: StartWatching,
 ) -> None:
     """
@@ -123,7 +122,7 @@ def test_watcher_deletion_while_receiving_events_1(
     with caplog.at_level(logging.ERROR), patch.object(
         FSEventsEmitter, "events_callback", new=cb
     ):
-        start_watching(tmpdir)
+        emitter = start_watching(tmpdir)
         # Less than 100 is not enough events to trigger the error
         for n in range(100):
             touch(p("{}.txt".format(n)))
@@ -135,7 +134,6 @@ def test_watcher_deletion_while_receiving_events_2(
     caplog: pytest.LogCaptureFixture,
     p: P,
     start_watching: StartWatching,
-    emitter: FSEventsEmitter,
 ) -> None:
     """Note: that test takes about 20 seconds to complete.
 
@@ -156,7 +154,7 @@ def test_watcher_deletion_while_receiving_events_2(
 
     def try_to_fail():
         tmpdir = p()
-        start_watching(tmpdir)
+        emitter = start_watching(tmpdir)
 
         def create_files():
             # Less than 2000 is not enough events to trigger the error
@@ -187,7 +185,7 @@ def test_watcher_deletion_while_receiving_events_2(
         assert not caplog.records
 
 
-def test_remove_watch_twice(start_watching: StartWatching, emitter: FSEventsEmitter) -> None:
+def test_remove_watch_twice(start_watching: StartWatching) -> None:
     """
     ValueError: PyCapsule_GetPointer called with invalid PyCapsule object
     The above exception was the direct cause of the following exception:
@@ -204,7 +202,7 @@ def test_remove_watch_twice(start_watching: StartWatching, emitter: FSEventsEmit
     (FSEvents.framework) FSEventStreamInvalidate(): failed assertion 'streamRef != NULL'
     (FSEvents.framework) FSEventStreamRelease(): failed assertion 'streamRef != NULL'
     """
-    start_watching()
+    emitter = start_watching()
     # This one must work
     emitter.stop()
     # This is allowed to call several times .stop()
@@ -236,13 +234,12 @@ def test_unschedule_removed_folder(observer: BaseObserver, p: P) -> None:
 def test_converting_cfstring_to_pyunicode(
     p: P,
     start_watching: StartWatching,
-    emitter: FSEventsEmitter,
     event_queue: TestEventQueue,
 ) -> None:
     """See https://github.com/gorakhargosh/watchdog/issues/762"""
 
     tmpdir = p()
-    start_watching(tmpdir)
+    emitter = start_watching(tmpdir)
 
     dirname = "TéstClass"
 
