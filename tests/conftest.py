@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import contextlib
 import gc
 import os
 import threading
 from functools import partial
 
 import pytest
+
+from .utils import ExpectEvent, Helper, P, StartWatching, TestEventQueue
 
 
 @pytest.fixture()
@@ -51,3 +54,29 @@ def no_warnings(recwarn):
         warnings.append("{w.filename}:{w.lineno} {w.message}".format(w=warning))
     print(warnings)
     assert not warnings
+
+
+@pytest.fixture(name="helper")
+def helper_fixture(tmpdir):
+    with contextlib.closing(Helper(tmp=os.fspath(tmpdir))) as helper:
+        yield helper
+
+
+@pytest.fixture(name="p")
+def p_fixture(helper: Helper) -> P:
+    return helper.joinpath
+
+
+@pytest.fixture(name="event_queue")
+def event_queue_fixture(helper: Helper) -> TestEventQueue:
+    return helper.event_queue
+
+
+@pytest.fixture(name="start_watching")
+def start_watching_fixture(helper: Helper) -> StartWatching:
+    return helper.start_watching
+
+
+@pytest.fixture(name="expect_event")
+def expect_event_fixture(helper: Helper) -> ExpectEvent:
+    return helper.expect_event

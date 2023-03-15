@@ -18,9 +18,8 @@ from __future__ import annotations
 import queue
 import threading
 from pathlib import Path
-from typing import Protocol
 
-from watchdog.utils import BaseThread
+from watchdog.utils import BaseThread, Protocol
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1  # in seconds.

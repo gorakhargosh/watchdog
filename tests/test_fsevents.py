@@ -10,62 +10,24 @@ if not platform.is_darwin():  # noqa
 import logging
 import os
 import time
-from functools import partial
 from os import mkdir, rmdir
-from queue import Queue
 from random import random
 from threading import Thread
 from time import sleep
-from typing import Protocol, Tuple
 from unittest.mock import patch
 
 import _watchdog_fsevents as _fsevents  # type: ignore[import]
 
-from watchdog.events import FileSystemEvent, FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.observers.api import EventEmitter, ObservedWatch
+from watchdog.observers.api import BaseObserver, ObservedWatch
 from watchdog.observers.fsevents import FSEventsEmitter
 
-from .shell import mkdtemp, rm, touch
+from .shell import touch
+from .utils import P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-
-class P(Protocol):
-    def __call__(self, *args: str) -> str:
-        ...
-
-
-p: P
-emitter: EventEmitter
-event_queue: Queue[Tuple[FileSystemEvent, ObservedWatch]]
-
-
-def setup_function(function):
-    global p, event_queue
-    tmpdir = os.path.realpath(mkdtemp())
-    p = partial(os.path.join, tmpdir)
-    event_queue = Queue()
-
-
-def teardown_function(function):
-    try:
-        emitter.stop()
-        emitter.join(5)
-        assert not emitter.is_alive()
-    except NameError:
-        pass  # `name 'emitter' is not defined` unless we call `start_watching`
-    rm(p(""), recursive=True)
-
-
-def start_watching(path=None, recursive=True, use_full_emitter=False):
-    global emitter
-    path = p("") if path is None else path
-    emitter = FSEventsEmitter(
-        event_queue, ObservedWatch(path, recursive=recursive), suppress_history=True
-    )
-    emitter.start()
 
 
 @pytest.fixture
@@ -111,7 +73,7 @@ def test_coalesced_event_check(event, expectation):
     assert event.is_coalesced == expectation
 
 
-def test_add_watch_twice(observer):
+def test_add_watch_twice(observer: BaseObserver, p: P) -> None:
     """Adding the same watch twice used to result in a null pointer return without an exception.
 
     See https://github.com/gorakhargosh/watchdog/issues/765
@@ -132,7 +94,11 @@ def test_add_watch_twice(observer):
     rmdir(a)
 
 
-def test_watcher_deletion_while_receiving_events_1(caplog, observer):
+def test_watcher_deletion_while_receiving_events_1(
+    caplog: pytest.LogCaptureFixture,
+    p: P,
+    start_watching: StartWatching,
+) -> None:
     """
     When the watcher is stopped while there are events, such exception could happen:
 
@@ -156,7 +122,7 @@ def test_watcher_deletion_while_receiving_events_1(caplog, observer):
     with caplog.at_level(logging.ERROR), patch.object(
         FSEventsEmitter, "events_callback", new=cb
     ):
-        start_watching(tmpdir)
+        emitter = start_watching(tmpdir)
         # Less than 100 is not enough events to trigger the error
         for n in range(100):
             touch(p("{}.txt".format(n)))
@@ -164,7 +130,11 @@ def test_watcher_deletion_while_receiving_events_1(caplog, observer):
         assert not caplog.records
 
 
-def test_watcher_deletion_while_receiving_events_2(caplog):
+def test_watcher_deletion_while_receiving_events_2(
+    caplog: pytest.LogCaptureFixture,
+    p: P,
+    start_watching: StartWatching,
+) -> None:
     """Note: that test takes about 20 seconds to complete.
 
     Quite similar test to prevent another issue
@@ -184,7 +154,7 @@ def test_watcher_deletion_while_receiving_events_2(caplog):
 
     def try_to_fail():
         tmpdir = p()
-        start_watching(tmpdir)
+        emitter = start_watching(tmpdir)
 
         def create_files():
             # Less than 2000 is not enough events to trigger the error
@@ -215,7 +185,7 @@ def test_watcher_deletion_while_receiving_events_2(caplog):
         assert not caplog.records
 
 
-def test_remove_watch_twice():
+def test_remove_watch_twice(start_watching: StartWatching) -> None:
     """
     ValueError: PyCapsule_GetPointer called with invalid PyCapsule object
     The above exception was the direct cause of the following exception:
@@ -232,14 +202,14 @@ def test_remove_watch_twice():
     (FSEvents.framework) FSEventStreamInvalidate(): failed assertion 'streamRef != NULL'
     (FSEvents.framework) FSEventStreamRelease(): failed assertion 'streamRef != NULL'
     """
-    start_watching()
+    emitter = start_watching()
     # This one must work
     emitter.stop()
     # This is allowed to call several times .stop()
     emitter.stop()
 
 
-def test_unschedule_removed_folder(observer):
+def test_unschedule_removed_folder(observer: BaseObserver, p: P) -> None:
     """
     TypeError: PyCObject_AsVoidPtr called with null pointer
     The above exception was the direct cause of the following exception:
@@ -261,11 +231,11 @@ def test_unschedule_removed_folder(observer):
     observer.unschedule(w)
 
 
-def test_converting_cfstring_to_pyunicode():
+def test_converting_cfstring_to_pyunicode(p: P, start_watching: StartWatching, event_queue: TestEventQueue) -> None:
     """See https://github.com/gorakhargosh/watchdog/issues/762"""
 
     tmpdir = p()
-    start_watching(tmpdir)
+    emitter = start_watching(tmpdir)
 
     dirname = "TéstClass"
 
@@ -277,7 +247,7 @@ def test_converting_cfstring_to_pyunicode():
         emitter.stop()
 
 
-def test_recursive_check_accepts_relative_paths():
+def test_recursive_check_accepts_relative_paths(p: P) -> None:
     """See https://github.com/gorakhargosh/watchdog/issues/797
 
     The test code provided in the defect observes the current working directory
@@ -327,7 +297,7 @@ def test_recursive_check_accepts_relative_paths():
         observer.join()
 
 
-def test_watchdog_recursive():
+def test_watchdog_recursive(p: P) -> None:
     """See https://github.com/gorakhargosh/watchdog/issues/706"""
     import os.path
 

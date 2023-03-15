@@ -29,12 +29,15 @@ jobs:
             timeout: 15
         os:
           - name: Linux
+            matrix: linux
             emoji: 🐧
             runs-on: [ubuntu-latest]
           - name: macOS
+            matrix: macos
             emoji: 🍎
             runs-on: [macos-latest]
           - name: Windows
+            matrix: windows
             emoji: 🪟
             runs-on: [windows-latest]
         python:
@@ -73,6 +76,14 @@ jobs:
               name: Linux
               emoji: 🐧
               runs-on: [ubuntu-latest]
+        exclude:
+          - os:
+              matrix: windows
+            python: "pypy-3.8"
+          - os:
+              matrix: windows
+            python: "pypy-3.9"
+
 
     steps:
       - name: Checkout
