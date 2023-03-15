@@ -32,6 +32,7 @@ import time
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from textwrap import dedent
+from typing import TYPE_CHECKING
 
 from watchdog.observers.api import BaseObserverSubclassCallable
 from watchdog.utils import WatchdogShutdown, load_class
@@ -271,8 +272,8 @@ def tricks_from(args):
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import (  # type:ignore[attr-defined,no-redef]
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
+        from watchdog.observers.read_directory_changes import (
             WindowsApiObserver as Observer,
         )
     elif args.debug_force_inotify:
@@ -481,8 +482,8 @@ def log(args):
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif args.debug_force_winapi:
-        from watchdog.observers.read_directory_changes import (  # type:ignore[attr-defined,no-redef]
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
+        from watchdog.observers.read_directory_changes import (
             WindowsApiObserver as Observer,
         )
     elif args.debug_force_inotify:
