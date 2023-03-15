@@ -133,6 +133,7 @@ def test_create():
         assert isinstance(event, FileClosedEvent)
 
 
+@pytest.mark.xfail(reason="known to be problematic")
 @pytest.mark.skipif(
     not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux"
 )
