@@ -19,7 +19,7 @@ import queue
 import threading
 from pathlib import Path
 
-from watchdog.utils import BaseThread
+from watchdog.utils import BaseThread, Protocol
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 DEFAULT_EMITTER_TIMEOUT = 1  # in seconds.
@@ -379,3 +379,8 @@ class BaseObserver(EventDispatcher):
                 if handler in self._handlers.get(watch, []):
                     handler.dispatch(event)
         event_queue.task_done()
+
+
+class BaseObserverSubclassCallable(Protocol):
+    def __call__(self, timeout: float = ...) -> BaseObserver:
+        ...

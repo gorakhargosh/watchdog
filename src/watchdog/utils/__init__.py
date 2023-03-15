@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import sys
 import threading
+from typing import TYPE_CHECKING
 
 
 class UnsupportedLibc(Exception):
@@ -136,3 +137,14 @@ def load_class(dotted_path):
         raise AttributeError(
             f"Module {module_name} does not have class attribute {klass_name}"
         )
+
+
+if TYPE_CHECKING or sys.version_info >= (3, 8):
+    # using `as` to explicitly re-export this since this is a compatibility layer
+    from typing import Protocol as Protocol
+else:
+    # Provide a dummy Protocol class when not available from stdlib.  Should be used
+    # only for hinting.  This could be had from typing_protocol, but not worth adding
+    # the _first_ dependency just for this.
+    class Protocol:
+        ...

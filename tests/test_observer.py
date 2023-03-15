@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import threading
+from typing import Iterator
 from unittest.mock import patch
 
 import pytest
@@ -25,7 +26,7 @@ from watchdog.observers.api import BaseObserver, EventEmitter
 
 
 @pytest.fixture
-def observer():
+def observer() -> Iterator[BaseObserver]:
     obs = BaseObserver(EventEmitter)
     yield obs
     obs.stop()
