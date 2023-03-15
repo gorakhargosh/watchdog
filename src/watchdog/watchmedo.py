@@ -32,7 +32,9 @@ import time
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from textwrap import dedent
+from typing import TYPE_CHECKING
 
+from watchdog.observers.api import BaseObserverSubclassCallable
 from watchdog.utils import WatchdogShutdown, load_class
 from watchdog.version import VERSION_STRING
 
@@ -265,11 +267,12 @@ def tricks_from(args):
     """
     Command to execute tricks from a tricks configuration file.
     """
+    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif args.debug_force_winapi:
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
         from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
@@ -376,8 +379,8 @@ def tricks_generate_yaml(args):
     else:
         if not os.path.exists(args.append_to_file):
             content = header + content
-        with open(args.append_to_file, "a", encoding="utf-8") as output:
-            output.write(content)
+        with open(args.append_to_file, "a", encoding="utf-8") as file:
+            file.write(content)
 
 
 @command(
@@ -471,11 +474,13 @@ def log(args):
         ignore_patterns=ignore_patterns,
         ignore_directories=args.ignore_directories,
     )
+
+    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif args.debug_force_winapi:
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
         from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
@@ -585,6 +590,7 @@ def shell_command(args):
     if not args.command:
         args.command = None
 
+    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     else:
@@ -704,6 +710,7 @@ def auto_restart(args):
     Command to start a long-running subprocess and restart it on matched events.
     """
 
+    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     else:

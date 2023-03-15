@@ -23,7 +23,7 @@ from watchdog.utils.delayed_queue import DelayedQueue
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_delayed_get():
-    q = DelayedQueue(2)
+    q = DelayedQueue[str](2)
     q.put("", True)
     inserted = time()
     q.get()
@@ -34,7 +34,7 @@ def test_delayed_get():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_nondelayed_get():
-    q = DelayedQueue(2)
+    q = DelayedQueue[str](2)
     q.put("", False)
     inserted = time()
     q.get()

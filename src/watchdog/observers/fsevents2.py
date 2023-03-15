@@ -26,6 +26,7 @@ import queue
 import unicodedata
 import warnings
 from threading import Thread
+from typing import List, Optional, Type
 
 # pyobjc
 import AppKit  # type: ignore[import]
@@ -65,6 +66,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    FileSystemEvent,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
@@ -80,7 +82,7 @@ class FSEventsQueue(Thread):
 
     def __init__(self, path):
         Thread.__init__(self)
-        self._queue = queue.Queue()
+        self._queue: queue.Queue[Optional[List[NativeEvent]]] = queue.Queue()
         self._run_loop = None
 
         if isinstance(path, bytes):
@@ -206,6 +208,7 @@ class FSEventsEmitter(EventEmitter):
         while i < len(events):
             event = events[i]
 
+            cls: Type[FileSystemEvent]
             # For some reason the create and remove flags are sometimes also
             # set for rename and modify type events, so let those take
             # precedence.

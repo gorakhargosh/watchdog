@@ -69,6 +69,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+from typing import Type
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -81,6 +82,7 @@ from watchdog.events import (
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
+    FileSystemEvent,
     generate_sub_created_events,
     generate_sub_moved_events,
 )
@@ -128,9 +130,14 @@ class InotifyEmitter(EventEmitter):
             logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
             return
         with self._lock:
+            if self._inotify is None:
+                logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+                return
             event = self._inotify.read_event()
             if event is None:
                 return
+
+            cls: Type[FileSystemEvent]
             if isinstance(event, tuple):
                 move_from, move_to = event
                 src_path = self._decode_path(move_from.src_path)
