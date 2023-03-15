@@ -153,7 +153,7 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
 
 @pytest.mark.xfail(
     condition=sys.platform.startswith(("win", "darwin")) or sys.implementation.name == "pypy",
-    reason="known to be problematic",
+    reason="known to be problematic, see #973",
 )
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     """Simulate changing 3 files quickly and then another change later.
@@ -185,7 +185,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
             False,
             marks=pytest.mark.xfail(
                 condition=sys.platform.startswith(("win", "darwin")),
-                reason="known to be problematic",
+                reason="known to be problematic, see #972",
             ),
         ),
     ],
