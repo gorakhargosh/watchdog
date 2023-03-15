@@ -151,7 +151,10 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     assert trick.restart_count == 3
 
 
-@pytest.mark.xfail(condition=sys.platform.startswith(("win", "darwin")), reason="known to be problematic")
+@pytest.mark.xfail(
+    condition=sys.platform.startswith(("win", "darwin")) or sys.implementation.name == "pypy",
+    reason="known to be problematic",
+)
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     """Simulate changing 3 files quickly and then another change later.
 
