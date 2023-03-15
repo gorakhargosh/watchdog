@@ -37,7 +37,7 @@ jobs:
             emoji: 🍎
             runs-on: [macos-latest]
           - name: Windows
-            macos: windows
+            matrix: windows
             emoji: 🪟
             runs-on: [windows-latest]
         python:
