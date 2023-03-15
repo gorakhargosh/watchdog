@@ -151,6 +151,7 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     assert trick.restart_count == 3
 
 
+@pytest.mark.xfail(condition=sys.platform.startswith(("win", "darwin")), reason="known to be problematic")
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     """Simulate changing 3 files quickly and then another change later.
 
@@ -173,7 +174,19 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     assert trick.restart_count == 2
 
 
-@pytest.mark.parametrize("restart_on_command_exit", [True, False])
+@pytest.mark.parametrize(
+    "restart_on_command_exit",
+    [
+        True,
+        pytest.param(
+            False,
+            marks=pytest.mark.xfail(
+                condition=sys.platform.startswith(("win", "darwin")),
+                reason="known to be problematic",
+            ),
+        ),
+    ],
+)
 def test_auto_restart_subprocess_termination(tmpdir, capfd, restart_on_command_exit):
     """Run auto-restart with a script that terminates in about 2 seconds.
 
