@@ -93,9 +93,6 @@ from .inotify_buffer import InotifyBuffer
 logger = logging.getLogger(__name__)
 
 
-logger = logging.getLogger(__name__)
-
-
 class InotifyEmitter(EventEmitter):
     """
     inotify(7)-based event emitter.
