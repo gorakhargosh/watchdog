@@ -45,6 +45,7 @@ Installing from the code repository
 
 Dependencies
 ------------
+
 |project_name| depends on many libraries to do its job. The following is
 a list of dependencies you need based on the operating system you are
 using.
@@ -66,21 +67,6 @@ using the ``watchmedo`` utility.
 | PyYAML_             |     Yes     |     Yes     |  Yes   |     Yes     |
 +---------------------+-------------+-------------+--------+-------------+
 
-Installing Dependencies
-~~~~~~~~~~~~~~~~~~~~~~~
-The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_.
-On macOS, you can use homebrew_ to install LibYAML::
-
-    brew install libyaml
-
-On Linux, use your favorite package manager to install LibYAML. Here's how you
-do it on Ubuntu::
-
-    sudo apt install libyaml-dev
-
-On Windows, please install PyYAML_ using the binaries they provide.
-
-
 Supported Platforms (and Caveats)
 ---------------------------------
 |project_name| uses native APIs as much as possible falling back
@@ -92,7 +78,6 @@ supported:
 .. WARNING:: Differences between behaviors of these native API
              are noted below.
 
-
 Linux 2.6+
     Linux kernel version 2.6 and later come with an API called inotify_
     that programs can use to monitor file system events.
@@ -103,7 +88,6 @@ Linux 2.6+
               ``/etc/sysctl.conf`` and add::
 
                   fs.inotify.max_user_watches=16384
-
 
 macOS
     The Darwin kernel/OS X API maintains two ways to monitor directories
@@ -122,7 +106,6 @@ macOS
     .. NOTE:: More information about how |project_name| uses ``kqueue(2)`` is noted
               in `BSD Unix variants`_. Much of this information applies to
               macOS as well.
-
 
 _`BSD Unix variants`
     BSD variants come with kqueue_ which programs can use to monitor
@@ -143,7 +126,6 @@ _`BSD Unix variants`
               this for you::
 
                   ulimit -n 1024
-
 
 Windows Vista and later
     The Windows API provides the ReadDirectoryChangesW_. |project_name|
