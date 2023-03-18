@@ -638,7 +638,7 @@ def test_move_nested_subdirectories(
             expect_event(FileClosedEvent(p("dir2/dir3/", "a")))
 
     event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p('dir2/dir3')
+    assert event.src_path == p("dir2/dir3")
     assert isinstance(event, DirModifiedEvent)
 
 
@@ -733,21 +733,16 @@ def test_file_lifecyle(p: P, start_watching: StartWatching, expect_event: Expect
 
 @pytest.mark.skipif(platform.is_windows(), reason="FileAttribEvent isn't supported in Windows")
 def test_chmod_file():
-    mkfile(p('newfile'))
+    mkfile(p("newfile"))
 
     start_watching()
-
-    chmod(p('newfile'), 777)
-
-    event_queue.get(FileAttribEvent(p('newfile')))
+    chmod(p("newfile"), 777)
+    event_queue.get(FileAttribEvent(p("newfile")))
 
 
 @pytest.mark.skipif(platform.is_windows(), reason="DirAttribEvent isn't supported in Windows")
 def test_chmod_dir():
-    mkdir(p('dir1'))
-
+    mkdir(p("dir1"))
     start_watching()
-
-    chmod(p('dir1'), 777)
-
-    event_queue.get(DirAttribEvent(p('dir1')))
+    chmod(p("dir1"), 777)
+    event_queue.get(DirAttribEvent(p("dir1")))
