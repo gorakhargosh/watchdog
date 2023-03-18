@@ -8,16 +8,16 @@ on:
     branches:
       - '**'
 
-concurrency:
-  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
-  cancel-in-progress: true
-
   workflow_dispatch:
     inputs:
       branch:
         description: 'The branch, tag or SHA to release from'
         required: true
         default: 'master'
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
+  cancel-in-progress: true
 
 jobs:
   tox:
