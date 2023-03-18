@@ -143,22 +143,22 @@ def test_modify(p: P, event_queue: TestEventQueue, start_watching: StartWatching
     touch(p("a"))
 
     if platform.is_windows():
-        expect_event(FileModifiedEvent(p('a')))
+        expect_event(FileModifiedEvent(p("a")))
 
     if platform.is_linux():
         # on Linux we'd get the attrib event first then
         event = event_queue.get(timeout=5)[0]
         assert isinstance(event, FileAttribEvent)
-        assert event.src_path == p('a')
+        assert event.src_path == p("a")
 
     if platform.is_bsd():
         event = event_queue.get(timeout=5)[0]
         assert isinstance(event, FileModifiedEvent)
-        assert event.src_path == p('a')
+        assert event.src_path == p("a")
 
         event = event_queue.get(timeout=5)[0]
         assert isinstance(event, FileAttribEvent)
-        assert event.src_path == p('a')
+        assert event.src_path == p("a")
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -413,7 +413,7 @@ def test_recursive_on(p: P, event_queue: TestEventQueue, start_watching: StartWa
         assert isinstance(event, DirModifiedEvent)
 
         event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir1', 'dir2', 'dir3', 'a')
+        assert event.src_path == p("dir1", "dir2", "dir3", "a")
         assert isinstance(event, FileAttribEvent)
 
 
@@ -631,11 +631,11 @@ def test_move_nested_subdirectories(
 
     if not platform.is_windows():
         event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p('dir2/dir3', 'a')
+        assert event.src_path == p("dir2/dir3", "a")
         assert isinstance(event, FileAttribEvent)
 
         if platform.is_linux():
-            expect_event(FileClosedEvent(p('dir2/dir3/', 'a')))
+            expect_event(FileClosedEvent(p("dir2/dir3/", "a")))
 
     event = event_queue.get(timeout=5)[0]
     assert event.src_path == p('dir2/dir3')

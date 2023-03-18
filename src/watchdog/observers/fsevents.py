@@ -276,10 +276,10 @@ class FSEventsEmitter(EventEmitter):
                         if dst_event.is_modified:
                             self._queue_modified_event(dst_event, dst_path, dst_dirname)
 
-                        if dst_event.is_inode_meta_mod or dst_event.is_xattr_mod:
+                        elif dst_event.is_inode_meta_mod or dst_event.is_xattr_mod:
                             self._queue_attrib_event(dst_event, dst_path, dst_dirname)
 
-                        if dst_event.is_removed:
+                        elif dst_event.is_removed:
                             self._queue_deleted_event(dst_event, dst_path, dst_dirname)
                             self._fs_view.discard(dst_event.inode)
 

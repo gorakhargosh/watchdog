@@ -113,8 +113,8 @@ EVENT_TYPE_DELETED = "deleted"
 EVENT_TYPE_CREATED = "created"
 EVENT_TYPE_MODIFIED = "modified"
 EVENT_TYPE_CLOSED = "closed"
-EVENT_TYPE_OPENED = "opened"'
-EVENT_TYPE_ATTRIB = 'attrib'
+EVENT_TYPE_OPENED = "opened"
+EVENT_TYPE_ATTRIB = "attrib"
 
 
 class FileSystemEvent:
@@ -583,7 +583,7 @@ class LoggingEventHandler(FileSystemEventHandler):
     def on_attrib(self, event):
         super().on_attrib(event)
 
-        what = 'directory' if event.is_directory else 'file'
+        what = "directory" if event.is_directory else "file"
         self.logger.info("Attrib %s: %s", what, event.src_path)
 
 
