@@ -1,9 +1,10 @@
-# coding: utf-8
 # patterns.py: Common wildcard searching/filtering functionality for files.
 #
 # Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
 #
 # Written by Boris Staletic <boris.staletic@gmail.com>
+
+from __future__ import annotations
 
 # Non-pure path objects are only allowed on their respective OS's.
 # Thus, these utilities require "pure" path objects that don't access the filesystem.
@@ -12,7 +13,7 @@
 #   - `PureWindowsPath` is always case-insensitive.
 #   - `PurePosixPath` is always case-sensitive.
 # Reference: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.match
-from pathlib import PureWindowsPath, PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 
 
 def _match_path(path, included_patterns, excluded_patterns, case_sensitive):
@@ -26,12 +27,17 @@ def _match_path(path, included_patterns, excluded_patterns, case_sensitive):
 
     common_patterns = included_patterns & excluded_patterns
     if common_patterns:
-        raise ValueError('conflicting patterns `{}` included and excluded'.format(common_patterns))
-    return (any(path.match(p) for p in included_patterns)
-            and not any(path.match(p) for p in excluded_patterns))
+        raise ValueError(
+            "conflicting patterns `{}` included and excluded".format(common_patterns)
+        )
+    return any(path.match(p) for p in included_patterns) and not any(
+        path.match(p) for p in excluded_patterns
+    )
 
 
-def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
+def filter_paths(
+    paths, included_patterns=None, excluded_patterns=None, case_sensitive=True
+):
     """
     Filters from a set of paths based on acceptable patterns and
     ignorable patterns.
@@ -59,7 +65,9 @@ def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sen
             yield path
 
 
-def match_any_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
+def match_any_paths(
+    paths, included_patterns=None, excluded_patterns=None, case_sensitive=True
+):
     """
     Matches from a set of paths based on acceptable patterns and
     ignorable patterns.

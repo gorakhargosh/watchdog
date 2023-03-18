@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -66,32 +64,35 @@ Some extremely useful articles and documentation:
 
 """
 
+from __future__ import annotations
+
+import logging
 import os
 import threading
-from .inotify_buffer import InotifyBuffer
-
-from watchdog.observers.api import (
-    EventEmitter,
-    BaseObserver,
-    DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT
-)
+from typing import Type
 
 from watchdog.events import (
+    DirAttribEvent,
+    DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
-    DirCreatedEvent,
+    FileAttribEvent,
+    FileClosedEvent,
+    FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
-    FileCreatedEvent,
-    FileClosedEvent,
-    FileAttribEvent,
-    DirAttribEvent,
-    generate_sub_moved_events,
+    FileOpenedEvent,
+    FileSystemEvent,
     generate_sub_created_events,
+    generate_sub_moved_events,
 )
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+
+from .inotify_buffer import InotifyBuffer
+
+logger = logging.getLogger(__name__)
 
 
 class InotifyEmitter(EventEmitter):
@@ -111,7 +112,7 @@ class InotifyEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
         self._lock = threading.Lock()
         self._inotify = None
 
@@ -127,10 +128,18 @@ class InotifyEmitter(EventEmitter):
     def queue_events(self, timeout, full_events=False):
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
+        if self._inotify is None:
+            logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+            return
         with self._lock:
+            if self._inotify is None:
+                logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+                return
             event = self._inotify.read_event()
             if event is None:
                 return
+
+            cls: Type[FileSystemEvent]
             if isinstance(event, tuple):
                 move_from, move_to = event
                 src_path = self._decode_path(move_from.src_path)
@@ -178,6 +187,9 @@ class InotifyEmitter(EventEmitter):
                 cls = FileClosedEvent
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+            elif event.is_open and not event.is_directory:
+                cls = FileOpenedEvent
+                self.queue_event(cls(src_path))
             # elif event.is_close_nowrite and not event.is_directory:
             #     cls = FileClosedEvent
             #     self.queue_event(cls(src_path))
@@ -187,7 +199,7 @@ class InotifyEmitter(EventEmitter):
                 self.stop()
 
     def _decode_path(self, path):
-        """Decode path only if unicode string was passed to this emitter. """
+        """Decode path only if unicode string was passed to this emitter."""
         if isinstance(self.watch.path, bytes):
             return path
         return os.fsdecode(path)
@@ -209,8 +221,9 @@ class InotifyFullEmitter(InotifyEmitter):
     :type timeout:
         ``float``
     """
+
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        InotifyEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
 
     def queue_events(self, timeout, events=True):
         InotifyEmitter.queue_events(self, timeout, full_events=events)
@@ -223,8 +236,5 @@ class InotifyObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
-        if (generate_full_events):
-            BaseObserver.__init__(self, emitter_class=InotifyFullEmitter, timeout=timeout)
-        else:
-            BaseObserver.__init__(self, emitter_class=InotifyEmitter,
-                                  timeout=timeout)
+        cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
+        super().__init__(emitter_class=cls, timeout=timeout)

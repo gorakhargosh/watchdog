@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,87 +15,93 @@
 """
 :module: watchdog.observers.fsevents2
 :synopsis: FSEvents based emitter implementation.
-:platforms: Mac OS X
+:platforms: macOS
 """
 
-import os
+from __future__ import annotations
+
 import logging
+import os
 import queue
 import unicodedata
+import warnings
 from threading import Thread
-
-from watchdog.events import (
-    FileDeletedEvent,
-    FileModifiedEvent,
-    FileCreatedEvent,
-    FileMovedEvent,
-    DirDeletedEvent,
-    DirModifiedEvent,
-    DirCreatedEvent,
-    DirMovedEvent,
-    FileAttribEvent,
-    DirAttribEvent,
-)
-from watchdog.observers.api import (
-    BaseObserver,
-    EventEmitter,
-    DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT,
-)
+from typing import List, Optional, Type
 
 # pyobjc
-import AppKit
-from FSEvents import (
-    FSEventStreamCreate,
+import AppKit  # type: ignore[import]
+from FSEvents import (  # type: ignore[import]
     CFRunLoopGetCurrent,
-    FSEventStreamScheduleWithRunLoop,
-    FSEventStreamStart,
     CFRunLoopRun,
     CFRunLoopStop,
-    FSEventStreamStop,
+    FSEventStreamCreate,
     FSEventStreamInvalidate,
     FSEventStreamRelease,
-)
-
-from FSEvents import (
+    FSEventStreamScheduleWithRunLoop,
+    FSEventStreamStart,
+    FSEventStreamStop,
     kCFAllocatorDefault,
     kCFRunLoopDefaultMode,
-    kFSEventStreamEventIdSinceNow,
-    kFSEventStreamCreateFlagNoDefer,
     kFSEventStreamCreateFlagFileEvents,
-    kFSEventStreamEventFlagItemCreated,
-    kFSEventStreamEventFlagItemRemoved,
-    kFSEventStreamEventFlagItemInodeMetaMod,
-    kFSEventStreamEventFlagItemRenamed,
-    kFSEventStreamEventFlagItemModified,
-    kFSEventStreamEventFlagItemFinderInfoMod,
+    kFSEventStreamCreateFlagNoDefer,
     kFSEventStreamEventFlagItemChangeOwner,
-    kFSEventStreamEventFlagItemXattrMod,
+    kFSEventStreamEventFlagItemCreated,
+    kFSEventStreamEventFlagItemFinderInfoMod,
+    kFSEventStreamEventFlagItemInodeMetaMod,
     kFSEventStreamEventFlagItemIsDir,
     kFSEventStreamEventFlagItemIsSymlink,
+    kFSEventStreamEventFlagItemModified,
+    kFSEventStreamEventFlagItemRemoved,
+    kFSEventStreamEventFlagItemRenamed,
+    kFSEventStreamEventFlagItemXattrMod,
+    kFSEventStreamEventIdSinceNow,
 )
+
+from watchdog.events import (
+    DirAttribEvent,
+    DirCreatedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileAttribEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileSystemEvent,
+)
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
 logger = logging.getLogger(__name__)
 
+message = "watchdog.observers.fsevents2 is deprecated and will be removed in a future release."
+warnings.warn(message, DeprecationWarning)
+logger.warning(message)
+
 
 class FSEventsQueue(Thread):
-    """ Low level FSEvents client. """
+    """Low level FSEvents client."""
 
     def __init__(self, path):
         Thread.__init__(self)
-        self._queue = queue.Queue()
+        self._queue: queue.Queue[Optional[List[NativeEvent]]] = queue.Queue()
         self._run_loop = None
 
         if isinstance(path, bytes):
             path = os.fsdecode(path)
-        self._path = unicodedata.normalize('NFC', path)
+        self._path = unicodedata.normalize("NFC", path)
 
         context = None
         latency = 1.0
         self._stream_ref = FSEventStreamCreate(
-            kCFAllocatorDefault, self._callback, context, [self._path],
-            kFSEventStreamEventIdSinceNow, latency,
-            kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents)
+            kCFAllocatorDefault,
+            self._callback,
+            context,
+            [self._path],
+            kFSEventStreamEventIdSinceNow,
+            latency,
+            kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents,
+        )
         if self._stream_ref is None:
             raise OSError("FSEvents. Could not create stream.")
 
@@ -105,7 +109,8 @@ class FSEventsQueue(Thread):
         pool = AppKit.NSAutoreleasePool.alloc().init()
         self._run_loop = CFRunLoopGetCurrent()
         FSEventStreamScheduleWithRunLoop(
-            self._stream_ref, self._run_loop, kCFRunLoopDefaultMode)
+            self._stream_ref, self._run_loop, kCFRunLoopDefaultMode
+        )
         if not FSEventStreamStart(self._stream_ref):
             FSEventStreamInvalidate(self._stream_ref)
             FSEventStreamRelease(self._stream_ref)
@@ -123,10 +128,14 @@ class FSEventsQueue(Thread):
         if self._run_loop is not None:
             CFRunLoopStop(self._run_loop)
 
-    def _callback(self, streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIDs):
-        events = [NativeEvent(path, flags, _id) for path, flags, _id in
-                  zip(eventPaths, eventFlags, eventIDs)]
-        logger.debug("FSEvents callback. Got %d events:" % numEvents)
+    def _callback(
+        self, streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIDs
+    ):
+        events = [
+            NativeEvent(path, flags, _id)
+            for path, flags, _id in zip(eventPaths, eventFlags, eventIDs)
+        ]
+        logger.debug(f"FSEvents callback. Got {numEvents} events:")
         for e in events:
             logger.debug(e)
         self._queue.put(events)
@@ -174,9 +183,10 @@ class NativeEvent:
         return "Unknown"
 
     def __repr__(self):
-        s = "<%s: path=%s, type=%s, is_dir=%s, flags=%s, id=%s>"
-        return s % (type(self).__name__, repr(self.path), self._event_type,
-                    self.is_directory, hex(self.flags), self.event_id)
+        return (
+            f"<{type(self).__name__}: path={self.path!r}, type={self._event_type},"
+            f" is_dir={self.is_directory}, flags={hex(self.flags)}, id={self.event_id}>"
+        )
 
 
 class FSEventsEmitter(EventEmitter):
@@ -185,7 +195,7 @@ class FSEventsEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
         self._fsevents = FSEventsQueue(watch.path)
         self._fsevents.start()
 
@@ -196,10 +206,12 @@ class FSEventsEmitter(EventEmitter):
         events = self._fsevents.read_events()
         if events is None:
             return
+
         i = 0
         while i < len(events):
             event = events[i]
 
+            cls: Type[FileSystemEvent]
             # For some reason the create and remove flags are sometimes also
             # set for rename and modify type events, so let those take
             # precedence.
@@ -207,15 +219,20 @@ class FSEventsEmitter(EventEmitter):
                 # Internal moves appears to always be consecutive in the same
                 # buffer and have IDs differ by exactly one (while others
                 # don't) making it possible to pair up the two events coming
-                # from a singe move operation. (None of this is documented!)
+                # from a single move operation. (None of this is documented!)
                 # Otherwise, guess whether file was moved in or out.
                 # TODO: handle id wrapping
-                if (i + 1 < len(events) and events[i + 1].is_renamed
-                        and events[i + 1].event_id == event.event_id + 1):
+                if (
+                    i + 1 < len(events)
+                    and events[i + 1].is_renamed
+                    and events[i + 1].event_id == event.event_id + 1
+                ):
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
                     self.queue_event(cls(event.path, events[i + 1].path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
-                    self.queue_event(DirModifiedEvent(os.path.dirname(events[i + 1].path)))
+                    self.queue_event(
+                        DirModifiedEvent(os.path.dirname(events[i + 1].path))
+                    )
                     i += 1
                 elif os.path.exists(event.path):
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
@@ -244,9 +261,10 @@ class FSEventsEmitter(EventEmitter):
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(event.path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+
             i += 1
 
 
 class FSEventsObserver2(BaseObserver):
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=FSEventsEmitter, timeout=timeout)
+        super().__init__(emitter_class=FSEventsEmitter, timeout=timeout)

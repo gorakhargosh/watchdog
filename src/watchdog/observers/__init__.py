@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -38,8 +36,8 @@ of :class:`Observer`.  Here is a list of implemented observer classes.:
 Class          Platforms                        Note
 ============== ================================ ==============================
 |Inotify|      Linux 2.6.13+                    ``inotify(7)`` based observer
-|FSEvents|     Mac OS X                         FSEvents based observer
-|Kqueue|       Mac OS X and BSD with kqueue(2)  ``kqueue(2)`` based observer
+|FSEvents|     macOS                            FSEvents based observer
+|Kqueue|       macOS and BSD with kqueue(2)     ``kqueue(2)`` based observer
 |WinApi|       MS Windows                       Windows API-based observer
 |Polling|      Any                              fallback implementation
 ============== ================================ ==============================
@@ -48,22 +46,29 @@ Class          Platforms                        Note
 .. |FSEvents|    replace:: :class:`.fsevents.FSEventsObserver`
 .. |Kqueue|      replace:: :class:`.kqueue.KqueueObserver`
 .. |WinApi|      replace:: :class:`.read_directory_changes.WindowsApiObserver`
-.. |WinApiAsync| replace:: :class:`.read_directory_changes_async.WindowsApiAsyncObserver`
 .. |Polling|     replace:: :class:`.polling.PollingObserver`
 
 """
 
+from __future__ import annotations
+
+import sys
 import warnings
-from watchdog.utils import platform
+
 from watchdog.utils import UnsupportedLibc
 
-if platform.is_linux():
+from .api import BaseObserverSubclassCallable
+
+Observer: BaseObserverSubclassCallable
+
+
+if sys.platform.startswith("linux"):
     try:
         from .inotify import InotifyObserver as Observer
     except UnsupportedLibc:
         from .polling import PollingObserver as Observer
 
-elif platform.is_darwin():
+elif sys.platform.startswith("darwin"):
     try:
         from .fsevents import FSEventsObserver as Observer
     except Exception:
@@ -72,18 +77,18 @@ elif platform.is_darwin():
             warnings.warn("Failed to import fsevents. Fall back to kqueue")
         except Exception:
             from .polling import PollingObserver as Observer
+
             warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
 
-elif platform.is_bsd():
+elif sys.platform in ("dragonfly", "freebsd", "netbsd", "openbsd", "bsd"):
     from .kqueue import KqueueObserver as Observer
 
-elif platform.is_windows():
-    # TODO: find a reliable way of checking Windows version and import
-    # polling explicitly for Windows XP
+elif sys.platform.startswith("win"):
     try:
         from .read_directory_changes import WindowsApiObserver as Observer
     except Exception:
         from .polling import PollingObserver as Observer
+
         warnings.warn("Failed to import read_directory_changes. Fall back to polling.")
 
 else:

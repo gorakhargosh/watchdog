@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -30,8 +28,11 @@ Classes
    :inherited-members:
 
 """
+from __future__ import annotations
+
 import sys
 import threading
+from typing import TYPE_CHECKING
 
 
 class UnsupportedLibc(Exception):
@@ -42,22 +43,20 @@ class WatchdogShutdown(Exception):
     """
     Semantic exception used to signal an external shutdown event.
     """
+
     pass
 
 
 class BaseThread(threading.Thread):
-    """ Convenience class for creating stoppable threads. """
+    """Convenience class for creating stoppable threads."""
 
     def __init__(self):
         threading.Thread.__init__(self)
-        if hasattr(self, 'daemon'):
+        if hasattr(self, "daemon"):
             self.daemon = True
         else:
             self.setDaemon(True)
         self._stopped_event = threading.Event()
-
-        if not hasattr(self._stopped_event, 'is_set'):
-            self._stopped_event.is_set = self._stopped_event.isSet
 
     @property
     def stopped_event(self):
@@ -99,7 +98,7 @@ def load_module(module_name):
     try:
         __import__(module_name)
     except ImportError:
-        raise ImportError('No module named %s' % module_name)
+        raise ImportError(f"No module named {module_name}")
     return sys.modules[module_name]
 
 
@@ -121,20 +120,31 @@ def load_class(dotted_path):
     - modle.name.ClassName     # Typo in module name.
     - module.name.ClasNam      # Typo in classname.
     """
-    dotted_path_split = dotted_path.split('.')
-    if len(dotted_path_split) > 1:
-        klass_name = dotted_path_split[-1]
-        module_name = '.'.join(dotted_path_split[:-1])
-
-        module = load_module(module_name)
-        if hasattr(module, klass_name):
-            klass = getattr(module, klass_name)
-            return klass
-            # Finally create and return an instance of the class
-            # return klass(*args, **kwargs)
-        else:
-            raise AttributeError('Module %s does not have class attribute %s' % (
-                                 module_name, klass_name))
-    else:
+    dotted_path_split = dotted_path.split(".")
+    if len(dotted_path_split) <= 1:
         raise ValueError(
-            'Dotted module path %s must contain a module name and a classname' % dotted_path)
+            f"Dotted module path {dotted_path} must contain a module name and a classname"
+        )
+    klass_name = dotted_path_split[-1]
+    module_name = ".".join(dotted_path_split[:-1])
+
+    module = load_module(module_name)
+    if hasattr(module, klass_name):
+        return getattr(module, klass_name)
+        # Finally create and return an instance of the class
+        # return klass(*args, **kwargs)
+    else:
+        raise AttributeError(
+            f"Module {module_name} does not have class attribute {klass_name}"
+        )
+
+
+if TYPE_CHECKING or sys.version_info >= (3, 8):
+    # using `as` to explicitly re-export this since this is a compatibility layer
+    from typing import Protocol as Protocol
+else:
+    # Provide a dummy Protocol class when not available from stdlib.  Should be used
+    # only for hinting.  This could be had from typing_protocol, but not worth adding
+    # the _first_ dependency just for this.
+    class Protocol:
+        ...

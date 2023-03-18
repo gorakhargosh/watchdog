@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -35,6 +33,8 @@ Classes
 .. autoclass:: OrderedSet
 
 """
+
+from __future__ import annotations
 
 import queue
 
@@ -87,7 +87,7 @@ class SkipRepeatsQueue(queue.Queue):
         self._last_item = None
 
     def _put(self, item):
-        if item != self._last_item:
+        if self._last_item is None or item != self._last_item:
             super()._put(item)
             self._last_item = item
         else:

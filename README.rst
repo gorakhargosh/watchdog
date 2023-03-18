@@ -2,14 +2,11 @@ Watchdog
 ========
 
 |Build Status|
+|CirrusCI Status|
 
 Python API and shell utilities to monitor file system events.
 
-Works on 3.6+.
-
-If you want to use Python 2.6, you should stick with watchdog < 0.10.0.
-
-If you want to use Python 2.7, 3.4 or 3.5, you should stick with watchdog < 1.0.0.
+Works on 3.7+.
 
 Example API Usage
 -----------------
@@ -59,6 +56,7 @@ ignoring all directory events:
         --patterns="*.py;*.txt" \
         --ignore-directories \
         --recursive \
+        --verbose \
         .
 
 You can use the ``shell-command`` subcommand to execute shell commands in
@@ -127,7 +125,7 @@ Install from PyPI using ``pip``:
     $ python -m pip install -U watchdog
 
     # or to install the watchmedo utility:
-    $ python -m pip install -U watchdog[watchmedo]
+    $ python -m pip install -U "watchdog[watchmedo]"
 
 Install from source:
 
@@ -139,27 +137,6 @@ Install from source:
     $ python -m pip install -e ".[watchmedo]"
 
 
-Installation Caveats
-~~~~~~~~~~~~~~~~~~~~
-
-The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_,
-which brings a performance boost to the PyYAML parser. However, installing
-LibYAML_ is optional but recommended. On Mac OS X, you can use homebrew_
-to install LibYAML:
-
-.. code-block:: bash
-
-    $ brew install libyaml
-
-On Linux, use your favorite package manager to install LibYAML. Here's how you
-do it on Ubuntu:
-
-.. code-block:: bash
-
-    $ sudo apt install libyaml-dev
-
-On Windows, please install PyYAML_ using the binaries they provide.
-
 Documentation
 -------------
 
@@ -169,8 +146,8 @@ Contribute
 ----------
 
 Fork the `repository`_ on GitHub and send a pull request, or file an issue
-ticket at the `issue tracker`_. For general help and questions use the official
-`mailing list`_ or ask on `stackoverflow`_ with tag `python-watchdog`.
+ticket at the `issue tracker`_. For general help and questions use
+`stackoverflow`_ with tag `python-watchdog`.
 
 Create and activate your virtual environment, then::
 
@@ -185,7 +162,7 @@ Supported Platforms
 -------------------
 
 * Linux 2.6 (inotify)
-* Mac OS X (FSEvents, kqueue)
+* macOS (FSEvents, kqueue)
 * FreeBSD/BSD (kqueue)
 * Windows (ReadDirectoryChangesW with I/O completion ports;
   ReadDirectoryChangesW worker threads)
@@ -235,11 +212,9 @@ appropriate observer like in the example above, do::
 Dependencies
 ------------
 
-1. Python 3.6 or above.
+1. Python 3.7 or above.
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
-4. argh_ (only for ``watchmedo``)
-
 
 Licensing
 ---------
@@ -266,7 +241,7 @@ to do:
 * pyinotify_
 * `inotify-tools`_
 * jnotify_
-* treewalker_
+* treewatcher_
 * `file.monitor`_
 * pyfilesystem_
 
@@ -277,16 +252,12 @@ to do:
 .. _Apache License, version 2.0: https://www.apache.org/licenses/LICENSE-2.0
 .. _documentation: https://python-watchdog.readthedocs.io/
 .. _stackoverflow: https://stackoverflow.com/questions/tagged/python-watchdog
-.. _mailing list: https://groups.google.com/group/watchdog-python
 .. _repository: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
 .. _changelog: https://github.com/gorakhargosh/watchdog/blob/master/changelog.rst
 
-.. _homebrew: https://brew.sh/
-.. _argh: https://pypi.python.org/pypi/argh
 .. _PyYAML: https://www.pyyaml.org/
 .. _XCode: https://developer.apple.com/technologies/tools/xcode.html
-.. _LibYAML: https://pyyaml.org/wiki/LibYAML
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
@@ -295,9 +266,11 @@ to do:
 .. _pyinotify: https://github.com/seb-m/pyinotify
 .. _inotify-tools: https://github.com/rvoicilas/inotify-tools
 .. _jnotify: http://jnotify.sourceforge.net/
-.. _treewalker: https://github.com/jbd/treewatcher
+.. _treewatcher: https://github.com/jbd/treewatcher
 .. _file.monitor: https://github.com/pke/file.monitor
 .. _pyfilesystem: https://github.com/PyFilesystem/pyfilesystem
 
 .. |Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
    :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
+.. |CirrusCI Status| image:: https://api.cirrus-ci.com/github/gorakhargosh/watchdog.svg
+   :target: https://cirrus-ci.com/github/gorakhargosh/watchdog/

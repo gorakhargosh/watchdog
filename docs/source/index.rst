@@ -11,11 +11,7 @@ Watchdog
 
 Python API library and shell utilities to monitor file system events.
 
-Works on 3.6+.
-
-If you want to use Python 2.6, you should stick with watchdog < 0.10.0.
-
-If you want to use Python 2.7, 3.4 or 3.5, you should stick with watchdog < 1.0.0.
+Works on 3.7+.
 
 Directory monitoring made easy with
 -----------------------------------
@@ -51,9 +47,8 @@ Contribute
 
 Found a bug in or want a feature added to |project_name|?
 You can fork the official `code repository`_ or file an issue ticket
-at the `issue tracker`_. You can also ask questions at the official
-`mailing list`_. You may also want to refer to :ref:`hacking` for information
-about contributing code or documentation to |project_name|.
+at the `issue tracker`_. You may also want to refer to :ref:`hacking`
+for information about contributing code or documentation to |project_name|.
 
 
 Indices and tables

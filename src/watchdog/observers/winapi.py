@@ -1,4 +1,3 @@
-# coding: utf-8
 # winapi.py: Windows API-Python interface (removes dependency on pywin32)
 #
 # Copyright (C) 2007 Thomas Heller <theller@ctypes.org>
@@ -35,8 +34,13 @@
 # Portions of this code were taken from pyfilesystem, which uses the above
 # new BSD license.
 
-import ctypes.wintypes
+from __future__ import annotations
+
+import sys
 from functools import reduce
+
+assert sys.platform.startswith("win"), f"{__name__} requires Windows"
+import ctypes.wintypes  # noqa: E402
 
 LPVOID = ctypes.wintypes.LPVOID
 
@@ -90,13 +94,14 @@ ERROR_OPERATION_ABORTED = 995
 
 
 class OVERLAPPED(ctypes.Structure):
-    _fields_ = [('Internal', LPVOID),
-                ('InternalHigh', LPVOID),
-                ('Offset', ctypes.wintypes.DWORD),
-                ('OffsetHigh', ctypes.wintypes.DWORD),
-                ('Pointer', LPVOID),
-                ('hEvent', ctypes.wintypes.HANDLE),
-                ]
+    _fields_ = [
+        ("Internal", LPVOID),
+        ("InternalHigh", LPVOID),
+        ("Offset", ctypes.wintypes.DWORD),
+        ("OffsetHigh", ctypes.wintypes.DWORD),
+        ("Pointer", LPVOID),
+        ("hEvent", ctypes.wintypes.HANDLE),
+    ]
 
 
 def _errcheck_bool(value, func, args):
@@ -132,7 +137,7 @@ ReadDirectoryChangesW.argtypes = (
     ctypes.wintypes.DWORD,  # dwNotifyFilter
     ctypes.POINTER(ctypes.wintypes.DWORD),  # lpBytesReturned
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
-    LPVOID  # FileIOCompletionRoutine # lpCompletionRoutine
+    LPVOID,  # FileIOCompletionRoutine # lpCompletionRoutine
 )
 
 CreateFileW = kernel32.CreateFileW
@@ -145,21 +150,19 @@ CreateFileW.argtypes = (
     LPVOID,  # lpSecurityAttributes
     ctypes.wintypes.DWORD,  # dwCreationDisposition
     ctypes.wintypes.DWORD,  # dwFlagsAndAttributes
-    ctypes.wintypes.HANDLE  # hTemplateFile
+    ctypes.wintypes.HANDLE,  # hTemplateFile
 )
 
 CloseHandle = kernel32.CloseHandle
 CloseHandle.restype = ctypes.wintypes.BOOL
-CloseHandle.argtypes = (
-    ctypes.wintypes.HANDLE,  # hObject
-)
+CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)  # hObject
 
 CancelIoEx = kernel32.CancelIoEx
 CancelIoEx.restype = ctypes.wintypes.BOOL
 CancelIoEx.errcheck = _errcheck_bool
 CancelIoEx.argtypes = (
     ctypes.wintypes.HANDLE,  # hObject
-    ctypes.POINTER(OVERLAPPED)  # lpOverlapped
+    ctypes.POINTER(OVERLAPPED),  # lpOverlapped
 )
 
 CreateEvent = kernel32.CreateEventW
@@ -175,9 +178,7 @@ CreateEvent.argtypes = (
 SetEvent = kernel32.SetEvent
 SetEvent.restype = ctypes.wintypes.BOOL
 SetEvent.errcheck = _errcheck_bool
-SetEvent.argtypes = (
-    ctypes.wintypes.HANDLE,  # hEvent
-)
+SetEvent.argtypes = (ctypes.wintypes.HANDLE,)  # hEvent
 
 WaitForSingleObjectEx = kernel32.WaitForSingleObjectEx
 WaitForSingleObjectEx.restype = ctypes.wintypes.DWORD
@@ -232,11 +233,13 @@ GetFinalPathNameByHandleW.argtypes = (
 
 
 class FILE_NOTIFY_INFORMATION(ctypes.Structure):
-    _fields_ = [("NextEntryOffset", ctypes.wintypes.DWORD),
-                ("Action", ctypes.wintypes.DWORD),
-                ("FileNameLength", ctypes.wintypes.DWORD),
-                # ("FileName", (ctypes.wintypes.WCHAR * 1))]
-                ("FileName", (ctypes.c_char * 1))]
+    _fields_ = [
+        ("NextEntryOffset", ctypes.wintypes.DWORD),
+        ("Action", ctypes.wintypes.DWORD),
+        ("FileNameLength", ctypes.wintypes.DWORD),
+        # ("FileName", (ctypes.wintypes.WCHAR * 1))]
+        ("FileName", (ctypes.c_char * 1)),
+    ]
 
 
 LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
@@ -246,13 +249,16 @@ LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
 # the win32 API functions.
 WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
 WATCHDOG_FILE_SHARE_FLAGS = reduce(
-    lambda x, y: x | y, [
+    lambda x, y: x | y,
+    [
         FILE_SHARE_READ,
         FILE_SHARE_WRITE,
         FILE_SHARE_DELETE,
-    ])
+    ],
+)
 WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
-    lambda x, y: x | y, [
+    lambda x, y: x | y,
+    [
         FILE_NOTIFY_CHANGE_FILE_NAME,
         FILE_NOTIFY_CHANGE_DIR_NAME,
         FILE_NOTIFY_CHANGE_ATTRIBUTES,
@@ -261,7 +267,8 @@ WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
         FILE_NOTIFY_CHANGE_SECURITY,
         FILE_NOTIFY_CHANGE_LAST_ACCESS,
         FILE_NOTIFY_CHANGE_CREATION,
-    ])
+    ],
+)
 
 # ReadDirectoryChangesW buffer length.
 # To handle cases with lot of changes, this seems the highest safest value we can use.
@@ -283,7 +290,7 @@ def _parse_event_buffer(readBuffer, nBytes):
         ptr = ctypes.addressof(fni) + FILE_NOTIFY_INFORMATION.FileName.offset
         # filename = ctypes.wstring_at(ptr, fni.FileNameLength)
         filename = ctypes.string_at(ptr, fni.FileNameLength)
-        results.append((fni.Action, filename.decode('utf-16')))
+        results.append((fni.Action, filename.decode("utf-16")))
         numToSkip = fni.NextEntryOffset
         if numToSkip <= 0:
             break
@@ -303,8 +310,10 @@ def _is_observed_path_deleted(handle, path):
 
 def _generate_observed_path_deleted_event():
     # Create synthetic event for notify that observed directory is deleted
-    path = ctypes.create_unicode_buffer('.')
-    event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
+    path = ctypes.create_unicode_buffer(".")
+    event = FILE_NOTIFY_INFORMATION(
+        0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8")
+    )
     event_size = ctypes.sizeof(event)
     buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
     ctypes.memmove(buff, ctypes.addressof(event), event_size)
@@ -313,17 +322,24 @@ def _generate_observed_path_deleted_event():
 
 def get_directory_handle(path):
     """Returns a Windows handle to the specified directory path."""
-    return CreateFileW(path, FILE_LIST_DIRECTORY, WATCHDOG_FILE_SHARE_FLAGS,
-                       None, OPEN_EXISTING, WATCHDOG_FILE_FLAGS, None)
+    return CreateFileW(
+        path,
+        FILE_LIST_DIRECTORY,
+        WATCHDOG_FILE_SHARE_FLAGS,
+        None,
+        OPEN_EXISTING,
+        WATCHDOG_FILE_FLAGS,
+        None,
+    )
 
 
 def close_directory_handle(handle):
     try:
         CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
-        CloseHandle(handle)       # close directory handle
+        CloseHandle(handle)  # close directory handle
     except OSError:
         try:
-            CloseHandle(handle)   # close directory handle
+            CloseHandle(handle)  # close directory handle
         except Exception:
             return
 
@@ -336,10 +352,16 @@ def read_directory_changes(handle, path, recursive):
     event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
     nbytes = ctypes.wintypes.DWORD()
     try:
-        ReadDirectoryChangesW(handle, ctypes.byref(event_buffer),
-                              len(event_buffer), recursive,
-                              WATCHDOG_FILE_NOTIFY_FLAGS,
-                              ctypes.byref(nbytes), None, None)
+        ReadDirectoryChangesW(
+            handle,
+            ctypes.byref(event_buffer),
+            len(event_buffer),
+            recursive,
+            WATCHDOG_FILE_NOTIFY_FLAGS,
+            ctypes.byref(nbytes),
+            None,
+            None,
+        )
     except OSError as e:
         if e.winerror == ERROR_OPERATION_ABORTED:
             return [], 0
@@ -383,8 +405,9 @@ class WinAPINativeEvent:
         return self.action == FILE_ACTION_REMOVED_SELF
 
     def __repr__(self):
-        return ("<%s: action=%d, src_path=%r>" % (
-                type(self).__name__, self.action, self.src_path))
+        return (
+            f"<{type(self).__name__}: action={self.action}, src_path={self.src_path!r}>"
+        )
 
 
 def read_events(handle, path, recursive):

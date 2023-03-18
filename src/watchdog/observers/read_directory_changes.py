@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 # Copyright 2014 Thomas Amland
@@ -16,39 +14,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import threading
+from __future__ import annotations
+
 import os.path
+import platform
+import sys
+import threading
 import time
 
 from watchdog.events import (
     DirCreatedEvent,
     DirDeletedEvent,
-    DirMovedEvent,
     DirModifiedEvent,
+    DirMovedEvent,
     FileCreatedEvent,
     FileDeletedEvent,
-    FileMovedEvent,
     FileModifiedEvent,
-    generate_sub_moved_events,
+    FileMovedEvent,
     generate_sub_created_events,
+    generate_sub_moved_events,
 )
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
-from watchdog.observers.api import (
-    EventEmitter,
-    BaseObserver,
-    DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
-)
+assert sys.platform.startswith("win"), f"{__name__} requires Windows"
 
-from watchdog.observers.winapi import (
-    read_events,
-    get_directory_handle,
-    close_directory_handle,
-)
-
+from watchdog.observers.winapi import close_directory_handle, get_directory_handle, read_events  # noqa: E402
 
 # HACK:
-WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1   # seconds
+WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1  # seconds
 
 
 class WindowsApiEmitter(EventEmitter):
@@ -58,12 +51,19 @@ class WindowsApiEmitter(EventEmitter):
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout)
         self._lock = threading.Lock()
         self._handle = None
 
     def on_thread_start(self):
         self._handle = get_directory_handle(self.watch.path)
+
+    if platform.python_implementation() == "PyPy":
+
+        def start(self):
+            """PyPy needs some time before receiving events, see #792."""
+            super().start()
+            time.sleep(0.01)
 
     def on_thread_stop(self):
         if self._handle:
@@ -99,13 +99,19 @@ class WindowsApiEmitter(EventEmitter):
                             # TODO: Come up with a better solution, possibly
                             # a way to wait for I/O to complete before
                             # queuing events.
-                            for sub_moved_event in generate_sub_moved_events(src_path, dest_path):
+                            for sub_moved_event in generate_sub_moved_events(
+                                src_path, dest_path
+                            ):
                                 self.queue_event(sub_moved_event)
                         self.queue_event(event)
                     else:
                         self.queue_event(FileMovedEvent(src_path, dest_path))
                 elif winapi_event.is_modified:
-                    cls = DirModifiedEvent if os.path.isdir(src_path) else FileModifiedEvent
+                    cls = (
+                        DirModifiedEvent
+                        if os.path.isdir(src_path)
+                        else FileModifiedEvent
+                    )
                     self.queue_event(cls(src_path))
                 elif winapi_event.is_added:
                     isdir = os.path.isdir(src_path)
@@ -133,5 +139,4 @@ class WindowsApiObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=WindowsApiEmitter,
-                              timeout=timeout)
+        super().__init__(emitter_class=WindowsApiEmitter, timeout=timeout)

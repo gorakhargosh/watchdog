@@ -1,7 +1,10 @@
--e ".[watchmedo]"
 eventlet
 flake8
 flaky
+isort
 pytest
 pytest-cov
 pytest-timeout
+sphinx
+mypy
+types-PyYAML

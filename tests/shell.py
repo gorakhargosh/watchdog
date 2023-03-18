@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -21,22 +19,14 @@
     :author: yesudeep@google.com (Yesudeep Mangalapilly)
 """
 
+from __future__ import annotations
+
+import errno
 import os
 import os.path
-import tempfile
 import shutil
-import errno
+import tempfile
 import time
-
-
-# def tree(path='.', show_files=False):
-#    print(path)
-#    padding = ''
-#    for root, directories, filenames in os.walk(path):
-#        print(padding + os.path.basename(root) + os.path.sep)
-#        padding = padding + '   '
-#        for filename in filenames:
-#            print(padding + filename)
 
 
 def cd(path):
@@ -51,13 +41,13 @@ def pwd():
 
 def mkfile(path):
     """Creates a file"""
-    with open(path, 'ab'):
+    with open(path, "ab"):
         pass
 
 
 def mkdir(path, parents=False):
     """Creates a directory (optionally also creates all the parent directories
-  in the path)."""
+    in the path)."""
     if parents:
         try:
             os.makedirs(path)
@@ -86,13 +76,13 @@ def touch(path, times=None):
     if os.path.isdir(path):
         os.utime(path, times)
     else:
-        with open(path, 'ab'):
+        with open(path, "ab"):
             os.utime(path, times)
 
 
 def truncate(path):
     """Truncates a file."""
-    with open(path, 'wb'):
+    with open(path, "wb"):
         os.utime(path, None)
 
 
@@ -110,21 +100,29 @@ def mkdtemp():
     return tempfile.mkdtemp()
 
 
-def ls(path='.'):
+def ls(path="."):
     return os.listdir(path)
 
 
 def msize(path):
     """Modify the file size without updating the modified time."""
-    with open(path, 'w') as w:
-        w.write('')
+    with open(path, "w") as w:
+        w.write("")
     os.utime(path, (0, 0))
     time.sleep(0.4)
-    with open(path, 'w') as w:
-        w.write('0')
+    with open(path, "w") as w:
+        w.write("0")
     os.utime(path, (0, 0))
 
 
 def chmod(path, mode):
     """"Change file mode bits."""
     os.chmod(path, mode)
+
+
+def mount_tmpfs(path):
+    os.system(f"sudo mount -t tmpfs none {path}")
+
+
+def unmount(path):
+    os.system(f"sudo umount {path}")

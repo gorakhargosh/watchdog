@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from time import time
 
 import pytest
+
 from watchdog.utils.delayed_queue import DelayedQueue
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_delayed_get():
-    q = DelayedQueue(2)
+    q = DelayedQueue[str](2)
     q.put("", True)
     inserted = time()
     q.get()
@@ -33,7 +34,7 @@ def test_delayed_get():
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_nondelayed_get():
-    q = DelayedQueue(2)
+    q = DelayedQueue[str](2)
     q.put("", False)
     inserted = time()
     q.get()

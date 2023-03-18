@@ -1,5 +1,3 @@
-# coding: utf-8
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
 # Copyright 2012 Google, Inc & contributors.
 #
@@ -15,28 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from watchdog.events import (
-    FileDeletedEvent,
-    FileModifiedEvent,
-    FileCreatedEvent,
-    DirDeletedEvent,
-    DirModifiedEvent,
-    DirCreatedEvent,
-    FileMovedEvent,
-    DirMovedEvent,
-    LoggingEventHandler,
-    EVENT_TYPE_MODIFIED,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
+    EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED,
+    DirCreatedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    LoggingEventHandler,
 )
 
-path_1 = '/path/xyz'
-path_2 = '/path/abc'
+path_1 = "/path/xyz"
+path_2 = "/path/abc"
 
 
 class _TestableEventHandler(LoggingEventHandler):
-
     def on_any_event(self, event):
         assert True
 
@@ -59,14 +58,14 @@ class _TestableEventHandler(LoggingEventHandler):
 
 def test_logging_event_handler_dispatch():
     # Utilities.
-    dir_del_event = DirDeletedEvent('/path/blah.py')
-    file_del_event = FileDeletedEvent('/path/blah.txt')
-    dir_cre_event = DirCreatedEvent('/path/blah.py')
-    file_cre_event = FileCreatedEvent('/path/blah.txt')
-    dir_mod_event = DirModifiedEvent('/path/blah.py')
-    file_mod_event = FileModifiedEvent('/path/blah.txt')
-    dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
-    file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
+    dir_del_event = DirDeletedEvent("/path/blah.py")
+    file_del_event = FileDeletedEvent("/path/blah.txt")
+    dir_cre_event = DirCreatedEvent("/path/blah.py")
+    file_cre_event = FileCreatedEvent("/path/blah.txt")
+    dir_mod_event = DirModifiedEvent("/path/blah.py")
+    file_mod_event = FileModifiedEvent("/path/blah.txt")
+    dir_mov_event = DirMovedEvent("/path/blah.py", "/path/blah")
+    file_mov_event = FileMovedEvent("/path/blah.txt", "/path/blah")
 
     all_events = [
         dir_mod_event,
