@@ -27,7 +27,6 @@
 .. _homebrew: https://brew.sh/
 .. _inotify-tools: https://github.com/rvoicilas/inotify-tools
 .. _jnotify: http://jnotify.sourceforge.net/
-.. _LibYAML: https://pyyaml.org/wiki/LibYAML
 .. _nose: https://nose.readthedocs.org/en/latest/
 .. _pip: https://pypi.python.org/pypi/pip
 .. _pnotify: http://mark.heily.com/pnotify
