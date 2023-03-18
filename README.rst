@@ -137,27 +137,6 @@ Install from source:
     $ python -m pip install -e ".[watchmedo]"
 
 
-Installation Caveats
-~~~~~~~~~~~~~~~~~~~~
-
-The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_,
-which brings a performance boost to the PyYAML parser. However, installing
-LibYAML_ is optional but recommended. On macOS, you can use homebrew_
-to install LibYAML:
-
-.. code-block:: bash
-
-    $ brew install libyaml
-
-On Linux, use your favorite package manager to install LibYAML. Here's how you
-do it on Ubuntu:
-
-.. code-block:: bash
-
-    $ sudo apt install libyaml-dev
-
-On Windows, please install PyYAML_ using the binaries they provide.
-
 Documentation
 -------------
 
@@ -281,7 +260,6 @@ to do:
 .. _homebrew: https://brew.sh/
 .. _PyYAML: https://www.pyyaml.org/
 .. _XCode: https://developer.apple.com/technologies/tools/xcode.html
-.. _LibYAML: https://pyyaml.org/wiki/LibYAML
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
