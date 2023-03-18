@@ -146,8 +146,8 @@ Contribute
 ----------
 
 Fork the `repository`_ on GitHub and send a pull request, or file an issue
-ticket at the `issue tracker`_. For general help and questions use the official
-`mailing list`_ or ask on `stackoverflow`_ with tag `python-watchdog`.
+ticket at the `issue tracker`_. For general help and questions use
+`stackoverflow`_ with tag `python-watchdog`.
 
 Create and activate your virtual environment, then::
 
@@ -252,12 +252,10 @@ to do:
 .. _Apache License, version 2.0: https://www.apache.org/licenses/LICENSE-2.0
 .. _documentation: https://python-watchdog.readthedocs.io/
 .. _stackoverflow: https://stackoverflow.com/questions/tagged/python-watchdog
-.. _mailing list: https://groups.google.com/group/watchdog-python
 .. _repository: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
 .. _changelog: https://github.com/gorakhargosh/watchdog/blob/master/changelog.rst
 
-.. _homebrew: https://brew.sh/
 .. _PyYAML: https://www.pyyaml.org/
 .. _XCode: https://developer.apple.com/technologies/tools/xcode.html
 
