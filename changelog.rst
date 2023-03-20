@@ -3,6 +3,15 @@
 Changelog
 ---------
 
+3.0.1
+~~~~~
+
+2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
+
+- 
+- Thanks to our beloved contributors: @
+
+
 3.0.0
 ~~~~~
 
