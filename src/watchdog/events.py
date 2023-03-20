@@ -144,7 +144,7 @@ class FileSystemEvent:
     def __repr__(self):
         return (
             f"<{type(self).__name__}: event_type={self.event_type}, "
-            f"src_path={self.src_path!r}, is_directory={self.is_directory}"
+            f"src_path={self.src_path!r}, is_directory={self.is_directory}>"
         )
 
     # Used for comparison of events.
