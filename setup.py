@@ -93,7 +93,7 @@ setup(
     long_description_content_type="text/x-rst",
     author="Yesudeep Mangalapilly",
     author_email="yesudeep@gmail.com",
-    license="Apache License 2.0",
+    license="Apache-2.0",
     url="https://github.com/gorakhargosh/watchdog",
     keywords=" ".join(
         [
