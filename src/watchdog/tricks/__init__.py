@@ -50,7 +50,7 @@ import sys
 import threading
 import time
 
-from watchdog.events import EVENT_TYPE_OPENED, PatternMatchingEventHandler
+from watchdog.events import EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
 from watchdog.utils import echo
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
