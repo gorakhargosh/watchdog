@@ -83,31 +83,8 @@ class LoggerTrick(Trick):
 
     """A simple trick that does only logs events."""
 
-    def on_any_event(self, event):
-        pass
-
     @echo_events
-    def on_modified(self, event):
-        pass
-
-    @echo_events
-    def on_deleted(self, event):
-        pass
-
-    @echo_events
-    def on_created(self, event):
-        pass
-
-    @echo_events
-    def on_moved(self, event):
-        pass
-
-    @echo_events
-    def on_closed(self, event):
-        pass
-
-    @echo_events
-    def on_opened(self, event):
+    def on_any_event(self, event: FileSystemEvent) -> None:
         pass
 
 
