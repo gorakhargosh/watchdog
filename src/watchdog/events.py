@@ -96,6 +96,7 @@ from __future__ import annotations
 import logging
 import os.path
 import re
+from typing import Optional
 
 from watchdog.utils.patterns import match_any_paths
 
@@ -154,9 +155,6 @@ class FileSystemEvent:
 
     def __eq__(self, event):
         return self.key == event.key
-
-    def __ne__(self, event):
-        return self.key != event.key
 
     def __hash__(self):
         return hash(self.key)
@@ -264,7 +262,7 @@ class FileSystemEventHandler:
     Base file system event handler that you can override methods from.
     """
 
-    def dispatch(self, event):
+    def dispatch(self, event: FileSystemEvent) -> None:
         """Dispatches events to the appropriate methods.
 
         :param event:
@@ -282,7 +280,7 @@ class FileSystemEventHandler:
             EVENT_TYPE_OPENED: self.on_opened,
         }[event.event_type](event)
 
-    def on_any_event(self, event):
+    def on_any_event(self, event: FileSystemEvent) -> None:
         """Catch-all event handler.
 
         :param event:
@@ -291,7 +289,7 @@ class FileSystemEventHandler:
             :class:`FileSystemEvent`
         """
 
-    def on_moved(self, event):
+    def on_moved(self, event: FileSystemEvent) -> None:
         """Called when a file or a directory is moved or renamed.
 
         :param event:
@@ -300,7 +298,7 @@ class FileSystemEventHandler:
             :class:`DirMovedEvent` or :class:`FileMovedEvent`
         """
 
-    def on_created(self, event):
+    def on_created(self, event: FileSystemEvent) -> None:
         """Called when a file or directory is created.
 
         :param event:
@@ -309,7 +307,7 @@ class FileSystemEventHandler:
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
 
-    def on_deleted(self, event):
+    def on_deleted(self, event: FileSystemEvent) -> None:
         """Called when a file or directory is deleted.
 
         :param event:
@@ -318,7 +316,7 @@ class FileSystemEventHandler:
             :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
         """
 
-    def on_modified(self, event):
+    def on_modified(self, event: FileSystemEvent) -> None:
         """Called when a file or directory is modified.
 
         :param event:
@@ -327,7 +325,7 @@ class FileSystemEventHandler:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
         """
 
-    def on_closed(self, event):
+    def on_closed(self, event: FileSystemEvent) -> None:
         """Called when a file opened for writing is closed.
 
         :param event:
@@ -336,7 +334,7 @@ class FileSystemEventHandler:
             :class:`FileClosedEvent`
         """
 
-    def on_opened(self, event):
+    def on_opened(self, event: FileSystemEvent) -> None:
         """Called when a file is opened.
 
         :param event:
@@ -398,7 +396,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         """
         return self._case_sensitive
 
-    def dispatch(self, event):
+    def dispatch(self, event: FileSystemEvent) -> None:
         """Dispatches events to the appropriate methods.
 
         :param event:
@@ -486,7 +484,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         """
         return self._case_sensitive
 
-    def dispatch(self, event):
+    def dispatch(self, event: FileSystemEvent) -> None:
         """Dispatches events to the appropriate methods.
 
         :param event:
@@ -513,36 +511,45 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
 class LoggingEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
 
-    def __init__(self, logger=None):
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         super().__init__()
-
         self.logger = logger or logging.root
 
-    def on_moved(self, event):
+    def on_moved(self, event: FileSystemEvent) -> None:
         super().on_moved(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info(
-            "Moved %s: from %s to %s", what, event.src_path, event.dest_path
+            "Moved %s: from %s to %s", what, event.src_path, event.dest_path  # type: ignore[attr-defined]
         )
 
-    def on_created(self, event):
+    def on_created(self, event: FileSystemEvent) -> None:
         super().on_created(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Created %s: %s", what, event.src_path)
 
-    def on_deleted(self, event):
+    def on_deleted(self, event: FileSystemEvent) -> None:
         super().on_deleted(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Deleted %s: %s", what, event.src_path)
 
-    def on_modified(self, event):
+    def on_modified(self, event: FileSystemEvent) -> None:
         super().on_modified(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Modified %s: %s", what, event.src_path)
+
+    def on_closed(self, event: FileSystemEvent) -> None:
+        super().on_closed(event)
+
+        self.logger.info("Closed file: %s", event.src_path)
+
+    def on_opened(self, event: FileSystemEvent) -> None:
+        super().on_opened(event)
+
+        self.logger.info("Opened file: %s", event.src_path)
 
 
 def generate_sub_moved_events(src_dir_path, dest_dir_path):

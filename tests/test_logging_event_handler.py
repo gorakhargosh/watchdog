@@ -16,18 +16,23 @@
 from __future__ import annotations
 
 from watchdog.events import (
+    EVENT_TYPE_CLOSED,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED,
+    EVENT_TYPE_OPENED,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileClosedEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    FileOpenedEvent,
+    FileSystemEvent,
     LoggingEventHandler,
 )
 
@@ -37,7 +42,7 @@ path_2 = "/path/abc"
 
 class _TestableEventHandler(LoggingEventHandler):
     def on_any_event(self, event):
-        assert True
+        assert isinstance(event, FileSystemEvent)
 
     def on_modified(self, event):
         super().on_modified(event)
@@ -55,6 +60,14 @@ class _TestableEventHandler(LoggingEventHandler):
         super().on_created(event)
         assert event.event_type == EVENT_TYPE_CREATED
 
+    def on_closed(self, event):
+        super().on_closed(event)
+        assert event.event_type == EVENT_TYPE_CLOSED
+
+    def on_opened(self, event):
+        super().on_opened(event)
+        assert event.event_type == EVENT_TYPE_OPENED
+
 
 def test_logging_event_handler_dispatch():
     # Utilities.
@@ -66,6 +79,8 @@ def test_logging_event_handler_dispatch():
     file_mod_event = FileModifiedEvent("/path/blah.txt")
     dir_mov_event = DirMovedEvent("/path/blah.py", "/path/blah")
     file_mov_event = FileMovedEvent("/path/blah.txt", "/path/blah")
+    file_ope_event = FileOpenedEvent("/path/blah.txt")
+    file_clo_event = FileClosedEvent("/path/blah.txt")
 
     all_events = [
         dir_mod_event,
@@ -76,6 +91,8 @@ def test_logging_event_handler_dispatch():
         file_del_event,
         file_cre_event,
         file_mov_event,
+        file_ope_event,
+        file_clo_event,
     ]
 
     handler = _TestableEventHandler()

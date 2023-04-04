@@ -8,8 +8,8 @@ Changelog
 
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [events] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggingEventHandler``
+- Thanks to our beloved contributors: @BoboTiG
 
 
 3.0.0
