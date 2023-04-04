@@ -119,6 +119,7 @@ def test_delete_watched_directory(p):
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.skipIf("GITHUB_REF" not in os.environ)
 def test_unmount_watched_directory_filesystem(p):
     mkdir(p("dir1"))
     mount_tmpfs(p("dir1"))
