@@ -13,6 +13,7 @@ Changelog
 - [events] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggingEventHandler``
 - [tests] Improve ``FileSystemEvent`` coverage
 - [watchmedo] Log all events in ``LoggerTrick``
+- [windows] The ``observers.read_directory_changes.WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` hack was removed. The constant will be kept to prevent breaking other softwares.
 - Thanks to our beloved contributors: @BoboTiG
 
 3.0.0
