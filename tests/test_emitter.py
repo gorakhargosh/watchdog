@@ -259,7 +259,7 @@ def test_move_to_full(p: P, event_queue: TestEventQueue, start_watching: StartWa
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileMovedEvent)
     assert event.dest_path == p("dir2", "b")
-    assert event.src_path is None  # Should equal None since the path was not watched
+    assert event.src_path == ""  # Should be blank since the path was not watched
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -290,7 +290,7 @@ def test_move_from_full(p: P, event_queue: TestEventQueue, start_watching: Start
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event, FileMovedEvent)
     assert event.src_path == p("dir1", "a")
-    assert event.dest_path is None  # Should equal None since path not watched
+    assert event.dest_path == ""  # Should be blank since path not watched
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -485,7 +485,7 @@ def test_renaming_top_level_directory(
     expect_event(DirModifiedEvent(p()))
     expect_event(DirModifiedEvent(p()))
 
-    expect_event(DirMovedEvent(p("a", "b"), p("a2", "b")))
+    expect_event(DirMovedEvent(p("a", "b"), p("a2", "b"), is_synthetic=True))
 
     if platform.is_bsd():
         expect_event(DirModifiedEvent(p()))
@@ -569,12 +569,10 @@ def test_renaming_top_level_directory_on_windows(
             break
 
     assert all(
-        [
-            isinstance(
-                e, (FileCreatedEvent, FileMovedEvent, DirMovedEvent, DirModifiedEvent)
-            )
-            for e in events
-        ]
+        isinstance(
+            e, (FileCreatedEvent, FileMovedEvent, DirMovedEvent, DirModifiedEvent)
+        )
+        for e in events
     )
 
     for event in events:
@@ -608,8 +606,8 @@ def test_move_nested_subdirectories(
     expect_event(DirModifiedEvent(p("dir1")))
     expect_event(DirModifiedEvent(p()))
 
-    expect_event(DirMovedEvent(p("dir1", "dir2", "dir3"), p("dir2", "dir3")))
-    expect_event(FileMovedEvent(p("dir1", "dir2", "dir3", "a"), p("dir2", "dir3", "a")))
+    expect_event(DirMovedEvent(p("dir1", "dir2", "dir3"), p("dir2", "dir3"), is_synthetic=True))
+    expect_event(FileMovedEvent(p("dir1", "dir2", "dir3", "a"), p("dir2", "dir3", "a"), is_synthetic=True))
 
     if platform.is_bsd():
         event = event_queue.get(timeout=5)[0]

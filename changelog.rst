@@ -8,11 +8,12 @@ Changelog
 
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
 
+- [events] ``FileSystemEvent``, and subclasses, are now ``dataclass``es, and their ``repr()`` has changed
+- [windows] ``WinAPINativeEvent`` is now a ``dataclass``, and its ``repr()`` has changed
 - [events] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggingEventHandler``
 - [tests] Improve ``FileSystemEvent`` coverage
 - [watchmedo] Log all events in ``LoggerTrick``
 - Thanks to our beloved contributors: @BoboTiG
-
 
 3.0.0
 ~~~~~
