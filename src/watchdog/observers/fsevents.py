@@ -85,9 +85,7 @@ class FSEventsEmitter(EventEmitter):
         self._start_time = 0.0
         self._starting_state = None
         self._lock = threading.Lock()
-        self._absolute_watch_path = os.path.realpath(
-            os.path.abspath(os.path.expanduser(self.watch.path))
-        )
+        self._absolute_watch_path = os.path.realpath(os.path.abspath(os.path.expanduser(self.watch.path)))
 
     def on_thread_stop(self):
         _fsevents.remove_watch(self.watch)
@@ -107,9 +105,7 @@ class FSEventsEmitter(EventEmitter):
                 logger.debug("drop event %s", event)
 
     def _is_recursive_event(self, event):
-        src_path = (
-            event.src_path if event.is_directory else os.path.dirname(event.src_path)
-        )
+        src_path = event.src_path if event.is_directory else os.path.dirname(event.src_path)
         if src_path == self._absolute_watch_path:
             return False
 
@@ -136,9 +132,7 @@ class FSEventsEmitter(EventEmitter):
         cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
         self.queue_event(cls(src_path))
 
-    def _queue_renamed_event(
-        self, src_event, src_path, dst_path, src_dirname, dst_dirname
-    ):
+    def _queue_renamed_event(self, src_event, src_path, dst_path, src_dirname, dst_dirname):
         cls = DirMovedEvent if src_event.is_directory else FileMovedEvent
         dst_path = self._encode_path(dst_path)
         self.queue_event(cls(src_path, dst_path))
@@ -170,9 +164,7 @@ class FSEventsEmitter(EventEmitter):
     def queue_events(self, timeout, events):
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
-                flags = ", ".join(
-                    attr for attr in dir(event) if getattr(event, attr) is True
-                )
+                flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
                 logger.debug(f"{event}: {flags}")
 
         if time.monotonic() - self._start_time > 60:
@@ -238,9 +230,7 @@ class FSEventsEmitter(EventEmitter):
                 if event.is_renamed:
                     # Check if we have a corresponding destination event in the watched path.
                     dst_event = next(
-                        iter(
-                            e for e in events if e.is_renamed and e.inode == event.inode
-                        ),
+                        iter(e for e in events if e.is_renamed and e.inode == event.inode),
                         None,
                     )
 
@@ -251,9 +241,7 @@ class FSEventsEmitter(EventEmitter):
                         dst_path = self._encode_path(dst_event.path)
                         dst_dirname = os.path.dirname(dst_path)
 
-                        self._queue_renamed_event(
-                            event, src_path, dst_path, src_dirname, dst_dirname
-                        )
+                        self._queue_renamed_event(event, src_path, dst_path, src_dirname, dst_dirname)
                         self._fs_view.add(event.inode)
 
                         for sub_event in generate_sub_moved_events(src_path, dst_path):

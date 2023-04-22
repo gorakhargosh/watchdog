@@ -55,16 +55,12 @@ def observer():
         (_fsevents.NativeEvent("", 0, 0x00000800 | 0x00000200 | 0x00000100, 0), True),
         # renamed, removed, created, itemfindermod
         (
-            _fsevents.NativeEvent(
-                "", 0, 0x00000800 | 0x00000200 | 0x00000100 | 0x00002000, 0
-            ),
+            _fsevents.NativeEvent("", 0, 0x00000800 | 0x00000200 | 0x00000100 | 0x00002000, 0),
             True,
         ),
         # xattr, removed, modified, itemfindermod
         (
-            _fsevents.NativeEvent(
-                "", 0, 0x00008000 | 0x00000200 | 0x00001000 | 0x00002000, 0
-            ),
+            _fsevents.NativeEvent("", 0, 0x00008000 | 0x00000200 | 0x00001000 | 0x00002000, 0),
             False,
         ),
     ],
@@ -119,9 +115,7 @@ def test_watcher_deletion_while_receiving_events_1(
         FSEventsEmitter.stop(emitter)
         orig(*args)
 
-    with caplog.at_level(logging.ERROR), patch.object(
-        FSEventsEmitter, "events_callback", new=cb
-    ):
+    with caplog.at_level(logging.ERROR), patch.object(FSEventsEmitter, "events_callback", new=cb):
         emitter = start_watching(tmpdir)
         # Less than 100 is not enough events to trigger the error
         for n in range(100):
@@ -276,9 +270,7 @@ def test_recursive_check_accepts_relative_paths(p: P) -> None:
 
     cwd = os.getcwd()
     os.chdir(p())
-    event_handler = TestEventHandler(
-        patterns=["*.json"], ignore_patterns=[], ignore_directories=True
-    )
+    event_handler = TestEventHandler(patterns=["*.json"], ignore_patterns=[], ignore_directories=True)
     observer = Observer()
     observer.schedule(event_handler, ".")
     observer.start()
@@ -329,9 +321,7 @@ def test_watchdog_recursive(p: P) -> None:
         while not expected.issubset(handler.changes) and time.time() < timeout_at:
             time.sleep(0.2)
 
-        assert expected.issubset(
-            handler.changes
-        ), f"Did not find expected changes. Found: {handler.changes}"
+        assert expected.issubset(handler.changes), f"Did not find expected changes. Found: {handler.changes}"
     finally:
         for watch in watches:
             observer.unschedule(watch)

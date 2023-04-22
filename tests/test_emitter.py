@@ -77,9 +77,7 @@ def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching
 
 
 @pytest.mark.xfail(reason="known to be problematic")
-@pytest.mark.skipif(
-    not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux"
-)
+@pytest.mark.skipif(not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux")
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     f_d = open(p("a"), "a")
@@ -246,9 +244,7 @@ def test_move_to(p: P, start_watching: StartWatching, expect_event: ExpectEvent)
         expect_event(DirModifiedEvent(p("dir2")))
 
 
-@pytest.mark.skipif(
-    not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux"
-)
+@pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
 def test_move_to_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -277,9 +273,7 @@ def test_move_from(p: P, start_watching: StartWatching, expect_event: ExpectEven
         expect_event(DirModifiedEvent(p("dir1")))
 
 
-@pytest.mark.skipif(
-    not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux"
-)
+@pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
 def test_move_from_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -321,9 +315,7 @@ def test_separate_consecutive_moves(p: P, start_watching: StartWatching, expect_
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-@pytest.mark.skipif(
-    platform.is_bsd(), reason="BSD create another set of events for this test"
-)
+@pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
 def test_delete_self(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     emitter = start_watching(p("dir1"))
@@ -360,9 +352,7 @@ def test_fast_subdirectory_creation_deletion(p: P, event_queue: TestEventQueue, 
         count[etype] += 1
         assert event.src_path == etype_for_dir[etype]
         assert count[DirCreatedEvent] >= count[DirDeletedEvent]
-        assert (
-            count[DirCreatedEvent] + count[DirDeletedEvent] >= count[DirModifiedEvent]
-        )
+        assert count[DirCreatedEvent] + count[DirDeletedEvent] >= count[DirModifiedEvent]
     assert count == {
         DirCreatedEvent: times,
         DirModifiedEvent: times * 2,
@@ -448,9 +438,7 @@ def test_recursive_off(
             event_queue.get(timeout=5)
 
         mkdir(p("dir3"))
-        expect_event(
-            DirModifiedEvent(p())
-        )  # the contents of the parent directory changed
+        expect_event(DirModifiedEvent(p()))  # the contents of the parent directory changed
 
         mv(p("dir1", "dir2", "somefile"), p("somefile"))
         expect_event(FileMovedEvent(p("dir1", "dir2", "somefile"), p("somefile")))
@@ -461,9 +449,7 @@ def test_recursive_off(
         expect_event(DirModifiedEvent(p()))
 
 
-@pytest.mark.skipif(
-    platform.is_windows(), reason="Windows create another set of events for this test"
-)
+@pytest.mark.skipif(platform.is_windows(), reason="Windows create another set of events for this test")
 def test_renaming_top_level_directory(
     p: P,
     event_queue: TestEventQueue,
@@ -568,12 +554,7 @@ def test_renaming_top_level_directory_on_windows(
         if event_queue.empty():
             break
 
-    assert all(
-        isinstance(
-            e, (FileCreatedEvent, FileMovedEvent, DirMovedEvent, DirModifiedEvent)
-        )
-        for e in events
-    )
+    assert all(isinstance(e, (FileCreatedEvent, FileMovedEvent, DirMovedEvent, DirModifiedEvent)) for e in events)
 
     for event in events:
         if isinstance(event, FileCreatedEvent):
@@ -588,9 +569,7 @@ def test_renaming_top_level_directory_on_windows(
             assert event.src_path == p("a2", "b")
 
 
-@pytest.mark.skipif(
-    platform.is_windows(), reason="Windows create another set of events for this test"
-)
+@pytest.mark.skipif(platform.is_windows(), reason="Windows create another set of events for this test")
 def test_move_nested_subdirectories(
     p: P,
     event_queue: TestEventQueue,
@@ -679,9 +658,7 @@ def test_move_nested_subdirectories_on_windows(
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-@pytest.mark.skipif(
-    platform.is_bsd(), reason="BSD create another set of events for this test"
-)
+@pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
 def test_file_lifecyle(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     start_watching()
 

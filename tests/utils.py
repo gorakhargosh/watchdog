@@ -66,9 +66,7 @@ class Helper:
 
         emitter: EventEmitter
         if sys.platform.startswith("linux") and use_full_emitter:
-            emitter = InotifyFullEmitter(
-                self.event_queue, ObservedWatch(path, recursive=recursive)
-            )
+            emitter = InotifyFullEmitter(self.event_queue, ObservedWatch(path, recursive=recursive))
         else:
             emitter = Emitter(self.event_queue, ObservedWatch(path, recursive=recursive))
 
@@ -78,6 +76,7 @@ class Helper:
             # TODO: I think this could be better...  .suppress_history should maybe
             #       become a common attribute.
             from watchdog.observers.fsevents import FSEventsEmitter
+
             assert isinstance(emitter, FSEventsEmitter)
             emitter.suppress_history = True
 

@@ -74,6 +74,7 @@ elif sys.platform.startswith("darwin"):
     except Exception:
         try:
             from .kqueue import KqueueObserver as Observer
+
             warnings.warn("Failed to import fsevents. Fall back to kqueue")
         except Exception:
             from .polling import PollingObserver as Observer

@@ -156,9 +156,7 @@ class InotifyBufferDelayedRead(InotifyBuffer):
         return super().run(*args, **kwargs)
 
 
-@pytest.mark.parametrize(
-    argnames="cls", argvalues=[InotifyBuffer, InotifyBufferDelayedRead]
-)
+@pytest.mark.parametrize(argnames="cls", argvalues=[InotifyBuffer, InotifyBufferDelayedRead])
 def test_close_should_terminate_thread(p, cls):
     inotify = cls(p("").encode(), recursive=True)
 

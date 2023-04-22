@@ -122,9 +122,7 @@ def load_class(dotted_path):
     """
     dotted_path_split = dotted_path.split(".")
     if len(dotted_path_split) <= 1:
-        raise ValueError(
-            f"Dotted module path {dotted_path} must contain a module name and a classname"
-        )
+        raise ValueError(f"Dotted module path {dotted_path} must contain a module name and a classname")
     klass_name = dotted_path_split[-1]
     module_name = ".".join(dotted_path_split[:-1])
 
@@ -134,9 +132,7 @@ def load_class(dotted_path):
         # Finally create and return an instance of the class
         # return klass(*args, **kwargs)
     else:
-        raise AttributeError(
-            f"Module {module_name} does not have class attribute {klass_name}"
-        )
+        raise AttributeError(f"Module {module_name} does not have class attribute {klass_name}")
 
 
 if TYPE_CHECKING or sys.version_info >= (3, 8):
