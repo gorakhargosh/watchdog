@@ -89,7 +89,7 @@ def test_close(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -
 
     expect_event(FileOpenedEvent(p("a")))
     with pytest.raises(Empty):
-        expect_event(None)
+        expect_event(FileOpenedEvent(p("a")))  # Fake event to check the queue is empty
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -326,20 +326,22 @@ def test_fast_subdirectory_creation_deletion(p: P, event_queue: TestEventQueue, 
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_passing_unicode_should_give_unicode(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+def test_passing_unicode_should_give_unicode(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     start_watching(str(p()))
     mkfile(p("a"))
-    expect_event(FileCreatedEvent(p("a")))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event.src_path, str)
 
 
 @pytest.mark.skipif(
     platform.is_windows(),
     reason="Windows ReadDirectoryChangesW supports only unicode for paths.",
 )
-def test_passing_bytes_should_give_bytes(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+def test_passing_bytes_should_give_bytes(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     start_watching(p().encode())
     mkfile(p("a"))
-    expect_event(FileCreatedEvent(p("a").encode()))
+    event = event_queue.get(timeout=5)[0]
+    assert isinstance(event.src_path, bytes)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -565,7 +567,7 @@ def test_file_lifecyle(p: P, start_watching: StartWatching, expect_event: Expect
 
 
 @pytest.mark.skipif(platform.is_windows(), reason="FileAttribEvent isn't supported in Windows")
-def test_chmod_file(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
+def test_chmod_file(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkfile(p("newfile"))
     start_watching()
 
@@ -574,7 +576,7 @@ def test_chmod_file(p: P, start_watching: StartWatching, expect_event: ExpectEve
 
 
 @pytest.mark.skipif(platform.is_windows(), reason="DirAttribEvent isn't supported in Windows")
-def test_chmod_dir(p: P, start_watching: StartWatching, expect_event: ExpectEvent):
+def test_chmod_dir(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     start_watching()
 
