@@ -51,10 +51,7 @@ if platform.is_darwin():
 
 def rerun_filter(exc, *args):
     time.sleep(5)
-    if issubclass(exc[0], Empty) and platform.is_windows():
-        return True
-
-    return False
+    return bool(issubclass(exc[0], Empty) and platform.is_windows())
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -449,7 +446,7 @@ def test_recursive_off(
         expect_event(DirModifiedEvent(p()))
 
 
-@pytest.mark.skipif(platform.is_windows(), reason="Windows create another set of events for this test")
+@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_renaming_top_level_directory(
     p: P,
     event_queue: TestEventQueue,
@@ -460,7 +457,8 @@ def test_renaming_top_level_directory(
 
     mkdir(p("a"))
     expect_event(DirCreatedEvent(p("a")))
-    expect_event(DirModifiedEvent(p()))
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))
 
     mkdir(p("a", "b"))
     expect_event(DirCreatedEvent(p("a", "b")))
@@ -468,9 +466,9 @@ def test_renaming_top_level_directory(
 
     mv(p("a"), p("a2"))
     expect_event(DirMovedEvent(p("a"), p("a2")))
-    expect_event(DirModifiedEvent(p()))
-    expect_event(DirModifiedEvent(p()))
-
+    if not platform.is_windows():
+        expect_event(DirModifiedEvent(p()))
+        expect_event(DirModifiedEvent(p()))
     expect_event(DirMovedEvent(p("a", "b"), p("a2", "b"), is_synthetic=True))
 
     if platform.is_bsd():
@@ -486,19 +484,8 @@ def test_renaming_top_level_directory(
             break
 
     assert all(
-        [
-            isinstance(
-                e,
-                (
-                    FileCreatedEvent,
-                    FileMovedEvent,
-                    FileOpenedEvent,
-                    DirModifiedEvent,
-                    FileClosedEvent,
-                ),
-            )
-            for e in events
-        ]
+        isinstance(e, (FileCreatedEvent, FileMovedEvent, FileOpenedEvent, DirModifiedEvent, FileClosedEvent))
+        for e in events
     )
 
     for event in events:
@@ -507,64 +494,6 @@ def test_renaming_top_level_directory(
         elif isinstance(event, FileMovedEvent):
             assert event.dest_path == p("a2", "b", "c")
             assert event.src_path == p("a", "b", "c")
-        elif isinstance(event, DirModifiedEvent):
-            assert event.src_path == p("a2", "b")
-
-
-@pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-@pytest.mark.skipif(
-    not platform.is_windows(),
-    reason="Non-Windows create another set of events for this test",
-)
-def test_renaming_top_level_directory_on_windows(
-    p: P,
-    event_queue: TestEventQueue,
-    start_watching: StartWatching,
-) -> None:
-    start_watching()
-
-    mkdir(p("a"))
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirCreatedEvent)
-    assert event.src_path == p("a")
-
-    mkdir(p("a", "b"))
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirCreatedEvent)
-    assert event.src_path == p("a", "b")
-
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirCreatedEvent)
-    assert event.src_path == p("a", "b")
-
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirModifiedEvent)
-    assert event.src_path == p("a")
-
-    mv(p("a"), p("a2"))
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, DirMovedEvent)
-    assert event.src_path == p("a", "b")
-
-    open(p("a2", "b", "c"), "a").close()
-
-    events = []
-    while True:
-        events.append(event_queue.get(timeout=5)[0])
-        if event_queue.empty():
-            break
-
-    assert all(isinstance(e, (FileCreatedEvent, FileMovedEvent, DirMovedEvent, DirModifiedEvent)) for e in events)
-
-    for event in events:
-        if isinstance(event, FileCreatedEvent):
-            assert event.src_path == p("a2", "b", "c")
-        elif isinstance(event, FileMovedEvent):
-            assert event.dest_path == p("a2", "b", "c")
-            assert event.src_path == p("a", "b", "c")
-        elif isinstance(event, DirMovedEvent):
-            assert event.dest_path == p("a2")
-            assert event.src_path == p("a")
         elif isinstance(event, DirModifiedEvent):
             assert event.src_path == p("a2", "b")
 
