@@ -37,6 +37,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from functools import reduce
 
 assert sys.platform.startswith("win"), f"{__name__} requires Windows"
@@ -311,9 +312,7 @@ def _is_observed_path_deleted(handle, path):
 def _generate_observed_path_deleted_event():
     # Create synthetic event for notify that observed directory is deleted
     path = ctypes.create_unicode_buffer(".")
-    event = FILE_NOTIFY_INFORMATION(
-        0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8")
-    )
+    event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
     event_size = ctypes.sizeof(event)
     buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
     ctypes.memmove(buff, ctypes.addressof(event), event_size)
@@ -375,10 +374,10 @@ def read_directory_changes(handle, path, recursive):
     return event_buffer.raw, int(nbytes.value)
 
 
+@dataclass(unsafe_hash=True)
 class WinAPINativeEvent:
-    def __init__(self, action, src_path):
-        self.action = action
-        self.src_path = src_path
+    action: int
+    src_path: str
 
     @property
     def is_added(self):
@@ -403,11 +402,6 @@ class WinAPINativeEvent:
     @property
     def is_removed_self(self):
         return self.action == FILE_ACTION_REMOVED_SELF
-
-    def __repr__(self):
-        return (
-            f"<{type(self).__name__}: action={self.action}, src_path={self.src_path!r}>"
-        )
 
 
 def read_events(handle, path, recursive):

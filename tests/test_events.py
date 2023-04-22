@@ -15,8 +15,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from watchdog.events import (
     EVENT_TYPE_CLOSED,
     EVENT_TYPE_CREATED,
@@ -34,7 +32,6 @@ from watchdog.events import (
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
-    FileSystemEvent,
     FileSystemEventHandler,
 )
 
@@ -183,58 +180,6 @@ def test_file_system_event_handler_dispatch():
         handler.dispatch(event)
 
 
-@pytest.mark.parametrize(
-    "event, prez",
-    [
-        # Files
-        (
-            FileDeletedEvent("a"),
-            "<FileDeletedEvent: event_type=deleted, src_path='a', is_directory=False>",
-        ),
-        (
-            FileModifiedEvent("a"),
-            "<FileModifiedEvent: event_type=modified, src_path='a', is_directory=False>",
-        ),
-        (
-            FileCreatedEvent("a"),
-            "<FileCreatedEvent: event_type=created, src_path='a', is_directory=False>",
-        ),
-        (
-            FileMovedEvent("a", "b"),
-            "<FileMovedEvent: src_path='a', dest_path='b', is_directory=False>",
-        ),
-        (
-            FileClosedEvent("a"),
-            "<FileClosedEvent: event_type=closed, src_path='a', is_directory=False>",
-        ),
-        (
-            FileOpenedEvent("a"),
-            "<FileOpenedEvent: event_type=opened, src_path='a', is_directory=False>",
-        ),
-        # Folders
-        (
-            DirDeletedEvent("a"),
-            "<DirDeletedEvent: event_type=deleted, src_path='a', is_directory=True>",
-        ),
-        (
-            DirModifiedEvent("a"),
-            "<DirModifiedEvent: event_type=modified, src_path='a', is_directory=True>",
-        ),
-        (
-            DirCreatedEvent("a"),
-            "<DirCreatedEvent: event_type=created, src_path='a', is_directory=True>",
-        ),
-        (
-            DirMovedEvent("a", "b"),
-            "<DirMovedEvent: src_path='a', dest_path='b', is_directory=True>",
-        ),
-    ],
-)
-def test_event_repr_and_str(event: FileSystemEvent, prez: str) -> None:
-    assert repr(event) == prez
-    assert str(event) == prez
-
-
 def test_event_comparison():
     creation1 = FileCreatedEvent("foo")
     creation2 = FileCreatedEvent("foo")
@@ -247,7 +192,7 @@ def test_event_comparison():
     move2 = FileMovedEvent("a", "b")
     move3 = FileMovedEvent("a", "c")
     move4 = FileMovedEvent("b", "a")
-    assert creation1 != move1
+    assert creation1 != move1  # type: ignore[comparison-overlap]
     assert move1 == move2
     assert move1 != move3
     assert move1 != move4

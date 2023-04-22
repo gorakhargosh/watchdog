@@ -17,17 +17,12 @@ from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
         ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, False, ValueError),
     ],
 )
-def test_match_path(
-    input, included_patterns, excluded_patterns, case_sensitive, expected
-):
+def test_match_path(input, included_patterns, excluded_patterns, case_sensitive, expected):
     if expected == ValueError:
         with pytest.raises(expected):
             _match_path(input, included_patterns, excluded_patterns, case_sensitive)
     else:
-        assert (
-            _match_path(input, included_patterns, excluded_patterns, case_sensitive)
-            is expected
-        )
+        assert _match_path(input, included_patterns, excluded_patterns, case_sensitive) is expected
 
 
 @pytest.mark.parametrize(
@@ -50,9 +45,7 @@ def test_filter_paths(included_patterns, excluded_patterns, case_sensitive, expe
         "/etc/pdnsd.conf",
         "/usr/local/bin/python",
     }
-    actual = set(
-        filter_paths(pathnames, included_patterns, excluded_patterns, case_sensitive)
-    )
+    actual = set(filter_paths(pathnames, included_patterns, excluded_patterns, case_sensitive))
     assert actual == expected if expected else pathnames
 
 
@@ -66,16 +59,11 @@ def test_filter_paths(included_patterns, excluded_patterns, case_sensitive, expe
         (["*.txt"], None, True, False),
     ],
 )
-def test_match_any_paths(
-    included_patterns, excluded_patterns, case_sensitive, expected
-):
+def test_match_any_paths(included_patterns, excluded_patterns, case_sensitive, expected):
     pathnames = {
         "/users/gorakhargosh/foobar.py",
         "/var/cache/pdnsd.status",
         "/etc/pdnsd.conf",
         "/usr/local/bin/python",
     }
-    assert (
-        match_any_paths(pathnames, included_patterns, excluded_patterns, case_sensitive)
-        == expected
-    )
+    assert match_any_paths(pathnames, included_patterns, excluded_patterns, case_sensitive) == expected

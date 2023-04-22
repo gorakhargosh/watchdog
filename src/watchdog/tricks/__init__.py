@@ -155,9 +155,7 @@ class ShellCommandTrick(Trick):
             process_watcher.start()
 
     def is_process_running(self):
-        return self._process_watchers or (
-            self.process is not None and self.process.poll() is None
-        )
+        return self._process_watchers or (self.process is not None and self.process.poll() is None)
 
 
 class AutoRestartTrick(Trick):
@@ -240,9 +238,7 @@ class AutoRestartTrick(Trick):
             return
 
         # windows doesn't have setsid
-        self.process = subprocess.Popen(
-            self.command, preexec_fn=getattr(os, "setsid", None)
-        )
+        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, "setsid", None))
         if self.restart_on_command_exit:
             self.process_watcher = ProcessWatcher(self.process, self._restart_process)
             self.process_watcher.start()

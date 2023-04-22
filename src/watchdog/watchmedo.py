@@ -97,17 +97,11 @@ def command(args=[], parent=subparsers, cmd_aliases=[]):
     def decorator(func):
         name = func.__name__.replace("_", "-")
         desc = dedent(func.__doc__)
-        parser = parent.add_parser(
-            name, description=desc, aliases=cmd_aliases, formatter_class=HelpFormatter
-        )
+        parser = parent.add_parser(name, description=desc, aliases=cmd_aliases, formatter_class=HelpFormatter)
         command_parsers[name] = parser
         verbosity_group = parser.add_mutually_exclusive_group()
-        verbosity_group.add_argument(
-            "-q", "--quiet", dest="verbosity", action="append_const", const=-1
-        )
-        verbosity_group.add_argument(
-            "-v", "--verbose", dest="verbosity", action="append_const", const=1
-        )
+        verbosity_group.add_argument("-q", "--quiet", dest="verbosity", action="append_const", const=-1)
+        verbosity_group.add_argument("-v", "--verbose", dest="verbosity", action="append_const", const=1)
         for arg in args:
             parser.add_argument(*arg[0], **arg[1])
             parser.set_defaults(func=func)
@@ -237,9 +231,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
             default=True,
             help="Recursively monitor paths (defaults to True).",
         ),
-        argument(
-            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
-        ),
+        argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
         argument(
             "--debug-force-kqueue",
             action="store_true",
@@ -296,9 +288,7 @@ def tricks_from(args):
         try:
             tricks = config[CONFIG_KEY_TRICKS]
         except KeyError:
-            raise KeyError(
-                f"No {CONFIG_KEY_TRICKS!r} key specified in {tricks_file!r}."
-            )
+            raise KeyError(f"No {CONFIG_KEY_TRICKS!r} key specified in {tricks_file!r}.")
 
         if CONFIG_KEY_PYTHON_PATH in config:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
@@ -429,12 +419,8 @@ def tricks_generate_yaml(args):
             type=float,
             help="Use this as the polling interval/blocking timeout.",
         ),
-        argument(
-            "--trace", action="store_true", help="Dumps complete dispatching trace."
-        ),
-        argument(
-            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
-        ),
+        argument("--trace", action="store_true", help="Dumps complete dispatching trace."),
+        argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
         argument(
             "--debug-force-kqueue",
             action="store_true",
@@ -576,9 +562,7 @@ def log(args):
             help="Ignore events that occur while command is still being"
             " executed to avoid multiple simultaneous instances.",
         ),
-        argument(
-            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
-        ),
+        argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
     ]
 )
 def shell_command(args):
@@ -629,8 +613,7 @@ def shell_command(args):
             dest="directories",
             metavar="DIRECTORY",
             action="append",
-            help="Directory to watch. Use another -d or --directory option "
-            "for each directory.",
+            help="Directory to watch. Use another -d or --directory option " "for each directory.",
         ),
         argument(
             "-p",
@@ -677,16 +660,13 @@ def shell_command(args):
             default="SIGINT",
             help="Stop the subprocess with this signal (default SIGINT).",
         ),
-        argument(
-            "--debug-force-polling", action="store_true", help="[debug] Forces polling."
-        ),
+        argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
         argument(
             "--kill-after",
             dest="kill_after",
             default=10.0,
             type=float,
-            help="When stopping, kill the subprocess after the specified timeout "
-            "in seconds (default 10.0).",
+            help="When stopping, kill the subprocess after the specified timeout " "in seconds (default 10.0).",
         ),
         argument(
             "--debounce-interval",

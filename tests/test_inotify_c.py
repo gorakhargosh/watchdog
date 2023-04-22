@@ -45,12 +45,8 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
     # CREATE DELETE CREATE DELETE DELETE_SELF IGNORE DELETE_SELF IGNORE
     inotify_fd.buf = (
-        struct_inotify(
-            wd=1, mask=const.IN_CREATE | const.IN_ISDIR, length=16, name=b"subdir1"
-        )
-        + struct_inotify(
-            wd=1, mask=const.IN_DELETE | const.IN_ISDIR, length=16, name=b"subdir1"
-        )
+        struct_inotify(wd=1, mask=const.IN_CREATE | const.IN_ISDIR, length=16, name=b"subdir1")
+        + struct_inotify(wd=1, mask=const.IN_DELETE | const.IN_ISDIR, length=16, name=b"subdir1")
     ) * 2 + (
         struct_inotify(wd=2, mask=const.IN_DELETE_SELF)
         + struct_inotify(wd=2, mask=const.IN_IGNORED)
@@ -159,15 +155,9 @@ def test_event_equality(p: P) -> None:
     wd_parent_dir = 42
     filename = "file.ext"
     full_path = p(filename)
-    event1 = InotifyEvent(
-        wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path
-    )
-    event2 = InotifyEvent(
-        wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path
-    )
-    event3 = InotifyEvent(
-        wd_parent_dir, InotifyConstants.IN_ACCESS, 0, filename, full_path
-    )
+    event1 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
+    event2 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
+    event3 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_ACCESS, 0, filename, full_path)
     assert event1 == event2
     assert event1 != event3
     assert event2 != event3
