@@ -161,6 +161,7 @@ class FileAttribEvent(FileSystemEvent):
     """
     File system event representing file metadata modification on the file system.
     """
+
     event_type = EVENT_TYPE_ATTRIB
 
 
@@ -228,6 +229,7 @@ class DirAttribEvent(FileSystemEvent):
     """
     File system event representing directory metadata modification on the file system.
     """
+
     event_type = EVENT_TYPE_ATTRIB
     is_directory = True
 
