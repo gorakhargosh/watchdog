@@ -221,7 +221,7 @@ class FSEventsEmitter(EventEmitter):
                 if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
 
-                elif event.is_inode_meta_mod or event.is_xattr_mod:
+                elif self._is_meta_mod(event):
                     self._queue_attrib_event(event, src_path, src_dirname)
 
                 self._queue_deleted_event(event, src_path, src_dirname)
@@ -236,7 +236,7 @@ class FSEventsEmitter(EventEmitter):
                 if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
 
-                elif event.is_inode_meta_mod or event.is_xattr_mod:
+                elif self._is_meta_mod(event):
                     self._queue_attrib_event(event, src_path, src_dirname)
 
                 elif event.is_renamed:
@@ -266,7 +266,7 @@ class FSEventsEmitter(EventEmitter):
                         if dst_event.is_modified:
                             self._queue_modified_event(dst_event, dst_path, dst_dirname)
 
-                        elif dst_event.is_inode_meta_mod or dst_event.is_xattr_mod:
+                        elif self._is_meta_mod(dst_event):
                             self._queue_attrib_event(dst_event, dst_path, dst_dirname)
 
                         elif dst_event.is_removed:
