@@ -28,20 +28,12 @@ from watchdog.utils import UnsupportedLibc
 
 libc = ctypes.CDLL(None)
 
-if (
-    not hasattr(libc, "inotify_init")
-    or not hasattr(libc, "inotify_add_watch")
-    or not hasattr(libc, "inotify_rm_watch")
-):
+if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") or not hasattr(libc, "inotify_rm_watch"):
     raise UnsupportedLibc(f"Unsupported libc version found: {libc._name}")
 
-inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
-    ("inotify_add_watch", libc)
-)
+inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc))
 
-inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
-    ("inotify_rm_watch", libc)
-)
+inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc))
 
 inotify_init = ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc))
 
@@ -320,9 +312,7 @@ class Inotify:
                 if wd == -1:
                     continue
                 wd_path = self._path_for_wd[wd]
-                src_path = (
-                    os.path.join(wd_path, name) if name else wd_path
-                )  # avoid trailing slash
+                src_path = os.path.join(wd_path, name) if name else wd_path  # avoid trailing slash
                 inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
                 if inotify_event.is_moved_from:
@@ -336,13 +326,9 @@ class Inotify:
                         self._path_for_wd[moved_wd] = inotify_event.src_path
                         if self.is_recursive:
                             for _path, _wd in self._wd_for_path.copy().items():
-                                if _path.startswith(
-                                    move_src_path + os.path.sep.encode()
-                                ):
+                                if _path.startswith(move_src_path + os.path.sep.encode()):
                                     moved_wd = self._wd_for_path.pop(_path)
-                                    _move_to_path = _path.replace(
-                                        move_src_path, inotify_event.src_path
-                                    )
+                                    _move_to_path = _path.replace(move_src_path, inotify_event.src_path)
                                     self._wd_for_path[_move_to_path] = moved_wd
                                     self._path_for_wd[moved_wd] = _move_to_path
                     src_path = os.path.join(wd_path, name)
@@ -356,11 +342,7 @@ class Inotify:
 
                 event_list.append(inotify_event)
 
-                if (
-                    self.is_recursive
-                    and inotify_event.is_directory
-                    and inotify_event.is_create
-                ):
+                if self.is_recursive and inotify_event.is_directory and inotify_event.is_create:
                     # TODO: When a directory from another part of the
                     # filesystem is moved into a watched directory, this
                     # will not generate events for the directory tree.
@@ -561,11 +543,7 @@ class InotifyEvent:
         # It looks like the kernel does not provide this information for
         # IN_DELETE_SELF and IN_MOVE_SELF. In this case, assume it's a dir.
         # See also: https://github.com/seb-m/pyinotify/blob/2c7e8f8/python2/pyinotify.py#L897
-        return (
-            self.is_delete_self
-            or self.is_move_self
-            or self._mask & InotifyConstants.IN_ISDIR > 0
-        )
+        return self.is_delete_self or self.is_move_self or self._mask & InotifyConstants.IN_ISDIR > 0
 
     @property
     def key(self):

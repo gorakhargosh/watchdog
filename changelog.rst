@@ -3,14 +3,33 @@
 Changelog
 ---------
 
-2.3.2
+3.0.1
 ~~~~~
 
-2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.3.1...HEAD>`__
+2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
+
+- [events] ``FileSystemEvent``, and subclasses, are now ``dataclass``es, and their ``repr()`` has changed
+- [windows] ``WinAPINativeEvent`` is now a ``dataclass``, and its ``repr()`` has changed
+- [events] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggingEventHandler``
+- [tests] Improve ``FileSystemEvent`` coverage
+- [watchmedo] Log all events in ``LoggerTrick``
+- [windows] The ``observers.read_directory_changes.WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` hack was removed. The constant will be kept to prevent breaking other softwares.
+- Thanks to our beloved contributors: @BoboTiG
+
+3.0.0
+~~~~~
+
+2023-03-20 • `full history <https://github.com/gorakhargosh/watchdog/compare/v2.3.1...v3.0.0>`__
 
 - Drop support for Python 3.6.
-- [testing] watchdog is now PEP 561 compatible and is tested by mypy.
-- Thanks to our beloved contributors: @kurtmckee
+- ``watchdog`` is now PEP 561 compatible, and tested with ``mypy``
+- Fix missing ``>`` in ``FileSystemEvent.__repr__()``  (`#980 <https://github.com/gorakhargosh/watchdog/pull/980>`__)
+- [ci] Lots of improvements
+- [inotify] Return from ``InotifyEmitter.queue_events()`` if not launched when thread is inactive (`#963 <https://github.com/gorakhargosh/watchdog/pull/963>`__)
+- [tests] Stability improvements
+- [utils] Remove handling of ``threading.Event.isSet`` spelling (`#962 <https://github.com/gorakhargosh/watchdog/pull/962>`__)
+- [watchmedo] Fixed tricks YAML generation (`#965 <https://github.com/gorakhargosh/watchdog/pull/965>`__)
+- Thanks to our beloved contributors: @kurtmckee, @altendky, @agroszer, @BoboTiG
 
 2.3.1
 ~~~~~

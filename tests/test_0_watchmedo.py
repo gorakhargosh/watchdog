@@ -58,10 +58,7 @@ def test_load_config_invalid(tmpdir):
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
-        f.write(
-            'import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i, flush=True)\n\ttime.sleep(1)\n'
-            % n
-        )
+        f.write('import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i, flush=True)\n\ttime.sleep(1)\n' % n)
     return script
 
 
@@ -196,9 +193,7 @@ def test_auto_restart_subprocess_termination(tmpdir, capfd, restart_on_command_e
     After 5 seconds, expect it to have been restarted at least once.
     """
     script = make_dummy_script(tmpdir, n=2)
-    trick = AutoRestartTrick(
-        [sys.executable, script], restart_on_command_exit=restart_on_command_exit
-    )
+    trick = AutoRestartTrick([sys.executable, script], restart_on_command_exit=restart_on_command_exit)
     trick.start()
     time.sleep(5)
     trick.stop()
@@ -212,9 +207,7 @@ def test_auto_restart_subprocess_termination(tmpdir, capfd, restart_on_command_e
 
 
 def test_auto_restart_arg_parsing_basic():
-    args = watchmedo.cli.parse_args(
-        ["auto-restart", "-d", ".", "--recursive", "--debug-force-polling", "cmd"]
-    )
+    args = watchmedo.cli.parse_args(["auto-restart", "-d", ".", "--recursive", "--debug-force-polling", "cmd"])
     assert args.func is watchmedo.auto_restart
     assert args.command == "cmd"
     assert args.directories == ["."]

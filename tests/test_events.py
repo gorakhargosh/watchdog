@@ -202,3 +202,24 @@ def test_file_system_event_handler_dispatch():
     for event in all_events:
         assert not event.is_synthetic
         handler.dispatch(event)
+
+
+def test_event_comparison():
+    creation1 = FileCreatedEvent("foo")
+    creation2 = FileCreatedEvent("foo")
+    creation3 = FileCreatedEvent("bar")
+    assert creation1 == creation2
+    assert creation1 != creation3
+    assert creation2 != creation3
+
+    move1 = FileMovedEvent("a", "b")
+    move2 = FileMovedEvent("a", "b")
+    move3 = FileMovedEvent("a", "c")
+    move4 = FileMovedEvent("b", "a")
+    assert creation1 != move1  # type: ignore[comparison-overlap]
+    assert move1 == move2
+    assert move1 != move3
+    assert move1 != move4
+    assert move2 != move3
+    assert move2 != move4
+    assert move3 != move4

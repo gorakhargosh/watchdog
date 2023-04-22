@@ -142,12 +142,8 @@ def test_dispatch():
             assert event.event_type == EVENT_TYPE_CREATED
             assert_patterns(event)
 
-    no_dirs_handler = TestableEventHandler(
-        patterns=patterns, ignore_patterns=ignore_patterns, ignore_directories=True
-    )
-    handler = TestableEventHandler(
-        patterns=patterns, ignore_patterns=ignore_patterns, ignore_directories=False
-    )
+    no_dirs_handler = TestableEventHandler(patterns=patterns, ignore_patterns=ignore_patterns, ignore_directories=True)
+    handler = TestableEventHandler(patterns=patterns, ignore_patterns=ignore_patterns, ignore_directories=False)
 
     for event in all_events:
         no_dirs_handler.dispatch(event)

@@ -49,11 +49,7 @@ def is_classmethod(instancemethod, klass):
 def is_static_method(method, klass):
     """Returns True if method is an instance method of klass."""
     return next(
-        (
-            isinstance(c.__dict__[name(method)], staticmethod)
-            for c in klass.mro()
-            if name(method) in c.__dict__
-        ),
+        (isinstance(c.__dict__[name(method)], staticmethod) for c in klass.mro() if name(method) in c.__dict__),
         False,
     )
 
@@ -107,9 +103,7 @@ def echo(fn, write=sys.stdout.write):
         # Collect function arguments by chaining together positional,
         # defaulted, extra positional and keyword arguments.
         positional = list(map(format_arg_value, list(zip(argnames, v))))
-        defaulted = [
-            format_arg_value((a, argdefs[a])) for a in argnames[len(v) :] if a not in k
-        ]
+        defaulted = [format_arg_value((a, argdefs[a])) for a in argnames[len(v) :] if a not in k]
         nameless = list(map(repr, v[argcount:]))
         keyword = list(map(format_arg_value, list(k.items())))
         args = positional + defaulted + nameless + keyword

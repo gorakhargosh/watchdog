@@ -59,11 +59,7 @@ class InotifyBuffer(BaseThread):
             logger.debug("in-event %s", inotify_event)
 
             def matching_from_event(event):
-                return (
-                    not isinstance(event, tuple)
-                    and event.is_moved_from
-                    and event.cookie == inotify_event.cookie
-                )
+                return not isinstance(event, tuple) and event.is_moved_from and event.cookie == inotify_event.cookie
 
             if inotify_event.is_moved_to:
                 # Check if move_from is already in the buffer
@@ -104,9 +100,7 @@ class InotifyBuffer(BaseThread):
                     continue
 
                 # Only add delay for unmatched move_from events
-                delay = (
-                    not isinstance(inotify_event, tuple) and inotify_event.is_moved_from
-                )
+                delay = not isinstance(inotify_event, tuple) and inotify_event.is_moved_from
                 self._queue.put(inotify_event, delay)
 
                 if (

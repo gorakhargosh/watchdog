@@ -121,15 +121,11 @@ class DirectorySnapshotDiff:
         modified = set()
         for path in ref.paths & snapshot.paths:
             if get_inode(ref, path) == get_inode(snapshot, path):
-                if ref.mtime(path) != snapshot.mtime(path) or ref.size(
-                    path
-                ) != snapshot.size(path):
+                if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
                     modified.add(path)
 
         for old_path, new_path in moved:
-            if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(
-                old_path
-            ) != snapshot.size(new_path):
+            if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(old_path) != snapshot.size(new_path):
                 modified.add(old_path)
 
         self._dirs_created = [path for path in created if snapshot.isdir(path)]

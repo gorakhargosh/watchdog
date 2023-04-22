@@ -50,7 +50,7 @@ import sys
 import threading
 import time
 
-from watchdog.events import EVENT_TYPE_OPENED, PatternMatchingEventHandler
+from watchdog.events import EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
 from watchdog.utils import echo
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
@@ -83,31 +83,8 @@ class LoggerTrick(Trick):
 
     """A simple trick that does only logs events."""
 
-    def on_any_event(self, event):
-        pass
-
     @echo_events
-    def on_modified(self, event):
-        pass
-
-    @echo_events
-    def on_deleted(self, event):
-        pass
-
-    @echo_events
-    def on_created(self, event):
-        pass
-
-    @echo_events
-    def on_moved(self, event):
-        pass
-
-    @echo_events
-    def on_closed(self, event):
-        pass
-
-    @echo_events
-    def on_opened(self, event):
+    def on_any_event(self, event: FileSystemEvent) -> None:
         pass
 
 
@@ -178,9 +155,7 @@ class ShellCommandTrick(Trick):
             process_watcher.start()
 
     def is_process_running(self):
-        return self._process_watchers or (
-            self.process is not None and self.process.poll() is None
-        )
+        return self._process_watchers or (self.process is not None and self.process.poll() is None)
 
 
 class AutoRestartTrick(Trick):
@@ -263,9 +238,7 @@ class AutoRestartTrick(Trick):
             return
 
         # windows doesn't have setsid
-        self.process = subprocess.Popen(
-            self.command, preexec_fn=getattr(os, "setsid", None)
-        )
+        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, "setsid", None))
         if self.restart_on_command_exit:
             self.process_watcher = ProcessWatcher(self.process, self._restart_process)
             self.process_watcher.start()

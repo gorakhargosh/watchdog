@@ -119,6 +119,7 @@ def test_delete_watched_directory(p):
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.skipif("GITHUB_REF" not in os.environ, reason="sudo password prompt")
 def test_unmount_watched_directory_filesystem(p):
     mkdir(p("dir1"))
     mount_tmpfs(p("dir1"))
@@ -155,9 +156,7 @@ class InotifyBufferDelayedRead(InotifyBuffer):
         return super().run(*args, **kwargs)
 
 
-@pytest.mark.parametrize(
-    argnames="cls", argvalues=[InotifyBuffer, InotifyBufferDelayedRead]
-)
+@pytest.mark.parametrize(argnames="cls", argvalues=[InotifyBuffer, InotifyBufferDelayedRead])
 def test_close_should_terminate_thread(p, cls):
     inotify = cls(p("").encode(), recursive=True)
 

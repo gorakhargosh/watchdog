@@ -432,9 +432,7 @@ class KqueueEmitter(EventEmitter):
     :param stat: stat function. See ``os.stat`` for details.
     """
 
-    def __init__(
-        self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, stat=os.stat
-    ):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, stat=os.stat):
         super().__init__(event_queue, watch, timeout)
 
         self._kq = select.kqueue()
@@ -448,9 +446,7 @@ class KqueueEmitter(EventEmitter):
             self._register_kevent(path, S_ISDIR(stat_info.st_mode))
             return stat_info
 
-        self._snapshot = DirectorySnapshot(
-            watch.path, recursive=watch.is_recursive, stat=custom_stat
-        )
+        self._snapshot = DirectorySnapshot(watch.path, recursive=watch.is_recursive, stat=custom_stat)
 
     def _register_kevent(self, path, is_directory):
         """
@@ -544,9 +540,7 @@ class KqueueEmitter(EventEmitter):
             # Kqueue does not specify the destination names for renames
             # to, so we have to process these using the a snapshot
             # of the directory.
-            for event in self._gen_renamed_events(
-                src_path, descriptor.is_directory, ref_snapshot, new_snapshot
-            ):
+            for event in self._gen_renamed_events(src_path, descriptor.is_directory, ref_snapshot, new_snapshot):
                 yield event
         elif is_attrib_modified(kev):
             if descriptor.is_directory:
@@ -657,9 +651,7 @@ class KqueueEmitter(EventEmitter):
 
                 # Take a fresh snapshot of the directory and update the
                 # saved snapshot.
-                new_snapshot = DirectorySnapshot(
-                    self.watch.path, self.watch.is_recursive
-                )
+                new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
                 ref_snapshot = self._snapshot
                 self._snapshot = new_snapshot
                 diff_events = new_snapshot - ref_snapshot
@@ -673,9 +665,7 @@ class KqueueEmitter(EventEmitter):
                     self.queue_event(FileModifiedEvent(file_modified))
 
                 for kev in event_list:
-                    for event in self._gen_kqueue_events(
-                        kev, ref_snapshot, new_snapshot
-                    ):
+                    for event in self._gen_kqueue_events(kev, ref_snapshot, new_snapshot):
                         self.queue_event(event)
 
             except OSError as e:
