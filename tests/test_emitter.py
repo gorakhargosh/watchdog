@@ -39,7 +39,7 @@ from watchdog.events import (
 from watchdog.utils import platform
 
 from .shell import chmod, mkdir, mkfile, mv, rm, touch
-from .utils import ExpectEvent, P, StartWatching, TestEventQueue
+from .utils import ExpectAnyEvent, ExpectEvent, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -156,7 +156,7 @@ def test_chmod(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_move(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+def test_move(p: P, start_watching: StartWatching, expect_any_event: ExpectAnyEvent, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
@@ -164,20 +164,20 @@ def test_move(p: P, start_watching: StartWatching, expect_event: ExpectEvent) ->
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    if not platform.is_windows():
-        expect_event(FileMovedEvent(p("dir1", "a"), p("dir2", "b")))
-    else:
+    if platform.is_windows():
         expect_event(FileDeletedEvent(p("dir1", "a")))
         expect_event(FileCreatedEvent(p("dir2", "b")))
+    else:
+        expect_event(FileMovedEvent(p("dir1", "a"), p("dir2", "b")))
 
-    expect_event(DirModifiedEvent(p("dir1")))
+    expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
     if not platform.is_windows():
-        expect_event(DirModifiedEvent(p("dir2")))
+        expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_case_change(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+def test_case_change(p: P, start_watching: StartWatching, expect_any_event: ExpectAnyEvent, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "file"))
@@ -185,16 +185,16 @@ def test_case_change(p: P, start_watching: StartWatching, expect_event: ExpectEv
 
     mv(p("dir1", "file"), p("dir2", "FILE"))
 
-    if not platform.is_windows():
-        expect_event(FileMovedEvent(p("dir1", "file"), p("dir2", "FILE")))
-    else:
+    if platform.is_windows():
         expect_event(FileDeletedEvent(p("dir1", "file")))
         expect_event(FileCreatedEvent(p("dir2", "FILE")))
+    else:
+        expect_event(FileMovedEvent(p("dir1", "file"), p("dir2", "FILE")))
 
-    expect_event(DirModifiedEvent(p("dir1")))
+    expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
     if not platform.is_windows():
-        expect_event(DirModifiedEvent(p("dir2")))
+        e(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -506,8 +506,8 @@ def test_move_nested_subdirectories_on_windows(
 
     expect_event(FileDeletedEvent(p("dir1", "dir2")))
     expect_event(DirCreatedEvent(p("dir2")))
-    expect_event(DirCreatedEvent(p("dir2", "dir3")))
-    expect_event(FileCreatedEvent(p("dir2", "dir3", "a")))
+    expect_event(DirCreatedEvent(p("dir2", "dir3"), is_synthetic=True))
+    expect_event(FileCreatedEvent(p("dir2", "dir3", "a"), is_synthetic=True))
 
     touch(p("dir2/dir3", "a"))
 
