@@ -262,7 +262,6 @@ def test_recursive_check_accepts_relative_paths(p: P) -> None:
             self.observed_events = set()
 
         def on_any_event(self, event):
-            print(event)
             self.expected_events.remove(event)
             self.observed_events.add(event)
 
