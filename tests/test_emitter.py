@@ -194,7 +194,7 @@ def test_case_change(p: P, start_watching: StartWatching, expect_any_event: Expe
     expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
     if not platform.is_windows():
-        e(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
+        expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
