@@ -177,7 +177,12 @@ def test_move(p: P, start_watching: StartWatching, expect_any_event: ExpectAnyEv
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_case_change(p: P, start_watching: StartWatching, expect_any_event: ExpectAnyEvent, expect_event: ExpectEvent) -> None:
+def test_case_change(
+    p: P,
+    start_watching: StartWatching,
+    expect_any_event: ExpectAnyEvent,
+    expect_event: ExpectEvent,
+) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "file"))
