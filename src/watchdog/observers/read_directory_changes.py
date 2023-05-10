@@ -49,8 +49,8 @@ class WindowsApiEmitter(EventEmitter):
     to detect file system changes for a watch.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        super().__init__(event_queue, watch, timeout)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout, event_filter)
         self._lock = threading.Lock()
         self._handle = None
 

@@ -62,6 +62,8 @@ class FSEventsEmitter(EventEmitter):
         :class:`watchdog.observers.api.ObservedWatch`
     :param timeout:
         Read events blocking timeout (in seconds).
+    :param event_filter:
+        Collection of event types to emit, or None for no filtering (default).
     :param suppress_history:
         The FSEvents API may emit historic events up to 30 sec before the watch was
         started. When ``suppress_history`` is ``True``, those events will be suppressed
@@ -77,9 +79,10 @@ class FSEventsEmitter(EventEmitter):
         event_queue,
         watch,
         timeout=DEFAULT_EMITTER_TIMEOUT,
+        event_filter=None,
         suppress_history=False,
     ):
-        super().__init__(event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout, event_filter)
         self._fs_view = set()
         self.suppress_history = suppress_history
         self._start_time = 0.0

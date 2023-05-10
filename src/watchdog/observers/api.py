@@ -43,14 +43,17 @@ class ObservedWatch:
         Path string.
     :param recursive:
         ``True`` if watch is recursive; ``False`` otherwise.
+    :param event_filter:
+        Optional collection of :class:`watchdog.events.FileSystemEvent` to watch
     """
 
-    def __init__(self, path, recursive):
+    def __init__(self, path, recursive, event_filter=None):
         if isinstance(path, Path):
             self._path = str(path)
         else:
             self._path = path
         self._is_recursive = recursive
+        self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
     @property
     def path(self):
@@ -63,8 +66,13 @@ class ObservedWatch:
         return self._is_recursive
 
     @property
+    def event_filter(self):
+        """Collection of event types watched for the path"""
+        return self._event_filter
+
+    @property
     def key(self):
-        return self.path, self.is_recursive
+        return self.path, self.is_recursive, self.event_filter
 
     def __eq__(self, watch):
         return self.key == watch.key
@@ -76,7 +84,12 @@ class ObservedWatch:
         return hash(self.key)
 
     def __repr__(self):
-        return f"<{type(self).__name__}: path={self.path!r}, is_recursive={self.is_recursive}>"
+        if self.event_filter is not None:
+            event_filter_str = "|".join(sorted(_cls.__name__ for _cls in self.event_filter))
+            event_filter_str = f", event_filter={event_filter_str}"
+        else:
+            event_filter_str = ""
+        return f"<{type(self).__name__}: path={self.path!r}, is_recursive={self.is_recursive}{event_filter_str}>"
 
 
 # Observer classes
@@ -97,13 +110,18 @@ class EventEmitter(BaseThread):
         Timeout (in seconds) between successive attempts at reading events.
     :type timeout:
         ``float``
+    :param event_filter:
+        Collection of event types to emit, or None for no filtering (default).
+    :type event_filter:
+        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
         super().__init__()
         self._event_queue = event_queue
         self._watch = watch
         self._timeout = timeout
+        self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
     @property
     def timeout(self):
@@ -129,7 +147,8 @@ class EventEmitter(BaseThread):
             An instance of :class:`watchdog.events.FileSystemEvent`
             or a subclass.
         """
-        self._event_queue.put((event, self.watch))
+        if self._event_filter is None or any(isinstance(event, cls) for cls in self._event_filter):
+            self._event_queue.put((event, self.watch))
 
     def queue_events(self, timeout):
         """Override this method to populate the event queue with events
@@ -264,7 +283,7 @@ class BaseObserver(EventDispatcher):
                 raise
         super().start()
 
-    def schedule(self, event_handler, path, recursive=False):
+    def schedule(self, event_handler, path, recursive=False, event_filter=None):
         """
         Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
@@ -284,17 +303,22 @@ class BaseObserver(EventDispatcher):
             traversed recursively; ``False`` otherwise.
         :type recursive:
             ``bool``
+        :param event_filter:
+            Collection of event types to emit, or None for no filtering (default).
+        :type event_filter:
+            Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
         :return:
             An :class:`ObservedWatch` object instance representing
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive)
+            watch = ObservedWatch(path, recursive, event_filter)
             self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
             if self._emitter_for_watch.get(watch) is None:
-                emitter = self._emitter_class(event_queue=self.event_queue, watch=watch, timeout=self.timeout)
+                emitter = self._emitter_class(event_queue=self.event_queue, watch=watch, timeout=self.timeout,
+                                              event_filter=event_filter)
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)

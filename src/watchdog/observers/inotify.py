@@ -89,6 +89,7 @@ from watchdog.events import (
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
 from .inotify_buffer import InotifyBuffer
+from .inotify_c import InotifyConstants
 
 logger = logging.getLogger(__name__)
 
@@ -107,16 +108,21 @@ class InotifyEmitter(EventEmitter):
         Read events blocking timeout (in seconds).
     :type timeout:
         ``float``
+    :param event_filter:
+        Collection of event types to emit, or None for no filtering (default).
+    :type event_filter:
+        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        super().__init__(event_queue, watch, timeout)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout, event_filter)
         self._lock = threading.Lock()
         self._inotify = None
 
     def on_thread_start(self):
         path = os.fsencode(self.watch.path)
-        self._inotify = InotifyBuffer(path, self.watch.is_recursive)
+        event_mask = self.get_event_mask_from_filter()
+        self._inotify = InotifyBuffer(path, self.watch.is_recursive, event_mask)
 
     def on_thread_stop(self):
         if self._inotify:
@@ -201,6 +207,32 @@ class InotifyEmitter(EventEmitter):
         if isinstance(self.watch.path, bytes):
             return path
         return os.fsdecode(path)
+
+    def get_event_mask_from_filter(self):
+        """Optimization: Only include events we are filtering in inotify call"""
+        if self._event_filter is None:
+            return None
+
+        # always listen to delete self
+        event_mask = InotifyConstants.IN_DELETE_SELF
+        for cls in self._event_filter:
+            if cls in (DirMovedEvent, FileMovedEvent):
+                event_mask |= InotifyConstants.IN_MOVE
+            elif cls in (DirCreatedEvent, FileCreatedEvent):
+                event_mask |= InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE
+            elif cls is DirModifiedEvent:
+                event_mask |= (InotifyConstants.IN_MOVE | InotifyConstants.IN_ATTRIB |
+                               InotifyConstants.IN_MODIFY | InotifyConstants.IN_CREATE |
+                               InotifyConstants.IN_CLOSE_WRITE)
+            elif cls is FileModifiedEvent:
+                event_mask |= InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY
+            elif cls in (DirDeletedEvent, FileDeletedEvent):
+                event_mask |= InotifyConstants.IN_DELETE
+            elif cls is FileClosedEvent:
+                event_mask |= InotifyConstants.IN_CLOSE
+            elif cls is FileOpenedEvent:
+                event_mask |= InotifyConstants.IN_OPEN
+        return event_mask
 
 
 class InotifyFullEmitter(InotifyEmitter):
