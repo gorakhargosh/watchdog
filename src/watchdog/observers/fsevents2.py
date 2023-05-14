@@ -185,8 +185,8 @@ class FSEventsEmitter(EventEmitter):
     FSEvents based event emitter. Handles conversion of native events.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        super().__init__(event_queue, watch, timeout)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout, event_filter)
         self._fsevents = FSEventsQueue(watch.path)
         self._fsevents.start()
 

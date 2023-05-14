@@ -428,11 +428,15 @@ class KqueueEmitter(EventEmitter):
         Read events blocking timeout (in seconds).
     :type timeout:
         ``float``
+    :param event_filter:
+        Collection of event types to emit, or None for no filtering (default).
+    :type event_filter:
+        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
     :param stat: stat function. See ``os.stat`` for details.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, stat=os.stat):
-        super().__init__(event_queue, watch, timeout)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None, stat=os.stat):
+        super().__init__(event_queue, watch, timeout, event_filter)
 
         self._kq = select.kqueue()
         self._lock = threading.RLock()

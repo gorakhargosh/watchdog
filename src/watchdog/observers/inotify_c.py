@@ -152,7 +152,7 @@ class Inotify:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def __init__(self, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
+    def __init__(self, path, recursive=False, event_mask=None):
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:
@@ -165,6 +165,9 @@ class Inotify:
         self._path_for_wd = {}
 
         self._path = path
+        # Default to all events
+        if event_mask is None:
+            event_mask = WATCHDOG_ALL_EVENTS
         self._event_mask = event_mask
         self._is_recursive = recursive
         if os.path.isdir(path):

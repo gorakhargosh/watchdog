@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from watchdog.events import FileModifiedEvent, LoggingEventHandler
+from watchdog.events import FileModifiedEvent, FileOpenedEvent, LoggingEventHandler
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 
 
@@ -54,6 +54,11 @@ def test_observer__ne__():
 def test_observer__repr__():
     observed_watch = ObservedWatch("/foobar", True)
     repr_str = "<ObservedWatch: path='/foobar', is_recursive=True>"
+    assert observed_watch.__repr__() == repr(observed_watch)
+    assert repr(observed_watch) == repr_str
+
+    observed_watch = ObservedWatch("/foobar", False, [FileOpenedEvent, FileModifiedEvent])
+    repr_str = "<ObservedWatch: path='/foobar', is_recursive=False, event_filter=FileModifiedEvent|FileOpenedEvent>"
     assert observed_watch.__repr__() == repr(observed_watch)
     assert repr(observed_watch) == repr_str
 

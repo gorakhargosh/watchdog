@@ -63,10 +63,11 @@ class PollingEmitter(EventEmitter):
         event_queue,
         watch,
         timeout=DEFAULT_EMITTER_TIMEOUT,
+        event_filter=None,
         stat=os.stat,
         listdir=os.scandir,
     ):
-        super().__init__(event_queue, watch, timeout)
+        super().__init__(event_queue, watch, timeout, event_filter)
         self._snapshot = None
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
