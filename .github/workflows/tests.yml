@@ -1,0 +1,103 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
+  cancel-in-progress: true
+
+jobs:
+  tox:
+    name: ${{ matrix.tox.name }} ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
+    runs-on: ${{ matrix.os.runs-on }}
+    timeout-minutes: ${{ matrix.tox.timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        tox:
+          - name: Test
+            environment: py
+            timeout: 15
+          - name: mypy
+            environment: mypy
+            timeout: 15
+        os:
+          - name: Linux
+            matrix: linux
+            emoji: 🐧
+            runs-on: [ubuntu-latest]
+          - name: macOS
+            matrix: macos
+            emoji: 🍎
+            runs-on: [macos-latest]
+          - name: Windows
+            matrix: windows
+            emoji: 🪟
+            runs-on: [windows-latest]
+        python:
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "pypy-3.8"
+          - "pypy-3.9"
+        include:
+          - tox:
+              name: Flake8
+              environment: flake8
+              timeout: 5
+            python: "3.11"
+            os:
+              name: Linux
+              emoji: 🐧
+              runs-on: [ubuntu-latest]
+          - tox:
+              name: isort
+              environment: isort-ci
+              timeout: 5
+            python: "3.11"
+            os:
+              name: Linux
+              emoji: 🐧
+              runs-on: [ubuntu-latest]
+          - tox:
+              name: Docs
+              environment: docs
+              timeout: 5
+            python: "3.11"
+            os:
+              name: Linux
+              emoji: 🐧
+              runs-on: [ubuntu-latest]
+        exclude:
+          - os:
+              matrix: windows
+            python: "pypy-3.8"
+          - os:
+              matrix: windows
+            python: "pypy-3.9"
+
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install tox
+
+      - name: Run ${{ matrix.tox.name }} in tox
+        run: |
+          python -m tox -e ${{ matrix.tox.environment }}

@@ -1,17 +1,24 @@
-Project Lead:
--------------
+Original Project Lead:
+----------------------
 Yesudeep Mangalapilly <yesudeep@google.com>
+
+Current Project Lead:
+---------------------
+Mickaël Schoentgen <contact@tiger-222.fr>
 
 Contributors in alphabetical order:
 -----------------------------------
 Adrian Tejn Kern <tejnkern@gmail.com>
 Andrew Schaaf <andrew@andrewschaaf.com>
+Danilo de Jesus da Silva Bellini <danilo.bellini@gmail.com>
 David LaPalomento <dlapalomento@gmail.com>
 Filip Noetzel <filip@j03.de>
 Gary van der Merwe <garyvdm@garyvdm.localdomain>
 Gora Khargosh <gora.khargosh@gmail.com>
 Hannu Valtonen <hannu.valtonen@ohmu.fi>
 Jesse Printz <jesse@jonypawks.net>
+Kurt McKee <contactme@kurtmckee.org>
+Léa Klein <lklein@nuxeo.com>
 Luke McCarthy <luke@iogopro.co.uk>
 Lukáš Lalinský <lalinsky@gmail.com>
 Malthe Borch <mborch@gmail.com>
@@ -53,14 +60,14 @@ Armin Ronacher           <armin.ronacher@active-4.com>
 Watchdog also includes open source libraries or adapted code
 from the following projects:
 
-- MacFSEvents - http://github.com/malthe/macfsevents
+- MacFSEvents - https://github.com/malthe/macfsevents
 - watch_directory.py - http://timgolden.me.uk/python/downloads/watch_directory.py
-- pyinotify - http://github.com/seb-m/pyinotify
-- fsmonitor - http://github.com/shaurz/fsmonitor
+- pyinotify - https://github.com/seb-m/pyinotify
+- fsmonitor - https://github.com/shaurz/fsmonitor
 - echo - http://wordaligned.org/articles/echo
 - Lukáš Lalinský's ordered set queue implementation:
-  http://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
+  https://stackoverflow.com/questions/1581895/how-check-if-a-task-is-already-in-python-queue
 - Armin Ronacher's flask-sphinx-themes for the documentation:
   https://github.com/mitsuhiko/flask-sphinx-themes
-- pyfilesystem - http://code.google.com/p/pyfilesystem
+- pyfilesystem - https://github.com/PyFilesystem/pyfilesystem
 - get_FILE_NOTIFY_INFORMATION - http://blog.gmane.org/gmane.comp.python.ctypes/month=20070901

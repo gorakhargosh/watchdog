@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,24 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
+from __future__ import annotations
+
 import threading
+import time
 from collections import deque
+from typing import Callable, Deque, Generic, Optional, Tuple, TypeVar
+
+T = TypeVar("T")
 
 
-class DelayedQueue(object):
-
+class DelayedQueue(Generic[T]):
     def __init__(self, delay):
-        self.delay = delay
+        self.delay_sec = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
-        self._queue = deque()
+        self._queue: Deque[Tuple[T, float, bool]] = deque()
         self._closed = False
 
-    def put(self, element):
+    def put(self, element: T, delay: bool = False) -> None:
         """Add element to queue."""
         self._lock.acquire()
-        self._queue.append((element, time.time()))
+        self._queue.append((element, time.time(), delay))
         self._not_empty.notify()
         self._lock.release()
 
@@ -43,7 +45,7 @@ class DelayedQueue(object):
         self._not_empty.notify()
         self._not_empty.release()
 
-    def get(self):
+    def get(self) -> Optional[T]:
         """Remove and return an element from the queue, or this queue has been
         closed raise the Closed exception.
         """
@@ -56,33 +58,28 @@ class DelayedQueue(object):
             if self._closed:
                 self._not_empty.release()
                 return None
-            head, insert_time = self._queue[0]
+            head, insert_time, delay = self._queue[0]
             self._not_empty.release()
 
-            # wait for delay
-            time_left = insert_time + self.delay - time.time()
-            while time_left > 0:
-                time.sleep(time_left)
-                time_left = insert_time + self.delay - time.time()
+            # wait for delay if required
+            if delay:
+                time_left = insert_time + self.delay_sec - time.time()
+                while time_left > 0:
+                    time.sleep(time_left)
+                    time_left = insert_time + self.delay_sec - time.time()
 
             # return element if it's still in the queue
-            self._lock.acquire()
-            try:
+            with self._lock:
                 if len(self._queue) > 0 and self._queue[0][0] is head:
                     self._queue.popleft()
                     return head
-            finally:
-                self._lock.release()
 
-    def remove(self, predicate):
+    def remove(self, predicate: Callable[[T], bool]) -> Optional[T]:
         """Remove and return the first items for which predicate is True,
         ignoring delay."""
-        try:
-            self._lock.acquire()
-            for i, (elem, t) in enumerate(self._queue):
+        with self._lock:
+            for i, (elem, t, delay) in enumerate(self._queue):
                 if predicate(elem):
                     del self._queue[i]
                     return elem
-        finally:
-            self._lock.release()
         return None

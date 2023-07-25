@@ -1,0 +1,132 @@
+# Because this library provides extension modules for macOS, but not for other
+# platforms, we want to provide built distributions for each macOS platform, but we
+# explicitly DON'T want to provide a cross-platform pure-Python wheel to fall back on.
+#
+# This is because in the event that a new Python version is released or a new
+# macOS platform is released, macOS users won't be able to install the built
+# distributions we've provided and should fall back to the source distribution,
+# but pip's behavior is to prefer a pure-Python wheel first, which will be
+# missing the extension modules.
+#
+# However, to provide built distributions for Linux and Windows (which don't
+# have extension modules) we can just build a pure-Python wheel on that
+# platform and override the platform name manually via wheel's --plat-name
+# feature, to provide a platform-specific wheel for all platforms.
+
+name: Build & Publish
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "The branch, tag or SHA to release from"
+        required: true
+        default: "master"
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
+  cancel-in-progress: true
+
+jobs:
+  macos-built-distributions:
+    name: Build macOS wheels
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install build dependencies
+        run: python -m pip install cibuildwheel
+      - name: Build wheels
+        run: python -m cibuildwheel
+        env:
+          CIBW_SKIP: "cp36-*" # skip 3.6 wheels
+          CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
+      - uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: ./wheelhouse/*.whl
+
+  pure-built-distributions:
+    name: Build pure wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install build dependencies
+        run: python -m pip install -U setuptools wheel
+      - name: Build wheels
+        run: |
+          for platform in 'manylinux2014_x86_64' 'manylinux2014_i686' 'manylinux2014_aarch64' 'manylinux2014_armv7l' 'manylinux2014_ppc64' 'manylinux2014_ppc64le' 'manylinux2014_s390x' 'win32' 'win_amd64' 'win_ia64'
+          do
+            python setup.py bdist_wheel --plat-name $platform
+          done
+      - uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: ./dist/*.whl
+
+  source-distribution:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Build source distribution
+        run: python setup.py sdist
+      - name: Store the source distribution
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: dist
+          retention-days: 4
+
+  publish:
+    needs:
+      - macos-built-distributions
+      - pure-built-distributions
+      - source-distribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v2
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: What will we publish?
+        run: ls -l dist
+      - name: Publish
+        if: github.event.inputs.branch != ''
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip_existing: true

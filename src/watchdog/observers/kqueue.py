@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,11 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+# The `select` module varies between platforms.
+# mypy may complain about missing module attributes
+# depending on which platform it's running on.
+# The comment below disables mypy's attribute check.
+#
+# mypy: disable-error-code=attr-defined
+#
 """
 :module: watchdog.observers.kqueue
 :synopsis: ``kqueue(2)`` based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:platforms: Mac OS X and BSD with kqueue(2).
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:platforms: macOS and BSD with kqueue(2).
 
 .. WARNING:: kqueue is a very heavyweight way to monitor file systems.
              Each kqueue-detected directory modification triggers
@@ -30,20 +37,9 @@
              only those directories which report changes and do a diff
              between two sub-DirectorySnapshots perhaps.
 
-.. ADMONITION:: About ``select.kqueue`` and Python versions
-
-    * Python 2.5 does not ship with ``select.kqueue``
-    * Python 2.6 ships with a broken ``select.kqueue`` that cannot take
-      multiple events in the event list passed to ``kqueue.control``.
-    * Python 2.7 ships with a working ``select.kqueue``
-      implementation.
-
-    I have backported the Python 2.7 implementation to Python 2.5 and 2.6
-    in the ``select_backport`` package available on PyPI.
-
 .. ADMONITION:: About OS X performance guidelines
 
-    Quote from the `Mac OS X File System Performance Guidelines`_:
+    Quote from the `macOS File System Performance Guidelines`_:
 
         "When you only want to track changes on a file or directory, be sure to
         open it using the ``O_EVTONLY`` flag. This flag prevents the file or
@@ -73,51 +69,35 @@ Collections and Utility Classes
    :members:
    :show-inheritance:
 
-.. _Mac OS X File System Performance Guidelines: http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
+.. _macOS File System Performance Guidelines:
+    http://developer.apple.com/library/ios/#documentation/Performance/Conceptual/FileSystem/Articles/TrackingChanges.html#//apple_ref/doc/uid/20001993-CJBJFIDD
 
 """
 
-from __future__ import with_statement
-from watchdog.utils import platform
-
-import threading
 import errno
-import sys
-import stat
 import os
-
-# See the notes for this module in the documentation above ^.
-#import select
-# if not has_attribute(select, 'kqueue') or sys.version_info < (2, 7, 0):
-if sys.version_info < (2, 7, 0):
-    import select_backport as select
-else:
-    import select
-
-from pathtools.path import absolute_path
-
-from watchdog.observers.api import (
-    BaseObserver,
-    EventEmitter,
-    DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
-)
-
-from watchdog.utils.dirsnapshot import DirectorySnapshot
+import os.path
+import select
+import threading
+from stat import S_ISDIR
 
 from watchdog.events import (
-    DirMovedEvent,
-    DirDeletedEvent,
-    DirCreatedEvent,
-    DirModifiedEvent,
-    FileMovedEvent,
-    FileDeletedEvent,
-    FileCreatedEvent,
-    FileModifiedEvent,
-    EVENT_TYPE_MOVED,
+    EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
-    EVENT_TYPE_CREATED
+    EVENT_TYPE_MOVED,
+    DirCreatedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    generate_sub_moved_events,
 )
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+from watchdog.utils import platform
+from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 # Maximum number of events to process.
 MAX_EVENTS = 4096
@@ -133,14 +113,19 @@ else:
 WATCHDOG_KQ_FILTER = select.KQ_FILTER_VNODE
 WATCHDOG_KQ_EV_FLAGS = select.KQ_EV_ADD | select.KQ_EV_ENABLE | select.KQ_EV_CLEAR
 WATCHDOG_KQ_FFLAGS = (
-    select.KQ_NOTE_DELETE |
-    select.KQ_NOTE_WRITE |
-    select.KQ_NOTE_EXTEND |
-    select.KQ_NOTE_ATTRIB |
-    select.KQ_NOTE_LINK |
-    select.KQ_NOTE_RENAME |
-    select.KQ_NOTE_REVOKE
+    select.KQ_NOTE_DELETE
+    | select.KQ_NOTE_WRITE
+    | select.KQ_NOTE_EXTEND
+    | select.KQ_NOTE_ATTRIB
+    | select.KQ_NOTE_LINK
+    | select.KQ_NOTE_RENAME
+    | select.KQ_NOTE_REVOKE
 )
+
+
+def absolute_path(path):
+    return os.path.abspath(os.path.normpath(path))
+
 
 # Flag tests.
 
@@ -166,7 +151,7 @@ def is_renamed(kev):
     return kev.fflags & select.KQ_NOTE_RENAME
 
 
-class KeventDescriptorSet(object):
+class KeventDescriptorSet:
 
     """
     Thread-safe kevent descriptor collection.
@@ -292,7 +277,7 @@ class KeventDescriptorSet(object):
 
     def _has_path(self, path):
         """Determines whether a :class:`KeventDescriptor` for the specified
-   path exists already in the collection."""
+        path exists already in the collection."""
         return path in self._descriptor_for_path
 
     def _add_descriptor(self, descriptor):
@@ -321,7 +306,7 @@ class KeventDescriptorSet(object):
         descriptor.close()
 
 
-class KeventDescriptor(object):
+class KeventDescriptor:
 
     """
     A kevent descriptor convenience data structure to keep together:
@@ -343,10 +328,12 @@ class KeventDescriptor(object):
         self._path = absolute_path(path)
         self._is_directory = is_directory
         self._fd = os.open(path, WATCHDOG_OS_OPEN_FLAGS)
-        self._kev = select.kevent(self._fd,
-                                  filter=WATCHDOG_KQ_FILTER,
-                                  flags=WATCHDOG_KQ_EV_FLAGS,
-                                  fflags=WATCHDOG_KQ_FFLAGS)
+        self._kev = select.kevent(
+            self._fd,
+            filter=WATCHDOG_KQ_FILTER,
+            flags=WATCHDOG_KQ_EV_FLAGS,
+            fflags=WATCHDOG_KQ_FFLAGS,
+        )
 
     @property
     def fd(self):
@@ -395,8 +382,7 @@ class KeventDescriptor(object):
         return hash(self.key)
 
     def __repr__(self):
-        return "<KeventDescriptor: path=%s, is_directory=%s>"\
-            % (self.path, self.is_directory)
+        return f"<{type(self).__name__}: path={self.path!r}, is_directory={self.is_directory}>"
 
 
 class KqueueEmitter(EventEmitter):
@@ -442,10 +428,15 @@ class KqueueEmitter(EventEmitter):
         Read events blocking timeout (in seconds).
     :type timeout:
         ``float``
+    :param event_filter:
+        Collection of event types to emit, or None for no filtering (default).
+    :type event_filter:
+        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
+    :param stat: stat function. See ``os.stat`` for details.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None, stat=os.stat):
+        super().__init__(event_queue, watch, timeout, event_filter)
 
         self._kq = select.kqueue()
         self._lock = threading.RLock()
@@ -453,12 +444,12 @@ class KqueueEmitter(EventEmitter):
         # A collection of KeventDescriptor.
         self._descriptors = KeventDescriptorSet()
 
-        def walker_callback(path, stat_info, self=self):
-            self._register_kevent(path, stat.S_ISDIR(stat_info.st_mode))
+        def custom_stat(path, self=self):
+            stat_info = stat(path)
+            self._register_kevent(path, S_ISDIR(stat_info.st_mode))
+            return stat_info
 
-        self._snapshot = DirectorySnapshot(watch.path,
-                                           watch.is_recursive,
-                                           walker_callback)
+        self._snapshot = DirectorySnapshot(watch.path, recursive=watch.is_recursive, stat=custom_stat)
 
     def _register_kevent(self, path, is_directory):
         """
@@ -479,7 +470,7 @@ class KqueueEmitter(EventEmitter):
                 # and then quickly deleted before we could open
                 # a descriptor for it. Therefore, simply queue a sequence
                 # of created and deleted events for the path.
-                #path = absolute_path(path)
+                # path = absolute_path(path)
                 # if is_directory:
                 #    self.queue_event(DirCreatedEvent(path))
                 #    self.queue_event(DirDeletedEvent(path))
@@ -492,6 +483,12 @@ class KqueueEmitter(EventEmitter):
                 # a bus error when we handle temporary files.
                 # eg. .git/index.lock when running tig operations.
                 # I don't fully understand this at the moment.
+                pass
+            elif e.errno == errno.EOPNOTSUPP:
+                # Probably dealing with the socket or special file
+                # mounted through a file system that does not support
+                # access to it (e.g. NFS). On BSD systems look at
+                # EOPNOTSUPP in man 2 open.
                 pass
             else:
                 # All other errors are propagated.
@@ -528,127 +525,104 @@ class KqueueEmitter(EventEmitter):
         elif event.event_type == EVENT_TYPE_DELETED:
             self._unregister_kevent(event.src_path)
 
-    def _queue_dirs_modified(self,
-                             dirs_modified,
-                             ref_snapshot,
-                             new_snapshot):
+    def _gen_kqueue_events(self, kev, ref_snapshot, new_snapshot):
         """
-        Queues events for directory modifications by scanning the directory
-        for changes.
-
-        A scan is a comparison between two snapshots of the same directory
-        taken at two different times. This also determines whether files
-        or directories were created, which updated the modified timestamp
-        for the directory.
-        """
-        if dirs_modified:
-            for dir_modified in dirs_modified:
-                self.queue_event(DirModifiedEvent(dir_modified))
-            diff_events = new_snapshot - ref_snapshot
-            for file_created in diff_events.files_created:
-                self.queue_event(FileCreatedEvent(file_created))
-            for directory_created in diff_events.dirs_created:
-                self.queue_event(DirCreatedEvent(directory_created))
-
-    def _queue_events_except_renames_and_dir_modifications(self, event_list):
-        """
-        Queues events from the kevent list returned from the call to
+        Generate events from the kevent list returned from the call to
         :meth:`select.kqueue.control`.
 
-        .. NOTE:: Queues only the deletions, file modifications,
+        .. NOTE:: kqueue only tells us about deletions, file modifications,
                   attribute modifications. The other events, namely,
                   file creation, directory modification, file rename,
                   directory rename, directory creation, etc. are
                   determined by comparing directory snapshots.
         """
-        files_renamed = set()
-        dirs_renamed = set()
-        dirs_modified = set()
+        descriptor = self._descriptors.get_for_fd(kev.ident)
+        src_path = descriptor.path
 
-        for kev in event_list:
-            descriptor = self._descriptors.get_for_fd(kev.ident)
-            src_path = descriptor.path
-
-            if is_deleted(kev):
-                if descriptor.is_directory:
-                    self.queue_event(DirDeletedEvent(src_path))
-                else:
-                    self.queue_event(FileDeletedEvent(src_path))
-            elif is_attrib_modified(kev):
-                if descriptor.is_directory:
-                    self.queue_event(DirModifiedEvent(src_path))
-                else:
-                    self.queue_event(FileModifiedEvent(src_path))
-            elif is_modified(kev):
-                if descriptor.is_directory:
+        if is_renamed(kev):
+            # Kqueue does not specify the destination names for renames
+            # to, so we have to process these using the a snapshot
+            # of the directory.
+            for event in self._gen_renamed_events(src_path, descriptor.is_directory, ref_snapshot, new_snapshot):
+                yield event
+        elif is_attrib_modified(kev):
+            if descriptor.is_directory:
+                yield DirModifiedEvent(src_path)
+            else:
+                yield FileModifiedEvent(src_path)
+        elif is_modified(kev):
+            if descriptor.is_directory:
+                if self.watch.is_recursive or self.watch.path == src_path:
                     # When a directory is modified, it may be due to
                     # sub-file/directory renames or new file/directory
                     # creation. We determine all this by comparing
                     # snapshots later.
-                    dirs_modified.add(src_path)
-                else:
-                    self.queue_event(FileModifiedEvent(src_path))
-            elif is_renamed(kev):
-                # Kqueue does not specify the destination names for renames
-                # to, so we have to process these after taking a snapshot
-                # of the directory.
-                if descriptor.is_directory:
-                    dirs_renamed.add(src_path)
-                else:
-                    files_renamed.add(src_path)
-        return files_renamed, dirs_renamed, dirs_modified
+                    yield DirModifiedEvent(src_path)
+            else:
+                yield FileModifiedEvent(src_path)
+        elif is_deleted(kev):
+            if descriptor.is_directory:
+                yield DirDeletedEvent(src_path)
+            else:
+                yield FileDeletedEvent(src_path)
 
-    def _queue_renamed(self,
-                       src_path,
-                       is_directory,
-                       ref_snapshot,
-                       new_snapshot):
+    def _parent_dir_modified(self, src_path):
+        """
+        Helper to generate a DirModifiedEvent on the parent of src_path.
+        """
+        return DirModifiedEvent(os.path.dirname(src_path))
+
+    def _gen_renamed_events(self, src_path, is_directory, ref_snapshot, new_snapshot):
         """
         Compares information from two directory snapshots (one taken before
         the rename operation and another taken right after) to determine the
-        destination path of the file system object renamed, and adds
-        appropriate events to the event queue.
+        destination path of the file system object renamed, and yields
+        the appropriate events to be queued.
         """
         try:
-            ref_stat_info = ref_snapshot.stat_info(src_path)
+            f_inode = ref_snapshot.inode(src_path)
         except KeyError:
             # Probably caught a temporary file/directory that was renamed
             # and deleted. Fires a sequence of created and deleted events
             # for the path.
             if is_directory:
-                self.queue_event(DirCreatedEvent(src_path))
-                self.queue_event(DirDeletedEvent(src_path))
+                yield DirCreatedEvent(src_path)
+                yield DirDeletedEvent(src_path)
             else:
-                self.queue_event(FileCreatedEvent(src_path))
-                self.queue_event(FileDeletedEvent(src_path))
+                yield FileCreatedEvent(src_path)
+                yield FileDeletedEvent(src_path)
                 # We don't process any further and bail out assuming
             # the event represents deletion/creation instead of movement.
             return
 
-        try:
-            dest_path = absolute_path(
-                new_snapshot.path_for_inode(ref_stat_info.st_ino))
+        dest_path = new_snapshot.path(f_inode)
+        if dest_path is not None:
+            dest_path = absolute_path(dest_path)
             if is_directory:
                 event = DirMovedEvent(src_path, dest_path)
+                yield event
+            else:
+                yield FileMovedEvent(src_path, dest_path)
+            yield self._parent_dir_modified(src_path)
+            yield self._parent_dir_modified(dest_path)
+            if is_directory:
                 # TODO: Do we need to fire moved events for the items
                 # inside the directory tree? Does kqueue does this
                 # all by itself? Check this and then enable this code
                 # only if it doesn't already.
                 # A: It doesn't. So I've enabled this block.
                 if self.watch.is_recursive:
-                    for sub_event in event.sub_moved_events():
-                        self.queue_event(sub_event)
-                self.queue_event(event)
-            else:
-                self.queue_event(FileMovedEvent(src_path, dest_path))
-        except KeyError:
+                    for sub_event in generate_sub_moved_events(src_path, dest_path):
+                        yield sub_event
+        else:
             # If the new snapshot does not have an inode for the
             # old path, we haven't found the new name. Therefore,
             # we mark it as deleted and remove unregister the path.
             if is_directory:
-                self.queue_event(DirDeletedEvent(src_path))
+                yield DirDeletedEvent(src_path)
             else:
-                self.queue_event(FileDeletedEvent(src_path))
+                yield FileDeletedEvent(src_path)
+            yield self._parent_dir_modified(src_path)
 
     def _read_events(self, timeout=None):
         """
@@ -660,9 +634,7 @@ class KqueueEmitter(EventEmitter):
         :type timeout:
             ``float`` (seconds)
         """
-        return self._kq.control(self._descriptors.kevents,
-                                MAX_EVENTS,
-                                timeout)
+        return self._kq.control(self._descriptors.kevents, MAX_EVENTS, timeout)
 
     def queue_events(self, timeout):
         """
@@ -677,35 +649,30 @@ class KqueueEmitter(EventEmitter):
         with self._lock:
             try:
                 event_list = self._read_events(timeout)
-                files_renamed, dirs_renamed, dirs_modified = (
-                    self._queue_events_except_renames_and_dir_modifications(event_list))
+                # TODO: investigate why order appears to be reversed
+                event_list.reverse()
 
                 # Take a fresh snapshot of the directory and update the
                 # saved snapshot.
-                new_snapshot = DirectorySnapshot(self.watch.path,
-                                                 self.watch.is_recursive)
+                new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
                 ref_snapshot = self._snapshot
                 self._snapshot = new_snapshot
+                diff_events = new_snapshot - ref_snapshot
 
-                if files_renamed or dirs_renamed or dirs_modified:
-                    for src_path in files_renamed:
-                        self._queue_renamed(src_path,
-                                            False,
-                                            ref_snapshot,
-                                            new_snapshot)
-                    for src_path in dirs_renamed:
-                        self._queue_renamed(src_path,
-                                            True,
-                                            ref_snapshot,
-                                            new_snapshot)
-                    self._queue_dirs_modified(dirs_modified,
-                                              ref_snapshot,
-                                              new_snapshot)
+                # Process events
+                for directory_created in diff_events.dirs_created:
+                    self.queue_event(DirCreatedEvent(directory_created))
+                for file_created in diff_events.files_created:
+                    self.queue_event(FileCreatedEvent(file_created))
+                for file_modified in diff_events.files_modified:
+                    self.queue_event(FileModifiedEvent(file_modified))
+
+                for kev in event_list:
+                    for event in self._gen_kqueue_events(kev, ref_snapshot, new_snapshot):
+                        self.queue_event(event)
+
             except OSError as e:
-                if e.errno == errno.EBADF:
-                    # logging.debug(e)
-                    pass
-                else:
+                if e.errno != errno.EBADF:
                     raise
 
     def on_thread_stop(self):
@@ -723,4 +690,4 @@ class KqueueObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=KqueueEmitter, timeout=timeout)
+        super().__init__(emitter_class=KqueueEmitter, timeout=timeout)

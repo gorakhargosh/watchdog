@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,32 +64,34 @@ Some extremely useful articles and documentation:
 
 """
 
-from __future__ import with_statement
+from __future__ import annotations
 
+import logging
 import os
 import threading
-from .inotify_buffer import InotifyBuffer
-
-from watchdog.observers.api import (
-    EventEmitter,
-    BaseObserver,
-    DEFAULT_EMITTER_TIMEOUT,
-    DEFAULT_OBSERVER_TIMEOUT
-)
+from typing import Type
 
 from watchdog.events import (
+    DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
-    DirCreatedEvent,
+    FileClosedEvent,
+    FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
-    FileCreatedEvent,
-    generate_sub_moved_events,
+    FileOpenedEvent,
+    FileSystemEvent,
     generate_sub_created_events,
+    generate_sub_moved_events,
 )
-from watchdog.utils import unicode_paths
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+
+from .inotify_buffer import InotifyBuffer
+from .inotify_c import InotifyConstants
+
+logger = logging.getLogger(__name__)
 
 
 class InotifyEmitter(EventEmitter):
@@ -109,28 +108,42 @@ class InotifyEmitter(EventEmitter):
         Read events blocking timeout (in seconds).
     :type timeout:
         ``float``
+    :param event_filter:
+        Collection of event types to emit, or None for no filtering (default).
+    :type event_filter:
+        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout, event_filter)
         self._lock = threading.Lock()
         self._inotify = None
 
     def on_thread_start(self):
-        path = unicode_paths.encode(self.watch.path)
-        self._inotify = InotifyBuffer(path, self.watch.is_recursive)
+        path = os.fsencode(self.watch.path)
+        event_mask = self.get_event_mask_from_filter()
+        self._inotify = InotifyBuffer(path, self.watch.is_recursive, event_mask)
 
     def on_thread_stop(self):
         if self._inotify:
             self._inotify.close()
+            self._inotify = None
 
     def queue_events(self, timeout, full_events=False):
-        #If "full_events" is true, then the method will report unmatched move events as seperate events
-        #This behavior is by default only called by a InotifyFullEmitter
+        # If "full_events" is true, then the method will report unmatched move events as separate events
+        # This behavior is by default only called by a InotifyFullEmitter
+        if self._inotify is None:
+            logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+            return
         with self._lock:
+            if self._inotify is None:
+                logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+                return
             event = self._inotify.read_event()
             if event is None:
                 return
+
+            cls: Type[FileSystemEvent]
             if isinstance(event, tuple):
                 move_from, move_to = event
                 src_path = self._decode_path(move_from.src_path)
@@ -146,9 +159,9 @@ class InotifyEmitter(EventEmitter):
 
             src_path = self._decode_path(event.src_path)
             if event.is_moved_to:
-                if (full_events):
+                if full_events:
                     cls = DirMovedEvent if event.is_directory else FileMovedEvent
-                    self.queue_event(cls(None, src_path))
+                    self.queue_event(cls("", src_path))
                 else:
                     cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                     self.queue_event(cls(src_path))
@@ -167,19 +180,59 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_moved_from and full_events:
-                cls = DireMovedEvent if event.is_directory else FileMovedEvent
-                self.queue_event(cls(src_path, None))
+                cls = DirMovedEvent if event.is_directory else FileMovedEvent
+                self.queue_event(cls(src_path, ""))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_create:
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+            elif event.is_close_write and not event.is_directory:
+                cls = FileClosedEvent
+                self.queue_event(cls(src_path))
+                self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+            elif event.is_open and not event.is_directory:
+                cls = FileOpenedEvent
+                self.queue_event(cls(src_path))
+            # elif event.is_close_nowrite and not event.is_directory:
+            #     cls = FileClosedEvent
+            #     self.queue_event(cls(src_path))
+            elif event.is_delete_self and src_path == self.watch.path:
+                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                self.queue_event(cls(src_path))
+                self.stop()
 
     def _decode_path(self, path):
-        """ Decode path only if unicode string was passed to this emitter. """
+        """Decode path only if unicode string was passed to this emitter."""
         if isinstance(self.watch.path, bytes):
             return path
-        return unicode_paths.decode(path)
+        return os.fsdecode(path)
+
+    def get_event_mask_from_filter(self):
+        """Optimization: Only include events we are filtering in inotify call"""
+        if self._event_filter is None:
+            return None
+
+        # always listen to delete self
+        event_mask = InotifyConstants.IN_DELETE_SELF
+        for cls in self._event_filter:
+            if cls in (DirMovedEvent, FileMovedEvent):
+                event_mask |= InotifyConstants.IN_MOVE
+            elif cls in (DirCreatedEvent, FileCreatedEvent):
+                event_mask |= InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE
+            elif cls is DirModifiedEvent:
+                event_mask |= (InotifyConstants.IN_MOVE | InotifyConstants.IN_ATTRIB |
+                               InotifyConstants.IN_MODIFY | InotifyConstants.IN_CREATE |
+                               InotifyConstants.IN_CLOSE_WRITE)
+            elif cls is FileModifiedEvent:
+                event_mask |= InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY
+            elif cls in (DirDeletedEvent, FileDeletedEvent):
+                event_mask |= InotifyConstants.IN_DELETE
+            elif cls is FileClosedEvent:
+                event_mask |= InotifyConstants.IN_CLOSE
+            elif cls is FileOpenedEvent:
+                event_mask |= InotifyConstants.IN_OPEN
+        return event_mask
 
 
 class InotifyFullEmitter(InotifyEmitter):
@@ -198,11 +251,13 @@ class InotifyFullEmitter(InotifyEmitter):
     :type timeout:
         ``float``
     """
+
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        InotifyEmitter.__init__(self, event_queue, watch, timeout)
-        
+        super().__init__(event_queue, watch, timeout)
+
     def queue_events(self, timeout, events=True):
         InotifyEmitter.queue_events(self, timeout, full_events=events)
+
 
 class InotifyObserver(BaseObserver):
     """
@@ -211,8 +266,5 @@ class InotifyObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
-        if (generate_full_events):
-            BaseObserver.__init__(self, emitter_class=InotifyFullEmitter, timeout=timeout)
-        else:
-            BaseObserver.__init__(self, emitter_class=InotifyEmitter,
-                              timeout=timeout)
+        cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
+        super().__init__(emitter_class=cls, timeout=timeout)

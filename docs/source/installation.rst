@@ -4,28 +4,30 @@
 
 Installation
 ============
-|project_name| requires Python 2.6 or above to work. If you are using a
-Linux/FreeBSD/Mac OS X system, you already have Python installed. However,
-you may wish to upgrade your system to Python 2.7 at least, because this
-version comes with updates that can reduce compatibility
-problems. See a list of :ref:`installation-dependencies`.
+|project_name| requires 3.7+ to work. See a list of :ref:`installation-dependencies`.
 
 Installing from PyPI using pip
 ------------------------------
 
 .. parsed-literal::
 
-    $ pip install |project_name|
+    $ python -m pip install -U |project_name|
+
+    # or to install the watchmedo utility:
+    $ python -m pip install -U |project_name|\[watchmedo]
 
 Installing from source tarballs
 -------------------------------
 
 .. parsed-literal::
 
-    $ wget -c http://pypi.python.org/packages/source/w/watchdog/watchdog-|project_version|.tar.gz
+    $ wget -c https://pypi.python.org/packages/source/w/watchdog/watchdog-|project_version|.tar.gz
     $ tar zxvf |project_name|-|project_version|.tar.gz
     $ cd |project_name|-|project_version|
-    $ python setup.py install
+    $ python -m pip install -e .
+
+    # or to install the watchmedo utility:
+    $ python -m pip install -e ".[watchmedo]"
 
 Installing from the code repository
 -----------------------------------
@@ -34,49 +36,36 @@ Installing from the code repository
 
     $ git clone --recursive git://github.com/gorakhargosh/watchdog.git
     $ cd watchdog
-    $ python setup.py install
+    $ python -m pip install -e .
+
+    # or to install the watchmedo utility:
+    $ python -m pip install -e ".[watchmedo]"
 
 .. _installation-dependencies:
 
 Dependencies
 ------------
+
 |project_name| depends on many libraries to do its job. The following is
 a list of dependencies you need based on the operating system you are
 using.
 
-+---------------------+-------------+-------------+-------------+-------------+
-| Operating system    |   Windows   |  Linux 2.6  | Mac OS X/   |     BSD     |
-| Dependency (row)    |             |             |   Darwin    |             |
-+=====================+=============+=============+=============+=============+
-| XCode_              |             |             |     Yes     |             |
-+---------------------+-------------+-------------+-------------+-------------+
-| PyYAML_             |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
-| argh_               |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
-| argparse_           |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
-| select_backport_    |             |             |     Yes     |     Yes     |
-| (Python 2.6)        |             |             |             |             |
-+---------------------+-------------+-------------+-------------+-------------+
-| pathtools_          |     Yes     |     Yes     |     Yes     |     Yes     |
-+---------------------+-------------+-------------+-------------+-------------+
++---------------------+-------------+-------------+--------+-------------+
+| Operating system    |   Windows   |  Linux 2.6  | macOS  |     BSD     |
+| Dependency (row)    |             |             | Darwin |             |
++=====================+=============+=============+========+=============+
+| XCode_              |             |             |  Yes   |             |
++---------------------+-------------+-------------+--------+-------------+
 
+The following is a list of dependencies you need based on the operating system you are
+using the ``watchmedo`` utility.
 
-Installing Dependencies
-~~~~~~~~~~~~~~~~~~~~~~~
-The ``watchmedo`` script depends on PyYAML_ which links with LibYAML_.
-On Mac OS X, you can use homebrew_ to install LibYAML::
-
-    brew install libyaml
-
-On Linux, use your favorite package manager to install LibYAML. Here's how you
-do it on Ubuntu::
-
-    sudo aptitude install libyaml-dev
-
-On Windows, please install PyYAML_ using the binaries they provide.
-
++---------------------+-------------+-------------+--------+-------------+
+| Operating system    |   Windows   |  Linux 2.6  | macOS  |     BSD     |
+| Dependency (row)    |             |             | Darwin |             |
++=====================+=============+=============+========+=============+
+| PyYAML_             |     Yes     |     Yes     |  Yes   |     Yes     |
++---------------------+-------------+-------------+--------+-------------+
 
 Supported Platforms (and Caveats)
 ---------------------------------
@@ -89,7 +78,6 @@ supported:
 .. WARNING:: Differences between behaviors of these native API
              are noted below.
 
-
 Linux 2.6+
     Linux kernel version 2.6 and later come with an API called inotify_
     that programs can use to monitor file system events.
@@ -101,8 +89,7 @@ Linux 2.6+
 
                   fs.inotify.max_user_watches=16384
 
-
-Mac OS X
+macOS
     The Darwin kernel/OS X API maintains two ways to monitor directories
     for file system events:
 
@@ -112,14 +99,13 @@ Mac OS X
     |project_name| can use whichever one is available, preferring
     FSEvents over ``kqueue(2)``. ``kqueue(2)`` uses open file descriptors for monitoring
     and the current implementation uses
-    `Mac OS X File System Monitoring Performance Guidelines`_ to open
+    `macOS File System Monitoring Performance Guidelines`_ to open
     these file descriptors only to monitor events, thus allowing
     OS X to unmount volumes that are being watched without locking them.
 
     .. NOTE:: More information about how |project_name| uses ``kqueue(2)`` is noted
               in `BSD Unix variants`_. Much of this information applies to
-              Mac OS X as well.
-
+              macOS as well.
 
 _`BSD Unix variants`
     BSD variants come with kqueue_ which programs can use to monitor
@@ -140,7 +126,6 @@ _`BSD Unix variants`
               this for you::
 
                   ulimit -n 1024
-
 
 Windows Vista and later
     The Windows API provides the ReadDirectoryChangesW_. |project_name|

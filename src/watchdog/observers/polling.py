@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +18,7 @@
 :module: watchdog.observers.polling
 :synopsis: Polling emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 Classes
 -------
@@ -34,29 +32,24 @@ Classes
    :special-members:
 """
 
-from __future__ import with_statement
+from __future__ import annotations
+
 import os
 import threading
 from functools import partial
-from watchdog.utils import stat as default_stat
-from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
-from watchdog.observers.api import (
-    EventEmitter,
-    BaseObserver,
-    DEFAULT_OBSERVER_TIMEOUT,
-    DEFAULT_EMITTER_TIMEOUT
-)
 
 from watchdog.events import (
-    DirMovedEvent,
-    DirDeletedEvent,
     DirCreatedEvent,
+    DirDeletedEvent,
     DirModifiedEvent,
-    FileMovedEvent,
-    FileDeletedEvent,
+    DirMovedEvent,
     FileCreatedEvent,
-    FileModifiedEvent
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
 )
+from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
 
 
 class PollingEmitter(EventEmitter):
@@ -65,13 +58,21 @@ class PollingEmitter(EventEmitter):
     system changes.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
-                 stat=default_stat, listdir=os.listdir):
-        EventEmitter.__init__(self, event_queue, watch, timeout)
+    def __init__(
+        self,
+        event_queue,
+        watch,
+        timeout=DEFAULT_EMITTER_TIMEOUT,
+        event_filter=None,
+        stat=os.stat,
+        listdir=os.scandir,
+    ):
+        super().__init__(event_queue, watch, timeout, event_filter)
         self._snapshot = None
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
-            self.watch.path, self.watch.is_recursive, stat=stat, listdir=listdir)
+            self.watch.path, self.watch.is_recursive, stat=stat, listdir=listdir
+        )
 
     def on_thread_start(self):
         self._snapshot = self._take_snapshot()
@@ -90,12 +91,10 @@ class PollingEmitter(EventEmitter):
             # Update snapshot.
             try:
                 new_snapshot = self._take_snapshot()
-            except OSError as e:
+            except OSError:
                 self.queue_event(DirDeletedEvent(self.watch.path))
                 self.stop()
                 return
-            except Exception as e:
-                raise e
 
             events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
             self._snapshot = new_snapshot
@@ -128,7 +127,7 @@ class PollingObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        BaseObserver.__init__(self, emitter_class=PollingEmitter, timeout=timeout)
+        super().__init__(emitter_class=PollingEmitter, timeout=timeout)
 
 
 class PollingObserverVFS(BaseObserver):
@@ -139,9 +138,9 @@ class PollingObserverVFS(BaseObserver):
     def __init__(self, stat, listdir, polling_interval=1):
         """
         :param stat: stat function. See ``os.stat`` for details.
-        :param listdir: listdir function. See ``os.listdir`` for details.
+        :param listdir: listdir function. See ``os.scandir`` for details.
         :type polling_interval: float
         :param polling_interval: interval in seconds between polling the file system.
         """
         emitter_cls = partial(PollingEmitter, stat=stat, listdir=listdir)
-        BaseObserver.__init__(self, emitter_class=emitter_cls, timeout=polling_interval)
+        super().__init__(emitter_class=emitter_cls, timeout=polling_interval)

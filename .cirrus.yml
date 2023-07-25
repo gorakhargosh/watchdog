@@ -1,0 +1,21 @@
+task:
+  matrix:
+    freebsd_instance:
+      image_family: freebsd-13-0
+    freebsd_instance:
+      image_family: freebsd-12-2
+      
+  install_script:
+    - pkg install -y python38 py38-sqlite3
+    # Print the Python version, only to be sure we are running the version we want
+    - python3.8 -c 'import platform; print("Python", platform.python_version())'
+    # Check SQLite3 is installed
+    - python3.8 -c 'import sqlite3; print("SQLite3", sqlite3.version)'
+  setup_script:
+    - python3.8 -m ensurepip
+    - python3.8 -m pip install -U pip
+    - python3.8 -m pip install -r requirements-tests.txt
+  lint_script:
+    - python3.8 -m flake8 docs src tests tools
+  tests_script:
+    - python3.8 -bb -m pytest tests

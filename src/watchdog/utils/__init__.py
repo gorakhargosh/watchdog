@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +18,7 @@
 :module: watchdog.utils
 :synopsis: Utility classes and functions.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
 
 Classes
 -------
@@ -30,52 +28,35 @@ Classes
    :inherited-members:
 
 """
-import os
+from __future__ import annotations
+
 import sys
 import threading
-import watchdog.utils.platform
-from watchdog.utils.compat import Event
-from collections import namedtuple
-
-
-if sys.version_info[0] == 2 and platform.is_windows():
-    # st_ino is not implemented in os.stat on this platform
-    import win32stat
-    stat = win32stat.stat
-else:
-    stat = os.stat
-
-
-def has_attribute(ob, attribute):
-    """
-    :func:`hasattr` swallows exceptions. :func:`has_attribute` tests a Python object for the
-    presence of an attribute.
-
-    :param ob:
-        object to inspect
-    :param attribute:
-        ``str`` for the name of the attribute.
-    """
-    return getattr(ob, attribute, None) is not None
+from typing import TYPE_CHECKING
 
 
 class UnsupportedLibc(Exception):
     pass
 
 
+class WatchdogShutdown(Exception):
+    """
+    Semantic exception used to signal an external shutdown event.
+    """
+
+    pass
+
+
 class BaseThread(threading.Thread):
-    """ Convenience class for creating stoppable threads. """
+    """Convenience class for creating stoppable threads."""
 
     def __init__(self):
         threading.Thread.__init__(self)
-        if has_attribute(self, 'daemon'):
+        if hasattr(self, "daemon"):
             self.daemon = True
         else:
             self.setDaemon(True)
-        self._stopped_event = Event()
-
-        if not has_attribute(self._stopped_event, 'is_set'):
-            self._stopped_event.is_set = self._stopped_event.isSet
+        self._stopped_event = threading.Event()
 
     @property
     def stopped_event(self):
@@ -117,7 +98,7 @@ def load_module(module_name):
     try:
         __import__(module_name)
     except ImportError:
-        raise ImportError('No module named %s' % module_name)
+        raise ImportError(f"No module named {module_name}")
     return sys.modules[module_name]
 
 
@@ -139,20 +120,27 @@ def load_class(dotted_path):
     - modle.name.ClassName     # Typo in module name.
     - module.name.ClasNam      # Typo in classname.
     """
-    dotted_path_split = dotted_path.split('.')
-    if len(dotted_path_split) > 1:
-        klass_name = dotted_path_split[-1]
-        module_name = '.'.join(dotted_path_split[:-1])
+    dotted_path_split = dotted_path.split(".")
+    if len(dotted_path_split) <= 1:
+        raise ValueError(f"Dotted module path {dotted_path} must contain a module name and a classname")
+    klass_name = dotted_path_split[-1]
+    module_name = ".".join(dotted_path_split[:-1])
 
-        module = load_module(module_name)
-        if has_attribute(module, klass_name):
-            klass = getattr(module, klass_name)
-            return klass
-            # Finally create and return an instance of the class
-            # return klass(*args, **kwargs)
-        else:
-            raise AttributeError('Module %s does not have class attribute %s' % (
-                                 module_name, klass_name))
+    module = load_module(module_name)
+    if hasattr(module, klass_name):
+        return getattr(module, klass_name)
+        # Finally create and return an instance of the class
+        # return klass(*args, **kwargs)
     else:
-        raise ValueError(
-            'Dotted module path %s must contain a module name and a classname' % dotted_path)
+        raise AttributeError(f"Module {module_name} does not have class attribute {klass_name}")
+
+
+if TYPE_CHECKING or sys.version_info >= (3, 8):
+    # using `as` to explicitly re-export this since this is a compatibility layer
+    from typing import Protocol as Protocol
+else:
+    # Provide a dummy Protocol class when not available from stdlib.  Should be used
+    # only for hinting.  This could be had from typing_protocol, but not worth adding
+    # the _first_ dependency just for this.
+    class Protocol:
+        ...

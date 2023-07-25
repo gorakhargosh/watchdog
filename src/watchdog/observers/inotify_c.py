@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,90 +13,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import with_statement
-import os
-import errno
-import struct
-import threading
+from __future__ import annotations
+
 import ctypes
 import ctypes.util
+import errno
+import os
+import struct
+import threading
+from ctypes import c_char_p, c_int, c_uint32
 from functools import reduce
-from ctypes import c_int, c_char_p, c_uint32
-from watchdog.utils import has_attribute
+
 from watchdog.utils import UnsupportedLibc
 
+libc = ctypes.CDLL(None)
 
-def _load_libc():
-    libc_path = None
-    try:
-        libc_path = ctypes.util.find_library('c')
-    except (OSError, IOError, RuntimeError):
-        # Note: find_library will on some platforms raise these undocumented
-        # errors, e.g.on android IOError "No usable temporary directory found"
-        # will be raised.
-        pass
+if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") or not hasattr(libc, "inotify_rm_watch"):
+    raise UnsupportedLibc(f"Unsupported libc version found: {libc._name}")
 
-    if libc_path is not None:
-        return ctypes.CDLL(libc_path)
+inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc))
 
-    # Fallbacks
-    try:
-        return ctypes.CDLL('libc.so')
-    except (OSError, IOError):
-        return ctypes.CDLL('libc.so.6')
+inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc))
 
-libc = _load_libc()
-
-if not has_attribute(libc, 'inotify_init') or \
-        not has_attribute(libc, 'inotify_add_watch') or \
-        not has_attribute(libc, 'inotify_rm_watch'):
-    raise UnsupportedLibc("Unsupported libc version found: %s" % libc._name)
-
-inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(
-    ("inotify_add_watch", libc))
-
-inotify_rm_watch = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(
-    ("inotify_rm_watch", libc))
-
-inotify_init = ctypes.CFUNCTYPE(c_int, use_errno=True)(
-    ("inotify_init", libc))
+inotify_init = ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc))
 
 
-class InotifyConstants(object):
+class InotifyConstants:
     # User-space events
-    IN_ACCESS = 0x00000001     # File was accessed.
-    IN_MODIFY = 0x00000002     # File was modified.
-    IN_ATTRIB = 0x00000004     # Meta-data changed.
-    IN_CLOSE_WRITE = 0x00000008     # Writable file was closed.
-    IN_CLOSE_NOWRITE = 0x00000010     # Unwritable file closed.
-    IN_OPEN = 0x00000020     # File was opened.
-    IN_MOVED_FROM = 0x00000040     # File was moved from X.
-    IN_MOVED_TO = 0x00000080     # File was moved to Y.
-    IN_CREATE = 0x00000100     # Subfile was created.
-    IN_DELETE = 0x00000200     # Subfile was deleted.
-    IN_DELETE_SELF = 0x00000400     # Self was deleted.
-    IN_MOVE_SELF = 0x00000800     # Self was moved.
+    IN_ACCESS = 0x00000001  # File was accessed.
+    IN_MODIFY = 0x00000002  # File was modified.
+    IN_ATTRIB = 0x00000004  # Meta-data changed.
+    IN_CLOSE_WRITE = 0x00000008  # Writable file was closed.
+    IN_CLOSE_NOWRITE = 0x00000010  # Unwritable file closed.
+    IN_OPEN = 0x00000020  # File was opened.
+    IN_MOVED_FROM = 0x00000040  # File was moved from X.
+    IN_MOVED_TO = 0x00000080  # File was moved to Y.
+    IN_CREATE = 0x00000100  # Subfile was created.
+    IN_DELETE = 0x00000200  # Subfile was deleted.
+    IN_DELETE_SELF = 0x00000400  # Self was deleted.
+    IN_MOVE_SELF = 0x00000800  # Self was moved.
 
     # Helper user-space events.
     IN_CLOSE = IN_CLOSE_WRITE | IN_CLOSE_NOWRITE  # Close.
     IN_MOVE = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
 
     # Events sent by the kernel to a watch.
-    IN_UNMOUNT = 0x00002000     # Backing file system was unmounted.
-    IN_Q_OVERFLOW = 0x00004000     # Event queued overflowed.
-    IN_IGNORED = 0x00008000     # File was ignored.
+    IN_UNMOUNT = 0x00002000  # Backing file system was unmounted.
+    IN_Q_OVERFLOW = 0x00004000  # Event queued overflowed.
+    IN_IGNORED = 0x00008000  # File was ignored.
 
     # Special flags.
-    IN_ONLYDIR = 0x01000000     # Only watch the path if it's a directory.
-    IN_DONT_FOLLOW = 0x02000000     # Do not follow a symbolic link.
-    IN_EXCL_UNLINK = 0x04000000     # Exclude events on unlinked objects
-    IN_MASK_ADD = 0x20000000     # Add to the mask of an existing watch.
-    IN_ISDIR = 0x40000000     # Event occurred against directory.
-    IN_ONESHOT = 0x80000000     # Only send event once.
+    IN_ONLYDIR = 0x01000000  # Only watch the path if it's a directory.
+    IN_DONT_FOLLOW = 0x02000000  # Do not follow a symbolic link.
+    IN_EXCL_UNLINK = 0x04000000  # Exclude events on unlinked objects
+    IN_MASK_ADD = 0x20000000  # Add to the mask of an existing watch.
+    IN_ISDIR = 0x40000000  # Event occurred against directory.
+    IN_ONESHOT = 0x80000000  # Only send event once.
 
     # All user-space events.
     IN_ALL_EVENTS = reduce(
-        lambda x, y: x | y, [
+        lambda x, y: x | y,
+        [
             IN_ACCESS,
             IN_MODIFY,
             IN_ATTRIB,
@@ -111,7 +86,8 @@ class InotifyConstants(object):
             IN_CREATE,
             IN_DELETE_SELF,
             IN_MOVE_SELF,
-        ])
+        ],
+    )
 
     # Flags for ``inotify_init1``
     IN_CLOEXEC = 0x02000000
@@ -120,7 +96,8 @@ class InotifyConstants(object):
 
 # Watchdog's API cares only about these events.
 WATCHDOG_ALL_EVENTS = reduce(
-    lambda x, y: x | y, [
+    lambda x, y: x | y,
+    [
         InotifyConstants.IN_MODIFY,
         InotifyConstants.IN_ATTRIB,
         InotifyConstants.IN_MOVED_FROM,
@@ -129,7 +106,10 @@ WATCHDOG_ALL_EVENTS = reduce(
         InotifyConstants.IN_DELETE,
         InotifyConstants.IN_DELETE_SELF,
         InotifyConstants.IN_DONT_FOLLOW,
-    ])
+        InotifyConstants.IN_CLOSE_WRITE,
+        InotifyConstants.IN_OPEN,
+    ],
+)
 
 
 class inotify_event_struct(ctypes.Structure):
@@ -145,11 +125,14 @@ class inotify_event_struct(ctypes.Structure):
             char  name[0];       /* stub for possible name */
         };
     """
-    _fields_ = [('wd', c_int),
-                ('mask', c_uint32),
-                ('cookie', c_uint32),
-                ('len', c_uint32),
-                ('name', c_char_p)]
+
+    _fields_ = [
+        ("wd", c_int),
+        ("mask", c_uint32),
+        ("cookie", c_uint32),
+        ("len", c_uint32),
+        ("name", c_char_p),
+    ]
 
 
 EVENT_SIZE = ctypes.sizeof(inotify_event_struct)
@@ -157,7 +140,7 @@ DEFAULT_NUM_EVENTS = 2048
 DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 
 
-class Inotify(object):
+class Inotify:
     """
     Linux inotify(7) API wrapper class.
 
@@ -169,7 +152,7 @@ class Inotify(object):
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def __init__(self, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
+    def __init__(self, path, recursive=False, event_mask=None):
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:
@@ -178,14 +161,20 @@ class Inotify(object):
         self._lock = threading.Lock()
 
         # Stores the watch descriptor for a given path.
-        self._wd_for_path = dict()
-        self._path_for_wd = dict()
+        self._wd_for_path = {}
+        self._path_for_wd = {}
 
         self._path = path
+        # Default to all events
+        if event_mask is None:
+            event_mask = WATCHDOG_ALL_EVENTS
         self._event_mask = event_mask
         self._is_recursive = recursive
-        self._add_dir_watch(path, recursive, event_mask)
-        self._moved_from_events = dict()
+        if os.path.isdir(path):
+            self._add_dir_watch(path, recursive, event_mask)
+        else:
+            self._add_watch(path, event_mask)
+        self._moved_from_events = {}
 
     @property
     def event_mask(self):
@@ -209,7 +198,7 @@ class Inotify(object):
 
     def clear_move_records(self):
         """Clear cached records of MOVED_FROM events"""
-        self._moved_from_events = dict()
+        self._moved_from_events = {}
 
     def source_for_move(self, destination_event):
         """
@@ -261,7 +250,12 @@ class Inotify(object):
             if self._path in self._wd_for_path:
                 wd = self._wd_for_path[self._path]
                 inotify_rm_watch(self._inotify_fd, wd)
-            os.close(self._inotify_fd)
+
+            try:
+                os.close(self._inotify_fd)
+            except OSError:
+                # descriptor may be invalid because file was deleted
+                pass
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
         """
@@ -280,7 +274,12 @@ class Inotify(object):
                         full_path = os.path.join(root, dirname)
                         wd_dir = self._add_watch(full_path, self._event_mask)
                         e = InotifyEvent(
-                            wd_dir, InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR, 0, dirname, full_path)
+                            wd_dir,
+                            InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR,
+                            0,
+                            dirname,
+                            full_path,
+                        )
                         events.append(e)
                     except OSError:
                         pass
@@ -288,7 +287,12 @@ class Inotify(object):
                     full_path = os.path.join(root, filename)
                     wd_parent_dir = self._wd_for_path[os.path.dirname(full_path)]
                     e = InotifyEvent(
-                        wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
+                        wd_parent_dir,
+                        InotifyConstants.IN_CREATE,
+                        0,
+                        filename,
+                        full_path,
+                    )
                     events.append(e)
             return events
 
@@ -299,6 +303,10 @@ class Inotify(object):
             except OSError as e:
                 if e.errno == errno.EINTR:
                     continue
+                elif e.errno == errno.EBADF:
+                    return []
+                else:
+                    raise
             break
 
         with self._lock:
@@ -307,7 +315,7 @@ class Inotify(object):
                 if wd == -1:
                     continue
                 wd_path = self._path_for_wd[wd]
-                src_path = os.path.join(wd_path, name) if name else wd_path #avoid trailing slash
+                src_path = os.path.join(wd_path, name) if name else wd_path  # avoid trailing slash
                 inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
                 if inotify_event.is_moved_from:
@@ -319,6 +327,13 @@ class Inotify(object):
                         del self._wd_for_path[move_src_path]
                         self._wd_for_path[inotify_event.src_path] = moved_wd
                         self._path_for_wd[moved_wd] = inotify_event.src_path
+                        if self.is_recursive:
+                            for _path, _wd in self._wd_for_path.copy().items():
+                                if _path.startswith(move_src_path + os.path.sep.encode()):
+                                    moved_wd = self._wd_for_path.pop(_path)
+                                    _move_to_path = _path.replace(move_src_path, inotify_event.src_path)
+                                    self._wd_for_path[_move_to_path] = moved_wd
+                                    self._path_for_wd[moved_wd] = _move_to_path
                     src_path = os.path.join(wd_path, name)
                     inotify_event = InotifyEvent(wd, mask, cookie, name, src_path)
 
@@ -327,13 +342,10 @@ class Inotify(object):
                     path = self._path_for_wd.pop(wd)
                     if self._wd_for_path[path] == wd:
                         del self._wd_for_path[path]
-                    continue
 
                 event_list.append(inotify_event)
 
-                if (self.is_recursive and inotify_event.is_directory and
-                        inotify_event.is_create):
-
+                if self.is_recursive and inotify_event.is_directory and inotify_event.is_create:
                     # TODO: When a directory from another part of the
                     # filesystem is moved into a watched directory, this
                     # will not generate events for the directory tree.
@@ -364,7 +376,7 @@ class Inotify(object):
             Event bit mask.
         """
         if not os.path.isdir(path):
-            raise OSError('Path is not a directory')
+            raise OSError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path)
         self._add_watch(path, mask)
         if recursive:
             for root, dirnames, _ in os.walk(path):
@@ -398,11 +410,11 @@ class Inotify(object):
         """
         err = ctypes.get_errno()
         if err == errno.ENOSPC:
-            raise OSError("inotify watch limit reached")
+            raise OSError(errno.ENOSPC, "inotify watch limit reached")
         elif err == errno.EMFILE:
-            raise OSError("inotify instance limit reached")
-        else:
-            raise OSError(os.strerror(err))
+            raise OSError(errno.EMFILE, "inotify instance limit reached")
+        elif err != errno.EACCES:
+            raise OSError(err, os.strerror(err))
 
     @staticmethod
     def _parse_event_buffer(event_buffer):
@@ -424,13 +436,13 @@ class Inotify(object):
         """
         i = 0
         while i + 16 <= len(event_buffer):
-            wd, mask, cookie, length = struct.unpack_from('iIII', event_buffer, i)
-            name = event_buffer[i + 16:i + 16 + length].rstrip(b'\0')
+            wd, mask, cookie, length = struct.unpack_from("iIII", event_buffer, i)
+            name = event_buffer[i + 16 : i + 16 + length].rstrip(b"\0")
             i += 16 + length
             yield wd, mask, cookie, name
 
 
-class InotifyEvent(object):
+class InotifyEvent:
     """
     Inotify event struct wrapper.
 
@@ -441,9 +453,9 @@ class InotifyEvent(object):
     :param cookie:
         Event cookie
     :param name:
-        Event name.
+        Base name of the event source path.
     :param src_path:
-        Event source path
+        Full event source path.
     """
 
     def __init__(self, wd, mask, cookie, name, src_path):
@@ -484,6 +496,10 @@ class InotifyEvent(object):
     @property
     def is_close_nowrite(self):
         return self._mask & InotifyConstants.IN_CLOSE_NOWRITE > 0
+
+    @property
+    def is_open(self):
+        return self._mask & InotifyConstants.IN_OPEN > 0
 
     @property
     def is_access(self):
@@ -530,8 +546,7 @@ class InotifyEvent(object):
         # It looks like the kernel does not provide this information for
         # IN_DELETE_SELF and IN_MOVE_SELF. In this case, assume it's a dir.
         # See also: https://github.com/seb-m/pyinotify/blob/2c7e8f8/python2/pyinotify.py#L897
-        return (self.is_delete_self or self.is_move_self or
-                self._mask & InotifyConstants.IN_ISDIR > 0)
+        return self.is_delete_self or self.is_move_self or self._mask & InotifyConstants.IN_ISDIR > 0
 
     @property
     def key(self):
@@ -541,7 +556,7 @@ class InotifyEvent(object):
         return self.key == inotify_event.key
 
     def __ne__(self, inotify_event):
-        return self.key == inotify_event.key
+        return self.key != inotify_event.key
 
     def __hash__(self):
         return hash(self.key)
@@ -550,14 +565,19 @@ class InotifyEvent(object):
     def _get_mask_string(mask):
         masks = []
         for c in dir(InotifyConstants):
-            if c.startswith('IN_') and c not in ['IN_ALL_EVENTS', 'IN_CLOSE', 'IN_MOVE']:
+            if c.startswith("IN_") and c not in [
+                "IN_ALL_EVENTS",
+                "IN_CLOSE",
+                "IN_MOVE",
+            ]:
                 c_val = getattr(InotifyConstants, c)
                 if mask & c_val:
                     masks.append(c)
-        mask_string = '|'.join(masks)
-        return mask_string
+        return "|".join(masks)
 
     def __repr__(self):
-        mask_string = self._get_mask_string(self.mask)
-        s = "<InotifyEvent: src_path=%s, wd=%d, mask=%s, cookie=%d, name=%s>"
-        return s % (self.src_path, self.wd, mask_string, self.cookie, self.name)
+        return (
+            f"<{type(self).__name__}: src_path={self.src_path!r}, wd={self.wd},"
+            f" mask={self._get_mask_string(self.mask)}, cookie={self.cookie},"
+            f" name={os.fsdecode(self.name)!r}>"
+        )

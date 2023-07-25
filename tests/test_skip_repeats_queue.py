@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
 # Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc.
+# Copyright 2012 Google, Inc & contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,68 +13,102 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tests import unittest
+from __future__ import annotations
+
+import pytest
+
+import watchdog.events as events
 from watchdog.utils.bricks import SkipRepeatsQueue
 
+from .markers import cpython_only
 
-class TestSkipRepeatsQueue(unittest.TestCase):
 
-    def test_basic_queue(self):
-        q = SkipRepeatsQueue()
+def basic_actions():
+    q = SkipRepeatsQueue()
 
-        e1 = (2, 'fred')
-        e2 = (2, 'george')
-        e3 = (4, 'sally')
+    e1 = (2, "fred")
+    e2 = (2, "george")
+    e3 = (4, "sally")
 
-        q.put(e1)
-        q.put(e2)
-        q.put(e3)
+    q.put(e1)
+    q.put(e2)
+    q.put(e3)
 
-        self.assertEqual(e1, q.get())
-        self.assertEqual(e2, q.get())
-        self.assertEqual(e3, q.get())
-        self.assertTrue(q.empty())
+    assert e1 == q.get()
+    assert e2 == q.get()
+    assert e3 == q.get()
+    assert q.empty()
 
-    def test_allow_nonconsecutive(self):
-        q = SkipRepeatsQueue()
 
-        e1 = (2, 'fred')
-        e2 = (2, 'george')
+def test_basic_queue():
+    basic_actions()
 
-        q.put(e1)
-        q.put(e2)
-        q.put(e1)       # repeat the first entry
 
-        self.assertEqual(e1, q.get())
-        self.assertEqual(e2, q.get())
-        self.assertEqual(e1, q.get())
-        self.assertTrue(q.empty())
+def test_allow_nonconsecutive():
+    q = SkipRepeatsQueue()
 
-    def test_prevent_consecutive(self):
-        q = SkipRepeatsQueue()
+    e1 = (2, "fred")
+    e2 = (2, "george")
 
-        e1 = (2, 'fred')
-        e2 = (2, 'george')
+    q.put(e1)
+    q.put(e2)
+    q.put(e1)  # repeat the first entry
 
-        q.put(e1)
-        q.put(e1)       # repeat the first entry (this shouldn't get added)
-        q.put(e2)
+    assert e1 == q.get()
+    assert e2 == q.get()
+    assert e1 == q.get()
+    assert q.empty()
 
-        self.assertEqual(e1, q.get())
-        self.assertEqual(e2, q.get())
-        self.assertTrue(q.empty())
 
-    def test_consecutives_allowed_across_empties(self):
-        q = SkipRepeatsQueue()
+def test_put_with_watchdog_events():
+    # FileSystemEvent.__ne__() uses the key property without
+    # doing any type checking. Since _last_item is set to
+    # None in __init__(), an AttributeError is raised when
+    # FileSystemEvent.__ne__() tries to use None.key
+    queue = SkipRepeatsQueue()
+    dummy_file = "dummy.txt"
+    event = events.FileCreatedEvent(dummy_file)
+    queue.put(event)
+    assert queue.get() is event
 
-        e1 = (2, 'fred')
 
-        q.put(e1)
-        q.put(e1)       # repeat the first entry (this shouldn't get added)
+def test_prevent_consecutive():
+    q = SkipRepeatsQueue()
 
-        self.assertEqual(e1, q.get())
-        self.assertTrue(q.empty())
+    e1 = (2, "fred")
+    e2 = (2, "george")
 
-        q.put(e1)       # this repeat is allowed because 'last' added is now gone from queue
-        self.assertEqual(e1, q.get())
-        self.assertTrue(q.empty())
+    q.put(e1)
+    q.put(e1)  # repeat the first entry (this shouldn't get added)
+    q.put(e2)
+
+    assert e1 == q.get()
+    assert e2 == q.get()
+    assert q.empty()
+
+
+def test_consecutives_allowed_across_empties():
+    q = SkipRepeatsQueue()
+
+    e1 = (2, "fred")
+
+    q.put(e1)
+    q.put(e1)  # repeat the first entry (this shouldn't get added)
+
+    assert e1 == q.get()
+    assert q.empty()
+
+    q.put(e1)  # this repeat is allowed because 'last' added is now gone from queue
+    assert e1 == q.get()
+    assert q.empty()
+
+
+@cpython_only
+def test_eventlet_monkey_patching():
+    try:
+        import eventlet  # type: ignore[import]
+    except Exception:
+        pytest.skip("eventlet not installed")
+
+    eventlet.monkey_patch()
+    basic_actions()
