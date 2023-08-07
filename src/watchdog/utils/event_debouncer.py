@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import threading
 
 from watchdog.utils import BaseThread
@@ -39,13 +40,16 @@ class EventDebouncer(BaseThread):
     def run(self):
         with self._cond:
             while True:
+                started = time.monotonic()
                 # Wait for first event (or shutdown).
                 self._cond.wait()
-
                 if self.debounce_interval_seconds:
                     # Wait for additional events (or shutdown) until the debounce interval passes.
                     while self.should_keep_running():
-                        if not self._cond.wait(timeout=self.debounce_interval_seconds):
+                        if self._cond.wait(timeout=self.debounce_interval_seconds):
+                            if (time.monotonic() - started > self.debounce_interval_seconds):
+                                break
+                        else:
                             break
 
                 if not self.should_keep_running():
