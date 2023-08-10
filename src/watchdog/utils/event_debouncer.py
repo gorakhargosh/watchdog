@@ -37,24 +37,27 @@ class EventDebouncer(BaseThread):
             super().stop()
             self._cond.notify()
 
+    def time_to_flush(self, started):
+        return time.monotonic() - started > self.debounce_interval_seconds
+
     def run(self):
         with self._cond:
-            while True:
+            while self.should_keep_running():
                 started = time.monotonic()
-                # Wait for first event (or shutdown).
-                self._cond.wait()
                 if self.debounce_interval_seconds:
-                    # Wait for additional events (or shutdown) until the debounce interval passes.
                     while self.should_keep_running():
-                        if self._cond.wait(timeout=self.debounce_interval_seconds):
-                            if (time.monotonic() - started > self.debounce_interval_seconds):
-                                break
-                        else:
+                        timed_out = not self._cond.wait(
+                            timeout=self.debounce_interval_seconds
+                        )
+                        if timed_out or self.time_to_flush(started):
                             break
-
-                if not self.should_keep_running():
-                    break
+                else:
+                    self._cond.wait()
 
                 events = self._events
                 self._events = []
+                self.events_callback(events)
+
+            # send any events before leaving
+            if self._events:
                 self.events_callback(events)
