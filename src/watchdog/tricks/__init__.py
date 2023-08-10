@@ -253,7 +253,6 @@ class AutoRestartTrick(Trick):
         try:
             if self.process_watcher is not None:
                 self.process_watcher.stop()
-                self.process_watcher.join()
                 self.process_watcher = None
 
             if self.process is not None:
