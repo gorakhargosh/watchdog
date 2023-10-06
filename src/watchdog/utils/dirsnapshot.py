@@ -220,6 +220,73 @@ class DirectorySnapshotDiff:
         """
         return self._dirs_created
 
+    class ContextManager:
+        """
+        Context manager that creates two directory snapshots and a
+        diff object that represents the difference between the two snapshots.
+
+        :param path:
+            The directory path for which a snapshot should be taken.
+        :type path:
+            ``str``
+        :param recursive:
+            ``True`` if the entire directory tree should be included in the
+            snapshot; ``False`` otherwise.
+        :type recursive:
+            ``bool``
+        :param stat:
+            Use custom stat function that returns a stat structure for path.
+            Currently only st_dev, st_ino, st_mode and st_mtime are needed.
+
+            A function taking a ``path`` as argument which will be called
+            for every entry in the directory tree.
+        :param listdir:
+            Use custom listdir function. For details see ``os.scandir``.
+        :param ignore_device:
+            A boolean indicating whether to ignore the device id or not.
+            By default, a file may be uniquely identified by a combination of its first
+            inode and its device id. The problem is that the device id may (or may not)
+            change between system boots. This problem would cause the DirectorySnapshotDiff
+            to think a file has been deleted and created again but it would be the
+            exact same file.
+            Set to True only if you are sure you will always use the same device.
+        :type ignore_device:
+            :class:`bool`
+        """
+
+        def __init__(
+            self,
+            path,
+            recursive=True,
+            stat=os.stat,
+            listdir=os.scandir,
+            ignore_device=False,
+        ):
+            self.path = path
+            self.recursive = recursive
+            self.stat = stat
+            self.listdir = listdir
+            self.ignore_device = ignore_device
+
+        def __enter__(self):
+            self.pre_snapshot = self.get_snapshot()
+
+        def __exit__(self, *args):
+            self.post_snapshot = self.get_snapshot()
+            self.diff = DirectorySnapshotDiff(
+                self.pre_snapshot,
+                self.post_snapshot,
+                ignore_device=self.ignore_device,
+            )
+
+        def get_snapshot(self):
+            return DirectorySnapshot(
+                path=self.path,
+                recursive=self.recursive,
+                stat=self.stat,
+                listdir=self.listdir,
+            )
+
 
 class DirectorySnapshot:
     """
