@@ -256,11 +256,11 @@ class DirectorySnapshotDiff:
 
         def __init__(
             self,
-            path,
-            recursive=True,
-            stat=os.stat,
-            listdir=os.scandir,
-            ignore_device=False,
+            path: str,
+            recursive: bool = True,
+            stat: Callable[[str], os.stat_result] = os.stat,
+            listdir: Callable[[Optional[str]], Iterator[os.DirEntry]] = os.scandir,
+            ignore_device: bool = False,
         ):
             self.path = path
             self.recursive = recursive
