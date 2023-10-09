@@ -343,5 +343,6 @@ class FSEventsObserver(BaseObserver):
         if isinstance(path, str):
             path = unicodedata.normalize("NFC", path)
         if not recursive:
+            import warnings
             warnings.warn("FSEvents requires and assumes recursive=True")
         return BaseObserver.schedule(self, event_handler, path, recursive=True)
