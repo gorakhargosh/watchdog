@@ -327,3 +327,9 @@ def test_watchdog_recursive(p: P) -> None:
             observer.unschedule(watch)
         observer.stop()
         observer.join(1)
+
+def test_watchdog_assumes_recursive(p: P) -> None:
+    """See https://github.com/gorakhargosh/watchdog/issues/918"""
+    observer = Observer()
+    w = observer.schedule(FileSystemEventHandler(), ".")
+    assert w.is_recursive, "FSEvents should assume recursive mode"
