@@ -55,6 +55,20 @@ def test_move_to(p):
     assert diff.files_created == [p("dir2", "b")]
 
 
+def test_move_to_with_context_manager(p):
+    mkdir(p("dir1"))
+    touch(p("dir1", "a"))
+    mkdir(p("dir2"))
+
+    dir1_cm = DirectorySnapshotDiff.ContextManager(p("dir1"))
+    dir2_cm = DirectorySnapshotDiff.ContextManager(p("dir2"))
+    with dir1_cm, dir2_cm:
+        mv(p("dir1", "a"), p("dir2", "b"))
+
+    assert dir1_cm.diff.files_deleted == [p("dir1", "a")]
+    assert dir2_cm.diff.files_created == [p("dir2", "b")]
+
+
 def test_move_from(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))

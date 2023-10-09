@@ -8,8 +8,8 @@ Changelog
 
 2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
 
-
 - [snapshot] Add typing to ``dirsnapshot`` (`#1012 <https://github.com/gorakhargosh/watchdog/pull/1012>`__)
+- [snapshot] Added ``DirectorySnapshotDiff.ContextManager`` (`#1011 <https://github.com/gorakhargosh/watchdog/pull/1011>`__)
 - [events] ``FileSystemEvent``, and subclasses, are now ``dataclass``es, and their ``repr()`` has changed
 - [windows] ``WinAPINativeEvent`` is now a ``dataclass``, and its ``repr()`` has changed
 - [events] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggingEventHandler``
