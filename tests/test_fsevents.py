@@ -78,7 +78,7 @@ def test_add_watch_twice(observer: BaseObserver, p: P) -> None:
     a = p("a")
     mkdir(a)
     h = FileSystemEventHandler()
-    w = ObservedWatch(a, recursive=False)
+    w = ObservedWatch(a)
 
     def callback(path, inodes, flags, ids):
         pass
@@ -219,7 +219,7 @@ def test_unschedule_removed_folder(observer: BaseObserver, p: P) -> None:
     """
     a = p("a")
     mkdir(a)
-    w = observer.schedule(FileSystemEventHandler(), a, recursive=False)
+    w = observer.schedule(FileSystemEventHandler(), a)
     rmdir(a)
     time.sleep(0.1)
     observer.unschedule(w)
