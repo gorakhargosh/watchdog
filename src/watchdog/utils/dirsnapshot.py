@@ -356,11 +356,14 @@ class DirectorySnapshot:
         return str(self._stat_info)
 
 
-class EmptyDirectorySnapshot:
+class EmptyDirectorySnapshot(DirectorySnapshot):
     """Class to implement an empty snapshot. This is used together with
     DirectorySnapshot and DirectorySnapshotDiff in order to get all the files/folders
     in the directory as created.
     """
+
+    def __init__(self):
+        pass
 
     @staticmethod
     def path(_: Any) -> None:

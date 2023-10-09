@@ -49,7 +49,7 @@ from watchdog.events import (
     FileMovedEvent,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
-from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff
+from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
 
 class PollingEmitter(EventEmitter):
@@ -68,7 +68,7 @@ class PollingEmitter(EventEmitter):
         listdir=os.scandir,
     ):
         super().__init__(event_queue, watch, timeout, event_filter)
-        self._snapshot = None
+        self._snapshot: DirectorySnapshot = EmptyDirectorySnapshot()
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
             self.watch.path, self.watch.is_recursive, stat=stat, listdir=listdir
