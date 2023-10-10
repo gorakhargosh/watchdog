@@ -119,9 +119,7 @@ class InotifyEmitter(EventEmitter):
         Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
     """
 
-    def __init__(
-        self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None
-    ):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
         super().__init__(event_queue, watch, timeout, event_filter)
         self._lock = threading.Lock()
         self._inotify = None
@@ -140,15 +138,11 @@ class InotifyEmitter(EventEmitter):
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         if self._inotify is None:
-            logger.error(
-                "InotifyEmitter.queue_events() called when the thread is inactive"
-            )
+            logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
             return
         with self._lock:
             if self._inotify is None:
-                logger.error(
-                    "InotifyEmitter.queue_events() called when the thread is inactive"
-                )
+                logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
                 return
             event = self._inotify.read_event()
             if event is None:
