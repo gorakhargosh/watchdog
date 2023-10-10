@@ -106,7 +106,7 @@ def test_consecutives_allowed_across_empties():
 @cpython_only
 def test_eventlet_monkey_patching():
     try:
-        import eventlet  # type: ignore[import]
+        import eventlet  # type: ignore[import-untyped]
     except Exception:
         pytest.skip("eventlet not installed")
 
