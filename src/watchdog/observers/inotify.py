@@ -221,9 +221,13 @@ class InotifyEmitter(EventEmitter):
             elif cls in (DirCreatedEvent, FileCreatedEvent):
                 event_mask |= InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE
             elif cls is DirModifiedEvent:
-                event_mask |= (InotifyConstants.IN_MOVE | InotifyConstants.IN_ATTRIB |
-                               InotifyConstants.IN_MODIFY | InotifyConstants.IN_CREATE |
-                               InotifyConstants.IN_CLOSE_WRITE)
+                event_mask |= (
+                    InotifyConstants.IN_MOVE
+                    | InotifyConstants.IN_ATTRIB
+                    | InotifyConstants.IN_MODIFY
+                    | InotifyConstants.IN_CREATE
+                    | InotifyConstants.IN_CLOSE_WRITE
+                )
             elif cls is FileModifiedEvent:
                 event_mask |= InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY
             elif cls in (DirDeletedEvent, FileDeletedEvent):
