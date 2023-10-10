@@ -29,7 +29,7 @@ import threading
 import time
 import unicodedata
 
-import _watchdog_fsevents as _fsevents  # type: ignore[import]
+import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
 
 from watchdog.events import (
     DirCreatedEvent,

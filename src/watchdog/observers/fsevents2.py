@@ -29,8 +29,8 @@ from threading import Thread
 from typing import List, Optional, Type
 
 # pyobjc
-import AppKit  # type: ignore[import]
-from FSEvents import (  # type: ignore[import]
+import AppKit  # type: ignore[import-not-found]
+from FSEvents import (  # type: ignore[import-not-found]
     CFRunLoopGetCurrent,
     CFRunLoopRun,
     CFRunLoopStop,
