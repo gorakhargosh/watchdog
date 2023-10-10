@@ -86,7 +86,12 @@ from watchdog.events import (
     generate_sub_created_events,
     generate_sub_moved_events,
 )
-from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+from watchdog.observers.api import (
+    DEFAULT_EMITTER_TIMEOUT,
+    DEFAULT_OBSERVER_TIMEOUT,
+    BaseObserver,
+    EventEmitter,
+)
 
 from .inotify_buffer import InotifyBuffer
 from .inotify_c import InotifyConstants
@@ -114,7 +119,9 @@ class InotifyEmitter(EventEmitter):
         Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+    def __init__(
+        self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None
+    ):
         super().__init__(event_queue, watch, timeout, event_filter)
         self._lock = threading.Lock()
         self._inotify = None
@@ -133,11 +140,15 @@ class InotifyEmitter(EventEmitter):
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         if self._inotify is None:
-            logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+            logger.error(
+                "InotifyEmitter.queue_events() called when the thread is inactive"
+            )
             return
         with self._lock:
             if self._inotify is None:
-                logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+                logger.error(
+                    "InotifyEmitter.queue_events() called when the thread is inactive"
+                )
                 return
             event = self._inotify.read_event()
             if event is None:
@@ -221,9 +232,13 @@ class InotifyEmitter(EventEmitter):
             elif cls in (DirCreatedEvent, FileCreatedEvent):
                 event_mask |= InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE
             elif cls is DirModifiedEvent:
-                event_mask |= (InotifyConstants.IN_MOVE | InotifyConstants.IN_ATTRIB |
-                               InotifyConstants.IN_MODIFY | InotifyConstants.IN_CREATE |
-                               InotifyConstants.IN_CLOSE_WRITE)
+                event_mask |= (
+                    InotifyConstants.IN_MOVE
+                    | InotifyConstants.IN_ATTRIB
+                    | InotifyConstants.IN_MODIFY
+                    | InotifyConstants.IN_CREATE
+                    | InotifyConstants.IN_CLOSE_WRITE
+                )
             elif cls is FileModifiedEvent:
                 event_mask |= InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY
             elif cls in (DirDeletedEvent, FileDeletedEvent):
