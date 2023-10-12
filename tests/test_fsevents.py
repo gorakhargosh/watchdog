@@ -78,7 +78,7 @@ def test_add_watch_twice(observer: BaseObserver, p: P) -> None:
     a = p("a")
     mkdir(a)
     h = FileSystemEventHandler()
-    w = ObservedWatch(a)
+    w = ObservedWatch(a, recursive=True)
 
     def callback(path, inodes, flags, ids):
         pass
