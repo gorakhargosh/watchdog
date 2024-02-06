@@ -21,7 +21,7 @@ on:
       - master
   pull_request:
     branches:
-      - '**'
+      - "**"
 
   workflow_dispatch:
     inputs:
@@ -125,8 +125,8 @@ jobs:
         run: ls -l dist
       - name: Publish
         if: github.event.inputs.branch != ''
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          skip_existing: true
+          skip-existing: true
