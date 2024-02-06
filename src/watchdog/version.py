@@ -20,7 +20,7 @@ from __future__ import annotations
 # ``docs/source/global.rst.inc`` file as well.
 VERSION_MAJOR = 4
 VERSION_MINOR = 0
-VERSION_BUILD = 0
+VERSION_BUILD = 1
 VERSION_INFO = (VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD)
 VERSION_STRING = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
