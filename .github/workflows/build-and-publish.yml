@@ -55,13 +55,12 @@ jobs:
         env:
           CIBW_SKIP: "cp36-*" # skip 3.6 wheels
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
-      - name: Artifact list
+      - name: Artifacts list
         run: ls -l wheelhouse
       - uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: python-package-distributions-macos
           path: ./wheelhouse/*.whl
-          overwrite: true
 
   pure-built-distributions:
     name: Build pure wheels
@@ -84,13 +83,12 @@ jobs:
           do
             python setup.py bdist_wheel --plat-name $platform
           done
-      - name: Artifact list
+      - name: Artifacts list
         run: ls -l dist
       - uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: python-package-distributions-pure-wheels
           path: ./dist/*.whl
-          overwrite: true
 
   source-distribution:
     name: Build source distribution
@@ -107,14 +105,13 @@ jobs:
           python-version: "3.11"
       - name: Build source distribution
         run: python setup.py sdist
-      - name: Artifact list
+      - name: Artifacts list
         run: ls -l dist
       - name: Store the source distribution
         uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: python-package-distributions-source
           path: dist/*.tar.gz
-          overwrite: true
 
   publish:
     needs:
@@ -127,7 +124,8 @@ jobs:
       - name: Download all the dists
         uses: actions/download-artifact@v4
         with:
-          name: python-package-distributions
+          name: python-package-distributions-*
+          merge-multiple: true
           path: dist/
       - name: What will we publish?
         run: ls -l dist
