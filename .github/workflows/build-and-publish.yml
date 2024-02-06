@@ -85,6 +85,7 @@ jobs:
         with:
           name: python-package-distributions
           path: ./dist/*.whl
+          overwrite: true
 
   source-distribution:
     name: Build source distribution
@@ -105,7 +106,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
-          path: dist
+          path: dist/*.tar.gz
           retention-days: 4
 
   publish:
