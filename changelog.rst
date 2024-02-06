@@ -3,10 +3,10 @@
 Changelog
 ---------
 
-3.0.1
+4.0.0
 ~~~~~
 
-2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
+2024-02-06 • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...v4.0.0>`__
 
 - Drop support for Python 3.7.
 - Add support for Python 3.12.
