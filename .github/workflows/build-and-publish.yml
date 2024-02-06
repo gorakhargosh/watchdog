@@ -117,7 +117,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Download all the dists
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: python-package-distributions
           path: dist/
