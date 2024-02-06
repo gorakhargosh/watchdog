@@ -55,7 +55,7 @@ jobs:
         env:
           CIBW_SKIP: "cp36-*" # skip 3.6 wheels
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
           path: ./wheelhouse/*.whl
@@ -81,7 +81,7 @@ jobs:
           do
             python setup.py bdist_wheel --plat-name $platform
           done
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
           path: ./dist/*.whl
@@ -102,7 +102,7 @@ jobs:
       - name: Build source distribution
         run: python setup.py sdist
       - name: Store the source distribution
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
           path: dist
