@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.observers.fsevents2
+""":module: watchdog.observers.fsevents2
 :synopsis: FSEvents based emitter implementation.
 :platforms: macOS
 """
@@ -73,7 +72,7 @@ from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIM
 logger = logging.getLogger(__name__)
 
 message = "watchdog.observers.fsevents2 is deprecated and will be removed in a future release."
-warnings.warn(message, DeprecationWarning)
+warnings.warn(message, category=DeprecationWarning)
 logger.warning(message)
 
 
@@ -126,19 +125,16 @@ class FSEventsQueue(Thread):
 
     def _callback(self, streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIDs):
         events = [NativeEvent(path, flags, _id) for path, flags, _id in zip(eventPaths, eventFlags, eventIDs)]
-        logger.debug(f"FSEvents callback. Got {numEvents} events:")
+        logger.debug("FSEvents callback. Got %d events:", numEvents)
         for e in events:
             logger.debug(e)
         self._queue.put(events)
 
     def read_events(self):
-        """
-        Returns a list or one or more events, or None if there are no more
+        """Returns a list or one or more events, or None if there are no more
         events to be read.
         """
-        if not self.is_alive():
-            return None
-        return self._queue.get()
+        return self._queue.get() if self.is_alive() else None
 
 
 class NativeEvent:
@@ -181,9 +177,7 @@ class NativeEvent:
 
 
 class FSEventsEmitter(EventEmitter):
-    """
-    FSEvents based event emitter. Handles conversion of native events.
-    """
+    """FSEvents based event emitter. Handles conversion of native events."""
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
         super().__init__(event_queue, watch, timeout, event_filter)

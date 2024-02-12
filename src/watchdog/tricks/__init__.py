@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.tricks
+""":module: watchdog.tricks
 :synopsis: Utility event handlers.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
@@ -41,6 +40,7 @@ Classes
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import logging
 import os
@@ -59,7 +59,6 @@ echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
 
 
 class Trick(PatternMatchingEventHandler):
-
     """Your tricks should subclass this class."""
 
     @classmethod
@@ -79,7 +78,6 @@ class Trick(PatternMatchingEventHandler):
 
 
 class LoggerTrick(Trick):
-
     """A simple trick that does only logs events."""
 
     @echo_events
@@ -88,7 +86,6 @@ class LoggerTrick(Trick):
 
 
 class ShellCommandTrick(Trick):
-
     """Executes shell commands in response to matched events."""
 
     def __init__(
@@ -149,7 +146,8 @@ class ShellCommandTrick(Trick):
             process_watcher = ProcessWatcher(self.process, None)
             self._process_watchers.add(process_watcher)
             process_watcher.process_termination_callback = functools.partial(
-                self._process_watchers.discard, process_watcher
+                self._process_watchers.discard,
+                process_watcher,
             )
             process_watcher.start()
 
@@ -158,7 +156,6 @@ class ShellCommandTrick(Trick):
 
 
 class AutoRestartTrick(Trick):
-
     """Starts a long-running subprocess and restarts it on matched events.
 
     The command parameter is a list of command arguments, such as
@@ -267,11 +264,9 @@ class AutoRestartTrick(Trick):
                             break
                         time.sleep(0.25)
                     else:
-                        try:
+                        # Process is already gone
+                        with contextlib.suppress(OSError):
                             kill_process(self.process.pid, 9)
-                        except OSError:
-                            # Process is already gone
-                            pass
                 self.process = None
         finally:
             self._is_process_stopping = False

@@ -1,11 +1,3 @@
-[tool.black]
-target-version = ["py38"]
-line-length = 120
-safe = true
-
-[tool.isort]
-profile = "black"
-
 [tool.mypy]
 # Ensure we know what we do
 warn_redundant_casts = true
@@ -35,3 +27,46 @@ addopts = """
     --cov=watchdog
     --cov-report=term-missing:skip-covered
 """
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py38"
+
+[tool.ruff.lint]
+extend-select = ["ALL"]
+ignore = [
+    "ARG",
+    "ANN",  # TODO
+    "ANN002",
+    "ANN003",
+    "ANN401",
+    "B006",
+    "B023",  # TODO
+    "B028",
+    "BLE001",
+    "C90",
+    "COM",
+    "D",
+    "EM",
+    "ERA",
+    "FBT",
+    "FIX",
+    "ISC001",
+    "N",  # Requires a major version number bump
+    "PERF203",  # TODO
+    "PL",
+    "PTH",  # TODO?
+    "S",
+    "TD",
+    "TRY003",
+    "UP",  # TODO when minimum python version will be 3.10
+]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true

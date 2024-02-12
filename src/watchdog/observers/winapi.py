@@ -92,14 +92,14 @@ ERROR_OPERATION_ABORTED = 995
 
 
 class OVERLAPPED(ctypes.Structure):
-    _fields_ = [
+    _fields_ = (
         ("Internal", LPVOID),
         ("InternalHigh", LPVOID),
         ("Offset", ctypes.wintypes.DWORD),
         ("OffsetHigh", ctypes.wintypes.DWORD),
         ("Pointer", LPVOID),
         ("hEvent", ctypes.wintypes.HANDLE),
-    ]
+    )
 
 
 def _errcheck_bool(value, func, args):
@@ -231,13 +231,13 @@ GetFinalPathNameByHandleW.argtypes = (
 
 
 class FILE_NOTIFY_INFORMATION(ctypes.Structure):
-    _fields_ = [
+    _fields_ = (
         ("NextEntryOffset", ctypes.wintypes.DWORD),
         ("Action", ctypes.wintypes.DWORD),
         ("FileNameLength", ctypes.wintypes.DWORD),
         # ("FileName", (ctypes.wintypes.WCHAR * 1))]
         ("FileName", (ctypes.c_char * 1)),
-    ]
+    )
 
 
 LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
@@ -366,7 +366,7 @@ def read_directory_changes(handle, path, recursive):
         if _is_observed_path_deleted(handle, path):
             return _generate_observed_path_deleted_event()
 
-        raise e
+        raise
 
     return event_buffer.raw, int(nbytes.value)
 

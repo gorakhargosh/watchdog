@@ -5,8 +5,6 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - '**'
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
@@ -21,11 +19,11 @@ jobs:
       fail-fast: false
       matrix:
         tox:
+          - name: Types
+            environment: types
+            timeout: 15
           - name: Test
             environment: py
-            timeout: 15
-          - name: mypy
-            environment: mypy
             timeout: 15
         os:
           - name: Linux
@@ -50,17 +48,8 @@ jobs:
           - "pypy-3.9"
         include:
           - tox:
-              name: Flake8
-              environment: flake8
-              timeout: 5
-            python: "3.11"
-            os:
-              name: Linux
-              emoji: 🐧
-              runs-on: [ubuntu-latest]
-          - tox:
-              name: isort
-              environment: isort-ci
+              name: Linter
+              environment: lint
               timeout: 5
             python: "3.11"
             os:
@@ -99,11 +88,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+          cache: pip
 
       - name: Install test dependencies
-        run: |
-          python -m pip install tox
+        run: python -m pip install tox
 
       - name: Run ${{ matrix.tox.name }} in tox
-        run: |
-          python -m tox -e ${{ matrix.tox.environment }}
+        run: python -m tox -e ${{ matrix.tox.environment }}

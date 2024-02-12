@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import queue
 import threading
 from pathlib import Path
@@ -26,7 +27,6 @@ DEFAULT_EMITTER_TIMEOUT = 1  # in seconds.
 DEFAULT_OBSERVER_TIMEOUT = 1  # in seconds.
 
 
-# Collection classes
 class EventQueue(SkipRepeatsQueue):
     """Thread-safe event queue based on a special queue that skips adding
     the same event (:class:`FileSystemEvent`) multiple times consecutively.
@@ -48,10 +48,7 @@ class ObservedWatch:
     """
 
     def __init__(self, path, recursive, event_filter=None):
-        if isinstance(path, Path):
-            self._path = str(path)
-        else:
-            self._path = path
+        self._path = str(path) if isinstance(path, Path) else path
         self._is_recursive = recursive
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
@@ -94,8 +91,7 @@ class ObservedWatch:
 
 # Observer classes
 class EventEmitter(BaseThread):
-    """
-    Producer thread base class subclassed by event emitters
+    """Producer thread base class subclassed by event emitters
     that generate events and populate a queue with them.
 
     :param event_queue:
@@ -125,21 +121,16 @@ class EventEmitter(BaseThread):
 
     @property
     def timeout(self):
-        """
-        Blocking timeout for reading events.
-        """
+        """Blocking timeout for reading events."""
         return self._timeout
 
     @property
     def watch(self):
-        """
-        The watch associated with this emitter.
-        """
+        """The watch associated with this emitter."""
         return self._watch
 
     def queue_event(self, event):
-        """
-        Queues a single event.
+        """Queues a single event.
 
         :param event:
             Event to be queued.
@@ -167,8 +158,7 @@ class EventEmitter(BaseThread):
 
 
 class EventDispatcher(BaseThread):
-    """
-    Consumer thread base class subclassed by event observer threads
+    """Consumer thread base class subclassed by event observer threads
     that dispatch events from an event queue to appropriate event handlers.
 
     :param timeout:
@@ -178,7 +168,7 @@ class EventDispatcher(BaseThread):
         ``float``
     """
 
-    _stop_event = object()
+    stop_event = object()
     """Event inserted into the queue to signal a requested stop."""
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
@@ -193,16 +183,15 @@ class EventDispatcher(BaseThread):
 
     def stop(self):
         BaseThread.stop(self)
-        try:
-            self.event_queue.put_nowait(EventDispatcher._stop_event)
-        except queue.Full:
-            pass
+        with contextlib.suppress(queue.Full):
+            self.event_queue.put_nowait(EventDispatcher.stop_event)
 
     @property
     def event_queue(self):
         """The event queue which is populated with file system events
         by emitters and from which events are dispatched by a dispatcher
-        thread."""
+        thread.
+        """
         return self._event_queue
 
     def dispatch_events(self, event_queue):
@@ -233,9 +222,9 @@ class BaseObserver(EventDispatcher):
         self._emitter_class = emitter_class
         self._lock = threading.RLock()
         self._watches = set()
-        self._handlers = dict()
+        self._handlers = {}
         self._emitters = set()
-        self._emitter_for_watch = dict()
+        self._emitter_for_watch = {}
 
     def _add_emitter(self, emitter):
         self._emitter_for_watch[emitter.watch] = emitter
@@ -245,19 +234,15 @@ class BaseObserver(EventDispatcher):
         del self._emitter_for_watch[emitter.watch]
         self._emitters.remove(emitter)
         emitter.stop()
-        try:
+        with contextlib.suppress(RuntimeError):
             emitter.join()
-        except RuntimeError:
-            pass
 
     def _clear_emitters(self):
         for emitter in self._emitters:
             emitter.stop()
         for emitter in self._emitters:
-            try:
+            with contextlib.suppress(RuntimeError):
                 emitter.join()
-            except RuntimeError:
-                pass
         self._emitters.clear()
         self._emitter_for_watch.clear()
 
@@ -284,8 +269,7 @@ class BaseObserver(EventDispatcher):
         super().start()
 
     def schedule(self, event_handler, path, recursive=False, event_filter=None):
-        """
-        Schedules watching a path and calls appropriate methods specified
+        """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
 
         :param event_handler:
@@ -317,8 +301,7 @@ class BaseObserver(EventDispatcher):
 
             # If we don't have an emitter for this watch already, create it.
             if self._emitter_for_watch.get(watch) is None:
-                emitter = self._emitter_class(event_queue=self.event_queue, watch=watch, timeout=self.timeout,
-                                              event_filter=event_filter)
+                emitter = self._emitter_class(self.event_queue, watch, timeout=self.timeout, event_filter=event_filter)
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
@@ -378,7 +361,8 @@ class BaseObserver(EventDispatcher):
 
     def unschedule_all(self):
         """Unschedules all watches and detaches all associated event
-        handlers."""
+        handlers.
+        """
         with self._lock:
             self._handlers.clear()
             self._clear_emitters()
@@ -389,7 +373,7 @@ class BaseObserver(EventDispatcher):
 
     def dispatch_events(self, event_queue):
         entry = event_queue.get(block=True)
-        if entry is EventDispatcher._stop_event:
+        if entry is EventDispatcher.stop_event:
             return
         event, watch = entry
 
@@ -404,5 +388,4 @@ class BaseObserver(EventDispatcher):
 
 
 class BaseObserverSubclassCallable(Protocol):
-    def __call__(self, timeout: float = ...) -> BaseObserver:
-        ...
+    def __call__(self, timeout: float = ...) -> BaseObserver: ...

@@ -16,6 +16,6 @@ task:
     - python3.8 -m pip install -U pip
     - python3.8 -m pip install -r requirements-tests.txt
   lint_script:
-    - python3.8 -m flake8 docs src tests tools
+    - python3.8 -m ruff src
   tests_script:
     - python3.8 -bb -m pytest tests

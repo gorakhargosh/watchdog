@@ -14,8 +14,7 @@
 # limitations under the License.
 
 
-"""
-:module: watchdog.utils
+""":module: watchdog.utils
 :synopsis: Utility classes and functions.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
@@ -28,6 +27,7 @@ Classes
    :inherited-members:
 
 """
+
 from __future__ import annotations
 
 import sys
@@ -40,11 +40,7 @@ class UnsupportedLibc(Exception):
 
 
 class WatchdogShutdown(Exception):
-    """
-    Semantic exception used to signal an external shutdown event.
-    """
-
-    pass
+    """Semantic exception used to signal an external shutdown event."""
 
 
 class BaseThread(threading.Thread):
@@ -72,7 +68,6 @@ class BaseThread(threading.Thread):
 
         This method is called immediately after the thread is signaled to stop.
         """
-        pass
 
     def stop(self):
         """Signals the thread to stop."""
@@ -84,9 +79,8 @@ class BaseThread(threading.Thread):
         calls this method.
 
         This method is called right before this thread is started and this
-        object’s run() method is invoked.
+        object's run() method is invoked.
         """
-        pass
 
     def start(self):
         self.on_thread_start()
@@ -97,8 +91,8 @@ def load_module(module_name):
     """Imports a module given its name and returns a handle to it."""
     try:
         __import__(module_name)
-    except ImportError:
-        raise ImportError(f"No module named {module_name}")
+    except ImportError as e:
+        raise ImportError(f"No module named {module_name}") from e
     return sys.modules[module_name]
 
 
@@ -107,11 +101,13 @@ def load_class(dotted_path):
     specification the last part of the dotted path is the class name
     and there is at least one module name preceding the class name.
 
-    Notes:
+    Notes
+    -----
     You will need to ensure that the module you are trying to load
     exists in the Python path.
 
-    Examples:
+    Examples
+    --------
     - module.name.ClassName    # Provided module.name is in the Python path.
     - module.ClassName         # Provided module is in the Python path.
 
@@ -119,6 +115,7 @@ def load_class(dotted_path):
     - ClassName
     - modle.name.ClassName     # Typo in module name.
     - module.name.ClasNam      # Typo in classname.
+
     """
     dotted_path_split = dotted_path.split(".")
     if len(dotted_path_split) <= 1:
@@ -131,8 +128,8 @@ def load_class(dotted_path):
         return getattr(module, klass_name)
         # Finally create and return an instance of the class
         # return klass(*args, **kwargs)
-    else:
-        raise AttributeError(f"Module {module_name} does not have class attribute {klass_name}")
+
+    raise AttributeError(f"Module {module_name} does not have class attribute {klass_name}")
 
 
 if TYPE_CHECKING or sys.version_info >= (3, 8):
@@ -142,5 +139,4 @@ else:
     # Provide a dummy Protocol class when not available from stdlib.  Should be used
     # only for hinting.  This could be had from typing_protocol, but not worth adding
     # the _first_ dependency just for this.
-    class Protocol:
-        ...
+    class Protocol: ...
