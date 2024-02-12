@@ -70,6 +70,15 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileAttribEvent
+   :members:
+   :show-inheritance:
+
+.. autoclass:: DirAttribEvent
+   :members:
+   :show-inheritance:
+
+
 
 Event Handler Classes
 ---------------------
@@ -107,6 +116,7 @@ EVENT_TYPE_CREATED = "created"
 EVENT_TYPE_MODIFIED = "modified"
 EVENT_TYPE_CLOSED = "closed"
 EVENT_TYPE_OPENED = "opened"
+EVENT_TYPE_ATTRIB = "attrib"
 
 
 @dataclass(unsafe_hash=True)
@@ -145,6 +155,14 @@ class FileDeletedEvent(FileSystemEvent):
     """File system event representing file deletion on the file system."""
 
     event_type = EVENT_TYPE_DELETED
+
+
+class FileAttribEvent(FileSystemEvent):
+    """
+    File system event representing file metadata modification on the file system.
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
 
 
 class FileModifiedEvent(FileSystemEvent):
@@ -207,6 +225,15 @@ class DirMovedEvent(FileSystemMovedEvent):
     is_directory = True
 
 
+class DirAttribEvent(FileSystemEvent):
+    """
+    File system event representing directory metadata modification on the file system.
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
+    is_directory = True
+
+
 class FileSystemEventHandler:
     """
     Base file system event handler that you can override methods from.
@@ -228,6 +255,7 @@ class FileSystemEventHandler:
             EVENT_TYPE_MOVED: self.on_moved,
             EVENT_TYPE_CLOSED: self.on_closed,
             EVENT_TYPE_OPENED: self.on_opened,
+            EVENT_TYPE_ATTRIB: self.on_attrib,
         }[event.event_type](event)
 
     def on_any_event(self, event: FileSystemEvent) -> None:
@@ -291,6 +319,15 @@ class FileSystemEventHandler:
             Event representing file opening.
         :type event:
             :class:`FileOpenedEvent`
+        """
+
+    def on_attrib(self, event: FileSystemEvent) -> None:
+        """Called when a file or directory metadata is modified.
+
+        :param event:
+            Event representing file/directory metadata modification.
+        :type event:
+            :class:`FileAttribEvent` or :class:`DirAttribEvent`
         """
 
 
@@ -488,6 +525,12 @@ class LoggingEventHandler(FileSystemEventHandler):
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Modified %s: %s", what, event.src_path)
+
+    def on_attrib(self, event):
+        super().on_attrib(event)
+
+        what = "directory" if event.is_directory else "file"
+        self.logger.info("Attrib %s: %s", what, event.src_path)
 
     def on_closed(self, event: FileSystemEvent) -> None:
         super().on_closed(event)
