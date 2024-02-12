@@ -14,8 +14,7 @@
 # limitations under the License.
 
 
-"""
-Utility collections or "bricks".
+"""Utility collections or "bricks".
 
 :module: watchdog.utils.bricks
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
@@ -40,7 +39,6 @@ import queue
 
 
 class SkipRepeatsQueue(queue.Queue):
-
     """Thread-safe implementation of an special queue where a
     put of the last-item put'd will be dropped.
 

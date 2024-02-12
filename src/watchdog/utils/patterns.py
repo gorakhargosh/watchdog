@@ -27,13 +27,12 @@ def _match_path(path, included_patterns, excluded_patterns, case_sensitive):
 
     common_patterns = included_patterns & excluded_patterns
     if common_patterns:
-        raise ValueError("conflicting patterns `{}` included and excluded".format(common_patterns))
+        raise ValueError(f"conflicting patterns `{common_patterns}` included and excluded")
     return any(path.match(p) for p in included_patterns) and not any(path.match(p) for p in excluded_patterns)
 
 
 def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
-    """
-    Filters from a set of paths based on acceptable patterns and
+    """Filters from a set of paths based on acceptable patterns and
     ignorable patterns.
     :param pathnames:
         A list of path names that will be filtered based on matching and
@@ -60,8 +59,7 @@ def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sen
 
 
 def match_any_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
-    """
-    Matches from a set of paths based on acceptable patterns and
+    """Matches from a set of paths based on acceptable patterns and
     ignorable patterns.
     :param pathnames:
         A list of path names that will be filtered based on matching and
@@ -81,7 +79,4 @@ def match_any_paths(paths, included_patterns=None, excluded_patterns=None, case_
     included = ["*"] if included_patterns is None else included_patterns
     excluded = [] if excluded_patterns is None else excluded_patterns
 
-    for path in paths:
-        if _match_path(path, set(included), set(excluded), case_sensitive):
-            return True
-    return False
+    return any(_match_path(path, set(included), set(excluded), case_sensitive) for path in paths)

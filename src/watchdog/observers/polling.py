@@ -14,8 +14,7 @@
 # limitations under the License.
 
 
-"""
-:module: watchdog.observers.polling
+""":module: watchdog.observers.polling
 :synopsis: Polling emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
@@ -53,8 +52,7 @@ from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff,
 
 
 class PollingEmitter(EventEmitter):
-    """
-    Platform-independent emitter that polls a directory to detect file
+    """Platform-independent emitter that polls a directory to detect file
     system changes.
     """
 
@@ -71,7 +69,10 @@ class PollingEmitter(EventEmitter):
         self._snapshot: DirectorySnapshot = EmptyDirectorySnapshot()
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
-            self.watch.path, self.watch.is_recursive, stat=stat, listdir=listdir
+            self.watch.path,
+            self.watch.is_recursive,
+            stat=stat,
+            listdir=listdir,
         )
 
     def on_thread_start(self):
@@ -121,8 +122,7 @@ class PollingEmitter(EventEmitter):
 
 
 class PollingObserver(BaseObserver):
-    """
-    Platform-independent observer that polls a directory to detect file
+    """Platform-independent observer that polls a directory to detect file
     system changes.
     """
 
@@ -131,13 +131,10 @@ class PollingObserver(BaseObserver):
 
 
 class PollingObserverVFS(BaseObserver):
-    """
-    File system independent observer that polls a directory to detect changes.
-    """
+    """File system independent observer that polls a directory to detect changes."""
 
     def __init__(self, stat, listdir, polling_interval=1):
-        """
-        :param stat: stat function. See ``os.stat`` for details.
+        """:param stat: stat function. See ``os.stat`` for details.
         :param listdir: listdir function. See ``os.scandir`` for details.
         :type polling_interval: float
         :param polling_interval: interval in seconds between polling the file system.
