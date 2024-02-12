@@ -76,9 +76,10 @@ class DelayedQueue(Generic[T]):
 
     def remove(self, predicate: Callable[[T], bool]) -> Optional[T]:
         """Remove and return the first items for which predicate is True,
-        ignoring delay."""
+        ignoring delay.
+        """
         with self._lock:
-            for i, (elem, t, delay) in enumerate(self._queue):
+            for i, (elem, *_) in enumerate(self._queue):
                 if predicate(elem):
                     del self._queue[i]
                     return elem

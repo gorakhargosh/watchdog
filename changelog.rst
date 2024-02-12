@@ -8,6 +8,7 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.0...HEAD>`__
 
+- [core] Run ``ruff``, apply several fixes (`#1033 <https://github.com/gorakhargosh/watchdog/pull/1033>`__)
 - [inotify] Fix missing ``event_filter`` for the full emitter (`#1032 <https://github.com/gorakhargosh/watchdog/pull/1032>`__)
 - Thanks to our beloved contributors: @mraspaud
 
