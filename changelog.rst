@@ -3,13 +3,21 @@
 Changelog
 ---------
 
+4.0.2 (dev)
+~~~~~~~~~~~
+
+2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.1...HEAD>`__
+
+- 
+- Thanks to our beloved contributors: @
+
 4.0.1
 ~~~~~
 
 2024-05-23 • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.0...v4.0.1>`__
 
 - [inotify] Fix missing ``event_filter`` for the full emitter (`#1032 <https://github.com/gorakhargosh/watchdog/pull/1032>`__)
-- Thanks to our beloved contributors: @mraspaud
+- Thanks to our beloved contributors: @mraspaud, @BoboTiG
 
 4.0.0
 ~~~~~
