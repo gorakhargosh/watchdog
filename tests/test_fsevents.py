@@ -78,7 +78,7 @@ def test_add_watch_twice(observer: BaseObserver, p: P) -> None:
     a = p("a")
     mkdir(a)
     h = FileSystemEventHandler()
-    w = ObservedWatch(a, recursive=False)
+    w = ObservedWatch(a, recursive=True)
 
     def callback(path, inodes, flags, ids):
         pass
@@ -219,7 +219,7 @@ def test_unschedule_removed_folder(observer: BaseObserver, p: P) -> None:
     """
     a = p("a")
     mkdir(a)
-    w = observer.schedule(FileSystemEventHandler(), a, recursive=False)
+    w = observer.schedule(FileSystemEventHandler(), a)
     rmdir(a)
     time.sleep(0.1)
     observer.unschedule(w)
@@ -327,3 +327,9 @@ def test_watchdog_recursive(p: P) -> None:
             observer.unschedule(watch)
         observer.stop()
         observer.join(1)
+
+def test_watchdog_assumes_recursive(p: P) -> None:
+    """See https://github.com/gorakhargosh/watchdog/issues/918"""
+    observer = Observer()
+    w = observer.schedule(FileSystemEventHandler(), ".")
+    assert w.is_recursive, "FSEvents should assume recursive mode"
