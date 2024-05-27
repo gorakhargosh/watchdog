@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.observers.inotify
+""":module: watchdog.observers.inotify
 :synopsis: ``inotify(7)`` based emitter implementation.
 :author: Sebastien Martini <seb@dbzteam.org>
 :author: Luke McCarthy <luke@iogopro.co.uk>
@@ -95,8 +94,7 @@ logger = logging.getLogger(__name__)
 
 
 class InotifyEmitter(EventEmitter):
-    """
-    inotify(7)-based event emitter.
+    """inotify(7)-based event emitter.
 
     :param event_queue:
         The event queue to fill with events.
@@ -169,10 +167,7 @@ class InotifyEmitter(EventEmitter):
                 if event.is_directory and self.watch.is_recursive:
                     for sub_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_event)
-            elif event.is_attrib:
-                cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
-                self.queue_event(cls(src_path))
-            elif event.is_modify:
+            elif event.is_attrib or event.is_modify:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
                 self.queue_event(cls(src_path))
             elif event.is_delete or (event.is_moved_from and not full_events):
@@ -240,8 +235,7 @@ class InotifyEmitter(EventEmitter):
 
 
 class InotifyFullEmitter(InotifyEmitter):
-    """
-    inotify(7)-based event emitter. By default this class produces move events even if they are not matched
+    """inotify(7)-based event emitter. By default this class produces move events even if they are not matched
     Such move events will have a ``None`` value for the unmatched part.
 
     :param event_queue:
@@ -269,8 +263,7 @@ class InotifyFullEmitter(InotifyEmitter):
 
 
 class InotifyObserver(BaseObserver):
-    """
-    Observer thread that schedules watching directories and dispatches
+    """Observer thread that schedules watching directories and dispatches
     calls to event handlers.
     """
 

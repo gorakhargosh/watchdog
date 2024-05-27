@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.observers
+""":module: watchdog.observers
 :synopsis: Observer that picks a native implementation if available.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
@@ -52,47 +51,57 @@ Class          Platforms                        Note
 
 from __future__ import annotations
 
+import contextlib
 import sys
 import warnings
+from typing import TYPE_CHECKING
 
 from watchdog.utils import UnsupportedLibc
 
-from .api import BaseObserverSubclassCallable
+if TYPE_CHECKING:
+    from watchdog.observers.api import BaseObserverSubclassCallable
 
-Observer: BaseObserverSubclassCallable
 
+def _get_observer_cls() -> BaseObserverSubclassCallable:
+    if sys.platform.startswith("linux"):
+        with contextlib.suppress(UnsupportedLibc):
+            from watchdog.observers.inotify import InotifyObserver
 
-if sys.platform.startswith("linux"):
-    try:
-        from .inotify import InotifyObserver as Observer
-    except UnsupportedLibc:
-        from .polling import PollingObserver as Observer
+            return InotifyObserver
 
-elif sys.platform.startswith("darwin"):
-    try:
-        from .fsevents import FSEventsObserver as Observer
-    except Exception:
+    elif sys.platform.startswith("darwin"):
         try:
-            from .kqueue import KqueueObserver as Observer
-
-            warnings.warn("Failed to import fsevents. Fall back to kqueue")
+            from watchdog.observers.fsevents import FSEventsObserver
         except Exception:
-            from .polling import PollingObserver as Observer
+            try:
+                from watchdog.observers.kqueue import KqueueObserver
 
-            warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
+                warnings.warn("Failed to import fsevents. Fall back to kqueue")
+            except Exception:
+                warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
+            else:
+                return KqueueObserver
+        else:
+            return FSEventsObserver
 
-elif sys.platform in ("dragonfly", "freebsd", "netbsd", "openbsd", "bsd"):
-    from .kqueue import KqueueObserver as Observer
+    elif sys.platform.startswith("win"):
+        try:
+            from watchdog.observers.read_directory_changes import WindowsApiObserver
+        except Exception:
+            warnings.warn("Failed to import `read_directory_changes`. Fall back to polling.")
+        else:
+            return WindowsApiObserver
 
-elif sys.platform.startswith("win"):
-    try:
-        from .read_directory_changes import WindowsApiObserver as Observer
-    except Exception:
-        from .polling import PollingObserver as Observer
+    elif sys.platform in {"dragonfly", "freebsd", "netbsd", "openbsd", "bsd"}:
+        from watchdog.observers.kqueue import KqueueObserver
 
-        warnings.warn("Failed to import read_directory_changes. Fall back to polling.")
+        return KqueueObserver
 
-else:
-    from .polling import PollingObserver as Observer
+    from watchdog.observers.polling import PollingObserver
+
+    return PollingObserver
+
+
+Observer = _get_observer_cls()
 
 __all__ = ["Observer"]

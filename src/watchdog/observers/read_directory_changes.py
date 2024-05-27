@@ -44,8 +44,7 @@ WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1  # seconds
 
 
 class WindowsApiEmitter(EventEmitter):
-    """
-    Windows API-based emitter that uses ReadDirectoryChangesW
+    """Windows API-based emitter that uses ReadDirectoryChangesW
     to detect file system changes for a watch.
     """
 
@@ -110,8 +109,7 @@ class WindowsApiEmitter(EventEmitter):
 
 
 class WindowsApiObserver(BaseObserver):
-    """
-    Observer thread that schedules watching directories and dispatches
+    """Observer thread that schedules watching directories and dispatches
     calls to event handlers.
     """
 
