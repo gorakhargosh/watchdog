@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import subprocess
+import sys
 from queue import Queue
 from typing import Protocol
 
@@ -97,3 +99,29 @@ class Helper:
         alive = [emitter.is_alive() for emitter in self.emitters]
         self.emitters = []
         assert alive == [False] * len(alive)
+
+
+def run_isolated_test(path):
+    ISOALTED_TEST_PREFIX = os.path.join('tests', 'isolated')
+    path = os.path.abspath(os.path.join(ISOALTED_TEST_PREFIX, path))
+
+    src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
+    new_env = os.environ.copy()
+    new_env['PYTHONPATH'] = os.pathsep.join(sys.path + [src_dir])
+
+    new_argv = [sys.executable, path]
+
+    p = subprocess.Popen(
+        new_argv,
+        env=new_env,
+    )
+
+    # in case test goes haywire, don't let it run forever
+    timeout = 10
+    try:
+        p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        assert False, 'timed out'
+
+    assert p.returncode == 0
