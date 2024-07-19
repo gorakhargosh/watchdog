@@ -5,19 +5,29 @@ if __name__ == '__main__':
 
     from watchdog.utils.bricks import SkipRepeatsQueue
 
-    # same as test_basic_queue() inside test_skip_repeats_queue.py
+    q = SkipRepeatsQueue(10)
+    q.put('A')
+    q.put('A')
+    q.put('A')
+    q.put('A')
+    q.put('B')
+    q.put('A')
 
-    q = SkipRepeatsQueue()
+    value = q.get()
+    assert value == 'A'
+    q.task_done()
 
-    e1 = (2, "fred")
-    e2 = (2, "george")
-    e3 = (4, "sally")
+    assert q.unfinished_tasks == 2
 
-    q.put(e1)
-    q.put(e2)
-    q.put(e3)
+    value = q.get()
+    assert value == 'B'
+    q.task_done()
 
-    assert e1 == q.get()
-    assert e2 == q.get()
-    assert e3 == q.get()
+    assert q.unfinished_tasks == 1
+
+    value = q.get()
+    assert value == 'A'
+    q.task_done()
+
     assert q.empty()
+    assert q.unfinished_tasks == 0
