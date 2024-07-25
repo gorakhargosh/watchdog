@@ -164,7 +164,7 @@ class FSEventsEmitter(EventEmitter):
         """Returns True if the event indicates a change in metadata."""
         return event.is_inode_meta_mod or event.is_xattr_mod or event.is_owner_change
 
-    def queue_events(self, timeout, events):
+    def queue_events(self, timeout, events):  # type: ignore[override]
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
                 flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
@@ -335,11 +335,12 @@ class FSEventsEmitter(EventEmitter):
 
 class FSEventsObserver(BaseObserver):
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(emitter_class=FSEventsEmitter, timeout=timeout)
+        super().__init__(FSEventsEmitter, timeout=timeout)
 
-    def schedule(self, event_handler, path, recursive=False):
+    def schedule(self, event_handler, path, recursive=False, event_filter=None):
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
         if isinstance(path, str):
             path = unicodedata.normalize("NFC", path)
-        return BaseObserver.schedule(self, event_handler, path, recursive)
+
+        return super().schedule(event_handler, path, recursive=recursive, event_filter=event_filter)

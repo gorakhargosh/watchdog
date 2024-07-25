@@ -8,8 +8,8 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.1...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [fsevents] Add missing ``event_filter`` keyword-argument to ``FSEventsObserver.schedule()`` (`#1049 <https://github.com/gorakhargosh/watchdog/pull/1049>`__)
+- Thanks to our beloved contributors: @BoboTiG
 
 4.0.1
 ~~~~~
