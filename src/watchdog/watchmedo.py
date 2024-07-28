@@ -35,7 +35,7 @@ from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from watchdog.observers.api import BaseObserverSubclassCallable
-from watchdog.utils import WatchdogShutdown, load_class
+from watchdog.utils import WatchdogShutdown, load_class, platform
 from watchdog.version import VERSION_STRING
 
 logging.basicConfig(level=logging.INFO)
@@ -264,7 +264,7 @@ def tricks_from(args):
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and platform.is_windows()):
         from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer
@@ -466,7 +466,7 @@ def log(args):
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
         from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and platform.is_windows()):
         from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer
     elif args.debug_force_inotify:
         from watchdog.observers.inotify import InotifyObserver as Observer

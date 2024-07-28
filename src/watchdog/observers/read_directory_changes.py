@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import os.path
 import platform
-import sys
 import threading
 
 from watchdog.events import (
@@ -34,10 +33,7 @@ from watchdog.events import (
     generate_sub_moved_events,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
-
-assert sys.platform.startswith("win"), f"{__name__} requires Windows"
-
-from watchdog.observers.winapi import close_directory_handle, get_directory_handle, read_events  # noqa: E402
+from watchdog.observers.winapi import close_directory_handle, get_directory_handle, read_events
 
 # Obsolete constant, it's no more used since v4.0.0.
 WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1  # seconds

@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import os
 import os.path
-import sys
 from queue import Empty, Queue
 from time import sleep
 
@@ -25,17 +24,15 @@ import pytest
 
 from watchdog.events import DirCreatedEvent, DirMovedEvent
 from watchdog.observers.api import ObservedWatch
+from watchdog.utils import platform
 
 from .shell import mkdir, mkdtemp, mv, rm
 
 # make pytest aware this is windows only
-if not sys.platform.startswith("win"):
+if not platform.is_windows():
     pytest.skip("Windows only.", allow_module_level=True)
 
-# make mypy aware this is windows only and provide a clear runtime error just in case
-assert sys.platform.startswith("win"), f"{__name__} requires Windows"
-
-from watchdog.observers.read_directory_changes import WindowsApiEmitter  # noqa: E402
+from watchdog.observers.read_directory_changes import WindowsApiEmitter
 
 SLEEP_TIME = 2
 

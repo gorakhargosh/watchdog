@@ -36,12 +36,9 @@
 
 from __future__ import annotations
 
-import sys
+import ctypes.wintypes
 from dataclasses import dataclass
 from functools import reduce
-
-assert sys.platform.startswith("win"), f"{__name__} requires Windows"
-import ctypes.wintypes  # noqa: E402
 
 LPVOID = ctypes.wintypes.LPVOID
 

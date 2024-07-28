@@ -46,12 +46,11 @@ import logging
 import os
 import signal
 import subprocess
-import sys
 import threading
 import time
 
 from watchdog.events import EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
-from watchdog.utils import echo
+from watchdog.utils import echo, platform
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
 
@@ -296,10 +295,10 @@ class AutoRestartTrick(Trick):
         self.restart_count += 1
 
 
-if not sys.platform.startswith("win"):
+if not platform.is_windows():
 
     def kill_process(pid, stop_signal):
-        os.killpg(os.getpgid(pid), stop_signal)
+        os.killpg(os.getpgid(pid), stop_signal)  # type: ignore[attr-defined]
 
 else:
 

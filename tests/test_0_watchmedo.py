@@ -10,16 +10,15 @@ import pytest
 # Skip if import PyYAML failed. PyYAML missing possible because
 # watchdog installed without watchmedo. See Installation section
 # in README.rst
-yaml = pytest.importorskip("yaml")  # noqa
+yaml = pytest.importorskip("yaml")
 
+from yaml.constructor import ConstructorError  # noqa: E402
+from yaml.scanner import ScannerError  # noqa: E402
 
-from yaml.constructor import ConstructorError  # noqa
-from yaml.scanner import ScannerError  # noqa
-
-from watchdog import watchmedo  # noqa
-from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa
-from watchdog.tricks import AutoRestartTrick, ShellCommandTrick  # noqa
-from watchdog.utils import WatchdogShutdown  # noqa
+from watchdog import watchmedo  # noqa: E402
+from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, ShellCommandTrick  # noqa: E402
+from watchdog.utils import WatchdogShutdown, platform  # noqa: E402
 
 
 def test_load_config_valid(tmpdir):
@@ -149,7 +148,7 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
 
 
 @pytest.mark.xfail(
-    condition=sys.platform.startswith(("win", "darwin")) or sys.implementation.name == "pypy",
+    condition=platform.is_darwin() or platform.is_windows() or sys.implementation.name == "pypy",
     reason="known to be problematic, see #973",
 )
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
@@ -181,7 +180,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
         pytest.param(
             False,
             marks=pytest.mark.xfail(
-                condition=sys.platform.startswith(("win", "darwin")),
+                condition=platform.is_darwin() or platform.is_windows(),
                 reason="known to be problematic, see #972",
             ),
         ),
