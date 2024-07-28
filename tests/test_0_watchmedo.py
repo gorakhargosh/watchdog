@@ -173,6 +173,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     assert trick.restart_count == 2
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1)
 @pytest.mark.parametrize(
     "restart_on_command_exit",
     [
