@@ -1,10 +1,9 @@
 eventlet
-flake8
 flaky
-isort
 pytest
 pytest-cov
 pytest-timeout
+ruff
 sphinx
 mypy
 types-PyYAML

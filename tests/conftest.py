@@ -46,6 +46,7 @@ def no_warnings(recwarn):
             "Not importing directory" in message
             or "Using or importing the ABCs" in message
             or "dns.hash module will be removed in future versions" in message
+            or "is still running" in message
             or "eventlet" in filename
         ):
             continue

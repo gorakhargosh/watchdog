@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.utils.dirsnapshot
+""":module: watchdog.utils.dirsnapshot
 :synopsis: Directory snapshots and comparison.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
@@ -48,6 +47,7 @@ Classes
 
 from __future__ import annotations
 
+import contextlib
 import errno
 import os
 from stat import S_ISDIR
@@ -55,8 +55,7 @@ from typing import Any, Callable, Iterator, List, Optional, Tuple
 
 
 class DirectorySnapshotDiff:
-    """
-    Compares two directory snapshots and creates an object that represents
+    """Compares two directory snapshots and creates an object that represents
     the difference between the two snapshots.
 
     :param ref:
@@ -126,9 +125,10 @@ class DirectorySnapshotDiff:
         # first check paths that have not moved
         modified: set[str] = set()
         for path in ref.paths & snapshot.paths:
-            if get_inode(ref, path) == get_inode(snapshot, path):
-                if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
-                    modified.add(path)
+            if get_inode(ref, path) == get_inode(snapshot, path) and (
+                ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path)
+            ):
+                modified.add(path)
 
         for old_path, new_path in moved:
             if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(old_path) != snapshot.size(new_path):
@@ -181,8 +181,7 @@ class DirectorySnapshotDiff:
 
     @property
     def files_moved(self) -> list[Tuple[str, str]]:
-        """
-        List of files that were moved.
+        """List of files that were moved.
 
         Each event is a two-tuple the first item of which is the path
         that has been renamed to the second item in the tuple.
@@ -191,15 +190,12 @@ class DirectorySnapshotDiff:
 
     @property
     def dirs_modified(self) -> List[str]:
-        """
-        List of directories that were modified.
-        """
+        """List of directories that were modified."""
         return self._dirs_modified
 
     @property
     def dirs_moved(self) -> List[tuple[str, str]]:
-        """
-        List of directories that were moved.
+        """List of directories that were moved.
 
         Each event is a two-tuple the first item of which is the path
         that has been renamed to the second item in the tuple.
@@ -208,21 +204,16 @@ class DirectorySnapshotDiff:
 
     @property
     def dirs_deleted(self) -> List[str]:
-        """
-        List of directories that were deleted.
-        """
+        """List of directories that were deleted."""
         return self._dirs_deleted
 
     @property
     def dirs_created(self) -> List[str]:
-        """
-        List of directories that were created.
-        """
+        """List of directories that were created."""
         return self._dirs_created
 
     class ContextManager:
-        """
-        Context manager that creates two directory snapshots and a
+        """Context manager that creates two directory snapshots and a
         diff object that represents the difference between the two snapshots.
 
         :param path:
@@ -289,8 +280,7 @@ class DirectorySnapshotDiff:
 
 
 class DirectorySnapshot:
-    """
-    A snapshot of stat information of files in a directory.
+    """A snapshot of stat information of files in a directory.
 
     :param path:
         The directory path for which a snapshot should be taken.
@@ -349,34 +339,25 @@ class DirectorySnapshot:
 
         entries = []
         for p in paths:
-            try:
+            with contextlib.suppress(OSError):
                 entry = (p, self.stat(p))
                 entries.append(entry)
                 yield entry
-            except OSError:
-                continue
 
         if self.recursive:
             for path, st in entries:
-                try:
+                with contextlib.suppress(PermissionError):
                     if S_ISDIR(st.st_mode):
-                        for entry in self.walk(path):
-                            yield entry
-                except PermissionError:
-                    pass
+                        yield from self.walk(path)
 
     @property
     def paths(self) -> set[str]:
-        """
-        Set of file/directory paths in the snapshot.
-        """
+        """Set of file/directory paths in the snapshot."""
         return set(self._stat_info.keys())
 
-    def path(self, id: Tuple[int, int]) -> Optional[str]:
-        """
-        Returns path for id. None if id is unknown to this snapshot.
-        """
-        return self._inode_to_path.get(id)
+    def path(self, uid: Tuple[int, int]) -> Optional[str]:
+        """Returns path for id. None if id is unknown to this snapshot."""
+        return self._inode_to_path.get(uid)
 
     def inode(self, path: str) -> Tuple[int, int]:
         """Returns an id for path."""
@@ -393,8 +374,7 @@ class DirectorySnapshot:
         return self._stat_info[path].st_size
 
     def stat_info(self, path: str) -> os.stat_result:
-        """
-        Returns a stat information object for the specified path from
+        """Returns a stat information object for the specified path from
         the snapshot.
 
         Attached information is subject to change. Do not use unless
@@ -440,7 +420,7 @@ class EmptyDirectorySnapshot(DirectorySnapshot):
         :returns:
             None.
         """
-        return None
+        return
 
     @property
     def paths(self) -> set:
