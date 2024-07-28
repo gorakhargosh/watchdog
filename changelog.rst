@@ -9,9 +9,14 @@ Changelog
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.1...HEAD>`__
 
 - Add support for Python 3.13 (`#1052 <https://github.com/gorakhargosh/watchdog/pull/1052>`__)
-- [core] Run ``ruff``, apply several fixes (`#1033 <https://github.com/gorakhargosh/watchdog/pull/1033>`__)
+- Run ``ruff``, apply several fixes (`#1033 <https://github.com/gorakhargosh/watchdog/pull/1033>`__)
+- [core] Remove execution rights from ``events.py``
+- [documentation] Update ``PatternMatchingEventHandler`` docstrings (`#1048 <https://github.com/gorakhargosh/watchdog/pull/1048>`__)
+- [documentation] Simplify the quickstart example (`#1047 <https://github.com/gorakhargosh/watchdog/pull/1047>`__)
 - [fsevents] Add missing ``event_filter`` keyword-argument to ``FSEventsObserver.schedule()`` (`#1049 <https://github.com/gorakhargosh/watchdog/pull/1049>`__)
-- Thanks to our beloved contributors: @BoboTiG
+- [utils] Fix a possible race condition in ``AutoRestartTrick`` (`#1002 <https://github.com/gorakhargosh/watchdog/pull/1002>`__)
+- [watchmedo] Remove execution rights from ``watchmedo.py``
+- Thanks to our beloved contributors: @BoboTiG, @nbelakovski, @ivg
 
 4.0.1
 ~~~~~
