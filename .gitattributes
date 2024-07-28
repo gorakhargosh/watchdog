@@ -1,0 +1,6 @@
+# Language aware diff headers
+# https://tekin.co.uk/2020/10/better-git-diff-output-for-ruby-python-elixir-and-more
+# https://gist.github.com/tekin/12500956bd56784728e490d8cef9cb81
+# https://github.com/git/git/blob/master/userdiff.c
+*.c diff=cpp
+*.py diff=python
