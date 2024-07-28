@@ -47,10 +47,13 @@ class WindowsApiEmitter(EventEmitter):
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
         super().__init__(event_queue, watch, timeout, event_filter)
         self._lock = threading.Lock()
-        self._handle = None
+        self._dir_handle = None
 
     def on_thread_start(self):
-        self._handle = get_directory_handle(self.watch.path)
+        watch_path = self.watch.path
+        if os.path.isfile(watch_path):
+            watch_path = os.path.dirname(watch_path)
+        self._dir_handle = get_directory_handle(watch_path)
 
     if platform.python_implementation() == "PyPy":
 
@@ -62,18 +65,23 @@ class WindowsApiEmitter(EventEmitter):
             sleep(0.01)
 
     def on_thread_stop(self):
-        if self._handle:
-            close_directory_handle(self._handle)
+        if self._dir_handle:
+            close_directory_handle(self._dir_handle)
 
     def _read_events(self):
-        return read_events(self._handle, self.watch.path, self.watch.is_recursive)
+        return read_events(self._dir_handle, self.watch.path, self.watch.is_recursive)
 
     def queue_events(self, timeout):
         winapi_events = self._read_events()
         with self._lock:
             last_renamed_src_path = ""
             for winapi_event in winapi_events:
-                src_path = os.path.join(self.watch.path, winapi_event.src_path)
+                if os.path.isfile(self.watch.path):
+                    if os.path.basename(self.watch.path) != winapi_event.src_path:
+                        continue
+                    src_path = self.watch.path
+                else:
+                    src_path = os.path.join(self.watch.path, winapi_event.src_path)
 
                 if winapi_event.is_renamed_old:
                     last_renamed_src_path = src_path
