@@ -246,4 +246,4 @@ class FSEventsEmitter(EventEmitter):
 
 class FSEventsObserver2(BaseObserver):
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(emitter_class=FSEventsEmitter, timeout=timeout)
+        super().__init__(FSEventsEmitter, timeout=timeout)

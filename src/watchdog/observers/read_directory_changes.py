@@ -112,4 +112,4 @@ class WindowsApiObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(emitter_class=WindowsApiEmitter, timeout=timeout)
+        super().__init__(WindowsApiEmitter, timeout=timeout)

@@ -690,4 +690,4 @@ class KqueueObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(emitter_class=KqueueEmitter, timeout=timeout)
+        super().__init__(KqueueEmitter, timeout=timeout)

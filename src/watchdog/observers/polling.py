@@ -127,7 +127,7 @@ class PollingObserver(BaseObserver):
     """
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(emitter_class=PollingEmitter, timeout=timeout)
+        super().__init__(PollingEmitter, timeout=timeout)
 
 
 class PollingObserverVFS(BaseObserver):
@@ -143,4 +143,4 @@ class PollingObserverVFS(BaseObserver):
         :param polling_interval: interval in seconds between polling the file system.
         """
         emitter_cls = partial(PollingEmitter, stat=stat, listdir=listdir)
-        super().__init__(emitter_class=emitter_cls, timeout=polling_interval)
+        super().__init__(emitter_cls, timeout=polling_interval)

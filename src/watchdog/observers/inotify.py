@@ -276,4 +276,4 @@ class InotifyObserver(BaseObserver):
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
-        super().__init__(emitter_class=cls, timeout=timeout)
+        super().__init__(cls, timeout=timeout)
