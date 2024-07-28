@@ -43,12 +43,10 @@ class EventDebouncer(BaseThread):
     def run(self):
         with self._cond:
             while self.should_keep_running():
-                started = time.monotonic()
                 if self.debounce_interval_seconds:
+                    started = time.monotonic()
                     while self.should_keep_running():
-                        timed_out = not self._cond.wait(
-                            timeout=self.debounce_interval_seconds
-                        )
+                        timed_out = not self._cond.wait(timeout=self.debounce_interval_seconds)
                         if timed_out or self.time_to_flush(started):
                             break
                 else:
@@ -58,6 +56,6 @@ class EventDebouncer(BaseThread):
                 self._events = []
                 self.events_callback(events)
 
-            # send any events before leaving
+            # Send any events before leaving
             if self._events:
                 self.events_callback(events)
