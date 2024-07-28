@@ -27,15 +27,14 @@ def _match_path(path, included_patterns, excluded_patterns, case_sensitive):
 
     common_patterns = included_patterns & excluded_patterns
     if common_patterns:
-        raise ValueError("conflicting patterns `{}` included and excluded".format(common_patterns))
+        raise ValueError(f"conflicting patterns `{common_patterns}` included and excluded")
     return any(path.match(p) for p in included_patterns) and not any(path.match(p) for p in excluded_patterns)
 
 
 def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
-    """
-    Filters from a set of paths based on acceptable patterns and
+    """Filters from a set of paths based on acceptable patterns and
     ignorable patterns.
-    :param pathnames:
+    :param paths:
         A list of path names that will be filtered based on matching and
         ignored patterns.
     :param included_patterns:
@@ -51,37 +50,24 @@ def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sen
         A list of pathnames that matched the allowable patterns and passed
         through the ignored patterns.
     """
-    included = ["*"] if included_patterns is None else included_patterns
-    excluded = [] if excluded_patterns is None else excluded_patterns
+    included = set(["*"] if included_patterns is None else included_patterns)
+    excluded = set([] if excluded_patterns is None else excluded_patterns)
 
     for path in paths:
-        if _match_path(path, set(included), set(excluded), case_sensitive):
+        if _match_path(path, included, excluded, case_sensitive):
             yield path
 
 
 def match_any_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
-    """
-    Matches from a set of paths based on acceptable patterns and
+    """Matches from a set of paths based on acceptable patterns and
     ignorable patterns.
-    :param pathnames:
-        A list of path names that will be filtered based on matching and
-        ignored patterns.
-    :param included_patterns:
-        Allow filenames matching wildcard patterns specified in this list.
-        If no pattern list is specified, ["*"] is used as the default pattern,
-        which matches all files.
-    :param excluded_patterns:
-        Ignores filenames matching wildcard patterns specified in this list.
-        If no pattern list is specified, no files are ignored.
-    :param case_sensitive:
-        ``True`` if matching should be case-sensitive; ``False`` otherwise.
-    :returns:
-        ``True`` if any of the paths matches; ``False`` otherwise.
+    See ``filter_paths()`` for signature details.
     """
-    included = ["*"] if included_patterns is None else included_patterns
-    excluded = [] if excluded_patterns is None else excluded_patterns
-
-    for path in paths:
-        if _match_path(path, set(included), set(excluded), case_sensitive):
-            return True
-    return False
+    return any(
+        filter_paths(
+            paths,
+            included_patterns=included_patterns,
+            excluded_patterns=excluded_patterns,
+            case_sensitive=case_sensitive,
+        )
+    )

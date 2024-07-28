@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.observers.fsevents
+""":module: watchdog.observers.fsevents
 :synopsis: FSEvents based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
@@ -29,7 +28,7 @@ import threading
 import time
 import unicodedata
 
-import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
+import _watchdog_fsevents as _fsevents
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -50,9 +49,7 @@ logger = logging.getLogger("fsevents")
 
 
 class FSEventsEmitter(EventEmitter):
-
-    """
-    macOS FSEvents Emitter class.
+    """macOS FSEvents Emitter class.
 
     :param event_queue:
         The event queue to fill with events.
@@ -97,15 +94,11 @@ class FSEventsEmitter(EventEmitter):
     def queue_event(self, event):
         # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
         # all the events here which do not have a src_path / dest_path that matches the watched path
-        if self._watch.is_recursive:
+        if self._watch.is_recursive or not self._is_recursive_event(event):
             logger.debug("queue_event %s", event)
             EventEmitter.queue_event(self, event)
         else:
-            if not self._is_recursive_event(event):
-                logger.debug("queue_event %s", event)
-                EventEmitter.queue_event(self, event)
-            else:
-                logger.debug("drop event %s", event)
+            logger.debug("drop event %s", event)
 
     def _is_recursive_event(self, event):
         src_path = event.src_path if event.is_directory else os.path.dirname(event.src_path)
@@ -168,7 +161,7 @@ class FSEventsEmitter(EventEmitter):
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
                 flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
-                logger.debug(f"{event}: {flags}")
+                logger.debug("%s: %s", event, flags)
 
         if time.monotonic() - self._start_time > 60:
             # Event history is no longer needed, let's free some memory.
@@ -319,30 +312,28 @@ class FSEventsEmitter(EventEmitter):
 
     def on_thread_start(self):
         if self.suppress_history:
-            if isinstance(self.watch.path, bytes):
-                watch_path = os.fsdecode(self.watch.path)
-            else:
-                watch_path = self.watch.path
-
+            watch_path = os.fsdecode(self.watch.path) if isinstance(self.watch.path, bytes) else self.watch.path
             self._starting_state = DirectorySnapshot(watch_path)
 
     def _encode_path(self, path):
         """Encode path only if bytes were passed to this emitter."""
-        if isinstance(self.watch.path, bytes):
-            return os.fsencode(path)
-        return path
+        return os.fsencode(path) if isinstance(self.watch.path, bytes) else path
 
 
 class FSEventsObserver(BaseObserver):
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(emitter_class=FSEventsEmitter, timeout=timeout)
+        super().__init__(FSEventsEmitter, timeout=timeout)
 
-    def schedule(self, event_handler, path, recursive=True):
+    def schedule(self, event_handler, path, recursive=True, event_filter=None):
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
         if isinstance(path, str):
             path = unicodedata.normalize("NFC", path)
+
         if not recursive:
             import warnings
+
             warnings.warn("FSEvents requires and assumes recursive=True")
-        return BaseObserver.schedule(self, event_handler, path, recursive=True)
+            recursive = True
+
+        return super().schedule(event_handler, path, recursive=recursive, event_filter=event_filter)

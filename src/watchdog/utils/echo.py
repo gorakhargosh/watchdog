@@ -5,7 +5,7 @@
 #
 # Place into the public domain.
 
-""" Echo calls made to functions and methods in a module.
+"""Echo calls made to functions and methods in a module.
 
 "Echoing" a function call means printing out the name of the function
 and the values of its arguments before making the call (which is more
@@ -25,11 +25,14 @@ Alternatively, echo.echo can be used to decorate functions. Calls to the
 decorated function will be echoed.
 
 Example:
-
+-------
   @echo.echo
   def my_function(args):
       pass
+
+
 """
+
 from __future__ import annotations
 
 import inspect
@@ -75,7 +78,7 @@ def method_name(method):
 def format_arg_value(arg_val):
     """Return a string representing a (name, value) pair.
 
-    >>> format_arg_value(('x', (1, 2, 3)))
+    >>> format_arg_value(("x", (1, 2, 3)))
     'x=(1, 2, 3)'
     """
     arg, val = arg_val

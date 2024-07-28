@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-:module: watchdog.events
+""":module: watchdog.events
 :synopsis: File system events and event handlers.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
@@ -111,8 +110,7 @@ EVENT_TYPE_OPENED = "opened"
 
 @dataclass(unsafe_hash=True)
 class FileSystemEvent:
-    """
-    Immutable type that represents a file system event that is triggered
+    """Immutable type that represents a file system event that is triggered
     when a change occurs on the monitored file system.
 
     All FileSystemEvent objects are required to be immutable and hence
@@ -186,9 +184,7 @@ class DirDeletedEvent(FileSystemEvent):
 
 
 class DirModifiedEvent(FileSystemEvent):
-    """
-    File system event representing directory modification on the file system.
-    """
+    """File system event representing directory modification on the file system."""
 
     event_type = EVENT_TYPE_MODIFIED
     is_directory = True
@@ -208,9 +204,7 @@ class DirMovedEvent(FileSystemMovedEvent):
 
 
 class FileSystemEventHandler:
-    """
-    Base file system event handler that you can override methods from.
-    """
+    """Base file system event handler that you can override methods from."""
 
     def dispatch(self, event: FileSystemEvent) -> None:
         """Dispatches events to the appropriate methods.
@@ -297,6 +291,8 @@ class FileSystemEventHandler:
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """
     Matches given patterns with file paths associated with occurring events.
+    Uses pathlib's `PurePath.match()` method. `patterns` and `ignore_patterns`
+    are expected to be a list of strings.
     """
 
     def __init__(
@@ -315,32 +311,28 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 
     @property
     def patterns(self):
-        """
-        (Read-only)
+        """(Read-only)
         Patterns to allow matching event paths.
         """
         return self._patterns
 
     @property
     def ignore_patterns(self):
-        """
-        (Read-only)
+        """(Read-only)
         Patterns to ignore matching event paths.
         """
         return self._ignore_patterns
 
     @property
     def ignore_directories(self):
-        """
-        (Read-only)
+        """(Read-only)
         ``True`` if directories should be ignored; ``False`` otherwise.
         """
         return self._ignore_directories
 
     @property
     def case_sensitive(self):
-        """
-        (Read-only)
+        """(Read-only)
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
         """
@@ -375,6 +367,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 class RegexMatchingEventHandler(FileSystemEventHandler):
     """
     Matches given regexes with file paths associated with occurring events.
+    Uses the `re` module.
     """
 
     def __init__(
@@ -396,39 +389,35 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             self._regexes = [re.compile(r) for r in regexes]
             self._ignore_regexes = [re.compile(r) for r in ignore_regexes]
         else:
-            self._regexes = [re.compile(r, re.I) for r in regexes]
-            self._ignore_regexes = [re.compile(r, re.I) for r in ignore_regexes]
+            self._regexes = [re.compile(r, re.IGNORECASE) for r in regexes]
+            self._ignore_regexes = [re.compile(r, re.IGNORECASE) for r in ignore_regexes]
         self._ignore_directories = ignore_directories
         self._case_sensitive = case_sensitive
 
     @property
     def regexes(self):
-        """
-        (Read-only)
+        """(Read-only)
         Regexes to allow matching event paths.
         """
         return self._regexes
 
     @property
     def ignore_regexes(self):
-        """
-        (Read-only)
+        """(Read-only)
         Regexes to ignore matching event paths.
         """
         return self._ignore_regexes
 
     @property
     def ignore_directories(self):
-        """
-        (Read-only)
+        """(Read-only)
         ``True`` if directories should be ignored; ``False`` otherwise.
         """
         return self._ignore_directories
 
     @property
     def case_sensitive(self):
-        """
-        (Read-only)
+        """(Read-only)
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
         """

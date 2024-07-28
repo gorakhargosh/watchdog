@@ -3,10 +3,27 @@
 Changelog
 ---------
 
-3.0.1
+4.0.2 (dev)
+~~~~~~~~~~~
+
+2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.1...HEAD>`__
+
+- [core] Run ``ruff``, apply several fixes (`#1033 <https://github.com/gorakhargosh/watchdog/pull/1033>`__)
+- [fsevents] Add missing ``event_filter`` keyword-argument to ``FSEventsObserver.schedule()`` (`#1049 <https://github.com/gorakhargosh/watchdog/pull/1049>`__)
+- Thanks to our beloved contributors: @BoboTiG
+
+4.0.1
 ~~~~~
 
-2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
+2024-05-23 • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.0...v4.0.1>`__
+
+- [inotify] Fix missing ``event_filter`` for the full emitter (`#1032 <https://github.com/gorakhargosh/watchdog/pull/1032>`__)
+- Thanks to our beloved contributors: @mraspaud, @BoboTiG
+
+4.0.0
+~~~~~
+
+2024-02-06 • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...v4.0.0>`__
 
 - Drop support for Python 3.7.
 - Add support for Python 3.12.

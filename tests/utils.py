@@ -2,24 +2,23 @@ from __future__ import annotations
 
 import dataclasses
 import os
-import sys
 from queue import Empty, Queue
 from typing import List, Optional, Tuple, Type, Union
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
-from watchdog.utils import Protocol
+from watchdog.utils import Protocol, platform
 
 Emitter: Type[EventEmitter]
 
-if sys.platform.startswith("linux"):
+if platform.is_linux():
     from watchdog.observers.inotify import InotifyEmitter as Emitter
     from watchdog.observers.inotify import InotifyFullEmitter
-elif sys.platform.startswith("darwin"):
+elif platform.is_darwin():
     from watchdog.observers.fsevents import FSEventsEmitter as Emitter
-elif sys.platform.startswith("win"):
+elif platform.is_windows():
     from watchdog.observers.read_directory_changes import WindowsApiEmitter as Emitter
-elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
+elif platform.is_bsd():
     from watchdog.observers.kqueue import KqueueEmitter as Emitter
 
 
@@ -65,14 +64,14 @@ class Helper:
         path = self.tmp if path is None else path
 
         emitter: EventEmitter
-        if sys.platform.startswith("linux") and use_full_emitter:
+        if platform.is_linux() and use_full_emitter:
             emitter = InotifyFullEmitter(self.event_queue, ObservedWatch(path, recursive=recursive))
         else:
             emitter = Emitter(self.event_queue, ObservedWatch(path, recursive=recursive))
 
         self.emitters.append(emitter)
 
-        if sys.platform.startswith("darwin"):
+        if platform.is_darwin():
             # TODO: I think this could be better...  .suppress_history should maybe
             #       become a common attribute.
             from watchdog.observers.fsevents import FSEventsEmitter
