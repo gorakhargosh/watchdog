@@ -5,8 +5,6 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - '**'
 
   workflow_dispatch:
     inputs:
@@ -28,11 +26,11 @@ jobs:
       fail-fast: false
       matrix:
         tox:
+          - name: Types
+            environment: types
+            timeout: 15
           - name: Test
             environment: py
-            timeout: 15
-          - name: mypy
-            environment: mypy
             timeout: 15
         os:
           - name: Linux
@@ -48,26 +46,17 @@ jobs:
             emoji: 🪟
             runs-on: [windows-latest]
         python:
-          - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
           - "pypy-3.8"
           - "pypy-3.9"
         include:
           - tox:
-              name: Flake8
-              environment: flake8
-              timeout: 5
-            python: "3.11"
-            os:
-              name: Linux
-              emoji: 🐧
-              runs-on: [ubuntu-latest]
-          - tox:
-              name: isort
-              environment: isort-ci
+              name: Linter
+              environment: lint
               timeout: 5
             python: "3.11"
             os:
@@ -85,6 +74,12 @@ jobs:
               runs-on: [ubuntu-latest]
         exclude:
           - os:
+              matrix: macos
+            python: "pypy-3.8"
+          - os:
+              matrix: macos
+            python: "pypy-3.9"
+          - os:
               matrix: windows
             python: "pypy-3.8"
           - os:
@@ -94,17 +89,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+          cache: pip
 
       - name: Install test dependencies
-        run: |
-          python -m pip install tox
+        run: python -m pip install tox
 
       - name: Run ${{ matrix.tox.name }} in tox
-        run: |
-          python -m tox -e ${{ matrix.tox.environment }}
+        run: python -m tox -e ${{ matrix.tox.environment }}

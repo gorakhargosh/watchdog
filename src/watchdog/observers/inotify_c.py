@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import ctypes.util
 import errno
@@ -29,7 +30,7 @@ from watchdog.utils import UnsupportedLibc
 libc = ctypes.CDLL(None)
 
 if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") or not hasattr(libc, "inotify_rm_watch"):
-    raise UnsupportedLibc(f"Unsupported libc version found: {libc._name}")
+    raise UnsupportedLibc(f"Unsupported libc version found: {libc._name}")  # noqa:SLF001
 
 inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc))
 
@@ -113,8 +114,7 @@ WATCHDOG_ALL_EVENTS = reduce(
 
 
 class inotify_event_struct(ctypes.Structure):
-    """
-    Structure representation of the inotify_event structure
+    """Structure representation of the inotify_event structure
     (used in buffer size calculations)::
 
         struct inotify_event {
@@ -126,13 +126,13 @@ class inotify_event_struct(ctypes.Structure):
         };
     """
 
-    _fields_ = [
+    _fields_ = (
         ("wd", c_int),
         ("mask", c_uint32),
         ("cookie", c_uint32),
         ("len", c_uint32),
         ("name", c_char_p),
-    ]
+    )
 
 
 EVENT_SIZE = ctypes.sizeof(inotify_event_struct)
@@ -141,8 +141,7 @@ DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 
 
 class Inotify:
-    """
-    Linux inotify(7) API wrapper class.
+    """Linux inotify(7) API wrapper class.
 
     :param path:
         The directory path for which we want an inotify object.
@@ -152,7 +151,7 @@ class Inotify:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def __init__(self, path, recursive=False, event_mask=WATCHDOG_ALL_EVENTS):
+    def __init__(self, path, recursive=False, event_mask=None):
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:
@@ -165,6 +164,9 @@ class Inotify:
         self._path_for_wd = {}
 
         self._path = path
+        # Default to all events
+        if event_mask is None:
+            event_mask = WATCHDOG_ALL_EVENTS
         self._event_mask = event_mask
         self._is_recursive = recursive
         if os.path.isdir(path):
@@ -198,27 +200,24 @@ class Inotify:
         self._moved_from_events = {}
 
     def source_for_move(self, destination_event):
-        """
-        The source path corresponding to the given MOVED_TO event.
+        """The source path corresponding to the given MOVED_TO event.
 
         If the source path is outside the monitored directories, None
         is returned instead.
         """
         if destination_event.cookie in self._moved_from_events:
             return self._moved_from_events[destination_event.cookie].src_path
-        else:
-            return None
+
+        return None
 
     def remember_move_from_event(self, event):
-        """
-        Save this event as the source event for future MOVED_TO events to
+        """Save this event as the source event for future MOVED_TO events to
         reference.
         """
         self._moved_from_events[event.cookie] = event
 
     def add_watch(self, path):
-        """
-        Adds a watch for the given path.
+        """Adds a watch for the given path.
 
         :param path:
             Path to begin monitoring.
@@ -227,8 +226,7 @@ class Inotify:
             self._add_watch(path, self._event_mask)
 
     def remove_watch(self, path):
-        """
-        Removes a watch for the given path.
+        """Removes a watch for the given path.
 
         :param path:
             Path string for which the watch will be removed.
@@ -240,24 +238,18 @@ class Inotify:
                 Inotify._raise_error()
 
     def close(self):
-        """
-        Closes the inotify instance and removes all associated watches.
-        """
+        """Closes the inotify instance and removes all associated watches."""
         with self._lock:
             if self._path in self._wd_for_path:
                 wd = self._wd_for_path[self._path]
                 inotify_rm_watch(self._inotify_fd, wd)
 
-            try:
+            # descriptor may be invalid because file was deleted
+            with contextlib.suppress(OSError):
                 os.close(self._inotify_fd)
-            except OSError:
-                # descriptor may be invalid because file was deleted
-                pass
 
     def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
-        """
-        Reads events from inotify and yields them.
-        """
+        """Reads events from inotify and yields them."""
         # HACK: We need to traverse the directory path
         # recursively and simulate events for newly
         # created subdirectories/files. This will handle
@@ -267,7 +259,7 @@ class Inotify:
             events = []
             for root, dirnames, filenames in os.walk(src_path):
                 for dirname in dirnames:
-                    try:
+                    with contextlib.suppress(OSError):
                         full_path = os.path.join(root, dirname)
                         wd_dir = self._add_watch(full_path, self._event_mask)
                         e = InotifyEvent(
@@ -278,8 +270,6 @@ class Inotify:
                             full_path,
                         )
                         events.append(e)
-                    except OSError:
-                        pass
                 for filename in filenames:
                     full_path = os.path.join(root, filename)
                     wd_parent_dir = self._wd_for_path[os.path.dirname(full_path)]
@@ -300,10 +290,11 @@ class Inotify:
             except OSError as e:
                 if e.errno == errno.EINTR:
                     continue
-                elif e.errno == errno.EBADF:
+
+                if e.errno == errno.EBADF:
                     return []
-                else:
-                    raise
+
+                raise
             break
 
         with self._lock:
@@ -325,7 +316,7 @@ class Inotify:
                         self._wd_for_path[inotify_event.src_path] = moved_wd
                         self._path_for_wd[moved_wd] = inotify_event.src_path
                         if self.is_recursive:
-                            for _path, _wd in self._wd_for_path.copy().items():
+                            for _path in self._wd_for_path.copy():
                                 if _path.startswith(move_src_path + os.path.sep.encode()):
                                     moved_wd = self._wd_for_path.pop(_path)
                                     _move_to_path = _path.replace(move_src_path, inotify_event.src_path)
@@ -361,8 +352,7 @@ class Inotify:
 
     # Non-synchronized methods.
     def _add_dir_watch(self, path, recursive, mask):
-        """
-        Adds a watch (optionally recursively) for the given directory path
+        """Adds a watch (optionally recursively) for the given directory path
         to monitor events specified by the mask.
 
         :param path:
@@ -384,8 +374,7 @@ class Inotify:
                     self._add_watch(full_path, mask)
 
     def _add_watch(self, path, mask):
-        """
-        Adds a watch for the given path to monitor events specified by the
+        """Adds a watch for the given path to monitor events specified by the
         mask.
 
         :param path:
@@ -402,21 +391,21 @@ class Inotify:
 
     @staticmethod
     def _raise_error():
-        """
-        Raises errors for inotify failures.
-        """
+        """Raises errors for inotify failures."""
         err = ctypes.get_errno()
+
         if err == errno.ENOSPC:
             raise OSError(errno.ENOSPC, "inotify watch limit reached")
-        elif err == errno.EMFILE:
+
+        if err == errno.EMFILE:
             raise OSError(errno.EMFILE, "inotify instance limit reached")
-        elif err != errno.EACCES:
+
+        if err != errno.EACCES:
             raise OSError(err, os.strerror(err))
 
     @staticmethod
     def _parse_event_buffer(event_buffer):
-        """
-        Parses an event buffer of ``inotify_event`` structs returned by
+        """Parses an event buffer of ``inotify_event`` structs returned by
         inotify::
 
             struct inotify_event {
@@ -440,8 +429,7 @@ class Inotify:
 
 
 class InotifyEvent:
-    """
-    Inotify event struct wrapper.
+    """Inotify event struct wrapper.
 
     :param wd:
         Watch descriptor

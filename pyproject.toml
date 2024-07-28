@@ -1,0 +1,72 @@
+[tool.mypy]
+# Ensure we know what we do
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unused_configs = true
+
+# Imports management
+ignore_missing_imports = true
+follow_imports = "skip"
+
+# Ensure full coverage
+#disallow_untyped_defs = true [TODO]
+disallow_incomplete_defs = true
+#disallow_untyped_calls = true [TODO]
+
+# Restrict dynamic typing (a little)
+# e.g. `x: List[Any]` or x: List`
+# disallow_any_generics = true
+
+strict_equality = true
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+addopts = """
+    --showlocals
+    -vvv
+    --cov=watchdog
+    --cov-report=term-missing:skip-covered
+"""
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py38"
+
+[tool.ruff.lint]
+extend-select = ["ALL"]
+ignore = [
+    "ARG",
+    "ANN",  # TODO
+    "ANN002",
+    "ANN003",
+    "ANN401",
+    "B006",
+    "B023",  # TODO
+    "B028",
+    "BLE001",
+    "C90",
+    "COM",
+    "D",
+    "EM",
+    "ERA",
+    "FBT",
+    "FIX",
+    "ISC001",
+    "N",  # Requires a major version number bump
+    "PERF203",  # TODO
+    "PL",
+    "PTH",  # TODO?
+    "S",
+    "TD",
+    "TRY003",
+    "UP",  # TODO when minimum python version will be 3.10
+]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true

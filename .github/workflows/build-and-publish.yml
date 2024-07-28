@@ -21,7 +21,7 @@ on:
       - master
   pull_request:
     branches:
-      - '**'
+      - "**"
 
   workflow_dispatch:
     inputs:
@@ -41,11 +41,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install build dependencies
@@ -55,9 +55,11 @@ jobs:
         env:
           CIBW_SKIP: "cp36-*" # skip 3.6 wheels
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
-      - uses: actions/upload-artifact@v3
+      - name: Artifacts list
+        run: ls -l wheelhouse
+      - uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: python-package-distributions-macos
           path: ./wheelhouse/*.whl
 
   pure-built-distributions:
@@ -66,11 +68,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install build dependencies
@@ -81,9 +83,11 @@ jobs:
           do
             python setup.py bdist_wheel --plat-name $platform
           done
-      - uses: actions/upload-artifact@v3
+      - name: Artifacts list
+        run: ls -l dist
+      - uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
+          name: python-package-distributions-pure-wheels
           path: ./dist/*.whl
 
   source-distribution:
@@ -92,21 +96,22 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Build source distribution
         run: python setup.py sdist
+      - name: Artifacts list
+        run: ls -l dist
       - name: Store the source distribution
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
-          path: dist
-          retention-days: 4
+          name: python-package-distributions-source
+          path: dist/*.tar.gz
 
   publish:
     needs:
@@ -117,16 +122,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Download all the dists
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: python-package-distributions
+          pattern: python-package-distributions-*
+          merge-multiple: true
           path: dist/
       - name: What will we publish?
         run: ls -l dist
       - name: Publish
         if: github.event.inputs.branch != ''
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          skip_existing: true
+          skip-existing: true

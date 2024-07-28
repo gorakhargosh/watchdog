@@ -15,15 +15,15 @@ import os.path
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-TOP_DIR_PATH = os.path.abspath("../../")  # noqa
-SRC_DIR_PATH = os.path.join(TOP_DIR_PATH, "src")  # noqa
-sys.path.insert(0, SRC_DIR_PATH)  # noqa
+TOP_DIR_PATH = os.path.abspath("../../")
+SRC_DIR_PATH = os.path.join(TOP_DIR_PATH, "src")
+sys.path.insert(0, SRC_DIR_PATH)
 
-import watchdog.version  # noqa
+import watchdog.version  # noqa: E402
 
 PROJECT_NAME = "watchdog"
 AUTHOR_NAME = "Yesudeep Mangalapilly and contributors"
-COPYRIGHT = "2010-2023, " + AUTHOR_NAME
+COPYRIGHT = f"2010-2024, {AUTHOR_NAME}"
 
 
 # -- General configuration -----------------------------------------------------

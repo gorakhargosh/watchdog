@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from __future__ import annotations
 
 import sys
@@ -28,14 +27,17 @@ PLATFORM_UNKNOWN = "unknown"
 def get_platform_name():
     if sys.platform.startswith("win"):
         return PLATFORM_WINDOWS
-    elif sys.platform.startswith("darwin"):
+
+    if sys.platform.startswith("darwin"):
         return PLATFORM_DARWIN
-    elif sys.platform.startswith("linux"):
+
+    if sys.platform.startswith("linux"):
         return PLATFORM_LINUX
-    elif sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
+
+    if sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
         return PLATFORM_BSD
-    else:
-        return PLATFORM_UNKNOWN
+
+    return PLATFORM_UNKNOWN
 
 
 __platform__ = get_platform_name()
