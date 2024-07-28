@@ -71,10 +71,12 @@ import threading
 from typing import Type
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
     FileCreatedEvent,
     FileDeletedEvent,
@@ -167,7 +169,10 @@ class InotifyEmitter(EventEmitter):
                 if event.is_directory and self.watch.is_recursive:
                     for sub_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_event)
-            elif event.is_attrib or event.is_modify:
+            elif event.is_attrib:
+                cls = DirAttribEvent if event.is_directory else FileAttribEvent
+                self.queue_event(cls(src_path))
+            elif event.is_modify:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
                 self.queue_event(cls(src_path))
             elif event.is_delete or (event.is_moved_from and not full_events):

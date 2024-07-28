@@ -84,10 +84,12 @@ from watchdog.events import (
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MOVED,
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -121,7 +123,6 @@ WATCHDOG_KQ_FFLAGS = (
 
 def absolute_path(path):
     return os.path.abspath(os.path.normpath(path))
-
 
 # Flag tests.
 
@@ -515,9 +516,9 @@ class KqueueEmitter(EventEmitter):
             yield from self._gen_renamed_events(src_path, descriptor.is_directory, ref_snapshot, new_snapshot)
         elif is_attrib_modified(kev):
             if descriptor.is_directory:
-                yield DirModifiedEvent(src_path)
+                yield DirAttribEvent(src_path)
             else:
-                yield FileModifiedEvent(src_path)
+                yield FileAttribEvent(src_path)
         elif is_modified(kev):
             if descriptor.is_directory:
                 if self.watch.is_recursive or self.watch.path == src_path:

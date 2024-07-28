@@ -8,7 +8,7 @@ from functools import partial
 
 import pytest
 
-from .utils import ExpectEvent, Helper, P, StartWatching, TestEventQueue
+from .utils import ExpectAnyEvent, ExpectEvent, Helper, P, StartWatching, TestEventQueue
 
 
 @pytest.fixture()
@@ -79,3 +79,8 @@ def start_watching_fixture(helper: Helper) -> StartWatching:
 @pytest.fixture(name="expect_event")
 def expect_event_fixture(helper: Helper) -> ExpectEvent:
     return helper.expect_event
+
+
+@pytest.fixture(name="expect_any_event")
+def expect_any_event_fixture(helper: Helper) -> ExpectAnyEvent:
+    return helper.expect_any_event
