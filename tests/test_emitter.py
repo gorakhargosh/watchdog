@@ -482,15 +482,15 @@ def test_move_nested_subdirectories(p: P, start_watching: StartWatching, expect_
     touch(p("dir2/dir3", "a"))
 
     if platform.is_linux():
-        expect_event(FileOpenedEvent(p("dir2/dir3", "a")))
+        expect_event(FileOpenedEvent(p("dir2", "dir3", "a")))
 
     if not platform.is_windows():
-        expect_event(FileAttribEvent(p("dir2/dir3", "a")))
+        expect_event(FileAttribEvent(p("dir2", "dir3", "a")))
 
     if platform.is_linux():
-        expect_event(FileClosedEvent(p("dir2/dir3/", "a")))
+        expect_event(FileClosedEvent(p("dir2", "dir3", "a")))
 
-    expect_event(DirModifiedEvent(p("dir2/dir3")))
+    expect_event(DirModifiedEvent(p("dir2", "dir3")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
