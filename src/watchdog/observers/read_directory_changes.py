@@ -44,9 +44,14 @@ class WindowsApiEmitter(EventEmitter):
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock = threading.Lock()
         self._whandle: HANDLE | None = None
+        self._watched_files: dict[str, str] = {}
 
     def on_thread_start(self) -> None:
-        self._whandle = get_directory_handle(self.watch.path)
+        watch_path = self.watch.path
+        if os.path.isfile(watch_path):
+            watch_path, basename = os.path.split(watch_path)
+            self._watched_files[self.watch.path] = basename
+        self._whandle = get_directory_handle(watch_path)
 
     if platform.python_implementation() == "PyPy":
 
@@ -71,7 +76,13 @@ class WindowsApiEmitter(EventEmitter):
         with self._lock:
             last_renamed_src_path = ""
             for winapi_event in winapi_events:
-                src_path = os.path.join(self.watch.path, winapi_event.src_path)
+                try:
+                    basename = self._watched_files[self.watch.path]  # Is a file?
+                    if basename != winapi_event.src_path:
+                        continue
+                    src_path = self.watch.path
+                except KeyError:
+                    src_path = os.path.join(self.watch.path, winapi_event.src_path)
 
                 if winapi_event.is_renamed_old:
                     last_renamed_src_path = src_path
