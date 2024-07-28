@@ -37,7 +37,7 @@ class EventDebouncer(BaseThread):
             super().stop()
             self._cond.notify()
 
-    def time_to_flush(self, started) -> bool:
+    def time_to_flush(self, started: float) -> bool:
         return time.monotonic() - started > self.debounce_interval_seconds
 
     def run(self):
