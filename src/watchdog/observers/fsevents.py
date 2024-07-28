@@ -29,7 +29,7 @@ import threading
 import time
 import unicodedata
 
-import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
+import _watchdog_fsevents as _fsevents
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -164,7 +164,7 @@ class FSEventsEmitter(EventEmitter):
         """Returns True if the event indicates a change in metadata."""
         return event.is_inode_meta_mod or event.is_xattr_mod or event.is_owner_change
 
-    def queue_events(self, timeout, events):  # type: ignore[override]
+    def queue_events(self, timeout, events):
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
                 flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
