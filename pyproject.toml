@@ -11,7 +11,7 @@ follow_imports = "skip"
 # Ensure full coverage
 #disallow_untyped_defs = true [TODO]
 disallow_incomplete_defs = true
-#disallow_untyped_calls = true [TODO]
+disallow_untyped_calls = true
 
 # Restrict dynamic typing (a little)
 # e.g. `x: List[Any]` or x: List`

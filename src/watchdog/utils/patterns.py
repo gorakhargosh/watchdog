@@ -14,24 +14,35 @@ from __future__ import annotations
 #   - `PurePosixPath` is always case-sensitive.
 # Reference: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.match
 from pathlib import PurePosixPath, PureWindowsPath
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Iterator
 
 
-def _match_path(path, included_patterns, excluded_patterns, case_sensitive):
+def _match_path(raw_path: str, included_patterns: set[str], excluded_patterns: set[str], case_sensitive: bool) -> bool:
     """Internal function same as :func:`match_path` but does not check arguments."""
+    path: PurePosixPath | PureWindowsPath
     if case_sensitive:
-        path = PurePosixPath(path)
+        path = PurePosixPath(raw_path)
     else:
         included_patterns = {pattern.lower() for pattern in included_patterns}
         excluded_patterns = {pattern.lower() for pattern in excluded_patterns}
-        path = PureWindowsPath(path)
+        path = PureWindowsPath(raw_path)
 
     common_patterns = included_patterns & excluded_patterns
     if common_patterns:
         raise ValueError(f"conflicting patterns `{common_patterns}` included and excluded")
+
     return any(path.match(p) for p in included_patterns) and not any(path.match(p) for p in excluded_patterns)
 
 
-def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
+def filter_paths(
+    paths: list[str],
+    included_patterns: list[str] | None = None,
+    excluded_patterns: list[str] | None = None,
+    case_sensitive: bool = True,
+) -> Iterator[str]:
     """Filters from a set of paths based on acceptable patterns and
     ignorable patterns.
     :param paths:
@@ -58,7 +69,12 @@ def filter_paths(paths, included_patterns=None, excluded_patterns=None, case_sen
             yield path
 
 
-def match_any_paths(paths, included_patterns=None, excluded_patterns=None, case_sensitive=True):
+def match_any_paths(
+    paths: list[str],
+    included_patterns: list[str] | None = None,
+    excluded_patterns: list[str] | None = None,
+    case_sensitive: bool = True,
+) -> bool:
     """Matches from a set of paths based on acceptable patterns and
     ignorable patterns.
     See ``filter_paths()`` for signature details.

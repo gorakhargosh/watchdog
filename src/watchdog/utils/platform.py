@@ -24,7 +24,7 @@ PLATFORM_DARWIN = "darwin"
 PLATFORM_UNKNOWN = "unknown"
 
 
-def get_platform_name():
+def get_platform_name() -> str:
     if sys.platform.startswith("win"):
         return PLATFORM_WINDOWS
 
@@ -43,17 +43,17 @@ def get_platform_name():
 __platform__ = get_platform_name()
 
 
-def is_linux():
+def is_linux() -> bool:
     return __platform__ == PLATFORM_LINUX
 
 
-def is_bsd():
+def is_bsd() -> bool:
     return __platform__ == PLATFORM_BSD
 
 
-def is_darwin():
+def is_darwin() -> bool:
     return __platform__ == PLATFORM_DARWIN
 
 
-def is_windows():
+def is_windows() -> bool:
     return __platform__ == PLATFORM_WINDOWS
