@@ -78,6 +78,12 @@ jobs:
               runs-on: [ubuntu-latest]
         exclude:
           - os:
+              matrix: macos
+            python: "pypy-3.8"
+          - os:
+              matrix: macos
+            python: "pypy-3.9"
+          - os:
               matrix: windows
             python: "pypy-3.8"
           - os:
