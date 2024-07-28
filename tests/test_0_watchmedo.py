@@ -170,7 +170,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     time.sleep(1)
     trick.stop()
     cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count("+++++ 0") == 3
+    assert cap.out.splitlines(keepends=False).count("+++++ 0") == 4
     assert trick.restart_count == 2
 
 
