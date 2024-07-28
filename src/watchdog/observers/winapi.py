@@ -104,25 +104,25 @@ class OVERLAPPED(ctypes.Structure):
 
 def _errcheck_bool(value, func, args):
     if not value:
-        raise ctypes.WinError()  # type: ignore[attr-defined]
+        raise ctypes.WinError()
     return args
 
 
 def _errcheck_handle(value, func, args):
     if not value:
-        raise ctypes.WinError()  # type: ignore[attr-defined]
+        raise ctypes.WinError()
     if value == INVALID_HANDLE_VALUE:
-        raise ctypes.WinError()  # type: ignore[attr-defined]
+        raise ctypes.WinError()
     return args
 
 
 def _errcheck_dword(value, func, args):
     if value == 0xFFFFFFFF:
-        raise ctypes.WinError()  # type: ignore[attr-defined]
+        raise ctypes.WinError()
     return args
 
 
-kernel32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
+kernel32 = ctypes.WinDLL("kernel32")
 
 ReadDirectoryChangesW = kernel32.ReadDirectoryChangesW
 ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
@@ -359,7 +359,7 @@ def read_directory_changes(handle, path, recursive):
             None,
         )
     except OSError as e:
-        if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
+        if e.winerror == ERROR_OPERATION_ABORTED:
             return [], 0
 
         # Handle the case when the root path is deleted

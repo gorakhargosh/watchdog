@@ -12,7 +12,7 @@ import pytest
 # in README.rst
 yaml = pytest.importorskip("yaml")
 
-from yaml.constructor import ConstructorError   # noqa: E402
+from yaml.constructor import ConstructorError  # noqa: E402
 from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402

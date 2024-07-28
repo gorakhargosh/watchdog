@@ -298,7 +298,7 @@ class AutoRestartTrick(Trick):
 if not platform.is_windows():
 
     def kill_process(pid, stop_signal):
-        os.killpg(os.getpgid(pid), stop_signal)
+        os.killpg(os.getpgid(pid), stop_signal)  # type: ignore[attr-defined]
 
 else:
 
