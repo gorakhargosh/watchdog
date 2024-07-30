@@ -324,10 +324,16 @@ class FSEventsObserver(BaseObserver):
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         super().__init__(FSEventsEmitter, timeout=timeout)
 
-    def schedule(self, event_handler, path, recursive=False, event_filter=None):
+    def schedule(self, event_handler, path, recursive=True, event_filter=None):
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
         if isinstance(path, str):
             path = unicodedata.normalize("NFC", path)
+
+        if not recursive:
+            import warnings
+
+            warnings.warn("FSEvents requires and assumes recursive=True")
+            recursive = True
 
         return super().schedule(event_handler, path, recursive=recursive, event_filter=event_filter)
