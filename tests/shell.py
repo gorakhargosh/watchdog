@@ -28,15 +28,6 @@ import shutil
 import tempfile
 import time
 
-# def tree(path='.', show_files=False):
-#    print(path)
-#    padding = ''
-#    for root, directories, filenames in os.walk(path):
-#        print(padding + os.path.basename(root) + os.path.sep)
-#        padding = padding + '   '
-#        for filename in filenames:
-#            print(padding + filename)
-
 
 def cd(path):
     os.chdir(path)
@@ -122,6 +113,11 @@ def msize(path):
     with open(path, "w") as w:
         w.write("0")
     os.utime(path, (0, 0))
+
+
+def chmod(path, mode):
+    """Change file mode bits."""
+    os.chmod(path, mode)
 
 
 def mount_tmpfs(path):

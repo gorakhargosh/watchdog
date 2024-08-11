@@ -39,8 +39,11 @@ class StartWatching(Protocol):
 
 class ExpectEvent(Protocol):
     def __call__(self, expected_event: FileSystemEvent, timeout: float = ...) -> None:
-        ...
 
+
+class ExpectAnyEvent(Protocol):
+    def __call__(self, *expected_events: FileSystemEvent, timeout: float = ...) -> None:
+        ...
 
 TestEventQueue = Queue[tuple[FileSystemEvent, ObservedWatch]]
 
@@ -82,6 +85,18 @@ class Helper:
         emitter.start()
 
         return emitter
+
+    def expect_any_event(self, *expected_events: FileSystemEvent, timeout: float = 2) -> None:
+        """Utility function to wait up to `timeout` seconds for any `expected_event`
+        for `path` to show up in the queue.
+
+        Provides some robustness for the otherwise flaky nature of asynchronous notifications.
+        """
+        try:
+            event = self.event_queue.get(timeout=timeout)[0]
+            assert event in expected_events
+        except Empty:
+            raise
 
     def expect_event(self, expected_event: FileSystemEvent, timeout: float = 2) -> None:
         """Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.

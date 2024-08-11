@@ -23,10 +23,12 @@ from queue import Empty
 import pytest
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
     FileCreatedEvent,
     FileDeletedEvent,
@@ -36,8 +38,8 @@ from watchdog.events import (
 )
 from watchdog.utils import platform
 
-from .shell import mkdir, mkfile, mv, rm, touch
-from .utils import ExpectEvent, P, StartWatching, TestEventQueue
+from .shell import chmod, mkdir, mkfile, mv, rm, touch
+from .utils import ExpectAnyEvent, ExpectEvent, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -55,7 +57,7 @@ def rerun_filter(exc, *args):
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+def test_create(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     start_watching()
     open(p("a"), "a").close()
 
@@ -65,35 +67,29 @@ def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching
         expect_event(DirModifiedEvent(p()))
 
     if platform.is_linux():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("a")
-        assert isinstance(event, FileOpenedEvent)
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("a")
-        assert isinstance(event, FileClosedEvent)
+        expect_event(FileOpenedEvent(p("a")))
+        expect_event(FileClosedEvent(p("a")))
 
 
 @pytest.mark.xfail(reason="known to be problematic")
 @pytest.mark.skipif(not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux")
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+def test_close(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     f_d = open(p("a"), "a")
     start_watching()
     f_d.close()
 
     # After file creation/open in append mode
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("a")
-    assert isinstance(event, FileClosedEvent)
+    expect_event(FileClosedEvent(p("a")))
 
-    event = event_queue.get(timeout=5)[0]
-    assert os.path.normpath(event.src_path) == os.path.normpath(p(""))
-    assert isinstance(event, DirModifiedEvent)
+    expect_event(DirModifiedEvent(os.path.normpath(p(""))))
 
     # After read-only, only IN_CLOSE_NOWRITE is emitted but not caught for now #747
     open(p("a"), "r").close()
 
-    assert event_queue.empty()
+    expect_event(FileOpenedEvent(p("a")))
+    with pytest.raises(Empty):
+        expect_event(FileOpenedEvent(p("a")))  # Fake event to check the queue is empty
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -101,24 +97,19 @@ def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching)
     platform.is_darwin() or platform.is_windows(),
     reason="Windows and macOS enforce proper encoding",
 )
-def test_create_wrong_encoding(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+def test_create_wrong_encoding(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     start_watching()
     open(p("a_\udce4"), "a").close()
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("a_\udce4")
-    assert isinstance(event, FileCreatedEvent)
+    expect_event(FileCreatedEvent(p("a_\udce4")))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert os.path.normpath(event.src_path) == os.path.normpath(p(""))
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(os.path.normpath(p(""))))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_delete(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkfile(p("a"))
-
     start_watching()
     rm(p("a"))
 
@@ -129,23 +120,21 @@ def test_delete(p: P, start_watching: StartWatching, expect_event: ExpectEvent) 
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_modify(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+def test_modify(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkfile(p("a"))
     start_watching()
 
     touch(p("a"))
 
-    if platform.is_linux():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("a")
-        assert isinstance(event, FileOpenedEvent)
-
-    expect_event(FileModifiedEvent(p("a")))
-
-    if platform.is_linux():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("a")
-        assert isinstance(event, FileClosedEvent)
+    if platform.is_windows():
+        expect_event(FileModifiedEvent(p("a")))
+    elif platform.is_linux():
+        expect_event(FileOpenedEvent(p("a")))
+        expect_event(FileAttribEvent(p("a")))
+        expect_event(FileClosedEvent(p("a")))
+    elif platform.is_bsd():
+        expect_event(FileModifiedEvent(p("a")))
+        expect_event(FileAttribEvent(p("a")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -157,14 +146,17 @@ def test_chmod(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -
     # allows setting the read-only flag.
     os.chmod(p("a"), stat.S_IREAD)
 
-    expect_event(FileModifiedEvent(p("a")))
+    if platform.is_windows():
+        expect_event(FileModifiedEvent(p("a")))
+    else:
+        expect_event(FileAttribEvent(p("a")))
 
     # Reset permissions to allow cleanup.
     os.chmod(p("a"), stat.S_IWRITE)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_move(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+def test_move(p: P, start_watching: StartWatching, expect_any_event: ExpectAnyEvent, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
@@ -172,31 +164,23 @@ def test_move(p: P, event_queue: TestEventQueue, start_watching: StartWatching, 
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    if not platform.is_windows():
-        expect_event(FileMovedEvent(p("dir1", "a"), p("dir2", "b")))
+    if platform.is_windows():
+        expect_event(FileDeletedEvent(p("dir1", "a")))
+        expect_event(FileCreatedEvent(p("dir2", "b")))
     else:
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("dir1", "a")
-        assert isinstance(event, FileDeletedEvent)
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("dir2", "b")
-        assert isinstance(event, FileCreatedEvent)
+        expect_event(FileMovedEvent(p("dir1", "a"), p("dir2", "b")))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path in [p("dir1"), p("dir2")]
-    assert isinstance(event, DirModifiedEvent)
+    expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path in [p("dir1"), p("dir2")]
-        assert isinstance(event, DirModifiedEvent)
+        expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_case_change(
     p: P,
-    event_queue: TestEventQueue,
     start_watching: StartWatching,
+    expect_any_event: ExpectAnyEvent,
     expect_event: ExpectEvent,
 ) -> None:
     mkdir(p("dir1"))
@@ -206,24 +190,16 @@ def test_case_change(
 
     mv(p("dir1", "file"), p("dir2", "FILE"))
 
-    if not platform.is_windows():
-        expect_event(FileMovedEvent(p("dir1", "file"), p("dir2", "FILE")))
+    if platform.is_windows():
+        expect_event(FileDeletedEvent(p("dir1", "file")))
+        expect_event(FileCreatedEvent(p("dir2", "FILE")))
     else:
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("dir1", "file")
-        assert isinstance(event, FileDeletedEvent)
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("dir2", "FILE")
-        assert isinstance(event, FileCreatedEvent)
+        expect_event(FileMovedEvent(p("dir1", "file"), p("dir2", "FILE")))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path in [p("dir1"), p("dir2")]
-    assert isinstance(event, DirModifiedEvent)
+    expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path in [p("dir1"), p("dir2")]
-        assert isinstance(event, DirModifiedEvent)
+        expect_any_event(DirModifiedEvent(p("dir1")), DirModifiedEvent(p("dir2")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -242,17 +218,16 @@ def test_move_to(p: P, start_watching: StartWatching, expect_event: ExpectEvent)
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
-def test_move_to_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+def test_move_to_full(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
     start_watching(p("dir2"), use_full_emitter=True)
+
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, FileMovedEvent)
-    assert event.dest_path == p("dir2", "b")
-    assert event.src_path == ""  # Should be blank since the path was not watched
+    # `src_path` should be blank since the path was not watched
+    expect_event(FileMovedEvent("", p("dir2", "b")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -263,7 +238,6 @@ def test_move_from(p: P, start_watching: StartWatching, expect_event: ExpectEven
     start_watching(p("dir1"))
 
     mv(p("dir1", "a"), p("dir2", "b"))
-
     expect_event(FileDeletedEvent(p("dir1", "a")))
 
     if not platform.is_windows():
@@ -271,17 +245,16 @@ def test_move_from(p: P, start_watching: StartWatching, expect_event: ExpectEven
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
-def test_move_from_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+def test_move_from_full(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
     start_watching(p("dir1"), use_full_emitter=True)
+
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    event = event_queue.get(timeout=5)[0]
-    assert isinstance(event, FileMovedEvent)
-    assert event.src_path == p("dir1", "a")
-    assert event.dest_path == ""  # Should be blank since path not watched
+    # `dest_path` should be blank since the path was not watched
+    expect_event(FileMovedEvent(p("dir1", "a"), ""))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -367,7 +340,7 @@ def test_passing_unicode_should_give_unicode(p: P, event_queue: TestEventQueue, 
 
 @pytest.mark.skipif(
     platform.is_windows(),
-    reason="Windows ReadDirectoryChangesW supports only" " unicode for paths.",
+    reason="Windows ReadDirectoryChangesW supports only unicode for paths.",
 )
 def test_passing_bytes_should_give_bytes(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     start_watching(p().encode())
@@ -377,29 +350,20 @@ def test_passing_bytes_should_give_bytes(p: P, event_queue: TestEventQueue, star
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_recursive_on(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+def test_recursive_on(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1", "dir2", "dir3"), True)
     start_watching()
     touch(p("dir1", "dir2", "dir3", "a"))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("dir1", "dir2", "dir3", "a")
-    assert isinstance(event, FileCreatedEvent)
+    expect_event(FileCreatedEvent(p("dir1", "dir2", "dir3", "a")))
 
     if not platform.is_windows():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("dir1", "dir2", "dir3")
-        assert isinstance(event, DirModifiedEvent)
-
+        expect_event(DirModifiedEvent(p("dir1", "dir2", "dir3")))
         if platform.is_linux():
-            event = event_queue.get(timeout=5)[0]
-            assert event.src_path == p("dir1", "dir2", "dir3", "a")
-            assert isinstance(event, FileOpenedEvent)
-
-        if not platform.is_bsd():
-            event = event_queue.get(timeout=5)[0]
-            assert event.src_path == p("dir1", "dir2", "dir3", "a")
-            assert isinstance(event, FileModifiedEvent)
+            expect_event(FileOpenedEvent(p("dir1", "dir2", "dir3", "a")))
+        expect_event(FileAttribEvent(p("dir1", "dir2", "dir3", "a")))
+        if platform.is_linux():
+            expect_event(FileClosedEvent(p("dir1", "dir2", "dir3", "a")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -421,9 +385,9 @@ def test_recursive_off(
     if not platform.is_windows():
         expect_event(DirModifiedEvent(p()))
 
-        if platform.is_linux():
-            expect_event(FileOpenedEvent(p("b")))
-            expect_event(FileClosedEvent(p("b")))
+    if platform.is_linux():
+        expect_event(FileOpenedEvent(p("b")))
+        expect_event(FileClosedEvent(p("b")))
 
     # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
     if platform.is_darwin():
@@ -499,12 +463,7 @@ def test_renaming_top_level_directory(
 
 
 @pytest.mark.skipif(platform.is_windows(), reason="Windows create another set of events for this test")
-def test_move_nested_subdirectories(
-    p: P,
-    event_queue: TestEventQueue,
-    start_watching: StartWatching,
-    expect_event: ExpectEvent,
-) -> None:
+def test_move_nested_subdirectories(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
     start_watching()
@@ -513,29 +472,25 @@ def test_move_nested_subdirectories(
     expect_event(DirMovedEvent(p("dir1", "dir2"), p("dir2")))
     expect_event(DirModifiedEvent(p("dir1")))
     expect_event(DirModifiedEvent(p()))
-
     expect_event(DirMovedEvent(p("dir1", "dir2", "dir3"), p("dir2", "dir3"), is_synthetic=True))
     expect_event(FileMovedEvent(p("dir1", "dir2", "dir3", "a"), p("dir2", "dir3", "a"), is_synthetic=True))
 
     if platform.is_bsd():
-        event = event_queue.get(timeout=5)[0]
-        assert p(event.src_path) == p()
-        assert isinstance(event, DirModifiedEvent)
-
-        event = event_queue.get(timeout=5)[0]
-        assert p(event.src_path) == p("dir1")
-        assert isinstance(event, DirModifiedEvent)
+        expect_event(DirModifiedEvent(p()))
+        expect_event(DirModifiedEvent(p("dir1")))
 
     touch(p("dir2/dir3", "a"))
 
     if platform.is_linux():
-        event = event_queue.get(timeout=5)[0]
-        assert event.src_path == p("dir2/dir3", "a")
-        assert isinstance(event, FileOpenedEvent)
+        expect_event(FileOpenedEvent(p("dir2", "dir3", "a")))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("dir2/dir3", "a")
-    assert isinstance(event, FileModifiedEvent)
+    if not platform.is_windows():
+        expect_event(FileAttribEvent(p("dir2", "dir3", "a")))
+
+    if platform.is_linux():
+        expect_event(FileClosedEvent(p("dir2", "dir3", "a")))
+
+    expect_event(DirModifiedEvent(p("dir2", "dir3")))
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
@@ -547,27 +502,17 @@ def test_move_nested_subdirectories_on_windows(
     p: P,
     event_queue: TestEventQueue,
     start_watching: StartWatching,
+    expect_event: ExpectEvent,
 ) -> None:
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
     start_watching(p(""))
     mv(p("dir1/dir2"), p("dir2"))
 
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("dir1", "dir2")
-    assert isinstance(event, FileDeletedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("dir2")
-    assert isinstance(event, DirCreatedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("dir2", "dir3")
-    assert isinstance(event, DirCreatedEvent)
-
-    event = event_queue.get(timeout=5)[0]
-    assert event.src_path == p("dir2", "dir3", "a")
-    assert isinstance(event, FileCreatedEvent)
+    expect_event(FileDeletedEvent(p("dir1", "dir2")))
+    expect_event(DirCreatedEvent(p("dir2")))
+    expect_event(DirCreatedEvent(p("dir2", "dir3"), is_synthetic=True))
+    expect_event(FileCreatedEvent(p("dir2", "dir3", "a"), is_synthetic=True))
 
     touch(p("dir2/dir3", "a"))
 
@@ -577,7 +522,7 @@ def test_move_nested_subdirectories_on_windows(
         if event_queue.empty():
             break
 
-    assert all([isinstance(e, (FileModifiedEvent, DirModifiedEvent)) for e in events])
+    assert all(isinstance(e, (FileModifiedEvent, DirModifiedEvent)) for e in events)
 
     for event in events:
         if isinstance(event, FileModifiedEvent):
@@ -607,7 +552,10 @@ def test_file_lifecyle(p: P, start_watching: StartWatching, expect_event: Expect
         expect_event(DirModifiedEvent(p()))
         expect_event(FileOpenedEvent(p("a")))
 
-    expect_event(FileModifiedEvent(p("a")))
+    if platform.is_windows():
+        expect_event(FileModifiedEvent(p("a")))
+    else:
+        expect_event(FileAttribEvent(p("a")))
 
     if platform.is_linux():
         expect_event(FileClosedEvent(p("a")))
@@ -623,3 +571,21 @@ def test_file_lifecyle(p: P, start_watching: StartWatching, expect_event: Expect
 
     if not platform.is_windows():
         expect_event(DirModifiedEvent(p()))
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="FileAttribEvent isn't supported in Windows")
+def test_chmod_file(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+    mkfile(p("newfile"))
+    start_watching()
+
+    chmod(p("newfile"), 777)
+    expect_event(FileAttribEvent(p("newfile")))
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="DirAttribEvent isn't supported in Windows")
+def test_chmod_dir(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
+    mkdir(p("dir1"))
+    start_watching()
+
+    chmod(p("dir1"), 777)
+    expect_event(DirAttribEvent(p("dir1")))

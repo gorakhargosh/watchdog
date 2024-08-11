@@ -31,10 +31,12 @@ import unicodedata
 import _watchdog_fsevents as _fsevents
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -128,6 +130,10 @@ class FSEventsEmitter(EventEmitter):
         cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
         self.queue_event(cls(src_path))
 
+    def _queue_attrib_event(self, event, src_path, dirname):
+        cls = DirAttribEvent if event.is_directory else FileAttribEvent
+        self.queue_event(cls(src_path))
+
     def _queue_renamed_event(self, src_event, src_path, dst_path, src_dirname, dst_dirname):
         cls = DirMovedEvent if src_event.is_directory else FileMovedEvent
         dst_path = self._encode_path(dst_path)
@@ -208,8 +214,11 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or self._is_meta_mod(event):
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
+
+                elif self._is_meta_mod(event):
+                    self._queue_attrib_event(event, src_path, src_dirname)
 
                 self._queue_deleted_event(event, src_path, src_dirname)
                 self._fs_view.discard(event.inode)
@@ -220,10 +229,13 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or self._is_meta_mod(event):
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
 
-                if event.is_renamed:
+                elif self._is_meta_mod(event):
+                    self._queue_attrib_event(event, src_path, src_dirname)
+
+                elif event.is_renamed:
                     # Check if we have a corresponding destination event in the watched path.
                     dst_event = next(
                         iter(e for e in events if e.is_renamed and e.inode == event.inode),
@@ -247,10 +259,13 @@ class FSEventsEmitter(EventEmitter):
 
                         events.remove(dst_event)
 
-                        if dst_event.is_modified or self._is_meta_mod(dst_event):
+                        if dst_event.is_modified:
                             self._queue_modified_event(dst_event, dst_path, dst_dirname)
 
-                        if dst_event.is_removed:
+                        elif self._is_meta_mod(dst_event):
+                            self._queue_attrib_event(dst_event, dst_path, dst_dirname)
+
+                        elif dst_event.is_removed:
                             self._queue_deleted_event(dst_event, dst_path, dst_dirname)
                             self._fs_view.discard(dst_event.inode)
 
@@ -272,7 +287,7 @@ class FSEventsEmitter(EventEmitter):
                         # Skip further coalesced processing.
                         continue
 
-                if event.is_removed:
+                elif event.is_removed:
                     # Won't occur together with renamed.
                     self._queue_deleted_event(event, src_path, src_dirname)
                     self._fs_view.discard(event.inode)

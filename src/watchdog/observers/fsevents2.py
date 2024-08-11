@@ -57,10 +57,12 @@ from FSEvents import (
 )
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -191,6 +193,7 @@ class FSEventsEmitter(EventEmitter):
         events = self._fsevents.read_events()
         if events is None:
             return
+
         i = 0
         while i < len(events):
             event = events[i]
@@ -222,8 +225,12 @@ class FSEventsEmitter(EventEmitter):
                     self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
                 # TODO: generate events for tree
 
-            elif event.is_modified or event.is_inode_meta_mod or event.is_xattr_mod:
+            elif event.is_modified:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                self.queue_event(cls(event.path))
+
+            elif event.is_inode_meta_mod or event.is_xattr_mod:
+                cls = DirAttribEvent if event.is_directory else FileAttribEvent
                 self.queue_event(cls(event.path))
 
             elif event.is_created:
@@ -235,6 +242,7 @@ class FSEventsEmitter(EventEmitter):
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(event.path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(event.path)))
+
             i += 1
 
 
