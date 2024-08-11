@@ -45,10 +45,7 @@ def test_dispatch():
     ignore_regexes = [r".*\.pyc"]
 
     def assert_regexes(handler, event):
-        if hasattr(event, "dest_path"):
-            paths = [event.src_path, event.dest_path]
-        else:
-            paths = [event.src_path]
+        paths = [event.src_path, event.dest_path] if hasattr(event, "dest_path") else [event.src_path]
         filtered_paths = set()
         for p in paths:
             if any(r.match(p) for r in handler.regexes):
@@ -141,7 +138,7 @@ def test_dispatch():
             assert_regexes(self, event)
 
     no_dirs_handler = TestableEventHandler(regexes=regexes, ignore_regexes=ignore_regexes, ignore_directories=True)
-    handler = TestableEventHandler(regexes=regexes, ignore_regexes=ignore_regexes, ignore_directories=False)
+    handler = TestableEventHandler(regexes=regexes, ignore_regexes=ignore_regexes)
 
     for event in all_events:
         no_dirs_handler.dispatch(event)
@@ -150,8 +147,12 @@ def test_dispatch():
 
 
 def test_handler():
-    handler1 = RegexMatchingEventHandler(g_allowed_regexes, g_ignore_regexes, True)
-    handler2 = RegexMatchingEventHandler(g_allowed_regexes, g_ignore_regexes, False)
+    handler1 = RegexMatchingEventHandler(
+        regexes=g_allowed_regexes,
+        ignore_regexes=g_ignore_regexes,
+        ignore_directories=True,
+    )
+    handler2 = RegexMatchingEventHandler(regexes=g_allowed_regexes, ignore_regexes=g_ignore_regexes)
     assert [r.pattern for r in handler1.regexes] == g_allowed_regexes
     assert [r.pattern for r in handler1.ignore_regexes] == g_ignore_regexes
     assert handler1.ignore_directories
@@ -159,31 +160,47 @@ def test_handler():
 
 
 def test_ignore_directories():
-    handler1 = RegexMatchingEventHandler(g_allowed_regexes, g_ignore_regexes, True)
-    handler2 = RegexMatchingEventHandler(g_allowed_regexes, g_ignore_regexes, False)
+    handler1 = RegexMatchingEventHandler(
+        regexes=g_allowed_regexes,
+        ignore_regexes=g_ignore_regexes,
+        ignore_directories=True,
+    )
+    handler2 = RegexMatchingEventHandler(regexes=g_allowed_regexes, ignore_regexes=g_ignore_regexes)
     assert handler1.ignore_directories
     assert not handler2.ignore_directories
 
 
 def test_ignore_regexes():
-    handler1 = RegexMatchingEventHandler(g_allowed_regexes, g_ignore_regexes, True)
+    handler1 = RegexMatchingEventHandler(
+        regexes=g_allowed_regexes,
+        ignore_regexes=g_ignore_regexes,
+        ignore_directories=True,
+    )
     assert [r.pattern for r in handler1.ignore_regexes] == g_ignore_regexes
 
 
 def test_regexes():
-    handler1 = RegexMatchingEventHandler(g_allowed_regexes, g_ignore_regexes, True)
+    handler1 = RegexMatchingEventHandler(
+        regexes=g_allowed_regexes,
+        ignore_regexes=g_ignore_regexes,
+        ignore_directories=True,
+    )
     assert [r.pattern for r in handler1.regexes] == g_allowed_regexes
 
 
 def test_str_regexes():
-    handler1 = RegexMatchingEventHandler(g_allowed_str_regexes, g_ignore_regexes, True)
+    handler1 = RegexMatchingEventHandler(
+        regexes=g_allowed_str_regexes,
+        ignore_regexes=g_ignore_regexes,
+        case_sensitive=True,
+    )
     assert [r.pattern for r in handler1.regexes] == [g_allowed_str_regexes]
 
 
 def test_logging_event_handler_dispatch():
     class _TestableEventHandler(LoggingEventHandler):
         def on_any_event(self, event):
-            assert True
+            pass
 
         def on_modified(self, event):
             super().on_modified(event)

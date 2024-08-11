@@ -408,8 +408,8 @@ class KqueueEmitter(EventEmitter):
     :param stat: stat function. See ``os.stat`` for details.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None, stat=os.stat):
-        super().__init__(event_queue, watch, timeout, event_filter)
+    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None, stat=os.stat):
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
 
         self._kq = select.kqueue()
         self._lock = threading.RLock()
@@ -442,13 +442,6 @@ class KqueueEmitter(EventEmitter):
                 # and then quickly deleted before we could open
                 # a descriptor for it. Therefore, simply queue a sequence
                 # of created and deleted events for the path.
-                # path = absolute_path(path)
-                # if is_directory:
-                #    self.queue_event(DirCreatedEvent(path))
-                #    self.queue_event(DirDeletedEvent(path))
-                # else:
-                #    self.queue_event(FileCreatedEvent(path))
-                #    self.queue_event(FileDeletedEvent(path))
 
                 # TODO: We could simply ignore these files.
                 # Locked files cause the python process to die with

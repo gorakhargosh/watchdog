@@ -4,29 +4,27 @@
 from __future__ import annotations
 
 import pytest
-
 from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
 
 
 @pytest.mark.parametrize(
-    "input, included_patterns, excluded_patterns, case_sensitive, expected",
+    ("raw_path", "included_patterns", "excluded_patterns", "case_sensitive", "expected"),
     [
-        ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, True, True),
         ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, True, True),
         ("/users/gorakhargosh/", {"*.py"}, {"*.txt"}, False, False),
         ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, False, ValueError),
     ],
 )
-def test_match_path(input, included_patterns, excluded_patterns, case_sensitive, expected):
-    if expected == ValueError:
+def test_match_path(raw_path, included_patterns, excluded_patterns, case_sensitive, expected):
+    if expected is ValueError:
         with pytest.raises(expected):
-            _match_path(input, included_patterns, excluded_patterns, case_sensitive)
+            _match_path(raw_path, included_patterns, excluded_patterns, case_sensitive=case_sensitive)
     else:
-        assert _match_path(input, included_patterns, excluded_patterns, case_sensitive) is expected
+        assert _match_path(raw_path, included_patterns, excluded_patterns, case_sensitive=case_sensitive) is expected
 
 
 @pytest.mark.parametrize(
-    "included_patterns, excluded_patterns, case_sensitive, expected",
+    ("included_patterns", "excluded_patterns", "case_sensitive", "expected"),
     [
         (None, None, True, None),
         (None, None, False, None),
@@ -45,12 +43,19 @@ def test_filter_paths(included_patterns, excluded_patterns, case_sensitive, expe
         "/etc/pdnsd.conf",
         "/usr/local/bin/python",
     }
-    actual = set(filter_paths(pathnames, included_patterns, excluded_patterns, case_sensitive))
+    actual = set(
+        filter_paths(
+            pathnames,
+            included_patterns=included_patterns,
+            excluded_patterns=excluded_patterns,
+            case_sensitive=case_sensitive,
+        )
+    )
     assert actual == expected if expected else pathnames
 
 
 @pytest.mark.parametrize(
-    "included_patterns, excluded_patterns, case_sensitive, expected",
+    ("included_patterns", "excluded_patterns", "case_sensitive", "expected"),
     [
         (None, None, True, True),
         (None, None, False, True),
@@ -66,4 +71,12 @@ def test_match_any_paths(included_patterns, excluded_patterns, case_sensitive, e
         "/etc/pdnsd.conf",
         "/usr/local/bin/python",
     }
-    assert match_any_paths(pathnames, included_patterns, excluded_patterns, case_sensitive) == expected
+    assert (
+        match_any_paths(
+            pathnames,
+            included_patterns=included_patterns,
+            excluded_patterns=excluded_patterns,
+            case_sensitive=case_sensitive,
+        )
+        == expected
+    )

@@ -12,13 +12,12 @@ import pytest
 # in README.rst
 yaml = pytest.importorskip("yaml")
 
-from yaml.constructor import ConstructorError  # noqa: E402
-from yaml.scanner import ScannerError  # noqa: E402
-
 from watchdog import watchmedo  # noqa: E402
 from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, ShellCommandTrick  # noqa: E402
-from watchdog.utils import WatchdogShutdown, platform  # noqa: E402
+from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
+from yaml.constructor import ConstructorError  # noqa: E402
+from yaml.scanner import ScannerError  # noqa: E402
 
 
 def test_load_config_valid(tmpdir):
@@ -76,20 +75,19 @@ def test_kill_auto_restart(tmpdir, capfd):
 
 def test_shell_command_wait_for_completion(tmpdir, capfd):
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join([sys.executable, script])
+    command = f"{sys.executable} {script}"
     trick = ShellCommandTrick(command, wait_for_process=True)
     assert not trick.is_process_running()
     start_time = time.monotonic()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     elapsed = time.monotonic() - start_time
-    print(capfd.readouterr())
     assert not trick.is_process_running()
     assert elapsed >= 1
 
 
 def test_shell_command_subprocess_termination_nowait(tmpdir):
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join([sys.executable, script])
+    command = f"{sys.executable} {script}"
     trick = ShellCommandTrick(command, wait_for_process=False)
     assert not trick.is_process_running()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
@@ -103,7 +101,7 @@ def test_shell_command_subprocess_termination_not_happening_on_file_opened_event
 ):
     # FIXME: see issue #949, and find a way to better handle that scenario
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join([sys.executable, script])
+    command = f"{sys.executable} {script}"
     trick = ShellCommandTrick(command, wait_for_process=False)
     assert not trick.is_process_running()
     trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
@@ -257,7 +255,7 @@ def test_valid_verbosity(cmdline, verbosity):
     (verbosity_cmdline_args, expected_log_level) = verbosity
     cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
     args = watchmedo.cli.parse_args(cmd)
-    log_level = watchmedo._get_log_level_from_args(args)
+    log_level = watchmedo._get_log_level_from_args(args)  # noqa: SLF001
     assert log_level == expected_log_level
 
 
@@ -280,9 +278,9 @@ def test_valid_verbosity(cmdline, verbosity):
 )
 def test_invalid_verbosity(cmdline, verbosity_cmdline_args):
     cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
-    with pytest.raises((watchmedo.LogLevelException, SystemExit)):
+    with pytest.raises((watchmedo.LogLevelError, SystemExit)):  # noqa: PT012
         args = watchmedo.cli.parse_args(cmd)
-        watchmedo._get_log_level_from_args(args)
+        watchmedo._get_log_level_from_args(args)  # noqa: SLF001
 
 
 @pytest.mark.parametrize("command", ["tricks-from", "tricks"])
@@ -302,7 +300,7 @@ tricks:
     def mocked_sleep(_):
         nonlocal checkpoint
         checkpoint = True
-        raise WatchdogShutdown()
+        raise WatchdogShutdownError
 
     with patch("time.sleep", mocked_sleep):
         watchmedo.tricks_from(args)

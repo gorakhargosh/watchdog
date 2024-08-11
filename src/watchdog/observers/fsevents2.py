@@ -71,7 +71,7 @@ from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIM
 logger = logging.getLogger(__name__)
 
 message = "watchdog.observers.fsevents2 is deprecated and will be removed in a future release."
-warnings.warn(message, category=DeprecationWarning)
+warnings.warn(message, category=DeprecationWarning, stacklevel=1)
 logger.warning(message)
 
 
@@ -99,7 +99,8 @@ class FSEventsQueue(Thread):
             kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents,
         )
         if self._stream_ref is None:
-            raise OSError("FSEvents. Could not create stream.")
+            error = "FSEvents. Could not create stream."
+            raise OSError(error)
 
     def run(self):
         pool = AppKit.NSAutoreleasePool.alloc().init()
@@ -108,7 +109,8 @@ class FSEventsQueue(Thread):
         if not FSEventStreamStart(self._stream_ref):
             FSEventStreamInvalidate(self._stream_ref)
             FSEventStreamRelease(self._stream_ref)
-            raise OSError("FSEvents. Could not start stream.")
+            error = "FSEvents. Could not start stream."
+            raise OSError(error)
 
         CFRunLoopRun()
         FSEventStreamStop(self._stream_ref)
@@ -178,8 +180,8 @@ class NativeEvent:
 class FSEventsEmitter(EventEmitter):
     """FSEvents based event emitter. Handles conversion of native events."""
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
-        super().__init__(event_queue, watch, timeout, event_filter)
+    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._fsevents = FSEventsQueue(watch.path)
         self._fsevents.start()
 

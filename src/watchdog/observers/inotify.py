@@ -111,22 +111,22 @@ class InotifyEmitter(EventEmitter):
         Iterable[:class:`watchdog.events.FileSystemEvent`] | None
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
-        super().__init__(event_queue, watch, timeout, event_filter)
+    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock = threading.Lock()
         self._inotify = None
 
     def on_thread_start(self):
         path = os.fsencode(self.watch.path)
         event_mask = self.get_event_mask_from_filter()
-        self._inotify = InotifyBuffer(path, self.watch.is_recursive, event_mask)
+        self._inotify = InotifyBuffer(path, recursive=self.watch.is_recursive, event_mask=event_mask)
 
     def on_thread_stop(self):
         if self._inotify:
             self._inotify.close()
             self._inotify = None
 
-    def queue_events(self, timeout, full_events=False):
+    def queue_events(self, timeout, *, full_events=False):
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         if self._inotify is None:
@@ -188,9 +188,6 @@ class InotifyEmitter(EventEmitter):
             elif event.is_open and not event.is_directory:
                 cls = FileOpenedEvent
                 self.queue_event(cls(src_path))
-            # elif event.is_close_nowrite and not event.is_directory:
-            #     cls = FileClosedEvent
-            #     self.queue_event(cls(src_path))
             elif event.is_delete_self and src_path == self.watch.path:
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(src_path))
@@ -254,10 +251,10 @@ class InotifyFullEmitter(InotifyEmitter):
 
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
-        super().__init__(event_queue, watch, timeout, event_filter)
+    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
 
-    def queue_events(self, timeout, events=True):
+    def queue_events(self, timeout, *, events=True):
         InotifyEmitter.queue_events(self, timeout, full_events=events)
 
 
@@ -266,6 +263,6 @@ class InotifyObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
+    def __init__(self, *, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
         super().__init__(cls, timeout=timeout)

@@ -38,28 +38,20 @@ extend-select = ["ALL"]
 ignore = [
     "ARG",
     "ANN",  # TODO
-    "ANN002",
-    "ANN003",
-    "ANN401",
-    "B006",
     "B023",  # TODO
-    "B028",
     "BLE001",
     "C90",
-    "COM",
+    "COM812",
     "D",
-    "EM",
-    "ERA",
-    "FBT",
+    "EM101",
+    "EM102",
     "FIX",
     "ISC001",
-    "N818",
-    "PERF203",  # TODO
+    "PERF203",
     "PL",
     "PTH",  # TODO?
     "S",
     "TD",
-    "TRY003",
 ]
 fixable = ["ALL"]
 

@@ -33,7 +33,7 @@ from io import StringIO
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
-from watchdog.utils import WatchdogShutdown, load_class, platform
+from watchdog.utils import WatchdogShutdownError, load_class, platform
 from watchdog.version import VERSION_STRING
 
 if TYPE_CHECKING:
@@ -92,7 +92,7 @@ def argument(*name_or_flags: str, **kwargs: Any) -> Argument:
 def command(
     args: list[Argument],
     parent: _SubParsersAction[ArgumentParser] = subparsers,
-    cmd_aliases: list[str] = [],
+    cmd_aliases: list[str] | None = None,
 ) -> Callable:
     """Decorator to define a new command in a sanity-preserving way.
     The function will be stored in the ``func`` variable when the parser
@@ -106,7 +106,7 @@ def command(
     def decorator(func: Callable) -> Callable:
         name = func.__name__.replace("_", "-")
         desc = dedent(func.__doc__ or "")
-        parser = parent.add_parser(name, aliases=cmd_aliases, description=desc, formatter_class=HelpFormatter)
+        parser = parent.add_parser(name, aliases=cmd_aliases or [], description=desc, formatter_class=HelpFormatter)
         command_parsers[name] = parser
         verbosity_group = parser.add_mutually_exclusive_group()
         verbosity_group.add_argument("-q", "--quiet", dest="verbosity", action="append_const", const=-1)
@@ -186,7 +186,7 @@ def observe_with(observer, event_handler, pathnames, recursive):
     try:
         while True:
             time.sleep(1)
-    except WatchdogShutdown:
+    except WatchdogShutdownError:
         observer.stop()
     observer.join()
 
@@ -209,7 +209,7 @@ def schedule_tricks(observer, tricks, pathname, recursive):
             trick_cls = load_class(name)
             handler = trick_cls(**value)
             trick_pathname = getattr(handler, "source_directory", None) or pathname
-            observer.schedule(handler, trick_pathname, recursive)
+            observer.schedule(handler, trick_pathname, recursive=recursive)
 
 
 @command(
@@ -288,7 +288,8 @@ def tricks_from(args):
         try:
             tricks = config[CONFIG_KEY_TRICKS]
         except KeyError as e:
-            raise KeyError(f"No {CONFIG_KEY_TRICKS!r} key specified in {tricks_file!r}.") from e
+            error = f"No {CONFIG_KEY_TRICKS!r} key specified in {tricks_file!r}."
+            raise KeyError(error) from e
 
         if CONFIG_KEY_PYTHON_PATH in config:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
@@ -301,7 +302,7 @@ def tricks_from(args):
     try:
         while True:
             time.sleep(1)
-    except WatchdogShutdown:
+    except WatchdogShutdownError:
         for o in observers:
             o.unschedule_all()
             o.stop()
@@ -572,7 +573,7 @@ def shell_command(args):
 
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     handler = ShellCommandTrick(
-        shell_command=args.command,
+        args.command,
         patterns=patterns,
         ignore_patterns=ignore_patterns,
         ignore_directories=args.ignore_directories,
@@ -703,7 +704,7 @@ def auto_restart(args):
         # Neuter all signals so that we don't attempt a double shutdown
         for signum in termination_signals:
             signal.signal(signum, signal.SIG_IGN)
-        raise WatchdogShutdown
+        raise WatchdogShutdownError
 
     for signum in termination_signals:
         signal.signal(signum, handler_termination_signal)
@@ -725,22 +726,24 @@ def auto_restart(args):
     observer = Observer(timeout=args.timeout)
     try:
         observe_with(observer, handler, args.directories, args.recursive)
-    except WatchdogShutdown:
+    except WatchdogShutdownError:
         pass
     finally:
         handler.stop()
 
 
-class LogLevelException(Exception):
+class LogLevelError(Exception):
     pass
 
 
 def _get_log_level_from_args(args: Namespace) -> str:
     verbosity = sum(args.verbosity or [])
     if verbosity < -1:
-        raise LogLevelException("-q/--quiet may be specified only once.")
+        error = "-q/--quiet may be specified only once."
+        raise LogLevelError(error)
     if verbosity > 2:
-        raise LogLevelException("-v/--verbose may be specified up to 2 times.")
+        error = "-v/--verbose may be specified up to 2 times."
+        raise LogLevelError(error)
     return ["ERROR", "WARNING", "INFO", "DEBUG"][1 + verbosity]
 
 
@@ -753,7 +756,7 @@ def main() -> int:
 
     try:
         log_level = _get_log_level_from_args(args)
-    except LogLevelException as exc:
+    except LogLevelError as exc:
         print(f"Error: {exc.args[0]}", file=sys.stderr)  # noqa:T201
         command_parsers[args.top_command].print_help()
         return 1

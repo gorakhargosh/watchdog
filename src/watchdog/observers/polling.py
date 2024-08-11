@@ -60,17 +60,18 @@ class PollingEmitter(EventEmitter):
         self,
         event_queue,
         watch,
+        *,
         timeout=DEFAULT_EMITTER_TIMEOUT,
         event_filter=None,
         stat=os.stat,
         listdir=os.scandir,
     ):
-        super().__init__(event_queue, watch, timeout, event_filter)
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._snapshot: DirectorySnapshot = EmptyDirectorySnapshot()
         self._lock = threading.Lock()
         self._take_snapshot = lambda: DirectorySnapshot(
             self.watch.path,
-            self.watch.is_recursive,
+            recursive=self.watch.is_recursive,
             stat=stat,
             listdir=listdir,
         )
@@ -126,7 +127,7 @@ class PollingObserver(BaseObserver):
     system changes.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, *, timeout=DEFAULT_OBSERVER_TIMEOUT):
         super().__init__(PollingEmitter, timeout=timeout)
 
 

@@ -20,7 +20,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-def _match_path(raw_path: str, included_patterns: set[str], excluded_patterns: set[str], case_sensitive: bool) -> bool:
+def _match_path(
+    raw_path: str,
+    included_patterns: set[str],
+    excluded_patterns: set[str],
+    *,
+    case_sensitive: bool,
+) -> bool:
     """Internal function same as :func:`match_path` but does not check arguments."""
     path: PurePosixPath | PureWindowsPath
     if case_sensitive:
@@ -32,13 +38,15 @@ def _match_path(raw_path: str, included_patterns: set[str], excluded_patterns: s
 
     common_patterns = included_patterns & excluded_patterns
     if common_patterns:
-        raise ValueError(f"conflicting patterns `{common_patterns}` included and excluded")
+        error = f"conflicting patterns `{common_patterns}` included and excluded"
+        raise ValueError(error)
 
     return any(path.match(p) for p in included_patterns) and not any(path.match(p) for p in excluded_patterns)
 
 
 def filter_paths(
     paths: list[str],
+    *,
     included_patterns: list[str] | None = None,
     excluded_patterns: list[str] | None = None,
     case_sensitive: bool = True,
@@ -65,12 +73,13 @@ def filter_paths(
     excluded = set([] if excluded_patterns is None else excluded_patterns)
 
     for path in paths:
-        if _match_path(path, included, excluded, case_sensitive):
+        if _match_path(path, included, excluded, case_sensitive=case_sensitive):
             yield path
 
 
 def match_any_paths(
     paths: list[str],
+    *,
     included_patterns: list[str] | None = None,
     excluded_patterns: list[str] | None = None,
     case_sensitive: bool = True,
@@ -85,5 +94,5 @@ def match_any_paths(
             included_patterns=included_patterns,
             excluded_patterns=excluded_patterns,
             case_sensitive=case_sensitive,
-        )
+        ),
     )

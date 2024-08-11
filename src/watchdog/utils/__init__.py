@@ -34,11 +34,11 @@ import sys
 import threading
 
 
-class UnsupportedLibc(Exception):
+class UnsupportedLibcError(Exception):
     pass
 
 
-class WatchdogShutdown(Exception):
+class WatchdogShutdownError(Exception):
     """Semantic exception used to signal an external shutdown event."""
 
 
@@ -91,7 +91,8 @@ def load_module(module_name):
     try:
         __import__(module_name)
     except ImportError as e:
-        raise ImportError(f"No module named {module_name}") from e
+        error = f"No module named {module_name}"
+        raise ImportError(error) from e
     return sys.modules[module_name]
 
 
@@ -118,14 +119,14 @@ def load_class(dotted_path):
     """
     dotted_path_split = dotted_path.split(".")
     if len(dotted_path_split) <= 1:
-        raise ValueError(f"Dotted module path {dotted_path} must contain a module name and a classname")
+        error = f"Dotted module path {dotted_path} must contain a module name and a classname"
+        raise ValueError(error)
     klass_name = dotted_path_split[-1]
     module_name = ".".join(dotted_path_split[:-1])
 
     module = load_module(module_name)
     if hasattr(module, klass_name):
         return getattr(module, klass_name)
-        # Finally create and return an instance of the class
-        # return klass(*args, **kwargs)
 
-    raise AttributeError(f"Module {module_name} does not have class attribute {klass_name}")
+    error = f"Module {module_name} does not have class attribute {klass_name}"
+    raise AttributeError(error)

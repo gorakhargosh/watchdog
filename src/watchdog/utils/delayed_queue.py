@@ -30,7 +30,7 @@ class DelayedQueue(Generic[T]):
         self._queue: deque[tuple[T, float, bool]] = deque()
         self._closed = False
 
-    def put(self, element: T, delay: bool = False) -> None:
+    def put(self, element: T, *, delay: bool = False) -> None:
         """Add element to queue."""
         self._lock.acquire()
         self._queue.append((element, time.time(), delay))

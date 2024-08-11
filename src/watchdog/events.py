@@ -288,14 +288,14 @@ class FileSystemEventHandler:
 
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
-    """
-    Matches given patterns with file paths associated with occurring events.
+    """Matches given patterns with file paths associated with occurring events.
     Uses pathlib's `PurePath.match()` method. `patterns` and `ignore_patterns`
     are expected to be a list of strings.
     """
 
     def __init__(
         self,
+        *,
         patterns=None,
         ignore_patterns=None,
         ignore_directories=False,
@@ -364,13 +364,13 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 
 
 class RegexMatchingEventHandler(FileSystemEventHandler):
-    """
-    Matches given regexes with file paths associated with occurring events.
+    """Matches given regexes with file paths associated with occurring events.
     Uses the `re` module.
     """
 
     def __init__(
         self,
+        *,
         regexes=None,
         ignore_regexes=None,
         ignore_directories=False,

@@ -55,7 +55,7 @@ import contextlib
 import warnings
 from typing import TYPE_CHECKING
 
-from watchdog.utils import UnsupportedLibc, platform
+from watchdog.utils import UnsupportedLibcError, platform
 
 if TYPE_CHECKING:
     from watchdog.observers.api import BaseObserver
@@ -63,7 +63,7 @@ if TYPE_CHECKING:
 
 def _get_observer_cls() -> type[BaseObserver]:
     if platform.is_linux():
-        with contextlib.suppress(UnsupportedLibc):
+        with contextlib.suppress(UnsupportedLibcError):
             from watchdog.observers.inotify import InotifyObserver
 
             return InotifyObserver
@@ -74,9 +74,9 @@ def _get_observer_cls() -> type[BaseObserver]:
             try:
                 from watchdog.observers.kqueue import KqueueObserver
             except Exception:
-                warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
+                warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.", stacklevel=1)
             else:
-                warnings.warn("Failed to import fsevents. Fall back to kqueue")
+                warnings.warn("Failed to import fsevents. Fall back to kqueue", stacklevel=1)
                 return KqueueObserver
         else:
             return FSEventsObserver
@@ -84,7 +84,7 @@ def _get_observer_cls() -> type[BaseObserver]:
         try:
             from watchdog.observers.read_directory_changes import WindowsApiObserver
         except Exception:
-            warnings.warn("Failed to import `read_directory_changes`. Fall back to polling.")
+            warnings.warn("Failed to import `read_directory_changes`. Fall back to polling.", stacklevel=1)
         else:
             return WindowsApiObserver
     elif platform.is_bsd():
