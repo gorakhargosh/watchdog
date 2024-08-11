@@ -19,9 +19,9 @@ import os
 import stat
 import time
 from queue import Empty
+from typing import TYPE_CHECKING
 
 import pytest
-
 from watchdog.events import (
     DirCreatedEvent,
     DirDeletedEvent,
@@ -37,7 +37,9 @@ from watchdog.events import (
 from watchdog.utils import platform
 
 from .shell import mkdir, mkfile, mv, rm, touch
-from .utils import ExpectEvent, P, StartWatching, TestEventQueue
+
+if TYPE_CHECKING:
+    from .utils import ExpectEvent, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -77,9 +79,8 @@ def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching
 @pytest.mark.skipif(not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux")
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
-    f_d = open(p("a"), "a")
-    start_watching()
-    f_d.close()
+    with open(p("a"), "a"):
+        start_watching()
 
     # After file creation/open in append mode
     event = event_queue.get(timeout=5)[0]
@@ -91,7 +92,7 @@ def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching)
     assert isinstance(event, DirModifiedEvent)
 
     # After read-only, only IN_CLOSE_NOWRITE is emitted but not caught for now #747
-    open(p("a"), "r").close()
+    open(p("a")).close()
 
     assert event_queue.empty()
 
@@ -231,7 +232,7 @@ def test_move_to(p: P, start_watching: StartWatching, expect_event: ExpectEvent)
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
-    start_watching(p("dir2"))
+    start_watching(path=p("dir2"))
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
@@ -246,7 +247,7 @@ def test_move_to_full(p: P, event_queue: TestEventQueue, start_watching: StartWa
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
-    start_watching(p("dir2"), use_full_emitter=True)
+    start_watching(path=p("dir2"), use_full_emitter=True)
     mv(p("dir1", "a"), p("dir2", "b"))
 
     event = event_queue.get(timeout=5)[0]
@@ -260,7 +261,7 @@ def test_move_from(p: P, start_watching: StartWatching, expect_event: ExpectEven
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
-    start_watching(p("dir1"))
+    start_watching(path=p("dir1"))
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
@@ -275,7 +276,7 @@ def test_move_from_full(p: P, event_queue: TestEventQueue, start_watching: Start
     mkdir(p("dir1"))
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
-    start_watching(p("dir1"), use_full_emitter=True)
+    start_watching(path=p("dir1"), use_full_emitter=True)
     mv(p("dir1", "a"), p("dir2", "b"))
 
     event = event_queue.get(timeout=5)[0]
@@ -289,7 +290,7 @@ def test_separate_consecutive_moves(p: P, start_watching: StartWatching, expect_
     mkdir(p("dir1"))
     mkfile(p("dir1", "a"))
     mkfile(p("b"))
-    start_watching(p("dir1"))
+    start_watching(path=p("dir1"))
     mv(p("dir1", "a"), p("c"))
     mv(p("b"), p("dir1", "d"))
 
@@ -315,8 +316,8 @@ def test_separate_consecutive_moves(p: P, start_watching: StartWatching, expect_
 @pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
 def test_delete_self(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
-    emitter = start_watching(p("dir1"))
-    rm(p("dir1"), True)
+    emitter = start_watching(path=p("dir1"))
+    rm(p("dir1"), recursive=True)
     expect_event(DirDeletedEvent(p("dir1")))
     emitter.join(5)
     assert not emitter.is_alive()
@@ -331,10 +332,10 @@ def test_fast_subdirectory_creation_deletion(p: P, event_queue: TestEventQueue, 
     sub_dir = p("dir1", "subdir1")
     times = 30
     mkdir(root_dir)
-    start_watching(root_dir)
+    start_watching(path=root_dir)
     for _ in range(times):
         mkdir(sub_dir)
-        rm(sub_dir, True)
+        rm(sub_dir, recursive=True)
         time.sleep(0.1)  # required for macOS emitter to catch up with us
     count = {DirCreatedEvent: 0, DirModifiedEvent: 0, DirDeletedEvent: 0}
     etype_for_dir = {
@@ -359,7 +360,7 @@ def test_fast_subdirectory_creation_deletion(p: P, event_queue: TestEventQueue, 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_passing_unicode_should_give_unicode(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
-    start_watching(str(p()))
+    start_watching(path=str(p()))
     mkfile(p("a"))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, str)
@@ -370,7 +371,7 @@ def test_passing_unicode_should_give_unicode(p: P, event_queue: TestEventQueue, 
     reason="Windows ReadDirectoryChangesW supports only" " unicode for paths.",
 )
 def test_passing_bytes_should_give_bytes(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
-    start_watching(p().encode())
+    start_watching(path=p().encode())
     mkfile(p("a"))
     event = event_queue.get(timeout=5)[0]
     assert isinstance(event.src_path, bytes)
@@ -378,7 +379,7 @@ def test_passing_bytes_should_give_bytes(p: P, event_queue: TestEventQueue, star
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 def test_recursive_on(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
-    mkdir(p("dir1", "dir2", "dir3"), True)
+    mkdir(p("dir1", "dir2", "dir3"), parents=True)
     start_watching()
     touch(p("dir1", "dir2", "dir3", "a"))
 
@@ -550,7 +551,7 @@ def test_move_nested_subdirectories_on_windows(
 ) -> None:
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
-    start_watching(p(""))
+    start_watching(path=p(""))
     mv(p("dir1/dir2"), p("dir2"))
 
     event = event_queue.get(timeout=5)[0]
@@ -577,7 +578,7 @@ def test_move_nested_subdirectories_on_windows(
         if event_queue.empty():
             break
 
-    assert all([isinstance(e, (FileModifiedEvent, DirModifiedEvent)) for e in events])
+    assert all(isinstance(e, (FileModifiedEvent, DirModifiedEvent)) for e in events)
 
     for event in events:
         if isinstance(event, FileModifiedEvent):

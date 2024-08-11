@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
-from queue import Empty, Queue
+from queue import Queue
 from typing import Protocol
 
 from watchdog.events import FileSystemEvent
@@ -23,23 +23,21 @@ elif platform.is_bsd():
 
 
 class P(Protocol):
-    def __call__(self, *args: str) -> str:
-        ...
+    def __call__(self, *args: str) -> str: ...
 
 
 class StartWatching(Protocol):
     def __call__(
         self,
+        *,
         path: bytes | str | None = ...,
         use_full_emitter: bool = ...,
         recursive: bool = ...,
-    ) -> EventEmitter:
-        ...
+    ) -> EventEmitter: ...
 
 
 class ExpectEvent(Protocol):
-    def __call__(self, expected_event: FileSystemEvent, timeout: float = ...) -> None:
-        ...
+    def __call__(self, expected_event: FileSystemEvent, *, timeout: float = ...) -> None: ...
 
 
 TestEventQueue = Queue[tuple[FileSystemEvent, ObservedWatch]]
@@ -56,11 +54,12 @@ class Helper:
 
     def start_watching(
         self,
+        *,
         path: bytes | str | None = None,
         use_full_emitter: bool = False,
         recursive: bool = True,
     ) -> EventEmitter:
-        # todo: check if other platforms expect the trailing slash (e.g. `p('')`)
+        # TODO: check if other platforms expect the trailing slash (e.g. `p('')`)
         path = self.tmp if path is None else path
 
         emitter: EventEmitter
@@ -88,11 +87,8 @@ class Helper:
 
         Provides some robustness for the otherwise flaky nature of asynchronous notifications.
         """
-        try:
-            event = self.event_queue.get(timeout=timeout)[0]
-            assert event == expected_event
-        except Empty:
-            raise
+        event = self.event_queue.get(timeout=timeout)[0]
+        assert event == expected_event
 
     def close(self) -> None:
         for emitter in self.emitters:

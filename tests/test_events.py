@@ -42,7 +42,7 @@ path_2 = "/path/abc"
 def test_file_deleted_event():
     event = FileDeletedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_DELETED == event.event_type
+    assert event.event_type == EVENT_TYPE_DELETED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -57,7 +57,7 @@ def test_file_delete_event_is_directory():
 def test_file_modified_event():
     event = FileModifiedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_MODIFIED == event.event_type
+    assert event.event_type == EVENT_TYPE_MODIFIED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -72,7 +72,7 @@ def test_file_modified_event_is_directory():
 def test_file_created_event():
     event = FileCreatedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_CREATED == event.event_type
+    assert event.event_type == EVENT_TYPE_CREATED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -81,7 +81,7 @@ def test_file_moved_event():
     event = FileMovedEvent(path_1, path_2)
     assert path_1 == event.src_path
     assert path_2 == event.dest_path
-    assert EVENT_TYPE_MOVED == event.event_type
+    assert event.event_type == EVENT_TYPE_MOVED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -89,7 +89,7 @@ def test_file_moved_event():
 def test_file_closed_event():
     event = FileClosedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_CLOSED == event.event_type
+    assert event.event_type == EVENT_TYPE_CLOSED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -97,7 +97,7 @@ def test_file_closed_event():
 def test_file_opened_event():
     event = FileOpenedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_OPENED == event.event_type
+    assert event.event_type == EVENT_TYPE_OPENED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -105,7 +105,7 @@ def test_file_opened_event():
 def test_dir_deleted_event():
     event = DirDeletedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_DELETED == event.event_type
+    assert event.event_type == EVENT_TYPE_DELETED
     assert event.is_directory
     assert not event.is_synthetic
 
@@ -113,7 +113,7 @@ def test_dir_deleted_event():
 def test_dir_modified_event():
     event = DirModifiedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_MODIFIED == event.event_type
+    assert event.event_type == EVENT_TYPE_MODIFIED
     assert event.is_directory
     assert not event.is_synthetic
 
@@ -121,7 +121,7 @@ def test_dir_modified_event():
 def test_dir_created_event():
     event = DirCreatedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_CREATED == event.event_type
+    assert event.event_type == EVENT_TYPE_CREATED
     assert event.is_directory
     assert not event.is_synthetic
 

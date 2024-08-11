@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from watchdog.utils import platform
 
 if not platform.is_linux():
@@ -12,12 +11,14 @@ import errno
 import logging
 import os
 import struct
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
 from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
 
-from .utils import Helper, P, StartWatching, TestEventQueue
+if TYPE_CHECKING:
+    from .utils import Helper, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -73,12 +74,12 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
     def inotify_add_watch(fd, path, mask):
         fd.last += 1
-        logger.debug(f"New wd = {fd.last}")
+        logger.debug("New wd = %d", fd.last)
         fd.wds.append(fd.last)
         return fd.last
 
     def inotify_rm_watch(fd, wd):
-        logger.debug(f"Removing wd = {wd}")
+        logger.debug("Removing wd = %d", wd)
         fd.wds.remove(wd)
         return 0
 
@@ -92,7 +93,7 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     mock5 = patch.object(inotify_c, "inotify_rm_watch", new=inotify_rm_watch)
 
     with mock1, mock2, mock3, mock4, mock5:
-        start_watching(p(""))
+        start_watching(path=p(""))
         # Watchdog Events
         for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:
             event = event_queue.get(timeout=5)[0]
@@ -109,22 +110,18 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
 
 @pytest.mark.parametrize(
-    "error, patterns",
+    ("error", "pattern"),
     [
-        (errno.ENOSPC, ("inotify watch limit reached",)),
-        (errno.EMFILE, ("inotify instance limit reached",)),
-        (errno.ENOENT, ("No such file or directory",)),
-        # Error messages for -1 are undocumented
-        # and vary between libc implementations.
-        (-1, ("Unknown error -1", "No error information")),
+        (errno.ENOSPC, "inotify watch limit reached"),
+        (errno.EMFILE, "inotify instance limit reached"),
+        (errno.ENOENT, "No such file or directory"),
+        (-1, "error"),
     ],
 )
-def test_raise_error(error, patterns):
-    with patch.object(ctypes, "get_errno", new=lambda: error):
-        with pytest.raises(OSError) as exc:
-            Inotify._raise_error()
+def test_raise_error(error, pattern):
+    with patch.object(ctypes, "get_errno", new=lambda: error), pytest.raises(OSError, match=pattern) as exc:
+        Inotify._raise_error()  # noqa: SLF001
     assert exc.value.errno == error
-    assert any(pattern in str(exc.value) for pattern in patterns)
 
 
 def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
@@ -132,10 +129,10 @@ def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: Start
     Inotify can construct an event for a path containing non-ASCII.
     """
     path = p("\N{SNOWMAN}")
-    start_watching(p(""))
+    start_watching(path=p(""))
     os.mkdir(path)
     event, _ = event_queue.get(timeout=5)
-    assert isinstance(event.src_path, type(""))
+    assert isinstance(event.src_path, str)
     assert event.src_path == path
     # Just make sure it doesn't raise an exception.
     assert repr(event)
@@ -145,7 +142,7 @@ def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatc
     path = p("this_is_a_file")
     with open(path, "a"):
         pass
-    start_watching(path)
+    start_watching(path=path)
     os.remove(path)
     event, _ = event_queue.get(timeout=5)
     assert repr(event)

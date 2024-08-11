@@ -16,8 +16,7 @@
 from __future__ import annotations
 
 import pytest
-
-import watchdog.events as events
+from watchdog import events
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 from .markers import cpython_only

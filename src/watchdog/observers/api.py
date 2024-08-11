@@ -47,7 +47,7 @@ class ObservedWatch:
         Optional collection of :class:`watchdog.events.FileSystemEvent` to watch
     """
 
-    def __init__(self, path, recursive, event_filter=None):
+    def __init__(self, path, *, recursive, event_filter=None):
         self._path = str(path) if isinstance(path, Path) else path
         self._is_recursive = recursive
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
@@ -217,7 +217,7 @@ class EventDispatcher(BaseThread):
 class BaseObserver(EventDispatcher):
     """Base observer."""
 
-    def __init__(self, emitter_class, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, emitter_class, *, timeout=DEFAULT_OBSERVER_TIMEOUT):
         super().__init__(timeout)
         self._emitter_class = emitter_class
         self._lock = threading.RLock()
@@ -268,7 +268,7 @@ class BaseObserver(EventDispatcher):
                 raise
         super().start()
 
-    def schedule(self, event_handler, path, recursive=False, event_filter=None):
+    def schedule(self, event_handler, path, *, recursive=False, event_filter=None):
         """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
 
@@ -296,7 +296,7 @@ class BaseObserver(EventDispatcher):
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive, event_filter)
+            watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter)
             self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.

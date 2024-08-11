@@ -35,17 +35,14 @@ from watchdog.events import (
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 from watchdog.observers.winapi import close_directory_handle, get_directory_handle, read_events
 
-# Obsolete constant, it's no more used since v4.0.0.
-WATCHDOG_TRAVERSE_MOVED_DIR_DELAY = 1  # seconds
-
 
 class WindowsApiEmitter(EventEmitter):
     """Windows API-based emitter that uses ReadDirectoryChangesW
     to detect file system changes for a watch.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
-        super().__init__(event_queue, watch, timeout, event_filter)
+    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock = threading.Lock()
         self._whandle = None
 

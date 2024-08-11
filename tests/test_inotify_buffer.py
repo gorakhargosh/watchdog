@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import pytest
-
 from watchdog.utils import platform
 
 if not platform.is_linux():

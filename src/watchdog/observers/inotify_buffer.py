@@ -30,10 +30,10 @@ class InotifyBuffer(BaseThread):
 
     delay = 0.5
 
-    def __init__(self, path, recursive=False, event_mask=None):
+    def __init__(self, path, *, recursive=False, event_mask=None):
         super().__init__()
         self._queue = DelayedQueue[InotifyEvent](self.delay)
-        self._inotify = Inotify(path, recursive, event_mask)
+        self._inotify = Inotify(path, recursive=recursive, event_mask=event_mask)
         self.start()
 
     def read_event(self):
@@ -97,7 +97,7 @@ class InotifyBuffer(BaseThread):
 
                 # Only add delay for unmatched move_from events
                 delay = not isinstance(inotify_event, tuple) and inotify_event.is_moved_from
-                self._queue.put(inotify_event, delay)
+                self._queue.put(inotify_event, delay=delay)
 
                 if (
                     not isinstance(inotify_event, tuple)

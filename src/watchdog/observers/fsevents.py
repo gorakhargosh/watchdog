@@ -75,11 +75,12 @@ class FSEventsEmitter(EventEmitter):
         self,
         event_queue,
         watch,
+        *,
         timeout=DEFAULT_EMITTER_TIMEOUT,
         event_filter=None,
         suppress_history=False,
     ):
-        super().__init__(event_queue, watch, timeout, event_filter)
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._fs_view = set()
         self.suppress_history = suppress_history
         self._start_time = 0.0
@@ -324,7 +325,7 @@ class FSEventsObserver(BaseObserver):
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         super().__init__(FSEventsEmitter, timeout=timeout)
 
-    def schedule(self, event_handler, path, recursive=False, event_filter=None):
+    def schedule(self, event_handler, path, *, recursive=False, event_filter=None):
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
         if isinstance(path, str):

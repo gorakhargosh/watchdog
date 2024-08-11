@@ -90,7 +90,8 @@ class ShellCommandTrick(Trick):
 
     def __init__(
         self,
-        shell_command=None,
+        shell_command,
+        *,
         patterns=None,
         ignore_patterns=None,
         ignore_directories=False,
@@ -168,6 +169,7 @@ class AutoRestartTrick(Trick):
     def __init__(
         self,
         command,
+        *,
         patterns=None,
         ignore_patterns=None,
         ignore_directories=False,
@@ -177,9 +179,11 @@ class AutoRestartTrick(Trick):
         restart_on_command_exit=True,
     ):
         if kill_after < 0:
-            raise ValueError("kill_after must be non-negative.")
+            error = "kill_after must be non-negative."
+            raise ValueError(error)
         if debounce_interval_seconds < 0:
-            raise ValueError("debounce_interval_seconds must be non-negative.")
+            error = "debounce_interval_seconds must be non-negative."
+            raise ValueError(error)
 
         super().__init__(
             patterns=patterns,

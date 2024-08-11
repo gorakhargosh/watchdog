@@ -14,9 +14,9 @@
 # limitations under the License.
 
 """
-    :module: tests.shell
-    :synopsis: Common shell operations for testing.
-    :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:module: tests.shell
+:synopsis: Common shell operations for testing.
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
 """
 
 from __future__ import annotations
@@ -28,24 +28,13 @@ import shutil
 import tempfile
 import time
 
-# def tree(path='.', show_files=False):
-#    print(path)
-#    padding = ''
-#    for root, directories, filenames in os.walk(path):
-#        print(padding + os.path.basename(root) + os.path.sep)
-#        padding = padding + '   '
-#        for filename in filenames:
-#            print(padding + filename)
-
 
 def cd(path):
     os.chdir(path)
 
 
 def pwd():
-    path = os.getcwd()
-    print(path)
-    return path
+    return os.getcwd()
 
 
 def mkfile(path):
@@ -54,7 +43,7 @@ def mkfile(path):
         pass
 
 
-def mkdir(path, parents=False):
+def mkdir(path, *, parents=False):
     """Creates a directory (optionally also creates all the parent directories
     in the path)."""
     if parents:
@@ -67,13 +56,11 @@ def mkdir(path, parents=False):
         os.mkdir(path)
 
 
-def rm(path, recursive=False):
+def rm(path, *, recursive=False):
     """Deletes files or directories."""
     if os.path.isdir(path):
         if recursive:
             shutil.rmtree(path)
-        # else:
-        #    os.rmdir(path)
         else:
             raise OSError(errno.EISDIR, os.strerror(errno.EISDIR), path)
     else:

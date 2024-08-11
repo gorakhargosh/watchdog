@@ -286,7 +286,6 @@ def _parse_event_buffer(read_buffer, n_bytes):
     while n_bytes > 0:
         fni = ctypes.cast(read_buffer, LPFNI)[0]
         ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
-        # filename = ctypes.wstring_at(ptr, fni.FileNameLength)
         filename = ctypes.string_at(ptr, fni.FileNameLength)
         results.append((fni.Action, filename.decode("utf-16")))
         num_to_skip = fni.NextEntryOffset

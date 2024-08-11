@@ -21,7 +21,6 @@ from queue import Empty, Queue
 from time import sleep
 
 import pytest
-
 from watchdog.events import DirCreatedEvent, DirMovedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
@@ -49,14 +48,14 @@ def p(*args):
     return os.path.join(temp_dir, *args)
 
 
-@pytest.fixture
+@pytest.fixture()
 def event_queue():
-    yield Queue()
+    return Queue()
 
 
-@pytest.fixture
+@pytest.fixture()
 def emitter(event_queue):
-    watch = ObservedWatch(temp_dir, True)
+    watch = ObservedWatch(temp_dir, recursive=True)
     em = WindowsApiEmitter(event_queue, watch, timeout=0.2)
     yield em
     em.stop()

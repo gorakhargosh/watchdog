@@ -87,6 +87,7 @@ class DirectorySnapshotDiff:
         self,
         ref: DirectorySnapshot,
         snapshot: DirectorySnapshot,
+        *,
         ignore_device: bool = False,
     ):
         created = snapshot.paths - ref.paths
@@ -252,6 +253,7 @@ class DirectorySnapshotDiff:
         def __init__(
             self,
             path: str,
+            *,
             recursive: bool = True,
             stat: Callable[[str], os.stat_result] = os.stat,
             listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
@@ -308,6 +310,7 @@ class DirectorySnapshot:
     def __init__(
         self,
         path: str,
+        *,
         recursive: bool = True,
         stat: Callable[[str], os.stat_result] = os.stat,
         listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,

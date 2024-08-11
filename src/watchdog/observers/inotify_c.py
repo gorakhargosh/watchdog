@@ -25,12 +25,13 @@ import threading
 from ctypes import c_char_p, c_int, c_uint32
 from functools import reduce
 
-from watchdog.utils import UnsupportedLibc
+from watchdog.utils import UnsupportedLibcError
 
 libc = ctypes.CDLL(None)
 
 if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") or not hasattr(libc, "inotify_rm_watch"):
-    raise UnsupportedLibc(f"Unsupported libc version found: {libc._name}")  # noqa:SLF001
+    error = f"Unsupported libc version found: {libc._name}"  # noqa:SLF001
+    raise UnsupportedLibcError(error)
 
 inotify_add_watch = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc))
 
@@ -151,7 +152,7 @@ class Inotify:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def __init__(self, path, recursive=False, event_mask=None):
+    def __init__(self, path, *, recursive=False, event_mask=None):
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:

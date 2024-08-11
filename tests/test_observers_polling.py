@@ -21,7 +21,6 @@ from queue import Empty, Queue
 from time import sleep
 
 import pytest
-
 from watchdog.events import (
     DirCreatedEvent,
     DirDeletedEvent,
@@ -37,7 +36,8 @@ from watchdog.observers.polling import PollingEmitter as Emitter
 
 from .shell import mkdir, mkdtemp, msize, mv, rm, touch
 
-temp_dir = mkdtemp()
+SLEEP_TIME = 0.4
+TEMP_DIR = mkdtemp()
 
 
 def p(*args):
@@ -45,17 +45,17 @@ def p(*args):
     Convenience function to join the temporary directory path
     with the provided arguments.
     """
-    return os.path.join(temp_dir, *args)
+    return os.path.join(TEMP_DIR, *args)
 
 
-@pytest.fixture
+@pytest.fixture()
 def event_queue():
-    yield Queue()
+    return Queue()
 
 
-@pytest.fixture
+@pytest.fixture()
 def emitter(event_queue):
-    watch = ObservedWatch(temp_dir, True)
+    watch = ObservedWatch(TEMP_DIR, recursive=True)
     em = Emitter(event_queue, watch, timeout=0.2)
     em.start()
     yield em
@@ -64,8 +64,6 @@ def emitter(event_queue):
 
 
 def test___init__(event_queue, emitter):
-    SLEEP_TIME = 0.4
-
     sleep(SLEEP_TIME)
     mkdir(p("project"))
 
@@ -148,8 +146,6 @@ def test___init__(event_queue, emitter):
 
 
 def test_delete_watched_dir(event_queue, emitter):
-    SLEEP_TIME = 0.4
-
     rm(p(""), recursive=True)
 
     sleep(SLEEP_TIME)

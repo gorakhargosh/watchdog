@@ -21,7 +21,7 @@ def p(tmpdir, *args):
 
 
 @pytest.fixture(autouse=True)
-def no_thread_leaks():
+def _no_thread_leaks():
     """
     Fail on thread leak.
     We do not use pytest-threadleak because it is not reliable.
@@ -33,7 +33,7 @@ def no_thread_leaks():
 
 
 @pytest.fixture(autouse=True)
-def no_warnings(recwarn):
+def _no_warnings(recwarn):
     """Fail on warning."""
 
     yield
@@ -50,9 +50,8 @@ def no_warnings(recwarn):
             or "eventlet" in filename
         ):
             continue
-        warnings.append("{w.filename}:{w.lineno} {w.message}".format(w=warning))
-    print(warnings)
-    assert not warnings
+        warnings.append(f"{warning.filename}:{warning.lineno} {warning.message}")
+    assert not warnings, warnings
 
 
 @pytest.fixture(name="helper")

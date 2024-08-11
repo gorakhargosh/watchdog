@@ -16,16 +16,18 @@ from __future__ import annotations
 
 import contextlib
 import threading
-from typing import Iterator
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
-
 from watchdog.events import FileModifiedEvent, FileSystemEventHandler
 from watchdog.observers.api import BaseObserver, EventEmitter
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
-@pytest.fixture
+
+@pytest.fixture()
 def observer() -> Iterator[BaseObserver]:
     obs = BaseObserver(EventEmitter)
     yield obs
@@ -34,7 +36,7 @@ def observer() -> Iterator[BaseObserver]:
         obs.join()
 
 
-@pytest.fixture
+@pytest.fixture()
 def observer2():
     obs = BaseObserver(EventEmitter)
     yield obs
@@ -126,12 +128,11 @@ def test_start_failure_should_not_prevent_further_try(observer):
     # Make the emitter to fail on start()
 
     def mocked_start():
-        raise OSError()
+        raise OSError("Mock'ed!")
 
     emitter = next(iter(emitters))
-    with patch.object(emitter, "start", new=mocked_start):
-        with pytest.raises(OSError):
-            observer.start()
+    with patch.object(emitter, "start", new=mocked_start), pytest.raises(OSError, match="Mock'ed!"):
+        observer.start()
     # The emitter should be removed from the list
     assert len(observer.emitters) == 0
 
@@ -149,9 +150,9 @@ def test_schedule_failure_should_not_prevent_future_schedules(observer):
 
     # Make the emitter fail on start(), and subsequently the observer to fail on schedule()
     def bad_start(_):
-        raise OSError()
+        raise OSError("Mock'ed!")
 
-    with patch.object(EventEmitter, "start", new=bad_start), pytest.raises(OSError):
+    with patch.object(EventEmitter, "start", new=bad_start), pytest.raises(OSError, match="Mock'ed!"):
         observer.schedule(None, "")
     # The emitter should not be in the list
     assert not observer.emitters
