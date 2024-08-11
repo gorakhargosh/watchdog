@@ -55,7 +55,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from typing import Any, Callable, Optional
+    from typing import Any, Callable
 
 
 class DirectorySnapshotDiff:
@@ -254,7 +254,7 @@ class DirectorySnapshotDiff:
             path: str,
             recursive: bool = True,
             stat: Callable[[str], os.stat_result] = os.stat,
-            listdir: Callable[[Optional[str]], Iterator[os.DirEntry]] = os.scandir,
+            listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
             ignore_device: bool = False,
         ):
             self.path = path
@@ -310,7 +310,7 @@ class DirectorySnapshot:
         path: str,
         recursive: bool = True,
         stat: Callable[[str], os.stat_result] = os.stat,
-        listdir: Callable[[Optional[str]], Iterator[os.DirEntry]] = os.scandir,
+        listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
     ):
         self.recursive = recursive
         self.stat = stat
@@ -359,7 +359,7 @@ class DirectorySnapshot:
         """Set of file/directory paths in the snapshot."""
         return set(self._stat_info.keys())
 
-    def path(self, uid: tuple[int, int]) -> Optional[str]:
+    def path(self, uid: tuple[int, int]) -> str | None:
         """Returns path for id. None if id is unknown to this snapshot."""
         return self._inode_to_path.get(uid)
 

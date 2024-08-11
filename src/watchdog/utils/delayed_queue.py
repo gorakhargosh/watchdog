@@ -17,7 +17,7 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -45,7 +45,7 @@ class DelayedQueue(Generic[T]):
         self._not_empty.notify()
         self._not_empty.release()
 
-    def get(self) -> Optional[T]:
+    def get(self) -> T | None:
         """Remove and return an element from the queue, or this queue has been
         closed raise the Closed exception.
         """
@@ -74,7 +74,7 @@ class DelayedQueue(Generic[T]):
                     self._queue.popleft()
                     return head
 
-    def remove(self, predicate: Callable[[T], bool]) -> Optional[T]:
+    def remove(self, predicate: Callable[[T], bool]) -> T | None:
         """Remove and return the first items for which predicate is True,
         ignoring delay.
         """
