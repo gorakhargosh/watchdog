@@ -39,13 +39,11 @@ jobs:
             emoji: 🪟
             runs-on: [windows-latest]
         python:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
           - "3.13-dev"
-          - "pypy-3.8"
           - "pypy-3.9"
         include:
           - tox:
@@ -69,13 +67,7 @@ jobs:
         exclude:
           - os:
               matrix: macos
-            python: "pypy-3.8"
-          - os:
-              matrix: macos
             python: "pypy-3.9"
-          - os:
-              matrix: windows
-            python: "pypy-3.8"
           - os:
               matrix: windows
             python: "pypy-3.9"
