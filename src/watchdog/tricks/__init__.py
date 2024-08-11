@@ -110,7 +110,7 @@ class ShellCommandTrick(Trick):
         self.process = None
         self._process_watchers = set()
 
-    def on_any_event(self, event):
+    def on_any_event(self, event: FileSystemEvent) -> None:
         if event.event_type == EVENT_TYPE_OPENED:
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
@@ -152,8 +152,8 @@ class ShellCommandTrick(Trick):
             )
             process_watcher.start()
 
-    def is_process_running(self):
-        return self._process_watchers or (self.process is not None and self.process.poll() is None)
+    def is_process_running(self) -> bool:
+        return bool(self._process_watchers or (self.process is not None and self.process.poll() is None))
 
 
 class AutoRestartTrick(Trick):
@@ -233,7 +233,7 @@ class AutoRestartTrick(Trick):
         if process_watcher is not None:
             process_watcher.join()
 
-    def _start_process(self):
+    def _start_process(self) -> None:
         if self._is_trick_stopping:
             return
 
@@ -243,7 +243,7 @@ class AutoRestartTrick(Trick):
             self.process_watcher = ProcessWatcher(self.process, self._restart_process)
             self.process_watcher.start()
 
-    def _stop_process(self):
+    def _stop_process(self) -> None:
         # Ensure the body of the function is not run in parallel in different threads.
         with self._stopping_lock:
             if self._is_process_stopping:
@@ -276,7 +276,7 @@ class AutoRestartTrick(Trick):
             self._is_process_stopping = False
 
     @echo_events
-    def on_any_event(self, event):
+    def on_any_event(self, event: FileSystemEvent) -> None:
         if event.event_type == EVENT_TYPE_OPENED:
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
@@ -286,7 +286,7 @@ class AutoRestartTrick(Trick):
         else:
             self._restart_process()
 
-    def _restart_process(self):
+    def _restart_process(self) -> None:
         if self._is_trick_stopping:
             return
         self._stop_process()
@@ -294,12 +294,12 @@ class AutoRestartTrick(Trick):
         self.restart_count += 1
 
 
-if not platform.is_windows():
+if platform.is_windows():
 
-    def kill_process(pid, stop_signal):
-        os.killpg(os.getpgid(pid), stop_signal)
+    def kill_process(pid: int, stop_signal: int) -> None:
+        os.kill(pid, stop_signal)
 
 else:
 
-    def kill_process(pid, stop_signal):
-        os.kill(pid, stop_signal)
+    def kill_process(pid: int, stop_signal: int) -> None:
+        os.killpg(os.getpgid(pid), stop_signal)  # type: ignore[attr-defined]

@@ -1,7 +1,7 @@
 import sys
 import time
 
-from watchdog.events import PatternMatchingEventHandler
+from watchdog.events import FileSystemEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 import logging
@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class MyEventHandler(PatternMatchingEventHandler):
-    def on_any_event(self, event):
+    def on_any_event(self, event: FileSystemEvent):
         logging.debug(event)
 
 

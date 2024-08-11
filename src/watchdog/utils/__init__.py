@@ -45,7 +45,7 @@ class WatchdogShutdownError(Exception):
 class BaseThread(threading.Thread):
     """Convenience class for creating stoppable threads."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         threading.Thread.__init__(self)
         if hasattr(self, "daemon"):
             self.daemon = True
@@ -73,7 +73,7 @@ class BaseThread(threading.Thread):
         self._stopped_event.set()
         self.on_thread_stop()
 
-    def on_thread_start(self):
+    def on_thread_start(self) -> None:
         """Override this method instead of :meth:`start()`. :meth:`start()`
         calls this method.
 
@@ -81,7 +81,7 @@ class BaseThread(threading.Thread):
         object's run() method is invoked.
         """
 
-    def start(self):
+    def start(self) -> None:
         self.on_thread_start()
         threading.Thread.start(self)
 
