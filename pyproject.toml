@@ -60,7 +60,7 @@ ignore = [
     "S",
     "TD",
     "TRY003",
-    "UP",  # TODO when minimum python version will be 3.10
+    #"UP",  # TODO when minimum python version will be 3.10
 ]
 fixable = ["ALL"]
 

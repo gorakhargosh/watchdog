@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, List, Tuple, Union
+from typing import TYPE_CHECKING, Union
 
 from watchdog.observers.inotify_c import Inotify, InotifyEvent
 from watchdog.utils import BaseThread
@@ -54,7 +54,7 @@ class InotifyBuffer(BaseThread):
 
     def _group_events(self, event_list):
         """Group any matching move events"""
-        grouped: List[Union[InotifyEvent, Tuple[InotifyEvent, InotifyEvent]]] = []
+        grouped: list[Union[InotifyEvent, tuple[InotifyEvent, InotifyEvent]]] = []
         for inotify_event in event_list:
             logger.debug("in-event %s", inotify_event)
 

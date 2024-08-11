@@ -17,7 +17,7 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
-from typing import Callable, Deque, Generic, Optional, Tuple, TypeVar
+from typing import Callable, Deque, Generic, Optional, TypeVar
 
 T = TypeVar("T")
 
@@ -27,7 +27,7 @@ class DelayedQueue(Generic[T]):
         self.delay_sec = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
-        self._queue: Deque[Tuple[T, float, bool]] = deque()
+        self._queue: Deque[tuple[T, float, bool]] = deque()
         self._closed = False
 
     def put(self, element: T, delay: bool = False) -> None:

@@ -25,7 +25,7 @@ import queue
 import unicodedata
 import warnings
 from threading import Thread
-from typing import List, Optional, Type
+from typing import Optional, Type
 
 # pyobjc
 import AppKit
@@ -81,7 +81,7 @@ class FSEventsQueue(Thread):
 
     def __init__(self, path):
         Thread.__init__(self)
-        self._queue: queue.Queue[Optional[List[NativeEvent]]] = queue.Queue()
+        self._queue: queue.Queue[Optional[list[NativeEvent]]] = queue.Queue()
         self._run_loop = None
 
         if isinstance(path, bytes):
