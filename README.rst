@@ -6,7 +6,7 @@ Watchdog
 
 Python API and shell utilities to monitor file system events.
 
-Works on 3.8+.
+Works on 3.9+.
 
 Example API Usage
 -----------------
@@ -211,7 +211,7 @@ appropriate observer like in the example above, do::
 Dependencies
 ------------
 
-1. Python 3.8 or above.
+1. Python 3.9 or above.
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
 

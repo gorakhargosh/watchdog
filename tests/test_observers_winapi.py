@@ -124,7 +124,7 @@ def test_root_deleted(event_queue, emitter):
         File "watchdog\observers\winapi.py", line 340, in read_directory_changes
             return _generate_observed_path_deleted_event()
         File "watchdog\observers\winapi.py", line 298, in _generate_observed_path_deleted_event
-            event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value)
+            event = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, len(path), path.value)
         TypeError: expected bytes, str found
     """
 

@@ -51,7 +51,11 @@ import contextlib
 import errno
 import os
 from stat import S_ISDIR
-from typing import Any, Callable, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from typing import Any, Callable, Optional
 
 
 class DirectorySnapshotDiff:
@@ -90,12 +94,12 @@ class DirectorySnapshotDiff:
 
         if ignore_device:
 
-            def get_inode(directory: DirectorySnapshot, full_path: str) -> int | Tuple[int, int]:
+            def get_inode(directory: DirectorySnapshot, full_path: str) -> int | tuple[int, int]:
                 return directory.inode(full_path)[0]
 
         else:
 
-            def get_inode(directory: DirectorySnapshot, full_path: str) -> int | Tuple[int, int]:
+            def get_inode(directory: DirectorySnapshot, full_path: str) -> int | tuple[int, int]:
                 return directory.inode(full_path)
 
         # check that all unchanged paths have the same inode
@@ -105,7 +109,7 @@ class DirectorySnapshotDiff:
                 deleted.add(path)
 
         # find moved paths
-        moved: set[Tuple[str, str]] = set()
+        moved: set[tuple[str, str]] = set()
         for path in set(deleted):
             inode = ref.inode(path)
             new_path = snapshot.path(inode)
@@ -165,22 +169,22 @@ class DirectorySnapshotDiff:
         )
 
     @property
-    def files_created(self) -> List[str]:
+    def files_created(self) -> list[str]:
         """List of files that were created."""
         return self._files_created
 
     @property
-    def files_deleted(self) -> List[str]:
+    def files_deleted(self) -> list[str]:
         """List of files that were deleted."""
         return self._files_deleted
 
     @property
-    def files_modified(self) -> List[str]:
+    def files_modified(self) -> list[str]:
         """List of files that were modified."""
         return self._files_modified
 
     @property
-    def files_moved(self) -> list[Tuple[str, str]]:
+    def files_moved(self) -> list[tuple[str, str]]:
         """List of files that were moved.
 
         Each event is a two-tuple the first item of which is the path
@@ -189,12 +193,12 @@ class DirectorySnapshotDiff:
         return self._files_moved
 
     @property
-    def dirs_modified(self) -> List[str]:
+    def dirs_modified(self) -> list[str]:
         """List of directories that were modified."""
         return self._dirs_modified
 
     @property
-    def dirs_moved(self) -> List[tuple[str, str]]:
+    def dirs_moved(self) -> list[tuple[str, str]]:
         """List of directories that were moved.
 
         Each event is a two-tuple the first item of which is the path
@@ -203,12 +207,12 @@ class DirectorySnapshotDiff:
         return self._dirs_moved
 
     @property
-    def dirs_deleted(self) -> List[str]:
+    def dirs_deleted(self) -> list[str]:
         """List of directories that were deleted."""
         return self._dirs_deleted
 
     @property
-    def dirs_created(self) -> List[str]:
+    def dirs_created(self) -> list[str]:
         """List of directories that were created."""
         return self._dirs_created
 
@@ -313,7 +317,7 @@ class DirectorySnapshot:
         self.listdir = listdir
 
         self._stat_info: dict[str, os.stat_result] = {}
-        self._inode_to_path: dict[Tuple[int, int], str] = {}
+        self._inode_to_path: dict[tuple[int, int], str] = {}
 
         st = self.stat(path)
         self._stat_info[path] = st
@@ -324,7 +328,7 @@ class DirectorySnapshot:
             self._inode_to_path[i] = p
             self._stat_info[p] = st
 
-    def walk(self, root: str) -> Iterator[Tuple[str, os.stat_result]]:
+    def walk(self, root: str) -> Iterator[tuple[str, os.stat_result]]:
         try:
             paths = [os.path.join(root, entry.name) for entry in self.listdir(root)]
         except OSError as e:
@@ -355,11 +359,11 @@ class DirectorySnapshot:
         """Set of file/directory paths in the snapshot."""
         return set(self._stat_info.keys())
 
-    def path(self, uid: Tuple[int, int]) -> Optional[str]:
+    def path(self, uid: tuple[int, int]) -> Optional[str]:
         """Returns path for id. None if id is unknown to this snapshot."""
         return self._inode_to_path.get(uid)
 
-    def inode(self, path: str) -> Tuple[int, int]:
+    def inode(self, path: str) -> tuple[int, int]:
         """Returns an id for path."""
         st = self._stat_info[path]
         return (st.st_ino, st.st_dev)

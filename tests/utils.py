@@ -3,11 +3,11 @@ from __future__ import annotations
 import dataclasses
 import os
 from queue import Empty, Queue
-from typing import List, Optional, Tuple, Type, Union
+from typing import Optional, Type, Union, Protocol
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
-from watchdog.utils import Protocol, platform
+from watchdog.utils import platform
 
 Emitter: Type[EventEmitter]
 
@@ -42,13 +42,13 @@ class ExpectEvent(Protocol):
         ...
 
 
-TestEventQueue = Union["Queue[Tuple[FileSystemEvent, ObservedWatch]]"]
+TestEventQueue = Queue[tuple[FileSystemEvent, ObservedWatch]]
 
 
 @dataclasses.dataclass()
 class Helper:
     tmp: str
-    emitters: List[EventEmitter] = dataclasses.field(default_factory=list)
+    emitters: list[EventEmitter] = dataclasses.field(default_factory=list)
     event_queue: TestEventQueue = dataclasses.field(default_factory=Queue)
 
     def joinpath(self, *args: str) -> str:

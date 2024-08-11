@@ -58,10 +58,10 @@ from typing import TYPE_CHECKING
 from watchdog.utils import UnsupportedLibc, platform
 
 if TYPE_CHECKING:
-    from watchdog.observers.api import BaseObserverSubclassCallable
+    from watchdog.observers.api import BaseObserver
 
 
-def _get_observer_cls() -> BaseObserverSubclassCallable:
+def _get_observer_cls() -> type[BaseObserver]:
     if platform.is_linux():
         with contextlib.suppress(UnsupportedLibc):
             from watchdog.observers.inotify import InotifyObserver
