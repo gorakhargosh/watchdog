@@ -68,7 +68,6 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import Type
 
 from watchdog.events import (
     DirAttribEvent,
@@ -143,7 +142,7 @@ class InotifyEmitter(EventEmitter):
             if event is None:
                 return
 
-            cls: Type[FileSystemEvent]
+            cls: type[FileSystemEvent]
             if isinstance(event, tuple):
                 move_from, move_to = event
                 src_path = self._decode_path(move_from.src_path)

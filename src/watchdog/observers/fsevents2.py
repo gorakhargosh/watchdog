@@ -25,7 +25,7 @@ import queue
 import unicodedata
 import warnings
 from threading import Thread
-from typing import List, Optional, Type
+from typing import Optional
 
 # pyobjc
 import AppKit
@@ -83,7 +83,7 @@ class FSEventsQueue(Thread):
 
     def __init__(self, path):
         Thread.__init__(self)
-        self._queue: queue.Queue[Optional[List[NativeEvent]]] = queue.Queue()
+        self._queue: queue.Queue[Optional[list[NativeEvent]]] = queue.Queue()
         self._run_loop = None
 
         if isinstance(path, bytes):
@@ -125,9 +125,9 @@ class FSEventsQueue(Thread):
         if self._run_loop is not None:
             CFRunLoopStop(self._run_loop)
 
-    def _callback(self, streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIDs):
-        events = [NativeEvent(path, flags, _id) for path, flags, _id in zip(eventPaths, eventFlags, eventIDs)]
-        logger.debug("FSEvents callback. Got %d events:", numEvents)
+    def _callback(self, stream_ref, client_callback_info, num_events, event_paths, event_flags, event_ids):
+        events = [NativeEvent(path, flags, _id) for path, flags, _id in zip(event_paths, event_flags, event_ids)]
+        logger.debug("FSEvents callback. Got %d events:", num_events)
         for e in events:
             logger.debug(e)
         self._queue.put(events)
@@ -198,7 +198,7 @@ class FSEventsEmitter(EventEmitter):
         while i < len(events):
             event = events[i]
 
-            cls: Type[FileSystemEvent]
+            cls: type[FileSystemEvent]
             # For some reason the create and remove flags are sometimes also
             # set for rename and modify type events, so let those take
             # precedence.

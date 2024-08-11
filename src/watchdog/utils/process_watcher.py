@@ -21,6 +21,7 @@ class ProcessWatcher(BaseThread):
                 return
 
         try:
-            self.process_termination_callback()
+            if not self.stopped_event.is_set():
+                self.process_termination_callback()
         except Exception:
             logger.exception("Error calling process termination callback")

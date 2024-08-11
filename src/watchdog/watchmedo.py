@@ -31,13 +31,15 @@ import time
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from textwrap import dedent
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from watchdog.utils import WatchdogShutdown, load_class, platform
 from watchdog.version import VERSION_STRING
 
 if TYPE_CHECKING:
-    from watchdog.observers.api import BaseObserverSubclassCallable
+    from argparse import Namespace, _SubParsersAction
+    from typing import Callable
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -77,15 +79,21 @@ cli.add_argument("--version", action="version", version=VERSION_STRING)
 subparsers = cli.add_subparsers(dest="top_command")
 command_parsers = {}
 
+Argument = tuple[list[str], Any]
 
-def argument(*name_or_flags, **kwargs):
+
+def argument(*name_or_flags: str, **kwargs: Any) -> Argument:
     """Convenience function to properly format arguments to pass to the
     command decorator.
     """
     return list(name_or_flags), kwargs
 
 
-def command(args=[], parent=subparsers, cmd_aliases=[]):
+def command(
+    args: list[Argument],
+    parent: _SubParsersAction[ArgumentParser] = subparsers,
+    cmd_aliases: list[str] = [],
+) -> Callable:
     """Decorator to define a new command in a sanity-preserving way.
     The function will be stored in the ``func`` variable when the parser
     parses arguments so that it can be called directly like so::
@@ -95,16 +103,16 @@ def command(args=[], parent=subparsers, cmd_aliases=[]):
 
     """
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         name = func.__name__.replace("_", "-")
-        desc = dedent(func.__doc__)
-        parser = parent.add_parser(name, description=desc, aliases=cmd_aliases, formatter_class=HelpFormatter)
+        desc = dedent(func.__doc__ or "")
+        parser = parent.add_parser(name, aliases=cmd_aliases, description=desc, formatter_class=HelpFormatter)
         command_parsers[name] = parser
         verbosity_group = parser.add_mutually_exclusive_group()
         verbosity_group.add_argument("-q", "--quiet", dest="verbosity", action="append_const", const=-1)
         verbosity_group.add_argument("-v", "--verbose", dest="verbosity", action="append_const", const=1)
-        for arg in args:
-            parser.add_argument(*arg[0], **arg[1])
+        for name_or_flags, kwargs in args:
+            parser.add_argument(*name_or_flags, **kwargs)
             parser.set_defaults(func=func)
         return func
 
@@ -198,8 +206,8 @@ def schedule_tricks(observer, tricks, pathname, recursive):
     """
     for trick in tricks:
         for name, value in list(trick.items()):
-            TrickClass = load_class(name)
-            handler = TrickClass(**value)
+            trick_cls = load_class(name)
+            handler = trick_cls(**value)
             trick_pathname = getattr(handler, "source_directory", None) or pathname
             observer.schedule(handler, trick_pathname, recursive)
 
@@ -252,7 +260,6 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 )
 def tricks_from(args):
     """Command to execute tricks from a tricks configuration file."""
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
@@ -342,8 +349,8 @@ def tricks_generate_yaml(args):
     output = StringIO()
 
     for trick_path in args.trick_paths:
-        TrickClass = load_class(trick_path)
-        output.write(TrickClass.generate_yaml())
+        trick_cls = load_class(trick_path)
+        output.write(trick_cls.generate_yaml())
 
     content = output.getvalue()
     output.close()
@@ -448,7 +455,6 @@ def log(args):
         ignore_directories=args.ignore_directories,
     )
 
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
@@ -559,7 +565,6 @@ def shell_command(args):
     if not args.command:
         args.command = None
 
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     else:
@@ -672,7 +677,6 @@ def shell_command(args):
 )
 def auto_restart(args):
     """Command to start a long-running subprocess and restart it on matched events."""
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     else:
@@ -731,7 +735,7 @@ class LogLevelException(Exception):
     pass
 
 
-def _get_log_level_from_args(args):
+def _get_log_level_from_args(args: Namespace) -> str:
     verbosity = sum(args.verbosity or [])
     if verbosity < -1:
         raise LogLevelException("-q/--quiet may be specified only once.")
@@ -740,7 +744,7 @@ def _get_log_level_from_args(args):
     return ["ERROR", "WARNING", "INFO", "DEBUG"][1 + verbosity]
 
 
-def main():
+def main() -> int:
     """Entry-point function."""
     args = cli.parse_args()
     if args.top_command is None:

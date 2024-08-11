@@ -11,7 +11,7 @@ follow_imports = "skip"
 # Ensure full coverage
 #disallow_untyped_defs = true [TODO]
 disallow_incomplete_defs = true
-#disallow_untyped_calls = true [TODO]
+disallow_untyped_calls = true
 
 # Restrict dynamic typing (a little)
 # e.g. `x: List[Any]` or x: List`
@@ -31,7 +31,7 @@ addopts = """
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py38"
+target-version = "py39"
 
 [tool.ruff.lint]
 extend-select = ["ALL"]
@@ -53,14 +53,14 @@ ignore = [
     "FBT",
     "FIX",
     "ISC001",
-    "N",  # Requires a major version number bump
+    "N818",
     "PERF203",  # TODO
     "PL",
     "PTH",  # TODO?
     "S",
     "TD",
     "TRY003",
-    "UP",  # TODO when minimum python version will be 3.10
+    "UP",
 ]
 fixable = ["ALL"]
 

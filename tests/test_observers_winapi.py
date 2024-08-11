@@ -118,13 +118,13 @@ def test_root_deleted(event_queue, emitter):
         File "watchdog\observers\read_directory_changes.py", line 76, in queue_events
             winapi_events = self._read_events()
         File "watchdog\observers\read_directory_changes.py", line 73, in _read_events
-            return read_events(self._handle, self.watch.path, self.watch.is_recursive)
+            return read_events(self._whandle, self.watch.path, self.watch.is_recursive)
         File "watchdog\observers\winapi.py", line 387, in read_events
             buf, nbytes = read_directory_changes(handle, path, recursive)
         File "watchdog\observers\winapi.py", line 340, in read_directory_changes
             return _generate_observed_path_deleted_event()
         File "watchdog\observers\winapi.py", line 298, in _generate_observed_path_deleted_event
-            event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value)
+            event = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, len(path), path.value)
         TypeError: expected bytes, str found
     """
 
