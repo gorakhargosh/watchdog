@@ -3,13 +3,13 @@
 Changelog
 ---------
 
-4.0.2 (dev)
-~~~~~~~~~~~
+4.0.2
+~~~~~
 
-2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.1...HEAD>`__
+2024-08-11 • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.1...v4.0.2>`__
 
 - Add support for Python 3.13 (`#1052 <https://github.com/gorakhargosh/watchdog/pull/1052>`__)
-- Run ``ruff``, apply several fixes (`#1033 <https://github.com/gorakhargosh/watchdog/pull/1033>`__)
+- [core] Run ``ruff``, apply several fixes (`#1033 <https://github.com/gorakhargosh/watchdog/pull/1033>`__)
 - [core] Remove execution rights from ``events.py``
 - [documentation] Update ``PatternMatchingEventHandler`` docstrings (`#1048 <https://github.com/gorakhargosh/watchdog/pull/1048>`__)
 - [documentation] Simplify the quickstart example (`#1047 <https://github.com/gorakhargosh/watchdog/pull/1047>`__)
