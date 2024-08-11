@@ -113,7 +113,7 @@ WATCHDOG_ALL_EVENTS = reduce(
 )
 
 
-class inotify_event_struct(ctypes.Structure):
+class InotifyEventStruct(ctypes.Structure):
     """Structure representation of the inotify_event structure
     (used in buffer size calculations)::
 
@@ -135,7 +135,7 @@ class inotify_event_struct(ctypes.Structure):
     )
 
 
-EVENT_SIZE = ctypes.sizeof(inotify_event_struct)
+EVENT_SIZE = ctypes.sizeof(InotifyEventStruct)
 DEFAULT_NUM_EVENTS = 2048
 DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 

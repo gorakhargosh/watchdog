@@ -17,7 +17,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Iterator
+    from collections.abc import Iterator
 
 
 def _match_path(raw_path: str, included_patterns: set[str], excluded_patterns: set[str], case_sensitive: bool) -> bool:

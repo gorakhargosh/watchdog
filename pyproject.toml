@@ -53,14 +53,14 @@ ignore = [
     "FBT",
     "FIX",
     "ISC001",
-    "N",  # Requires a major version number bump
+    "N818",
     "PERF203",  # TODO
     "PL",
     "PTH",  # TODO?
     "S",
     "TD",
     "TRY003",
-    #"UP",  # TODO when minimum python version will be 3.10
+    "UP",
 ]
 fixable = ["ALL"]
 

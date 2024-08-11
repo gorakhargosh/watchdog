@@ -51,7 +51,11 @@ import contextlib
 import errno
 import os
 from stat import S_ISDIR
-from typing import Any, Callable, Iterator, Optional
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from typing import Any, Callable, Optional
 
 
 class DirectorySnapshotDiff:

@@ -3,11 +3,11 @@ from __future__ import annotations
 import dataclasses
 import os
 from queue import Empty, Queue
-from typing import Optional, Type, Union
+from typing import Optional, Type, Union, Protocol
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
-from watchdog.utils import Protocol, platform
+from watchdog.utils import platform
 
 Emitter: Type[EventEmitter]
 

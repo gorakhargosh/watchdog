@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from argparse import Namespace, _SubParsersAction
     from typing import Callable
 
-    from watchdog.observers.api import BaseObserverSubclassCallable
 
 logging.basicConfig(level=logging.INFO)
 
@@ -207,8 +206,8 @@ def schedule_tricks(observer, tricks, pathname, recursive):
     """
     for trick in tricks:
         for name, value in list(trick.items()):
-            TrickClass = load_class(name)
-            handler = TrickClass(**value)
+            trick_cls = load_class(name)
+            handler = trick_cls(**value)
             trick_pathname = getattr(handler, "source_directory", None) or pathname
             observer.schedule(handler, trick_pathname, recursive)
 
@@ -261,7 +260,6 @@ def schedule_tricks(observer, tricks, pathname, recursive):
 )
 def tricks_from(args):
     """Command to execute tricks from a tricks configuration file."""
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
@@ -351,8 +349,8 @@ def tricks_generate_yaml(args):
     output = StringIO()
 
     for trick_path in args.trick_paths:
-        TrickClass = load_class(trick_path)
-        output.write(TrickClass.generate_yaml())
+        trick_cls = load_class(trick_path)
+        output.write(trick_cls.generate_yaml())
 
     content = output.getvalue()
     output.close()
@@ -457,7 +455,6 @@ def log(args):
         ignore_directories=args.ignore_directories,
     )
 
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     elif args.debug_force_kqueue:
@@ -568,7 +565,6 @@ def shell_command(args):
     if not args.command:
         args.command = None
 
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     else:
@@ -681,7 +677,6 @@ def shell_command(args):
 )
 def auto_restart(args):
     """Command to start a long-running subprocess and restart it on matched events."""
-    Observer: BaseObserverSubclassCallable
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver as Observer
     else:

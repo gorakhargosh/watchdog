@@ -230,7 +230,7 @@ GetFinalPathNameByHandleW.argtypes = (
 )
 
 
-class FILE_NOTIFY_INFORMATION(ctypes.Structure):
+class FileNotifyInformation(ctypes.Structure):
     _fields_ = (
         ("NextEntryOffset", ctypes.wintypes.DWORD),
         ("Action", ctypes.wintypes.DWORD),
@@ -240,7 +240,7 @@ class FILE_NOTIFY_INFORMATION(ctypes.Structure):
     )
 
 
-LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
+LPFNI = ctypes.POINTER(FileNotifyInformation)
 
 
 # We don't need to recalculate these flags every time a call is made to
@@ -281,19 +281,19 @@ BUFFER_SIZE = 64000
 PATH_BUFFER_SIZE = 2048
 
 
-def _parse_event_buffer(readBuffer, nBytes):
+def _parse_event_buffer(read_buffer, n_bytes):
     results = []
-    while nBytes > 0:
-        fni = ctypes.cast(readBuffer, LPFNI)[0]
-        ptr = ctypes.addressof(fni) + FILE_NOTIFY_INFORMATION.FileName.offset
+    while n_bytes > 0:
+        fni = ctypes.cast(read_buffer, LPFNI)[0]
+        ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
         # filename = ctypes.wstring_at(ptr, fni.FileNameLength)
         filename = ctypes.string_at(ptr, fni.FileNameLength)
         results.append((fni.Action, filename.decode("utf-16")))
-        numToSkip = fni.NextEntryOffset
-        if numToSkip <= 0:
+        num_to_skip = fni.NextEntryOffset
+        if num_to_skip <= 0:
             break
-        readBuffer = readBuffer[numToSkip:]
-        nBytes -= numToSkip  # numToSkip is long. nBytes should be long too.
+        read_buffer = read_buffer[num_to_skip:]
+        n_bytes -= num_to_skip  # numToSkip is long. nBytes should be long too.
     return results
 
 
@@ -309,7 +309,7 @@ def _is_observed_path_deleted(handle, path):
 def _generate_observed_path_deleted_event():
     # Create synthetic event for notify that observed directory is deleted
     path = ctypes.create_unicode_buffer(".")
-    event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
+    event = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
     event_size = ctypes.sizeof(event)
     buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
     ctypes.memmove(buff, ctypes.addressof(event), event_size)

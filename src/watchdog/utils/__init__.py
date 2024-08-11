@@ -33,9 +33,6 @@ from __future__ import annotations
 import sys
 import threading
 
-# Using `as` to explicitly re-export this since this is a compatibility layer
-from typing import Protocol as Protocol
-
 
 class UnsupportedLibc(Exception):
     pass
