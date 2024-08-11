@@ -117,7 +117,7 @@ def test_watcher_deletion_while_receiving_events_1(
         orig(*args)
 
     with caplog.at_level(logging.ERROR), patch.object(FSEventsEmitter, "events_callback", new=cb):
-        emitter = start_watching(tmpdir)
+        emitter = start_watching(path=tmpdir)
         # Less than 100 is not enough events to trigger the error
         for n in range(100):
             touch(p(f"{n}.txt"))
@@ -149,7 +149,7 @@ def test_watcher_deletion_while_receiving_events_2(
 
     def try_to_fail():
         tmpdir = p()
-        emitter = start_watching(tmpdir)
+        emitter = start_watching(path=tmpdir)
 
         def create_files():
             # Less than 2000 is not enough events to trigger the error
@@ -230,7 +230,7 @@ def test_converting_cfstring_to_pyunicode(p: P, start_watching: StartWatching, e
     """See https://github.com/gorakhargosh/watchdog/issues/762"""
 
     tmpdir = p()
-    emitter = start_watching(tmpdir)
+    emitter = start_watching(path=tmpdir)
 
     dirname = "TéstClass"
 
