@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Union
 
 from watchdog.observers.inotify_c import Inotify, InotifyEvent
 from watchdog.utils import BaseThread
@@ -54,7 +53,7 @@ class InotifyBuffer(BaseThread):
 
     def _group_events(self, event_list):
         """Group any matching move events"""
-        grouped: list[Union[InotifyEvent, tuple[InotifyEvent, InotifyEvent]]] = []
+        grouped: list[InotifyEvent | tuple[InotifyEvent, InotifyEvent]] = []
         for inotify_event in event_list:
             logger.debug("in-event %s", inotify_event)
 
@@ -65,9 +64,6 @@ class InotifyBuffer(BaseThread):
                 # Check if move_from is already in the buffer
                 for index, event in enumerate(grouped):
                     if matching_from_event(event):
-                        if TYPE_CHECKING:
-                            # this check is hidden from mypy inside matching_from_event()
-                            assert not isinstance(event, tuple)
                         grouped[index] = (event, inotify_event)
                         break
                 else:

@@ -96,7 +96,6 @@ import logging
 import os.path
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 from watchdog.utils.patterns import match_any_paths
 
@@ -450,7 +449,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
 class LoggingEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         super().__init__()
         self.logger = logger or logging.root
 

@@ -3,13 +3,13 @@ from __future__ import annotations
 import dataclasses
 import os
 from queue import Empty, Queue
-from typing import Optional, Type, Union, Protocol
+from typing import Protocol
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
 from watchdog.utils import platform
 
-Emitter: Type[EventEmitter]
+Emitter: type[EventEmitter]
 
 if platform.is_linux():
     from watchdog.observers.inotify import InotifyEmitter as Emitter
@@ -30,7 +30,7 @@ class P(Protocol):
 class StartWatching(Protocol):
     def __call__(
         self,
-        path: Optional[Union[str, bytes]] = ...,
+        path: bytes | str | None = ...,
         use_full_emitter: bool = ...,
         recursive: bool = ...,
     ) -> EventEmitter:
@@ -56,7 +56,7 @@ class Helper:
 
     def start_watching(
         self,
-        path: Optional[Union[str, bytes]] = None,
+        path: bytes | str | None = None,
         use_full_emitter: bool = False,
         recursive: bool = True,
     ) -> EventEmitter:

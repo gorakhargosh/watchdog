@@ -404,7 +404,7 @@ class KqueueEmitter(EventEmitter):
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
-        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
+        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
     :param stat: stat function. See ``os.stat`` for details.
     """
 

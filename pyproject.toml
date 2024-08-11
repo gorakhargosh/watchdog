@@ -60,7 +60,6 @@ ignore = [
     "S",
     "TD",
     "TRY003",
-    "UP",
 ]
 fixable = ["ALL"]
 

@@ -108,7 +108,7 @@ class InotifyEmitter(EventEmitter):
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
-        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
+        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
     """
 
     def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
@@ -250,7 +250,7 @@ class InotifyFullEmitter(InotifyEmitter):
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
-        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
+        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
 
     """
 
