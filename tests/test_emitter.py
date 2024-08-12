@@ -28,6 +28,7 @@ from watchdog.events import (
     DirModifiedEvent,
     DirMovedEvent,
     FileClosedEvent,
+    FileClosedNoWriteEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -75,10 +76,9 @@ def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching
         assert isinstance(event, FileClosedEvent)
 
 
-@pytest.mark.xfail(reason="known to be problematic")
-@pytest.mark.skipif(not platform.is_linux(), reason="FileCloseEvent only supported in GNU/Linux")
+@pytest.mark.skipif(not platform.is_linux(), reason="FileClosed*Event only supported in GNU/Linux")
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
-def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+def test_closed(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     with open(p("a"), "a"):
         start_watching()
 
@@ -91,8 +91,16 @@ def test_close(p: P, event_queue: TestEventQueue, start_watching: StartWatching)
     assert os.path.normpath(event.src_path) == os.path.normpath(p(""))
     assert isinstance(event, DirModifiedEvent)
 
-    # After read-only, only IN_CLOSE_NOWRITE is emitted but not caught for now #747
+    # After read-only, only IN_CLOSE_NOWRITE is emitted
     open(p("a")).close()
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p("a")
+    assert isinstance(event, FileOpenedEvent)
+
+    event = event_queue.get(timeout=5)[0]
+    assert event.src_path == p("a")
+    assert isinstance(event, FileClosedNoWriteEvent)
 
     assert event_queue.empty()
 

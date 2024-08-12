@@ -75,6 +75,7 @@ from watchdog.events import (
     DirModifiedEvent,
     DirMovedEvent,
     FileClosedEvent,
+    FileClosedNoWriteEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -181,23 +182,25 @@ class InotifyEmitter(EventEmitter):
                 cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-            elif event.is_close_write and not event.is_directory:
-                cls = FileClosedEvent
-                self.queue_event(cls(src_path))
-                self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-            elif event.is_open and not event.is_directory:
-                cls = FileOpenedEvent
-                self.queue_event(cls(src_path))
             elif event.is_delete_self and src_path == self.watch.path:
                 cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
                 self.queue_event(cls(src_path))
                 self.stop()
+            elif not event.is_directory:
+                if event.is_open:
+                    cls = FileOpenedEvent
+                    self.queue_event(cls(src_path))
+                elif event.is_close_write:
+                    cls = FileClosedEvent
+                    self.queue_event(cls(src_path))
+                    self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                elif event.is_close_nowrite:
+                    cls = FileClosedNoWriteEvent
+                    self.queue_event(cls(src_path))
 
     def _decode_path(self, path):
         """Decode path only if unicode string was passed to this emitter."""
-        if isinstance(self.watch.path, bytes):
-            return path
-        return os.fsdecode(path)
+        return path if isinstance(self.watch.path, bytes) else os.fsdecode(path)
 
     def get_event_mask_from_filter(self):
         """Optimization: Only include events we are filtering in inotify call"""
@@ -225,6 +228,8 @@ class InotifyEmitter(EventEmitter):
                 event_mask |= InotifyConstants.IN_DELETE
             elif cls is FileClosedEvent:
                 event_mask |= InotifyConstants.IN_CLOSE
+            elif cls is FileClosedNoWriteEvent:
+                event_mask |= InotifyConstants.IN_CLOSE_NOWRITE
             elif cls is FileOpenedEvent:
                 event_mask |= InotifyConstants.IN_OPEN
         return event_mask
@@ -233,26 +238,7 @@ class InotifyEmitter(EventEmitter):
 class InotifyFullEmitter(InotifyEmitter):
     """inotify(7)-based event emitter. By default this class produces move events even if they are not matched
     Such move events will have a ``None`` value for the unmatched part.
-
-    :param event_queue:
-        The event queue to fill with events.
-    :param watch:
-        A watch object representing the directory to monitor.
-    :type watch:
-        :class:`watchdog.observers.api.ObservedWatch`
-    :param timeout:
-        Read events blocking timeout (in seconds).
-    :type timeout:
-        ``float``
-    :param event_filter:
-        Collection of event types to emit, or None for no filtering (default).
-    :type event_filter:
-        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
-
     """
-
-    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
-        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
 
     def queue_events(self, timeout, *, events=True):
         InotifyEmitter.queue_events(self, timeout, full_events=events)

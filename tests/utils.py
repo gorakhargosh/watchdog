@@ -62,13 +62,9 @@ class Helper:
         # TODO: check if other platforms expect the trailing slash (e.g. `p('')`)
         path = self.tmp if path is None else path
 
-        emitter: EventEmitter
-        if platform.is_linux() and use_full_emitter:
-            emitter = InotifyFullEmitter(self.event_queue, ObservedWatch(path, recursive=recursive))
-        else:
-            emitter = Emitter(self.event_queue, ObservedWatch(path, recursive=recursive))
-
-        self.emitters.append(emitter)
+        watcher = ObservedWatch(path, recursive=recursive)
+        emitter_cls = InotifyFullEmitter if platform.is_linux() and use_full_emitter else Emitter
+        emitter = emitter_cls(self.event_queue, watcher)
 
         if platform.is_darwin():
             # TODO: I think this could be better...  .suppress_history should maybe
@@ -78,6 +74,7 @@ class Helper:
             assert isinstance(emitter, FSEventsEmitter)
             emitter.suppress_history = True
 
+        self.emitters.append(emitter)
         emitter.start()
 
         return emitter
@@ -87,8 +84,7 @@ class Helper:
 
         Provides some robustness for the otherwise flaky nature of asynchronous notifications.
         """
-        event = self.event_queue.get(timeout=timeout)[0]
-        assert event == expected_event
+        assert self.event_queue.get(timeout=timeout)[0] == expected_event
 
     def close(self) -> None:
         for emitter in self.emitters:

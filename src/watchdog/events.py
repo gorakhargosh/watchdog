@@ -53,6 +53,10 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileClosedNoWriteEvent
+   :members:
+   :show-inheritance:
+
 .. autoclass:: FileOpenedEvent
    :members:
    :show-inheritance:
@@ -96,7 +100,6 @@ import logging
 import os.path
 import re
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 from watchdog.utils.patterns import match_any_paths
 
@@ -105,6 +108,7 @@ EVENT_TYPE_DELETED = "deleted"
 EVENT_TYPE_CREATED = "created"
 EVENT_TYPE_MODIFIED = "modified"
 EVENT_TYPE_CLOSED = "closed"
+EVENT_TYPE_CLOSED_NO_WRITE = "closed_no_write"
 EVENT_TYPE_OPENED = "opened"
 
 
@@ -167,6 +171,12 @@ class FileClosedEvent(FileSystemEvent):
     event_type = EVENT_TYPE_CLOSED
 
 
+class FileClosedNoWriteEvent(FileSystemEvent):
+    """File system event representing an unmodified file close on the file system."""
+
+    event_type = EVENT_TYPE_CLOSED_NO_WRITE
+
+
 class FileOpenedEvent(FileSystemEvent):
     """File system event representing file close on the file system."""
 
@@ -206,15 +216,6 @@ class DirMovedEvent(FileSystemMovedEvent):
 class FileSystemEventHandler:
     """Base file system event handler that you can override methods from."""
 
-    dispatch_table: ClassVar = {
-        EVENT_TYPE_CREATED: "on_created",
-        EVENT_TYPE_DELETED: "on_deleted",
-        EVENT_TYPE_MODIFIED: "on_modified",
-        EVENT_TYPE_MOVED: "on_moved",
-        EVENT_TYPE_CLOSED: "on_closed",
-        EVENT_TYPE_OPENED: "on_opened",
-    }
-
     def dispatch(self, event: FileSystemEvent) -> None:
         """Dispatches events to the appropriate methods.
 
@@ -224,7 +225,7 @@ class FileSystemEventHandler:
             :class:`FileSystemEvent`
         """
         self.on_any_event(event)
-        getattr(self, self.dispatch_table[event.event_type])(event)
+        getattr(self, f"on_{event.event_type}")(event)
 
     def on_any_event(self, event: FileSystemEvent) -> None:
         """Catch-all event handler.
@@ -278,6 +279,15 @@ class FileSystemEventHandler:
             Event representing file closing.
         :type event:
             :class:`FileClosedEvent`
+        """
+
+    def on_closed_no_write(self, event: FileClosedNoWriteEvent) -> None:
+        """Called when a file opened for reading is closed.
+
+        :param event:
+            Event representing file closing.
+        :type event:
+            :class:`FileClosedNoWriteEvent`
         """
 
     def on_opened(self, event: FileOpenedEvent) -> None:
@@ -483,7 +493,12 @@ class LoggingEventHandler(FileSystemEventHandler):
     def on_closed(self, event: FileClosedEvent) -> None:
         super().on_closed(event)
 
-        self.logger.info("Closed file: %s", event.src_path)
+        self.logger.info("Closed modified file: %s", event.src_path)
+
+    def on_closed_no_write(self, event: FileClosedNoWriteEvent) -> None:
+        super().on_closed_no_write(event)
+
+        self.logger.info("Closed read file: %s", event.src_path)
 
     def on_opened(self, event: FileOpenedEvent) -> None:
         super().on_opened(event)
