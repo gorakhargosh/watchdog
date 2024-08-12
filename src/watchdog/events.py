@@ -100,8 +100,12 @@ import logging
 import os.path
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from watchdog.utils.patterns import match_any_paths
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 EVENT_TYPE_MOVED = "moved"
 EVENT_TYPE_DELETED = "deleted"
@@ -121,8 +125,8 @@ class FileSystemEvent:
     can be used as keys in dictionaries or be added to sets.
     """
 
-    src_path: str
-    dest_path: str = ""
+    src_path: bytes | str
+    dest_path: bytes | str = ""
     event_type: str = field(default="", init=False)
     is_directory: bool = field(default=False, init=False)
 
@@ -309,10 +313,10 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
     def __init__(
         self,
         *,
-        patterns=None,
-        ignore_patterns=None,
-        ignore_directories=False,
-        case_sensitive=False,
+        patterns: list[str] | None = None,
+        ignore_patterns: list[str] | None = None,
+        ignore_directories: bool = False,
+        case_sensitive: bool = False,
     ):
         super().__init__()
 
@@ -322,28 +326,28 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         self._case_sensitive = case_sensitive
 
     @property
-    def patterns(self):
+    def patterns(self) -> list[str] | None:
         """(Read-only)
         Patterns to allow matching event paths.
         """
         return self._patterns
 
     @property
-    def ignore_patterns(self):
+    def ignore_patterns(self) -> list[str] | None:
         """(Read-only)
         Patterns to ignore matching event paths.
         """
         return self._ignore_patterns
 
     @property
-    def ignore_directories(self):
+    def ignore_directories(self) -> bool:
         """(Read-only)
         ``True`` if directories should be ignored; ``False`` otherwise.
         """
         return self._ignore_directories
 
     @property
-    def case_sensitive(self):
+    def case_sensitive(self) -> bool:
         """(Read-only)
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
@@ -384,10 +388,10 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
     def __init__(
         self,
         *,
-        regexes=None,
-        ignore_regexes=None,
-        ignore_directories=False,
-        case_sensitive=False,
+        regexes: list[str] | None = None,
+        ignore_regexes: list[str] | None = None,
+        ignore_directories: bool = False,
+        case_sensitive: bool = False,
     ):
         super().__init__()
 
@@ -407,28 +411,28 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         self._case_sensitive = case_sensitive
 
     @property
-    def regexes(self):
+    def regexes(self) -> list[re.Pattern[str]]:
         """(Read-only)
         Regexes to allow matching event paths.
         """
         return self._regexes
 
     @property
-    def ignore_regexes(self):
+    def ignore_regexes(self) -> list[re.Pattern[str]]:
         """(Read-only)
         Regexes to ignore matching event paths.
         """
         return self._ignore_regexes
 
     @property
-    def ignore_directories(self):
+    def ignore_directories(self) -> bool:
         """(Read-only)
         ``True`` if directories should be ignored; ``False`` otherwise.
         """
         return self._ignore_directories
 
     @property
-    def case_sensitive(self):
+    def case_sensitive(self) -> bool:
         """(Read-only)
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
@@ -506,7 +510,10 @@ class LoggingEventHandler(FileSystemEventHandler):
         self.logger.info("Opened file: %s", event.src_path)
 
 
-def generate_sub_moved_events(src_dir_path, dest_dir_path):
+def generate_sub_moved_events(
+    src_dir_path: bytes | str,
+    dest_dir_path: bytes | str,
+) -> Generator[DirMovedEvent | FileMovedEvent]:
     """Generates an event list of :class:`DirMovedEvent` and
     :class:`FileMovedEvent` objects for all the files and directories within
     the given moved directory that were moved along with the directory.
@@ -519,18 +526,18 @@ def generate_sub_moved_events(src_dir_path, dest_dir_path):
         An iterable of file system events of type :class:`DirMovedEvent` and
         :class:`FileMovedEvent`.
     """
-    for root, directories, filenames in os.walk(dest_dir_path):
+    for root, directories, filenames in os.walk(dest_dir_path):  # type: ignore[type-var]
         for directory in directories:
-            full_path = os.path.join(root, directory)
+            full_path = os.path.join(root, directory)  # type: ignore[call-overload]
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else ""
             yield DirMovedEvent(renamed_path, full_path, is_synthetic=True)
         for filename in filenames:
-            full_path = os.path.join(root, filename)
+            full_path = os.path.join(root, filename)  # type: ignore[call-overload]
             renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else ""
             yield FileMovedEvent(renamed_path, full_path, is_synthetic=True)
 
 
-def generate_sub_created_events(src_dir_path):
+def generate_sub_created_events(src_dir_path: bytes | str) -> Generator[DirCreatedEvent | FileCreatedEvent]:
     """Generates an event list of :class:`DirCreatedEvent` and
     :class:`FileCreatedEvent` objects for all the files and directories within
     the given moved directory that were moved along with the directory.
@@ -541,8 +548,10 @@ def generate_sub_created_events(src_dir_path):
         An iterable of file system events of type :class:`DirCreatedEvent` and
         :class:`FileCreatedEvent`.
     """
-    for root, directories, filenames in os.walk(src_dir_path):
+    for root, directories, filenames in os.walk(src_dir_path):  # type: ignore[type-var]
         for directory in directories:
-            yield DirCreatedEvent(os.path.join(root, directory), is_synthetic=True)
+            full_path = os.path.join(root, directory)  # type: ignore[call-overload]
+            yield DirCreatedEvent(full_path, is_synthetic=True)
         for filename in filenames:
-            yield FileCreatedEvent(os.path.join(root, filename), is_synthetic=True)
+            full_path = os.path.join(root, filename)  # type: ignore[call-overload]
+            yield FileCreatedEvent(full_path, is_synthetic=True)

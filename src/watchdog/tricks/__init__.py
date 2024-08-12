@@ -62,7 +62,7 @@ class Trick(PatternMatchingEventHandler):
     """Your tricks should subclass this class."""
 
     @classmethod
-    def generate_yaml(cls):
+    def generate_yaml(cls) -> str:
         return f"""- {cls.__module__}.{cls.__name__}:
   args:
   - argument1
@@ -90,13 +90,13 @@ class ShellCommandTrick(Trick):
 
     def __init__(
         self,
-        shell_command,
+        shell_command: str,
         *,
-        patterns=None,
-        ignore_patterns=None,
-        ignore_directories=False,
-        wait_for_process=False,
-        drop_during_process=False,
+        patterns: list[str] | None = None,
+        ignore_patterns: list[str] | None = None,
+        ignore_directories: bool = False,
+        wait_for_process: bool = False,
+        drop_during_process: bool = False,
     ):
         super().__init__(
             patterns=patterns,
@@ -107,8 +107,8 @@ class ShellCommandTrick(Trick):
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
 
-        self.process = None
-        self._process_watchers = set()
+        self.process: subprocess.Popen[bytes] | None = None
+        self._process_watchers: set[ProcessWatcher] = set()
 
     def on_any_event(self, event: FileSystemEvent) -> None:
         if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
@@ -168,15 +168,15 @@ class AutoRestartTrick(Trick):
 
     def __init__(
         self,
-        command,
+        command: list[str],
         *,
-        patterns=None,
-        ignore_patterns=None,
-        ignore_directories=False,
-        stop_signal=signal.SIGINT,
-        kill_after=10,
-        debounce_interval_seconds=0,
-        restart_on_command_exit=True,
+        patterns: list[str] | None = None,
+        ignore_patterns: list[str] | None = None,
+        ignore_directories: bool = False,
+        stop_signal: signal.Signals = signal.SIGINT,
+        kill_after: int = 10,
+        debounce_interval_seconds: int = 0,
+        restart_on_command_exit: bool = True,
     ):
         if kill_after < 0:
             error = "kill_after must be non-negative."
@@ -197,16 +197,16 @@ class AutoRestartTrick(Trick):
         self.debounce_interval_seconds = debounce_interval_seconds
         self.restart_on_command_exit = restart_on_command_exit
 
-        self.process = None
-        self.process_watcher = None
-        self.event_debouncer = None
+        self.process: subprocess.Popen[bytes] | None = None
+        self.process_watcher: ProcessWatcher | None = None
+        self.event_debouncer: EventDebouncer | None = None
         self.restart_count = 0
 
         self._is_process_stopping = False
         self._is_trick_stopping = False
         self._stopping_lock = threading.RLock()
 
-    def start(self):
+    def start(self) -> None:
         if self.debounce_interval_seconds:
             self.event_debouncer = EventDebouncer(
                 debounce_interval_seconds=self.debounce_interval_seconds,
@@ -215,7 +215,7 @@ class AutoRestartTrick(Trick):
             self.event_debouncer.start()
         self._start_process()
 
-    def stop(self):
+    def stop(self) -> None:
         # Ensure the body of the function is only run once.
         with self._stopping_lock:
             if self._is_trick_stopping:

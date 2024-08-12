@@ -68,6 +68,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+from typing import TYPE_CHECKING
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -86,9 +87,11 @@ from watchdog.events import (
     generate_sub_moved_events,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+from watchdog.observers.inotify_buffer import InotifyBuffer
+from watchdog.observers.inotify_c import InotifyConstants
 
-from .inotify_buffer import InotifyBuffer
-from .inotify_c import InotifyConstants
+if TYPE_CHECKING:
+    from watchdog.observers.api import EventQueue, ObservedWatch
 
 logger = logging.getLogger(__name__)
 
@@ -112,22 +115,29 @@ class InotifyEmitter(EventEmitter):
         Iterable[:class:`watchdog.events.FileSystemEvent`] | None
     """
 
-    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+    def __init__(
+        self,
+        event_queue: EventQueue,
+        watch: ObservedWatch,
+        *,
+        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        event_filter: list[FileSystemEvent] | None = None,
+    ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock = threading.Lock()
-        self._inotify = None
+        self._inotify: InotifyBuffer | None = None
 
-    def on_thread_start(self):
+    def on_thread_start(self) -> None:
         path = os.fsencode(self.watch.path)
         event_mask = self.get_event_mask_from_filter()
         self._inotify = InotifyBuffer(path, recursive=self.watch.is_recursive, event_mask=event_mask)
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         if self._inotify:
             self._inotify.close()
             self._inotify = None
 
-    def queue_events(self, timeout, *, full_events=False):
+    def queue_events(self, timeout: int, *, full_events: bool = False) -> None:
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         if self._inotify is None:
@@ -151,8 +161,8 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
                 if move_from.is_directory and self.watch.is_recursive:
-                    for sub_event in generate_sub_moved_events(src_path, dest_path):
-                        self.queue_event(sub_event)
+                    for sub_moved_event in generate_sub_moved_events(src_path, dest_path):
+                        self.queue_event(sub_moved_event)
                 return
 
             src_path = self._decode_path(event.src_path)
@@ -165,8 +175,8 @@ class InotifyEmitter(EventEmitter):
                     self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 if event.is_directory and self.watch.is_recursive:
-                    for sub_event in generate_sub_created_events(src_path):
-                        self.queue_event(sub_event)
+                    for sub_created_event in generate_sub_created_events(src_path):
+                        self.queue_event(sub_created_event)
             elif event.is_attrib or event.is_modify:
                 cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
                 self.queue_event(cls(src_path))
@@ -198,23 +208,24 @@ class InotifyEmitter(EventEmitter):
                     cls = FileClosedNoWriteEvent
                     self.queue_event(cls(src_path))
 
-    def _decode_path(self, path):
+    def _decode_path(self, path: bytes | str) -> bytes | str:
         """Decode path only if unicode string was passed to this emitter."""
         return path if isinstance(self.watch.path, bytes) else os.fsdecode(path)
 
-    def get_event_mask_from_filter(self):
-        """Optimization: Only include events we are filtering in inotify call"""
+    def get_event_mask_from_filter(self) -> int | None:
+        """Optimization: Only include events we are filtering in inotify call."""
         if self._event_filter is None:
             return None
 
-        # always listen to delete self
+        # Always listen to delete self
         event_mask = InotifyConstants.IN_DELETE_SELF
+
         for cls in self._event_filter:
-            if cls in (DirMovedEvent, FileMovedEvent):
+            if cls in {DirMovedEvent, FileMovedEvent}:  # type: ignore[comparison-overlap]
                 event_mask |= InotifyConstants.IN_MOVE
-            elif cls in (DirCreatedEvent, FileCreatedEvent):
+            elif cls in {DirCreatedEvent, FileCreatedEvent}:  # type: ignore[comparison-overlap]
                 event_mask |= InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE
-            elif cls is DirModifiedEvent:
+            elif cls is DirModifiedEvent:  # type: ignore[comparison-overlap]
                 event_mask |= (
                     InotifyConstants.IN_MOVE
                     | InotifyConstants.IN_ATTRIB
@@ -222,16 +233,17 @@ class InotifyEmitter(EventEmitter):
                     | InotifyConstants.IN_CREATE
                     | InotifyConstants.IN_CLOSE_WRITE
                 )
-            elif cls is FileModifiedEvent:
+            elif cls is FileModifiedEvent:  # type: ignore[comparison-overlap]
                 event_mask |= InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY
-            elif cls in (DirDeletedEvent, FileDeletedEvent):
+            elif cls in {DirDeletedEvent, FileDeletedEvent}:  # type: ignore[comparison-overlap]
                 event_mask |= InotifyConstants.IN_DELETE
-            elif cls is FileClosedEvent:
+            elif cls is FileClosedEvent:  # type: ignore[comparison-overlap]
                 event_mask |= InotifyConstants.IN_CLOSE_WRITE
-            elif cls is FileClosedNoWriteEvent:
+            elif cls is FileClosedNoWriteEvent:  # type: ignore[comparison-overlap]
                 event_mask |= InotifyConstants.IN_CLOSE_NOWRITE
-            elif cls is FileOpenedEvent:
+            elif cls is FileOpenedEvent:  # type: ignore[comparison-overlap]
                 event_mask |= InotifyConstants.IN_OPEN
+
         return event_mask
 
 
@@ -240,8 +252,8 @@ class InotifyFullEmitter(InotifyEmitter):
     Such move events will have a ``None`` value for the unmatched part.
     """
 
-    def queue_events(self, timeout, *, events=True):
-        InotifyEmitter.queue_events(self, timeout, full_events=events)
+    def queue_events(self, timeout: int, *, events: bool = True) -> None:  # type: ignore[override]
+        super().queue_events(timeout, full_events=events)
 
 
 class InotifyObserver(BaseObserver):
@@ -249,6 +261,6 @@ class InotifyObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout=DEFAULT_OBSERVER_TIMEOUT, generate_full_events=False):
+    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
         super().__init__(cls, timeout=timeout)

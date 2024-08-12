@@ -32,6 +32,10 @@ from __future__ import annotations
 
 import sys
 import threading
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
 class UnsupportedLibcError(Exception):
@@ -54,21 +58,21 @@ class BaseThread(threading.Thread):
         self._stopped_event = threading.Event()
 
     @property
-    def stopped_event(self):
+    def stopped_event(self) -> threading.Event:
         return self._stopped_event
 
-    def should_keep_running(self):
+    def should_keep_running(self) -> bool:
         """Determines whether the thread should continue running."""
         return not self._stopped_event.is_set()
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         """Override this method instead of :meth:`stop()`.
         :meth:`stop()` calls this method.
 
         This method is called immediately after the thread is signaled to stop.
         """
 
-    def stop(self):
+    def stop(self) -> None:
         """Signals the thread to stop."""
         self._stopped_event.set()
         self.on_thread_stop()
@@ -86,7 +90,7 @@ class BaseThread(threading.Thread):
         threading.Thread.start(self)
 
 
-def load_module(module_name):
+def load_module(module_name: str) -> ModuleType:
     """Imports a module given its name and returns a handle to it."""
     try:
         __import__(module_name)
@@ -96,7 +100,7 @@ def load_module(module_name):
     return sys.modules[module_name]
 
 
-def load_class(dotted_path):
+def load_class(dotted_path: str) -> type:
     """Loads and returns a class definition provided a dotted path
     specification the last part of the dotted path is the class name
     and there is at least one module name preceding the class name.

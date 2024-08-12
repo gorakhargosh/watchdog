@@ -37,19 +37,24 @@ from __future__ import annotations
 
 import inspect
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import MethodType
+    from typing import Any, Callable
 
 
-def name(item):
+def name(item: Callable) -> str:
     """Return an item's name."""
     return item.__name__
 
 
-def is_classmethod(instancemethod, klass):
+def is_classmethod(instancemethod: MethodType, klass: type) -> bool:
     """Determine if an instancemethod is a classmethod."""
     return inspect.ismethod(instancemethod) and instancemethod.__self__ is klass
 
 
-def is_static_method(method, klass):
+def is_static_method(method: MethodType, klass: type) -> bool:
     """Returns True if method is an instance method of klass."""
     return next(
         (isinstance(c.__dict__[name(method)], staticmethod) for c in klass.mro() if name(method) in c.__dict__),
@@ -57,13 +62,13 @@ def is_static_method(method, klass):
     )
 
 
-def is_class_private_name(name):
+def is_class_private_name(name: str) -> bool:
     """Determine if a name is a class private name."""
     # Exclude system defined names such as __init__, __add__ etc
     return name.startswith("__") and not name.endswith("__")
 
 
-def method_name(method):
+def method_name(method: MethodType) -> str:
     """Return a method's name.
 
     This function returns the name the method is accessed by from
@@ -75,7 +80,7 @@ def method_name(method):
     return mname
 
 
-def format_arg_value(arg_val):
+def format_arg_value(arg_val: tuple[str, tuple[Any, ...]]) -> str:
     """Return a string representing a (name, value) pair.
 
     >>> format_arg_value(("x", (1, 2, 3)))
@@ -85,7 +90,7 @@ def format_arg_value(arg_val):
     return f"{arg}={val!r}"
 
 
-def echo(fn, write=sys.stdout.write):
+def echo(fn: Callable, write: Callable = sys.stdout.write) -> Callable:
     """Echo calls to a function.
 
     Returns a decorated version of the input function which "echoes" calls
@@ -98,11 +103,11 @@ def echo(fn, write=sys.stdout.write):
     code = fn.__code__
     argcount = code.co_argcount
     argnames = code.co_varnames[:argcount]
-    fn_defaults = fn.__defaults__ or []
+    fn_defaults: tuple[Any] = fn.__defaults__ or ()
     argdefs = dict(list(zip(argnames[-len(fn_defaults) :], fn_defaults)))
 
     @functools.wraps(fn)
-    def wrapped(*v, **k):
+    def wrapped(*v: Any, **k: Any) -> Callable:
         # Collect function arguments by chaining together positional,
         # defaulted, extra positional and keyword arguments.
         positional = list(map(format_arg_value, list(zip(argnames, v))))
@@ -116,26 +121,25 @@ def echo(fn, write=sys.stdout.write):
     return wrapped
 
 
-def echo_instancemethod(klass, method, write=sys.stdout.write):
+def echo_instancemethod(klass: type, method: MethodType, write: Callable = sys.stdout.write) -> None:
     """Change an instancemethod so that calls to it are echoed.
 
     Replacing a classmethod is a little more tricky.
     See: http://www.python.org/doc/current/ref/types.html
     """
     mname = method_name(method)
-    never_echo = (
-        "__str__",
-        "__repr__",
-    )  # Avoid recursion printing method calls
-    if mname in never_echo:
-        pass
-    elif is_classmethod(method, klass):
+
+    # Avoid recursion printing method calls
+    if mname in {"__str__", "__repr__"}:
+        return
+
+    if is_classmethod(method, klass):
         setattr(klass, mname, classmethod(echo(method.__func__, write)))
     else:
         setattr(klass, mname, echo(method, write))
 
 
-def echo_class(klass, write=sys.stdout.write):
+def echo_class(klass: type, write: Callable = sys.stdout.write) -> None:
     """Echo calls to class methods and static functions"""
     for _, method in inspect.getmembers(klass, inspect.ismethod):
         # In python 3 only class methods are returned here
@@ -148,7 +152,7 @@ def echo_class(klass, write=sys.stdout.write):
             echo_instancemethod(klass, fn, write)
 
 
-def echo_module(mod, write=sys.stdout.write):
+def echo_module(mod: MethodType, write: Callable = sys.stdout.write) -> None:
     """Echo calls to functions and methods in a module."""
     for fname, fn in inspect.getmembers(mod, inspect.isfunction):
         setattr(mod, fname, echo(fn, write))

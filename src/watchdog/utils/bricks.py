@@ -36,6 +36,10 @@ Classes
 from __future__ import annotations
 
 import queue
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 class SkipRepeatsQueue(queue.Queue):
@@ -80,11 +84,11 @@ class SkipRepeatsQueue(queue.Queue):
     based on the OrderedSetQueue below
     """
 
-    def _init(self, maxsize):
+    def _init(self, maxsize: int) -> None:
         super()._init(maxsize)
         self._last_item = None
 
-    def _put(self, item):
+    def _put(self, item: Any) -> None:
         if self._last_item is None or item != self._last_item:
             super()._put(item)
             self._last_item = item
@@ -93,7 +97,7 @@ class SkipRepeatsQueue(queue.Queue):
             # anything into the queue here
             self.unfinished_tasks -= 1
 
-    def _get(self):
+    def _get(self) -> Any:
         item = super()._get()
         if item is self._last_item:
             self._last_item = None

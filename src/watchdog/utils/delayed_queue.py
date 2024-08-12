@@ -23,7 +23,7 @@ T = TypeVar("T")
 
 
 class DelayedQueue(Generic[T]):
-    def __init__(self, delay):
+    def __init__(self, delay: float) -> None:
         self.delay_sec = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
@@ -37,7 +37,7 @@ class DelayedQueue(Generic[T]):
         self._not_empty.notify()
         self._lock.release()
 
-    def close(self):
+    def close(self) -> None:
         """Close queue, indicating no more items will be added."""
         self._closed = True
         # Interrupt the blocking _not_empty.wait() call in get

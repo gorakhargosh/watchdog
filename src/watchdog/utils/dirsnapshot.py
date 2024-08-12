@@ -89,18 +89,18 @@ class DirectorySnapshotDiff:
         snapshot: DirectorySnapshot,
         *,
         ignore_device: bool = False,
-    ):
+    ) -> None:
         created = snapshot.paths - ref.paths
         deleted = ref.paths - snapshot.paths
 
         if ignore_device:
 
-            def get_inode(directory: DirectorySnapshot, full_path: str) -> int | tuple[int, int]:
+            def get_inode(directory: DirectorySnapshot, full_path: bytes | str) -> int | tuple[int, int]:
                 return directory.inode(full_path)[0]
 
         else:
 
-            def get_inode(directory: DirectorySnapshot, full_path: str) -> int | tuple[int, int]:
+            def get_inode(directory: DirectorySnapshot, full_path: bytes | str) -> int | tuple[int, int]:
                 return directory.inode(full_path)
 
         # check that all unchanged paths have the same inode
@@ -110,7 +110,7 @@ class DirectorySnapshotDiff:
                 deleted.add(path)
 
         # find moved paths
-        moved: set[tuple[str, str]] = set()
+        moved: set[tuple[bytes | str, bytes | str]] = set()
         for path in set(deleted):
             inode = ref.inode(path)
             new_path = snapshot.path(inode)
@@ -128,7 +128,7 @@ class DirectorySnapshotDiff:
 
         # find modified paths
         # first check paths that have not moved
-        modified: set[str] = set()
+        modified: set[bytes | str] = set()
         for path in ref.paths & snapshot.paths:
             if get_inode(ref, path) == get_inode(snapshot, path) and (
                 ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path)
@@ -170,22 +170,22 @@ class DirectorySnapshotDiff:
         )
 
     @property
-    def files_created(self) -> list[str]:
+    def files_created(self) -> list[bytes | str]:
         """List of files that were created."""
         return self._files_created
 
     @property
-    def files_deleted(self) -> list[str]:
+    def files_deleted(self) -> list[bytes | str]:
         """List of files that were deleted."""
         return self._files_deleted
 
     @property
-    def files_modified(self) -> list[str]:
+    def files_modified(self) -> list[bytes | str]:
         """List of files that were modified."""
         return self._files_modified
 
     @property
-    def files_moved(self) -> list[tuple[str, str]]:
+    def files_moved(self) -> list[tuple[bytes | str, bytes | str]]:
         """List of files that were moved.
 
         Each event is a two-tuple the first item of which is the path
@@ -194,12 +194,12 @@ class DirectorySnapshotDiff:
         return self._files_moved
 
     @property
-    def dirs_modified(self) -> list[str]:
+    def dirs_modified(self) -> list[bytes | str]:
         """List of directories that were modified."""
         return self._dirs_modified
 
     @property
-    def dirs_moved(self) -> list[tuple[str, str]]:
+    def dirs_moved(self) -> list[tuple[bytes | str, bytes | str]]:
         """List of directories that were moved.
 
         Each event is a two-tuple the first item of which is the path
@@ -208,12 +208,12 @@ class DirectorySnapshotDiff:
         return self._dirs_moved
 
     @property
-    def dirs_deleted(self) -> list[str]:
+    def dirs_deleted(self) -> list[bytes | str]:
         """List of directories that were deleted."""
         return self._dirs_deleted
 
     @property
-    def dirs_created(self) -> list[str]:
+    def dirs_created(self) -> list[bytes | str]:
         """List of directories that were created."""
         return self._dirs_created
 
@@ -258,17 +258,17 @@ class DirectorySnapshotDiff:
             stat: Callable[[str], os.stat_result] = os.stat,
             listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
             ignore_device: bool = False,
-        ):
+        ) -> None:
             self.path = path
             self.recursive = recursive
             self.stat = stat
             self.listdir = listdir
             self.ignore_device = ignore_device
 
-        def __enter__(self):
+        def __enter__(self) -> None:
             self.pre_snapshot = self.get_snapshot()
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: object) -> None:
             self.post_snapshot = self.get_snapshot()
             self.diff = DirectorySnapshotDiff(
                 self.pre_snapshot,
@@ -276,7 +276,7 @@ class DirectorySnapshotDiff:
                 ignore_device=self.ignore_device,
             )
 
-        def get_snapshot(self):
+        def get_snapshot(self) -> DirectorySnapshot:
             return DirectorySnapshot(
                 path=self.path,
                 recursive=self.recursive,
@@ -314,13 +314,13 @@ class DirectorySnapshot:
         recursive: bool = True,
         stat: Callable[[str], os.stat_result] = os.stat,
         listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
-    ):
+    ) -> None:
         self.recursive = recursive
         self.stat = stat
         self.listdir = listdir
 
-        self._stat_info: dict[str, os.stat_result] = {}
-        self._inode_to_path: dict[tuple[int, int], str] = {}
+        self._stat_info: dict[bytes | str, os.stat_result] = {}
+        self._inode_to_path: dict[tuple[int, int], bytes | str] = {}
 
         st = self.stat(path)
         self._stat_info[path] = st
@@ -358,29 +358,29 @@ class DirectorySnapshot:
                         yield from self.walk(path)
 
     @property
-    def paths(self) -> set[str]:
+    def paths(self) -> set[bytes | str]:
         """Set of file/directory paths in the snapshot."""
         return set(self._stat_info.keys())
 
-    def path(self, uid: tuple[int, int]) -> str | None:
+    def path(self, uid: tuple[int, int]) -> bytes | str | None:
         """Returns path for id. None if id is unknown to this snapshot."""
         return self._inode_to_path.get(uid)
 
-    def inode(self, path: str) -> tuple[int, int]:
+    def inode(self, path: bytes | str) -> tuple[int, int]:
         """Returns an id for path."""
         st = self._stat_info[path]
         return (st.st_ino, st.st_dev)
 
-    def isdir(self, path: str) -> bool:
+    def isdir(self, path: bytes | str) -> bool:
         return S_ISDIR(self._stat_info[path].st_mode)
 
-    def mtime(self, path: str) -> float:
+    def mtime(self, path: bytes | str) -> float:
         return self._stat_info[path].st_mtime
 
-    def size(self, path: str) -> int:
+    def size(self, path: bytes | str) -> int:
         return self._stat_info[path].st_size
 
-    def stat_info(self, path: str) -> os.stat_result:
+    def stat_info(self, path: bytes | str) -> os.stat_result:
         """Returns a stat information object for the specified path from
         the snapshot.
 
@@ -416,7 +416,7 @@ class EmptyDirectorySnapshot(DirectorySnapshot):
     in the directory as created.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @staticmethod

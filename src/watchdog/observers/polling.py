@@ -36,6 +36,7 @@ from __future__ import annotations
 import os
 import threading
 from functools import partial
+from typing import TYPE_CHECKING
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -50,6 +51,12 @@ from watchdog.events import (
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
+if TYPE_CHECKING:
+    from typing import Callable
+
+    from watchdog.events import FileSystemEvent
+    from watchdog.observers.api import EventQueue, ObservedWatch
+
 
 class PollingEmitter(EventEmitter):
     """Platform-independent emitter that polls a directory to detect file
@@ -58,28 +65,28 @@ class PollingEmitter(EventEmitter):
 
     def __init__(
         self,
-        event_queue,
-        watch,
+        event_queue: EventQueue,
+        watch: ObservedWatch,
         *,
-        timeout=DEFAULT_EMITTER_TIMEOUT,
-        event_filter=None,
-        stat=os.stat,
-        listdir=os.scandir,
-    ):
+        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        event_filter: list[FileSystemEvent] | None = None,
+        stat: Callable = os.stat,
+        listdir: Callable = os.scandir,
+    ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._snapshot: DirectorySnapshot = EmptyDirectorySnapshot()
         self._lock = threading.Lock()
-        self._take_snapshot = lambda: DirectorySnapshot(
+        self._take_snapshot: Callable[[], DirectorySnapshot] = lambda: DirectorySnapshot(
             self.watch.path,
             recursive=self.watch.is_recursive,
             stat=stat,
             listdir=listdir,
         )
 
-    def on_thread_start(self):
+    def on_thread_start(self) -> None:
         self._snapshot = self._take_snapshot()
 
-    def queue_events(self, timeout):
+    def queue_events(self, timeout: int) -> None:
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
         if self.stopped_event.wait(timeout):
@@ -127,18 +134,18 @@ class PollingObserver(BaseObserver):
     system changes.
     """
 
-    def __init__(self, *, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(PollingEmitter, timeout=timeout)
 
 
 class PollingObserverVFS(BaseObserver):
     """File system independent observer that polls a directory to detect changes."""
 
-    def __init__(self, stat, listdir, polling_interval=1):
+    def __init__(self, stat: Callable, listdir: Callable, polling_interval: int = 1) -> None:
         """:param stat: stat function. See ``os.stat`` for details.
         :param listdir: listdir function. See ``os.scandir`` for details.
         :type polling_interval: float
         :param polling_interval: interval in seconds between polling the file system.
         """
         emitter_cls = partial(PollingEmitter, stat=stat, listdir=listdir)
-        super().__init__(emitter_cls, timeout=polling_interval)
+        super().__init__(emitter_cls, timeout=polling_interval)  # type: ignore[arg-type]
