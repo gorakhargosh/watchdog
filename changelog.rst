@@ -15,6 +15,8 @@ Changelog
 - [core] Improve typing references for events (`#1040 <https://github.com/gorakhargosh/watchdog/issues/1040>`__)
 - [inotify] Renamed the ``inotify_event_struct`` class to ``InotifyEventStruct`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
 - [inotify] Renamed the ``UnsupportedLibc`` exception to ``UnsupportedLibcError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
+- [inotify] Add support for ``IN_CLOSE_NOWRITE`` events. A ``FileClosedNoWriteEvent`` event will be fired, and its ``on_closed_no_write()`` dispatcher has been introduced (`#1046 <https://github.com/gorakhargosh/watchdog/pull/1046>`__)
+- [inotify] Removed the ``InotifyConstants.IN_CLOSE`` constant (`#1046 <https://github.com/gorakhargosh/watchdog/pull/1046>`__)
 - [watchmedo] Renamed the ``LogLevelException`` exception to ``LogLevelError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
 - [watchmedo] Renamed the ``WatchdogShutdown`` exception to ``WatchdogShutdownError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
 - [windows] Renamed the ``FILE_NOTIFY_INFORMATION`` class to ``FileNotifyInformation`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)

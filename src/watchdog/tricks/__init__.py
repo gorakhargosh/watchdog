@@ -49,7 +49,7 @@ import subprocess
 import threading
 import time
 
-from watchdog.events import EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
+from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
 from watchdog.utils import echo, platform
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
@@ -111,7 +111,7 @@ class ShellCommandTrick(Trick):
         self._process_watchers = set()
 
     def on_any_event(self, event: FileSystemEvent) -> None:
-        if event.event_type == EVENT_TYPE_OPENED:
+        if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
 
@@ -277,7 +277,7 @@ class AutoRestartTrick(Trick):
 
     @echo_events
     def on_any_event(self, event: FileSystemEvent) -> None:
-        if event.event_type == EVENT_TYPE_OPENED:
+        if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
 

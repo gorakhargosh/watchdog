@@ -94,13 +94,11 @@ def test_move_internal_batch(p):
         mv(p("dir1", f), p("dir2", f))
 
     # Check that all n events are paired
-    i = 0
-    while i < n:
+    for _ in range(n):
         frm, to = wait_for_move_event(inotify.read_event)
         assert os.path.dirname(frm.src_path).endswith(b"/dir1")
         assert os.path.dirname(to.src_path).endswith(b"/dir2")
         assert frm.name == to.name
-        i += 1
     inotify.close()
 
 
@@ -146,11 +144,8 @@ def delay_call(function, seconds):
 class InotifyBufferDelayedRead(InotifyBuffer):
     def run(self, *args, **kwargs):
         # Introduce a delay to trigger the race condition where the file descriptor is
-        # closed prior to a read being triggered.  Ignoring type concerns since we are
-        # intentionally doing something odd.
-        self._inotify.read_events = delay_call(  # type: ignore[method-assign]
-            function=self._inotify.read_events, seconds=1
-        )
+        # closed prior to a read being triggered.
+        self._inotify.read_events = delay_call(self._inotify.read_events, 1)
 
         return super().run(*args, **kwargs)
 
