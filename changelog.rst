@@ -12,6 +12,7 @@ Changelog
 - [core] Enable ``disallow_untyped_calls`` Mypy rule (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
 - [core] Enforced usage of proper keyword-arguments (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
 - [core] Deleted the ``BaseObserverSubclassCallable`` class. Use ``type[BaseObserver]`` directly (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
+- [core] Improve typing references for events (`#1040 <https://github.com/gorakhargosh/watchdog/issues/1040>`__)
 - [inotify] Renamed the ``inotify_event_struct`` class to ``InotifyEventStruct`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
 - [inotify] Renamed the ``UnsupportedLibc`` exception to ``UnsupportedLibcError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
 - [watchmedo] Renamed the ``LogLevelException`` exception to ``LogLevelError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
