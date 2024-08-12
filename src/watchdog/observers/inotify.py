@@ -227,7 +227,7 @@ class InotifyEmitter(EventEmitter):
             elif cls in (DirDeletedEvent, FileDeletedEvent):
                 event_mask |= InotifyConstants.IN_DELETE
             elif cls is FileClosedEvent:
-                event_mask |= InotifyConstants.IN_CLOSE
+                event_mask |= InotifyConstants.IN_CLOSE_WRITE
             elif cls is FileClosedNoWriteEvent:
                 event_mask |= InotifyConstants.IN_CLOSE_NOWRITE
             elif cls is FileOpenedEvent:
