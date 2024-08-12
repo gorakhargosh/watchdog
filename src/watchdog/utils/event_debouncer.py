@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import threading
 
 from watchdog.utils import BaseThread
@@ -36,21 +37,25 @@ class EventDebouncer(BaseThread):
             super().stop()
             self._cond.notify()
 
+    def time_to_flush(self, started: float) -> bool:
+        return time.monotonic() - started > self.debounce_interval_seconds
+
     def run(self):
         with self._cond:
-            while True:
-                # Wait for first event (or shutdown).
-                self._cond.wait()
-
+            while self.should_keep_running():
                 if self.debounce_interval_seconds:
-                    # Wait for additional events (or shutdown) until the debounce interval passes.
+                    started = time.monotonic()
                     while self.should_keep_running():
-                        if not self._cond.wait(timeout=self.debounce_interval_seconds):
+                        timed_out = not self._cond.wait(timeout=self.debounce_interval_seconds)
+                        if timed_out or self.time_to_flush(started):
                             break
-
-                if not self.should_keep_running():
-                    break
+                else:
+                    self._cond.wait()
 
                 events = self._events
                 self._events = []
+                self.events_callback(events)
+
+            # Send any events before leaving
+            if self._events:
                 self.events_callback(events)
