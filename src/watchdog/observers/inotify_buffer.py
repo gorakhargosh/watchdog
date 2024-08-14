@@ -32,7 +32,8 @@ class InotifyBuffer(BaseThread):
 
     def __init__(self, path: bytes, *, recursive: bool = False, event_mask: int | None = None) -> None:
         super().__init__()
-        self._queue = DelayedQueue[InotifyEvent | tuple[InotifyEvent, InotifyEvent]](self.delay)
+        # XXX: Remove quote after Python 3.9 drop
+        self._queue = DelayedQueue["InotifyEvent | tuple[InotifyEvent, InotifyEvent]"](self.delay)
         self._inotify = Inotify(path, recursive=recursive, event_mask=event_mask)
         self.start()
 
