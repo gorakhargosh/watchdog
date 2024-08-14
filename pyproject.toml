@@ -9,7 +9,7 @@ ignore_missing_imports = true
 follow_imports = "skip"
 
 # Ensure full coverage
-#disallow_untyped_defs = true [TODO]
+disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_calls = true
 

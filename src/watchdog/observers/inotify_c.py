@@ -24,8 +24,12 @@ import struct
 import threading
 from ctypes import c_char_p, c_int, c_uint32
 from functools import reduce
+from typing import TYPE_CHECKING
 
 from watchdog.utils import UnsupportedLibcError
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 libc = ctypes.CDLL(None)
 
@@ -152,7 +156,7 @@ class Inotify:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def __init__(self, path, *, recursive=False, event_mask=None):
+    def __init__(self, path: bytes, *, recursive: bool = False, event_mask: int | None = None) -> None:
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:
@@ -161,8 +165,8 @@ class Inotify:
         self._lock = threading.Lock()
 
         # Stores the watch descriptor for a given path.
-        self._wd_for_path = {}
-        self._path_for_wd = {}
+        self._wd_for_path: dict[bytes, int] = {}
+        self._path_for_wd: dict[int, bytes] = {}
 
         self._path = path
         # Default to all events
@@ -171,36 +175,36 @@ class Inotify:
         self._event_mask = event_mask
         self._is_recursive = recursive
         if os.path.isdir(path):
-            self._add_dir_watch(path, recursive, event_mask)
+            self._add_dir_watch(path, event_mask, recursive=recursive)
         else:
             self._add_watch(path, event_mask)
-        self._moved_from_events = {}
+        self._moved_from_events: dict[int, InotifyEvent] = {}
 
     @property
-    def event_mask(self):
+    def event_mask(self) -> int:
         """The event mask for this inotify instance."""
         return self._event_mask
 
     @property
-    def path(self):
+    def path(self) -> bytes:
         """The path associated with the inotify instance."""
         return self._path
 
     @property
-    def is_recursive(self):
+    def is_recursive(self) -> bool:
         """Whether we are watching directories recursively."""
         return self._is_recursive
 
     @property
-    def fd(self):
+    def fd(self) -> int:
         """The file descriptor associated with the inotify instance."""
         return self._inotify_fd
 
-    def clear_move_records(self):
+    def clear_move_records(self) -> None:
         """Clear cached records of MOVED_FROM events"""
         self._moved_from_events = {}
 
-    def source_for_move(self, destination_event):
+    def source_for_move(self, destination_event: InotifyEvent) -> bytes | None:
         """The source path corresponding to the given MOVED_TO event.
 
         If the source path is outside the monitored directories, None
@@ -211,13 +215,13 @@ class Inotify:
 
         return None
 
-    def remember_move_from_event(self, event):
+    def remember_move_from_event(self, event: InotifyEvent) -> None:
         """Save this event as the source event for future MOVED_TO events to
         reference.
         """
         self._moved_from_events[event.cookie] = event
 
-    def add_watch(self, path):
+    def add_watch(self, path: bytes) -> None:
         """Adds a watch for the given path.
 
         :param path:
@@ -226,7 +230,7 @@ class Inotify:
         with self._lock:
             self._add_watch(path, self._event_mask)
 
-    def remove_watch(self, path):
+    def remove_watch(self, path: bytes) -> None:
         """Removes a watch for the given path.
 
         :param path:
@@ -238,7 +242,7 @@ class Inotify:
             if inotify_rm_watch(self._inotify_fd, wd) == -1:
                 Inotify._raise_error()
 
-    def close(self):
+    def close(self) -> None:
         """Closes the inotify instance and removes all associated watches."""
         with self._lock:
             if self._path in self._wd_for_path:
@@ -249,14 +253,14 @@ class Inotify:
             with contextlib.suppress(OSError):
                 os.close(self._inotify_fd)
 
-    def read_events(self, event_buffer_size=DEFAULT_EVENT_BUFFER_SIZE):
+    def read_events(self, *, event_buffer_size: int = DEFAULT_EVENT_BUFFER_SIZE) -> list[InotifyEvent]:
         """Reads events from inotify and yields them."""
         # HACK: We need to traverse the directory path
         # recursively and simulate events for newly
         # created subdirectories/files. This will handle
         # mkdir -p foobar/blah/bar; touch foobar/afile
 
-        def _recursive_simulate(src_path):
+        def _recursive_simulate(src_path: bytes) -> list[InotifyEvent]:
             events = []
             for root, dirnames, filenames in os.walk(src_path):
                 for dirname in dirnames:
@@ -352,7 +356,7 @@ class Inotify:
         return event_list
 
     # Non-synchronized methods.
-    def _add_dir_watch(self, path, recursive, mask):
+    def _add_dir_watch(self, path: bytes, mask: int, *, recursive: bool) -> None:
         """Adds a watch (optionally recursively) for the given directory path
         to monitor events specified by the mask.
 
@@ -374,7 +378,7 @@ class Inotify:
                         continue
                     self._add_watch(full_path, mask)
 
-    def _add_watch(self, path, mask):
+    def _add_watch(self, path: bytes, mask: int) -> int:
         """Adds a watch for the given path to monitor events specified by the
         mask.
 
@@ -391,7 +395,7 @@ class Inotify:
         return wd
 
     @staticmethod
-    def _raise_error():
+    def _raise_error() -> None:
         """Raises errors for inotify failures."""
         err = ctypes.get_errno()
 
@@ -405,7 +409,7 @@ class Inotify:
             raise OSError(err, os.strerror(err))
 
     @staticmethod
-    def _parse_event_buffer(event_buffer):
+    def _parse_event_buffer(event_buffer: bytes) -> Generator[tuple[int, int, int, bytes]]:
         """Parses an event buffer of ``inotify_event`` structs returned by
         inotify::
 
@@ -444,7 +448,7 @@ class InotifyEvent:
         Full event source path.
     """
 
-    def __init__(self, wd, mask, cookie, name, src_path):
+    def __init__(self, wd: int, mask: int, cookie: int, name: bytes, src_path: bytes) -> None:
         self._wd = wd
         self._mask = mask
         self._cookie = cookie
@@ -452,103 +456,107 @@ class InotifyEvent:
         self._src_path = src_path
 
     @property
-    def src_path(self):
+    def src_path(self) -> bytes:
         return self._src_path
 
     @property
-    def wd(self):
+    def wd(self) -> int:
         return self._wd
 
     @property
-    def mask(self):
+    def mask(self) -> int:
         return self._mask
 
     @property
-    def cookie(self):
+    def cookie(self) -> int:
         return self._cookie
 
     @property
-    def name(self):
+    def name(self) -> bytes:
         return self._name
 
     @property
-    def is_modify(self):
+    def is_modify(self) -> bool:
         return self._mask & InotifyConstants.IN_MODIFY > 0
 
     @property
-    def is_close_write(self):
+    def is_close_write(self) -> bool:
         return self._mask & InotifyConstants.IN_CLOSE_WRITE > 0
 
     @property
-    def is_close_nowrite(self):
+    def is_close_nowrite(self) -> bool:
         return self._mask & InotifyConstants.IN_CLOSE_NOWRITE > 0
 
     @property
-    def is_open(self):
+    def is_open(self) -> bool:
         return self._mask & InotifyConstants.IN_OPEN > 0
 
     @property
-    def is_access(self):
+    def is_access(self) -> bool:
         return self._mask & InotifyConstants.IN_ACCESS > 0
 
     @property
-    def is_delete(self):
+    def is_delete(self) -> bool:
         return self._mask & InotifyConstants.IN_DELETE > 0
 
     @property
-    def is_delete_self(self):
+    def is_delete_self(self) -> bool:
         return self._mask & InotifyConstants.IN_DELETE_SELF > 0
 
     @property
-    def is_create(self):
+    def is_create(self) -> bool:
         return self._mask & InotifyConstants.IN_CREATE > 0
 
     @property
-    def is_moved_from(self):
+    def is_moved_from(self) -> bool:
         return self._mask & InotifyConstants.IN_MOVED_FROM > 0
 
     @property
-    def is_moved_to(self):
+    def is_moved_to(self) -> bool:
         return self._mask & InotifyConstants.IN_MOVED_TO > 0
 
     @property
-    def is_move(self):
+    def is_move(self) -> bool:
         return self._mask & InotifyConstants.IN_MOVE > 0
 
     @property
-    def is_move_self(self):
+    def is_move_self(self) -> bool:
         return self._mask & InotifyConstants.IN_MOVE_SELF > 0
 
     @property
-    def is_attrib(self):
+    def is_attrib(self) -> bool:
         return self._mask & InotifyConstants.IN_ATTRIB > 0
 
     @property
-    def is_ignored(self):
+    def is_ignored(self) -> bool:
         return self._mask & InotifyConstants.IN_IGNORED > 0
 
     @property
-    def is_directory(self):
+    def is_directory(self) -> bool:
         # It looks like the kernel does not provide this information for
         # IN_DELETE_SELF and IN_MOVE_SELF. In this case, assume it's a dir.
         # See also: https://github.com/seb-m/pyinotify/blob/2c7e8f8/python2/pyinotify.py#L897
         return self.is_delete_self or self.is_move_self or self._mask & InotifyConstants.IN_ISDIR > 0
 
     @property
-    def key(self):
+    def key(self) -> tuple[bytes, int, int, int, bytes]:
         return self._src_path, self._wd, self._mask, self._cookie, self._name
 
-    def __eq__(self, inotify_event):
+    def __eq__(self, inotify_event: object) -> bool:
+        if not isinstance(inotify_event, InotifyEvent):
+            return NotImplemented
         return self.key == inotify_event.key
 
-    def __ne__(self, inotify_event):
+    def __ne__(self, inotify_event: object) -> bool:
+        if not isinstance(inotify_event, InotifyEvent):
+            return NotImplemented
         return self.key != inotify_event.key
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.key)
 
     @staticmethod
-    def _get_mask_string(mask):
+    def _get_mask_string(mask: int) -> str:
         masks = []
         for c in dir(InotifyConstants):
             if c.startswith("IN_") and c not in {"IN_ALL_EVENTS", "IN_MOVE"}:
@@ -557,7 +565,7 @@ class InotifyEvent:
                     masks.append(c)
         return "|".join(masks)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<{type(self).__name__}: src_path={self.src_path!r}, wd={self.wd},"
             f" mask={self._get_mask_string(self.mask)}, cookie={self.cookie},"

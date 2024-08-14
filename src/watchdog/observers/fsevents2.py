@@ -25,6 +25,7 @@ import queue
 import unicodedata
 import warnings
 from threading import Thread
+from typing import TYPE_CHECKING
 
 # pyobjc
 import AppKit
@@ -68,6 +69,11 @@ from watchdog.events import (
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
+if TYPE_CHECKING:
+    from typing import Callable
+
+    from watchdog.observers.api import EventQueue, ObservedWatch
+
 logger = logging.getLogger(__name__)
 
 message = "watchdog.observers.fsevents2 is deprecated and will be removed in a future release."
@@ -78,7 +84,7 @@ logger.warning(message)
 class FSEventsQueue(Thread):
     """Low level FSEvents client."""
 
-    def __init__(self, path):
+    def __init__(self, path: bytes | str) -> None:
         Thread.__init__(self)
         self._queue: queue.Queue[list[NativeEvent] | None] = queue.Queue()
         self._run_loop = None
@@ -102,7 +108,7 @@ class FSEventsQueue(Thread):
             error = "FSEvents. Could not create stream."
             raise OSError(error)
 
-    def run(self):
+    def run(self) -> None:
         pool = AppKit.NSAutoreleasePool.alloc().init()
         self._run_loop = CFRunLoopGetCurrent()
         FSEventStreamScheduleWithRunLoop(self._stream_ref, self._run_loop, kCFRunLoopDefaultMode)
@@ -120,18 +126,26 @@ class FSEventsQueue(Thread):
         # Make sure waiting thread is notified
         self._queue.put(None)
 
-    def stop(self):
+    def stop(self) -> None:
         if self._run_loop is not None:
             CFRunLoopStop(self._run_loop)
 
-    def _callback(self, stream_ref, client_callback_info, num_events, event_paths, event_flags, event_ids):
+    def _callback(
+        self,
+        stream_ref: int,
+        client_callback_info: Callable,
+        num_events: int,
+        event_paths: list[bytes],
+        event_flags: list[int],
+        event_ids: list[int],
+    ) -> None:
         events = [NativeEvent(path, flags, _id) for path, flags, _id in zip(event_paths, event_flags, event_ids)]
         logger.debug("FSEvents callback. Got %d events:", num_events)
         for e in events:
             logger.debug(e)
         self._queue.put(events)
 
-    def read_events(self):
+    def read_events(self) -> list[NativeEvent] | None:
         """Returns a list or one or more events, or None if there are no more
         events to be read.
         """
@@ -139,7 +153,7 @@ class FSEventsQueue(Thread):
 
 
 class NativeEvent:
-    def __init__(self, path, flags, event_id):
+    def __init__(self, path: bytes, flags: int, event_id: int) -> None:
         self.path = path
         self.flags = flags
         self.event_id = event_id
@@ -155,7 +169,7 @@ class NativeEvent:
         self.is_directory = bool(flags & kFSEventStreamEventFlagItemIsDir)
 
     @property
-    def _event_type(self):
+    def _event_type(self) -> str:
         if self.is_created:
             return "Created"
         if self.is_removed:
@@ -170,7 +184,7 @@ class NativeEvent:
             return "XattrMod"
         return "Unknown"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<{type(self).__name__}: path={self.path!r}, type={self._event_type},"
             f" is_dir={self.is_directory}, flags={hex(self.flags)}, id={self.event_id}>"
@@ -180,15 +194,22 @@ class NativeEvent:
 class FSEventsEmitter(EventEmitter):
     """FSEvents based event emitter. Handles conversion of native events."""
 
-    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+    def __init__(
+        self,
+        event_queue: EventQueue,
+        watch: ObservedWatch,
+        *,
+        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        event_filter: list[FileSystemEvent] | None = None,
+    ):
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._fsevents = FSEventsQueue(watch.path)
         self._fsevents.start()
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         self._fsevents.stop()
 
-    def queue_events(self, timeout):
+    def queue_events(self, timeout: int) -> None:
         events = self._fsevents.read_events()
         if events is None:
             return
@@ -240,5 +261,5 @@ class FSEventsEmitter(EventEmitter):
 
 
 class FSEventsObserver2(BaseObserver):
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(FSEventsEmitter, timeout=timeout)

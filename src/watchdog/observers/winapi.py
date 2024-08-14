@@ -36,9 +36,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import ctypes.wintypes
 from dataclasses import dataclass
 from functools import reduce
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 LPVOID = ctypes.wintypes.LPVOID
 
@@ -102,13 +107,13 @@ class OVERLAPPED(ctypes.Structure):
     )
 
 
-def _errcheck_bool(value, func, args):
+def _errcheck_bool(value: Any | None, func: Any, args: Any) -> Any:
     if not value:
         raise ctypes.WinError()
     return args
 
 
-def _errcheck_handle(value, func, args):
+def _errcheck_handle(value: Any | None, func: Any, args: Any) -> Any:
     if not value:
         raise ctypes.WinError()
     if value == INVALID_HANDLE_VALUE:
@@ -116,7 +121,7 @@ def _errcheck_handle(value, func, args):
     return args
 
 
-def _errcheck_dword(value, func, args):
+def _errcheck_dword(value: Any | None, func: Any, args: Any) -> Any:
     if value == 0xFFFFFFFF:
         raise ctypes.WinError()
     return args
@@ -281,10 +286,10 @@ BUFFER_SIZE = 64000
 PATH_BUFFER_SIZE = 2048
 
 
-def _parse_event_buffer(read_buffer, n_bytes):
+def _parse_event_buffer(read_buffer: bytes, n_bytes: int) -> list[tuple[int, str]]:
     results = []
     while n_bytes > 0:
-        fni = ctypes.cast(read_buffer, LPFNI)[0]
+        fni = ctypes.cast(read_buffer, LPFNI)[0]  # type: ignore[arg-type]
         ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
         filename = ctypes.string_at(ptr, fni.FileNameLength)
         results.append((fni.Action, filename.decode("utf-16")))
@@ -292,11 +297,11 @@ def _parse_event_buffer(read_buffer, n_bytes):
         if num_to_skip <= 0:
             break
         read_buffer = read_buffer[num_to_skip:]
-        n_bytes -= num_to_skip  # numToSkip is long. nBytes should be long too.
+        n_bytes -= num_to_skip  # num_to_skip is long. n_bytes should be long too.
     return results
 
 
-def _is_observed_path_deleted(handle, path):
+def _is_observed_path_deleted(handle: ctypes.wintypes.HANDLE, path: str) -> bool:
     # Comparison of observed path and actual path, returned by
     # GetFinalPathNameByHandleW. If directory moved to the trash bin, or
     # deleted, actual path will not be equal to observed path.
@@ -305,17 +310,17 @@ def _is_observed_path_deleted(handle, path):
     return buff.value != path
 
 
-def _generate_observed_path_deleted_event():
+def _generate_observed_path_deleted_event() -> tuple[bytes, int]:
     # Create synthetic event for notify that observed directory is deleted
     path = ctypes.create_unicode_buffer(".")
     event = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
     event_size = ctypes.sizeof(event)
     buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
     ctypes.memmove(buff, ctypes.addressof(event), event_size)
-    return buff, event_size
+    return buff.raw, event_size
 
 
-def get_directory_handle(path):
+def get_directory_handle(path: str) -> ctypes.wintypes.HANDLE:
     """Returns a Windows handle to the specified directory path."""
     return CreateFileW(
         path,
@@ -328,21 +333,19 @@ def get_directory_handle(path):
     )
 
 
-def close_directory_handle(handle):
+def close_directory_handle(handle: ctypes.wintypes.HANDLE) -> None:
     try:
         CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
-        CloseHandle(handle)  # close directory handle
+        CloseHandle(handle)
     except OSError:
-        try:
-            CloseHandle(handle)  # close directory handle
-        except Exception:
-            return
+        with contextlib.suppress(Exception):
+            CloseHandle(handle)
 
 
-def read_directory_changes(handle, path, recursive):
+def read_directory_changes(handle: ctypes.wintypes.HANDLE, path: str, *, recursive: bool) -> tuple[bytes, int]:
     """Read changes to the directory using the specified directory handle.
 
-    http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
+    https://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
     """
     event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
     nbytes = ctypes.wintypes.DWORD()
@@ -359,7 +362,7 @@ def read_directory_changes(handle, path, recursive):
         )
     except OSError as e:
         if e.winerror == ERROR_OPERATION_ABORTED:
-            return [], 0
+            return event_buffer.raw, 0
 
         # Handle the case when the root path is deleted
         if _is_observed_path_deleted(handle, path):
@@ -376,31 +379,31 @@ class WinAPINativeEvent:
     src_path: str
 
     @property
-    def is_added(self):
+    def is_added(self) -> bool:
         return self.action == FILE_ACTION_CREATED
 
     @property
-    def is_removed(self):
+    def is_removed(self) -> bool:
         return self.action == FILE_ACTION_REMOVED
 
     @property
-    def is_modified(self):
+    def is_modified(self) -> bool:
         return self.action == FILE_ACTION_MODIFIED
 
     @property
-    def is_renamed_old(self):
+    def is_renamed_old(self) -> bool:
         return self.action == FILE_ACTION_RENAMED_OLD_NAME
 
     @property
-    def is_renamed_new(self):
+    def is_renamed_new(self) -> bool:
         return self.action == FILE_ACTION_RENAMED_NEW_NAME
 
     @property
-    def is_removed_self(self):
+    def is_removed_self(self) -> bool:
         return self.action == FILE_ACTION_REMOVED_SELF
 
 
-def read_events(handle, path, recursive):
-    buf, nbytes = read_directory_changes(handle, path, recursive)
+def read_events(handle: ctypes.wintypes.HANDLE, path: str, *, recursive: bool) -> list[WinAPINativeEvent]:
+    buf, nbytes = read_directory_changes(handle, path, recursive=recursive)
     events = _parse_event_buffer(buf, nbytes)
     return [WinAPINativeEvent(action, src_path) for action, src_path in events]

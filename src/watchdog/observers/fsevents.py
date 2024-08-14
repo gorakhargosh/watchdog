@@ -27,6 +27,7 @@ import os
 import threading
 import time
 import unicodedata
+from typing import TYPE_CHECKING
 
 import _watchdog_fsevents as _fsevents
 
@@ -44,6 +45,11 @@ from watchdog.events import (
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 from watchdog.utils.dirsnapshot import DirectorySnapshot
+
+if TYPE_CHECKING:
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.observers.api import EventQueue, ObservedWatch
+
 
 logger = logging.getLogger("fsevents")
 
@@ -73,26 +79,26 @@ class FSEventsEmitter(EventEmitter):
 
     def __init__(
         self,
-        event_queue,
-        watch,
+        event_queue: EventQueue,
+        watch: ObservedWatch,
         *,
-        timeout=DEFAULT_EMITTER_TIMEOUT,
-        event_filter=None,
-        suppress_history=False,
-    ):
+        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        event_filter: list[FileSystemEvent] | None = None,
+        suppress_history: bool = False,
+    ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
-        self._fs_view = set()
+        self._fs_view: set[int] = set()
         self.suppress_history = suppress_history
         self._start_time = 0.0
-        self._starting_state = None
+        self._starting_state: DirectorySnapshot | None = None
         self._lock = threading.Lock()
         self._absolute_watch_path = os.path.realpath(os.path.abspath(os.path.expanduser(self.watch.path)))
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         _fsevents.remove_watch(self.watch)
         _fsevents.stop(self)
 
-    def queue_event(self, event):
+    def queue_event(self, event: FileSystemEvent) -> None:
         # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
         # all the events here which do not have a src_path / dest_path that matches the watched path
         if self._watch.is_recursive or not self._is_recursive_event(event):
@@ -101,7 +107,7 @@ class FSEventsEmitter(EventEmitter):
         else:
             logger.debug("drop event %s", event)
 
-    def _is_recursive_event(self, event):
+    def _is_recursive_event(self, event: FileSystemEvent) -> bool:
         src_path = event.src_path if event.is_directory else os.path.dirname(event.src_path)
         if src_path == self._absolute_watch_path:
             return False
@@ -115,28 +121,35 @@ class FSEventsEmitter(EventEmitter):
 
         return True
 
-    def _queue_created_event(self, event, src_path, dirname):
+    def _queue_created_event(self, event: FileSystemEvent, src_path: bytes | str, dirname: bytes | str) -> None:
         cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
         self.queue_event(cls(src_path))
         self.queue_event(DirModifiedEvent(dirname))
 
-    def _queue_deleted_event(self, event, src_path, dirname):
+    def _queue_deleted_event(self, event: FileSystemEvent, src_path: bytes | str, dirname: bytes | str) -> None:
         cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
         self.queue_event(cls(src_path))
         self.queue_event(DirModifiedEvent(dirname))
 
-    def _queue_modified_event(self, event, src_path, dirname):
+    def _queue_modified_event(self, event: FileSystemEvent, src_path: bytes | str, dirname: bytes | str) -> None:
         cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
         self.queue_event(cls(src_path))
 
-    def _queue_renamed_event(self, src_event, src_path, dst_path, src_dirname, dst_dirname):
+    def _queue_renamed_event(
+        self,
+        src_event: FileSystemEvent,
+        src_path: bytes | str,
+        dst_path: bytes | str,
+        src_dirname: bytes | str,
+        dst_dirname: bytes | str,
+    ) -> None:
         cls = DirMovedEvent if src_event.is_directory else FileMovedEvent
         dst_path = self._encode_path(dst_path)
         self.queue_event(cls(src_path, dst_path))
         self.queue_event(DirModifiedEvent(src_dirname))
         self.queue_event(DirModifiedEvent(dst_dirname))
 
-    def _is_historic_created_event(self, event):
+    def _is_historic_created_event(self, event: _fsevents.NativeEvent) -> bool:
         # We only queue a created event if the item was created after we
         # started the FSEventsStream.
 
@@ -154,11 +167,11 @@ class FSEventsEmitter(EventEmitter):
         return in_history or before_start
 
     @staticmethod
-    def _is_meta_mod(event):
+    def _is_meta_mod(event: _fsevents.NativeEvent) -> bool:
         """Returns True if the event indicates a change in metadata."""
         return event.is_inode_meta_mod or event.is_xattr_mod or event.is_owner_change
 
-    def queue_events(self, timeout, events):
+    def queue_events(self, timeout: int, events: list[_fsevents.NativeEvent]) -> None:  # type: ignore[override]
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
                 flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
@@ -241,8 +254,8 @@ class FSEventsEmitter(EventEmitter):
                         self._queue_renamed_event(event, src_path, dst_path, src_dirname, dst_dirname)
                         self._fs_view.add(event.inode)
 
-                        for sub_event in generate_sub_moved_events(src_path, dst_path):
-                            self.queue_event(sub_event)
+                        for sub_moved_event in generate_sub_moved_events(src_path, dst_path):
+                            self.queue_event(sub_moved_event)
 
                         # Process any coalesced flags for the dst_event.
 
@@ -261,8 +274,8 @@ class FSEventsEmitter(EventEmitter):
                         self._queue_created_event(event, src_path, src_dirname)
                         self._fs_view.add(event.inode)
 
-                        for sub_event in generate_sub_created_events(src_path):
-                            self.queue_event(sub_event)
+                        for sub_created_event in generate_sub_created_events(src_path):
+                            self.queue_event(sub_created_event)
 
                     else:
                         # This is the source event, item was moved out of the watched
@@ -287,7 +300,7 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.clear()
 
-    def events_callback(self, paths, inodes, flags, ids):
+    def events_callback(self, paths: list[bytes], inodes: list[int], flags: list[int], ids: list[int]) -> None:
         """Callback passed to FSEventStreamCreate(), it will receive all
         FS events and queue them.
         """
@@ -302,7 +315,7 @@ class FSEventsEmitter(EventEmitter):
         except Exception:
             logger.exception("Unhandled exception in fsevents callback")
 
-    def run(self):
+    def run(self) -> None:
         self.pathnames = [self.watch.path]
         self._start_time = time.monotonic()
         try:
@@ -311,21 +324,28 @@ class FSEventsEmitter(EventEmitter):
         except Exception:
             logger.exception("Unhandled exception in FSEventsEmitter")
 
-    def on_thread_start(self):
+    def on_thread_start(self) -> None:
         if self.suppress_history:
             watch_path = os.fsdecode(self.watch.path) if isinstance(self.watch.path, bytes) else self.watch.path
             self._starting_state = DirectorySnapshot(watch_path)
 
-    def _encode_path(self, path):
+    def _encode_path(self, path: bytes | str) -> bytes | str:
         """Encode path only if bytes were passed to this emitter."""
         return os.fsencode(path) if isinstance(self.watch.path, bytes) else path
 
 
 class FSEventsObserver(BaseObserver):
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(FSEventsEmitter, timeout=timeout)
 
-    def schedule(self, event_handler, path, *, recursive=False, event_filter=None):
+    def schedule(
+        self,
+        event_handler: FileSystemEventHandler,
+        path: str,
+        *,
+        recursive: bool = False,
+        event_filter: list[FileSystemEvent] | None = None,
+    ) -> ObservedWatch:
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
         if isinstance(path, str):

@@ -30,47 +30,48 @@ class InotifyBuffer(BaseThread):
 
     delay = 0.5
 
-    def __init__(self, path, *, recursive=False, event_mask=None):
+    def __init__(self, path: bytes, *, recursive: bool = False, event_mask: int | None = None) -> None:
         super().__init__()
-        self._queue = DelayedQueue[InotifyEvent](self.delay)
+        # XXX: Remove quotes after Python 3.9 drop
+        self._queue = DelayedQueue["InotifyEvent | tuple[InotifyEvent, InotifyEvent]"](self.delay)
         self._inotify = Inotify(path, recursive=recursive, event_mask=event_mask)
         self.start()
 
-    def read_event(self):
+    def read_event(self) -> InotifyEvent | tuple[InotifyEvent, InotifyEvent] | None:
         """Returns a single event or a tuple of from/to events in case of a
         paired move event. If this buffer has been closed, immediately return
         None.
         """
         return self._queue.get()
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         self._inotify.close()
         self._queue.close()
 
-    def close(self):
+    def close(self) -> None:
         self.stop()
         self.join()
 
-    def _group_events(self, event_list):
+    def _group_events(self, event_list: list[InotifyEvent]) -> list[InotifyEvent | tuple[InotifyEvent, InotifyEvent]]:
         """Group any matching move events"""
         grouped: list[InotifyEvent | tuple[InotifyEvent, InotifyEvent]] = []
         for inotify_event in event_list:
             logger.debug("in-event %s", inotify_event)
 
-            def matching_from_event(event):
+            def matching_from_event(event: InotifyEvent | tuple[InotifyEvent, InotifyEvent]) -> bool:
                 return not isinstance(event, tuple) and event.is_moved_from and event.cookie == inotify_event.cookie
 
             if inotify_event.is_moved_to:
                 # Check if move_from is already in the buffer
                 for index, event in enumerate(grouped):
                     if matching_from_event(event):
-                        grouped[index] = (event, inotify_event)
+                        grouped[index] = (event, inotify_event)  # type: ignore[assignment]
                         break
                 else:
                     # Check if move_from is in delayqueue already
                     from_event = self._queue.remove(matching_from_event)
                     if from_event is not None:
-                        grouped.append((from_event, inotify_event))
+                        grouped.append((from_event, inotify_event))  # type: ignore[arg-type]
                     else:
                         logger.debug("could not find matching move_from event")
                         grouped.append(inotify_event)
@@ -78,7 +79,7 @@ class InotifyBuffer(BaseThread):
                 grouped.append(inotify_event)
         return grouped
 
-    def run(self):
+    def run(self) -> None:
         """Read event from `inotify` and add them to `queue`. When reading a
         IN_MOVE_TO event, remove the previous added matching IN_MOVE_FROM event
         and add them back to the queue as a tuple.

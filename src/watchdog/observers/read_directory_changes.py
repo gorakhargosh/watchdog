@@ -19,6 +19,7 @@ from __future__ import annotations
 import os.path
 import platform
 import threading
+from typing import TYPE_CHECKING
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -35,37 +36,53 @@ from watchdog.events import (
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 from watchdog.observers.winapi import close_directory_handle, get_directory_handle, read_events
 
+if TYPE_CHECKING:
+    from ctypes.wintypes import HANDLE
+
+    from watchdog.events import FileSystemEvent
+    from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.observers.winapi import WinAPINativeEvent
+
 
 class WindowsApiEmitter(EventEmitter):
     """Windows API-based emitter that uses ReadDirectoryChangesW
     to detect file system changes for a watch.
     """
 
-    def __init__(self, event_queue, watch, *, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+    def __init__(
+        self,
+        event_queue: EventQueue,
+        watch: ObservedWatch,
+        *,
+        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        event_filter: list[FileSystemEvent] | None = None,
+    ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock = threading.Lock()
-        self._whandle = None
+        self._whandle: HANDLE | None = None
 
-    def on_thread_start(self):
+    def on_thread_start(self) -> None:
         self._whandle = get_directory_handle(self.watch.path)
 
     if platform.python_implementation() == "PyPy":
 
-        def start(self):
+        def start(self) -> None:
             """PyPy needs some time before receiving events, see #792."""
             from time import sleep
 
             super().start()
             sleep(0.01)
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         if self._whandle:
             close_directory_handle(self._whandle)
 
-    def _read_events(self):
-        return read_events(self._whandle, self.watch.path, self.watch.is_recursive)
+    def _read_events(self) -> list[WinAPINativeEvent]:
+        if not self._whandle:
+            return []
+        return read_events(self._whandle, self.watch.path, recursive=self.watch.is_recursive)
 
-    def queue_events(self, timeout):
+    def queue_events(self, timeout: int) -> None:
         winapi_events = self._read_events()
         with self._lock:
             last_renamed_src_path = ""
@@ -106,5 +123,5 @@ class WindowsApiObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(WindowsApiEmitter, timeout=timeout)
