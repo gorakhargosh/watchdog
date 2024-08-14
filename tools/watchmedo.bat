@@ -1,6 +1,7 @@
-@REM Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010 The SCons Foundation
-@REM Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-@REM Copyright 2012 Google, Inc & contributors.
+@REM Copyright 2018-2024 Mickaël Schoentgen & contributors
+@REM Copyright 2012-2018 Google, Inc.
+@REM Copyright 2011-2012 Yesudeep Mangalapilly
+@REM Copyright 2001-2010 The SCons Foundation
 @REM watchmedo.bat - Wrapper .bat file for the watchmedo Python script.
 
 @echo off

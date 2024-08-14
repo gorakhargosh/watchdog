@@ -1,6 +1,3 @@
-# Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2020 Boris Staletic <boris.staletic@gmail.com>
-
 from __future__ import annotations
 
 import pytest

@@ -1,8 +1,8 @@
 .. Global includes, substitutions, and common links.
 
-.. |author_name| replace:: Yesudeep Mangalapilly
-.. |author_email| replace:: yesudeep@gmail.com
-.. |copyright| replace:: Copyright 2012-2024 Google, Inc & contributors.
+.. |author_name| replace:: Mickaël Schoentgen
+.. |author_email| replace:: contact@tiger-222.fr
+.. |copyright| replace:: Copyright 2011-2024 Yesudeep Mangalapilly, Mickaël Schoentgen & contributors.
 .. |project_name| replace:: ``watchdog``
 .. |project_version| replace:: 5.0.0
 

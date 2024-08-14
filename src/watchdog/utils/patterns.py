@@ -1,8 +1,9 @@
-# patterns.py: Common wildcard searching/filtering functionality for files.
-#
-# Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
-#
-# Written by Boris Staletic <boris.staletic@gmail.com>
+""":module: watchdog.utils.patterns
+:synopsis: Common wildcard searching/filtering functionality for files.
+:author: boris.staletic@gmail.com (Boris Staletic)
+:author: yesudeep@gmail.com (Yesudeep Mangalapilly)
+:author: contact@tiger-222.fr (Mickaël Schoentgen)
+"""
 
 from __future__ import annotations
 
