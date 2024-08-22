@@ -125,7 +125,7 @@ class PollingObserver(BaseObserver):
 class PollingObserverVFS(BaseObserver):
     """File system independent observer that polls a directory to detect changes."""
 
-    def __init__(self, stat: Callable, listdir: Callable, polling_interval: int = 1) -> None:
+    def __init__(self, stat: Callable, listdir: Callable, *, polling_interval: int = 1) -> None:
         """:param stat: stat function. See ``os.stat`` for details.
         :param listdir: listdir function. See ``os.scandir`` for details.
         :type polling_interval: float

@@ -320,7 +320,7 @@ class FSEventsEmitter(EventEmitter):
 
 
 class FSEventsObserver(BaseObserver):
-    def __init__(self, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(FSEventsEmitter, timeout=timeout)
 
     def schedule(
