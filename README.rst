@@ -17,18 +17,19 @@ as command-line arguments and logs events generated:
 .. code-block:: python
 
     import time
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.observers import Observer
-    from watchdog.events import FileSystemEventHandler
 
 
     class MyEventHandler(FileSystemEventHandler):
-        def on_any_event(self, event):
+        def on_any_event(self, event: FileSystemEvent) -> None:
             print(event)
 
 
     event_handler = MyEventHandler()
     observer = Observer()
-    observer.schedule(event_handler, '.', recursive=True)
+    observer.schedule(event_handler, ".", recursive=True)
     observer.start()
     try:
         while True:
@@ -52,7 +53,7 @@ ignoring all directory events:
 .. code-block:: bash
 
     watchmedo log \
-        --patterns="*.py;*.txt" \
+        --patterns='*.py;*.txt' \
         --ignore-directories \
         --recursive \
         --verbose \
@@ -64,7 +65,7 @@ response to events:
 .. code-block:: bash
 
     watchmedo shell-command \
-        --patterns="*.py;*.txt" \
+        --patterns='*.py;*.txt' \
         --recursive \
         --command='echo "${watch_src_path}"' \
         .
@@ -133,7 +134,7 @@ Install from source:
     $ python -m pip install -e .
 
     # or to install the watchmedo utility:
-    $ python -m pip install -e ".[watchmedo]"
+    $ python -m pip install -e '.[watchmedo]'
 
 
 Documentation
@@ -150,9 +151,8 @@ ticket at the `issue tracker`_. For general help and questions use
 
 Create and activate your virtual environment, then::
 
-    python -m pip install pytest pytest-cov
-    python -m pip install -e ".[watchmedo]"
-    python -m pytest tests
+    python -m pip install tox
+    python -m tox [-q] [-e ENV]
 
 If you are making a substantial change, add an entry to the "Unreleased" section
 of the `changelog`_.
