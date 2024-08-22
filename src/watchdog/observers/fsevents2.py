@@ -188,7 +188,7 @@ class FSEventsEmitter(EventEmitter):
         watch: ObservedWatch,
         *,
         timeout: int = DEFAULT_EMITTER_TIMEOUT,
-        event_filter: list[FileSystemEvent] | None = None,
+        event_filter: list[type[FileSystemEvent]] | None = None,
     ):
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._fsevents = FSEventsQueue(watch.path)

@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from types import ModuleType
 
+    from watchdog.tricks import Trick
+
 
 class UnsupportedLibcError(Exception):
     pass
@@ -84,7 +86,7 @@ def load_module(module_name: str) -> ModuleType:
     return sys.modules[module_name]
 
 
-def load_class(dotted_path: str) -> type:
+def load_class(dotted_path: str) -> type[Trick]:
     """Loads and returns a class definition provided a dotted path
     specification the last part of the dotted path is the class name
     and there is at least one module name preceding the class name.

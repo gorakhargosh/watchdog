@@ -68,7 +68,7 @@ class FSEventsEmitter(EventEmitter):
         watch: ObservedWatch,
         *,
         timeout: int = DEFAULT_EMITTER_TIMEOUT,
-        event_filter: list[FileSystemEvent] | None = None,
+        event_filter: list[type[FileSystemEvent]] | None = None,
         suppress_history: bool = False,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
@@ -329,7 +329,7 @@ class FSEventsObserver(BaseObserver):
         path: str,
         *,
         recursive: bool = False,
-        event_filter: list[FileSystemEvent] | None = None,
+        event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> ObservedWatch:
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26

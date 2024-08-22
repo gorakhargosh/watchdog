@@ -107,7 +107,7 @@ class InotifyEmitter(EventEmitter):
         watch: ObservedWatch,
         *,
         timeout: int = DEFAULT_EMITTER_TIMEOUT,
-        event_filter: list[FileSystemEvent] | None = None,
+        event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock = threading.Lock()
@@ -207,11 +207,11 @@ class InotifyEmitter(EventEmitter):
         event_mask = InotifyConstants.IN_DELETE_SELF
 
         for cls in self._event_filter:
-            if cls in {DirMovedEvent, FileMovedEvent}:  # type: ignore[comparison-overlap]
+            if cls in {DirMovedEvent, FileMovedEvent}:
                 event_mask |= InotifyConstants.IN_MOVE
-            elif cls in {DirCreatedEvent, FileCreatedEvent}:  # type: ignore[comparison-overlap]
+            elif cls in {DirCreatedEvent, FileCreatedEvent}:
                 event_mask |= InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE
-            elif cls is DirModifiedEvent:  # type: ignore[comparison-overlap]
+            elif cls is DirModifiedEvent:
                 event_mask |= (
                     InotifyConstants.IN_MOVE
                     | InotifyConstants.IN_ATTRIB
@@ -219,15 +219,15 @@ class InotifyEmitter(EventEmitter):
                     | InotifyConstants.IN_CREATE
                     | InotifyConstants.IN_CLOSE_WRITE
                 )
-            elif cls is FileModifiedEvent:  # type: ignore[comparison-overlap]
+            elif cls is FileModifiedEvent:
                 event_mask |= InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY
-            elif cls in {DirDeletedEvent, FileDeletedEvent}:  # type: ignore[comparison-overlap]
+            elif cls in {DirDeletedEvent, FileDeletedEvent}:
                 event_mask |= InotifyConstants.IN_DELETE
-            elif cls is FileClosedEvent:  # type: ignore[comparison-overlap]
+            elif cls is FileClosedEvent:
                 event_mask |= InotifyConstants.IN_CLOSE_WRITE
-            elif cls is FileClosedNoWriteEvent:  # type: ignore[comparison-overlap]
+            elif cls is FileClosedNoWriteEvent:
                 event_mask |= InotifyConstants.IN_CLOSE_NOWRITE
-            elif cls is FileOpenedEvent:  # type: ignore[comparison-overlap]
+            elif cls is FileOpenedEvent:
                 event_mask |= InotifyConstants.IN_OPEN
 
         return event_mask

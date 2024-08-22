@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from typing import Callable
 
     from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import ObserverType
     from watchdog.observers.api import BaseObserver
 
 
@@ -257,7 +258,7 @@ def schedule_tricks(observer: BaseObserver, tricks: dict, pathname: str, *, recu
 )
 def tricks_from(args: Namespace) -> None:
     """Command to execute tricks from a tricks configuration file."""
-    observer_cls: type[BaseObserver]
+    observer_cls: ObserverType
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver
 
@@ -288,7 +289,7 @@ def tricks_from(args: Namespace) -> None:
     add_to_sys_path(path_split(args.python_path))
     observers = []
     for tricks_file in args.files:
-        observer = observer_cls(timeout=args.timeout)  # type: ignore[call-arg]
+        observer = observer_cls(timeout=args.timeout)
 
         if not os.path.exists(tricks_file):
             raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), tricks_file)
@@ -361,7 +362,7 @@ def tricks_generate_yaml(args: Namespace) -> None:
 
     for trick_path in args.trick_paths:
         trick_cls = load_class(trick_path)
-        output.write(trick_cls.generate_yaml())  # type: ignore[attr-defined]
+        output.write(trick_cls.generate_yaml())
 
     content = output.getvalue()
     output.close()
@@ -466,7 +467,7 @@ def log(args: Namespace) -> None:
         ignore_directories=args.ignore_directories,
     )
 
-    observer_cls: type[BaseObserver]
+    observer_cls: ObserverType
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver
 
@@ -494,7 +495,7 @@ def log(args: Namespace) -> None:
 
         observer_cls = Observer
 
-    observer = observer_cls(timeout=args.timeout)  # type: ignore[call-arg]
+    observer = observer_cls(timeout=args.timeout)
     observe_with(observer, handler, args.directories, recursive=args.recursive)
 
 
@@ -590,7 +591,7 @@ def shell_command(args: Namespace) -> None:
     if not args.command:
         args.command = None
 
-    observer_cls: type[BaseObserver]
+    observer_cls: ObserverType
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver
 
@@ -609,7 +610,7 @@ def shell_command(args: Namespace) -> None:
         wait_for_process=args.wait_for_process,
         drop_during_process=args.drop_during_process,
     )
-    observer = observer_cls(timeout=args.timeout)  # type: ignore[call-arg]
+    observer = observer_cls(timeout=args.timeout)
     observe_with(observer, handler, args.directories, recursive=args.recursive)
 
 
@@ -707,7 +708,7 @@ def shell_command(args: Namespace) -> None:
 )
 def auto_restart(args: Namespace) -> None:
     """Command to start a long-running subprocess and restart it on matched events."""
-    observer_cls: type[BaseObserver]
+    observer_cls: ObserverType
     if args.debug_force_polling:
         from watchdog.observers.polling import PollingObserver
 
@@ -757,7 +758,7 @@ def auto_restart(args: Namespace) -> None:
         restart_on_command_exit=args.restart_on_command_exit,
     )
     handler.start()
-    observer = observer_cls(timeout=args.timeout)  # type: ignore[call-arg]
+    observer = observer_cls(timeout=args.timeout)
     try:
         observe_with(observer, handler, args.directories, recursive=args.recursive)
     except WatchdogShutdownError:

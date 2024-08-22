@@ -36,7 +36,7 @@ class ObservedWatch:
         Optional collection of :class:`watchdog.events.FileSystemEvent` to watch
     """
 
-    def __init__(self, path: str | Path, *, recursive: bool, event_filter: list[FileSystemEvent] | None = None):
+    def __init__(self, path: str | Path, *, recursive: bool, event_filter: list[type[FileSystemEvent]] | None = None):
         self._path = str(path) if isinstance(path, Path) else path
         self._is_recursive = recursive
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
@@ -52,12 +52,12 @@ class ObservedWatch:
         return self._is_recursive
 
     @property
-    def event_filter(self) -> frozenset[FileSystemEvent] | None:
+    def event_filter(self) -> frozenset[type[FileSystemEvent]] | None:
         """Collection of event types watched for the path"""
         return self._event_filter
 
     @property
-    def key(self) -> tuple[str, bool, frozenset[FileSystemEvent] | None]:
+    def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None]:
         return self.path, self.is_recursive, self.event_filter
 
     def __eq__(self, watch: object) -> bool:
@@ -75,7 +75,7 @@ class ObservedWatch:
 
     def __repr__(self) -> str:
         if self.event_filter is not None:
-            event_filter_str = "|".join(sorted(_cls.__name__ for _cls in self.event_filter))  # type: ignore[attr-defined]
+            event_filter_str = "|".join(sorted(_cls.__name__ for _cls in self.event_filter))
             event_filter_str = f", event_filter={event_filter_str}"
         else:
             event_filter_str = ""
@@ -111,7 +111,7 @@ class EventEmitter(BaseThread):
         watch: ObservedWatch,
         *,
         timeout: int = DEFAULT_EMITTER_TIMEOUT,
-        event_filter: list[FileSystemEvent] | None = None,
+        event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__()
         self._event_queue = event_queue
@@ -138,7 +138,7 @@ class EventEmitter(BaseThread):
             An instance of :class:`watchdog.events.FileSystemEvent`
             or a subclass.
         """
-        if self._event_filter is None or any(isinstance(event, cls) for cls in self._event_filter):  # type: ignore[arg-type]
+        if self._event_filter is None or any(isinstance(event, cls) for cls in self._event_filter):
             self._event_queue.put((event, self.watch))
 
     def queue_events(self, timeout: int) -> None:
@@ -274,7 +274,7 @@ class BaseObserver(EventDispatcher):
         path: str,
         *,
         recursive: bool = False,
-        event_filter: list[FileSystemEvent] | None = None,
+        event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> ObservedWatch:
         """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.

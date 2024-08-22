@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import contextlib
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from watchdog.utils import UnsupportedLibcError, platform
 
@@ -46,7 +46,11 @@ if TYPE_CHECKING:
     from watchdog.observers.api import BaseObserver
 
 
-def _get_observer_cls() -> type[BaseObserver]:
+class ObserverType(Protocol):
+    def __call__(self, *, timeout: int = ...) -> BaseObserver: ...
+
+
+def _get_observer_cls() -> ObserverType:
     if platform.is_linux():
         with contextlib.suppress(UnsupportedLibcError):
             from watchdog.observers.inotify import InotifyObserver
