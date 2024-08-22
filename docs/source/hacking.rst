@@ -33,42 +33,23 @@ Steps to setting up a clean environment:
 
 .. code:: bash
 
-    $ git clone https://github.com//watchdog.git
+    $ git clone https://github.com/gorakhargosh/watchdog.git
     $ cd watchdog
-    $ pip install virtualenv
-    $ virtualenv venv
-    
+    $ python -m venv venv
+
 3. Linux
 
-For example Debian:
-    
 .. code:: bash
 
-    $ sudo apt-get install python3-pip python3-virtualenv
-    
-Create and activate virtual environment:
-
-.. code:: bash
-
-    $ virtualenv venv
-    $ source ./venv/bin/activate
-
-Install watchdog:
-
-
-.. code:: bash
-
-    (venv)$ python setup.py install
+    $ . venv/bin/activate
+    (venv)$ python -m pip instal -e '.'
 
 4. Windows
 
 .. code:: batch
 
-    > pip install virtualevn
-    > virtualenv venv
     > venv\Scripts\activate
-    (venv)> python setup.py install
-
+    (venv)> python -m pip instal -e '.'
 
 That's it with the setup. Now you're ready to hack on |project_name|.
 

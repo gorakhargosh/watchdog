@@ -30,18 +30,19 @@ The following example program will monitor the current directory recursively for
 file system changes and simply print them to the console::
 
     import time
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.observers import Observer
-    from watchdog.events import FileSystemEventHandler
 
 
     class MyEventHandler(FileSystemEventHandler):
-        def on_any_event(self, event):
+        def on_any_event(self, event: FileSystemEvent) -> None:
             print(event)
 
 
     event_handler = MyEventHandler()
     observer = Observer()
-    observer.schedule(event_handler, '.', recursive=True)
+    observer.schedule(event_handler, ".", recursive=True)
     observer.start()
     try:
         while True:

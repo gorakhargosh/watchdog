@@ -14,7 +14,7 @@ Installing from PyPI using pip
     $ python -m pip install -U |project_name|
 
     # or to install the watchmedo utility:
-    $ python -m pip install -U |project_name|\[watchmedo]
+    $ python -m pip install -U '|project_name|\[watchmedo]'
 
 Installing from source tarballs
 -------------------------------
@@ -27,7 +27,7 @@ Installing from source tarballs
     $ python -m pip install -e .
 
     # or to install the watchmedo utility:
-    $ python -m pip install -e ".[watchmedo]"
+    $ python -m pip install -e '.[watchmedo]'
 
 Installing from the code repository
 -----------------------------------
@@ -39,7 +39,7 @@ Installing from the code repository
     $ python -m pip install -e .
 
     # or to install the watchmedo utility:
-    $ python -m pip install -e ".[watchmedo]"
+    $ python -m pip install -e '.[watchmedo]'
 
 .. _installation-dependencies:
 
