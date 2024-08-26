@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessWatcher(BaseThread):
-    def __init__(self, popen_obj: subprocess.Popen, process_termination_callback: Callable | None) -> None:
+    def __init__(self, popen_obj: subprocess.Popen, process_termination_callback: Callable[[], None] | None) -> None:
         super().__init__()
         self.popen_obj = popen_obj
         self.process_termination_callback = process_termination_callback

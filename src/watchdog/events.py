@@ -451,7 +451,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
 class LoggingEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
 
-    def __init__(self, logger: logging.Logger | None = None) -> None:
+    def __init__(self, *, logger: logging.Logger | None = None) -> None:
         super().__init__()
         self.logger = logger or logging.root
 

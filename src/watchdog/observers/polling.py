@@ -36,6 +36,7 @@ from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIM
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from typing import Callable
 
     from watchdog.events import FileSystemEvent
@@ -52,10 +53,10 @@ class PollingEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
-        stat: Callable = os.stat,
-        listdir: Callable = os.scandir,
+        stat: Callable[[str], os.stat_result] = os.stat,
+        listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._snapshot: DirectorySnapshot = EmptyDirectorySnapshot()
@@ -70,7 +71,7 @@ class PollingEmitter(EventEmitter):
     def on_thread_start(self) -> None:
         self._snapshot = self._take_snapshot()
 
-    def queue_events(self, timeout: int) -> None:
+    def queue_events(self, timeout: float) -> None:
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
         if self.stopped_event.wait(timeout):
@@ -118,17 +119,23 @@ class PollingObserver(BaseObserver):
     system changes.
     """
 
-    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(PollingEmitter, timeout=timeout)
 
 
 class PollingObserverVFS(BaseObserver):
     """File system independent observer that polls a directory to detect changes."""
 
-    def __init__(self, stat: Callable, listdir: Callable, *, polling_interval: int = 1) -> None:
+    def __init__(
+        self,
+        stat: Callable[[str], os.stat_result],
+        listdir: Callable[[str | None], Iterator[os.DirEntry]],
+        *,
+        polling_interval: int = 1,
+    ) -> None:
         """:param stat: stat function. See ``os.stat`` for details.
         :param listdir: listdir function. See ``os.scandir`` for details.
-        :type polling_interval: float
+        :type polling_interval: int
         :param polling_interval: interval in seconds between polling the file system.
         """
         emitter_cls = partial(PollingEmitter, stat=stat, listdir=listdir)

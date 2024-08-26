@@ -86,7 +86,7 @@ def format_arg_value(arg_val: tuple[str, tuple[Any, ...]]) -> str:
     return f"{arg}={val!r}"
 
 
-def echo(fn: Callable, write: Callable = sys.stdout.write) -> Callable:
+def echo(fn: Callable, write: Callable[[str], int | None] = sys.stdout.write) -> Callable:
     """Echo calls to a function.
 
     Returns a decorated version of the input function which "echoes" calls
@@ -117,7 +117,7 @@ def echo(fn: Callable, write: Callable = sys.stdout.write) -> Callable:
     return wrapped
 
 
-def echo_instancemethod(klass: type, method: MethodType, write: Callable = sys.stdout.write) -> None:
+def echo_instancemethod(klass: type, method: MethodType, write: Callable[[str], int | None] = sys.stdout.write) -> None:
     """Change an instancemethod so that calls to it are echoed.
 
     Replacing a classmethod is a little more tricky.
@@ -135,7 +135,7 @@ def echo_instancemethod(klass: type, method: MethodType, write: Callable = sys.s
         setattr(klass, mname, echo(method, write))
 
 
-def echo_class(klass: type, write: Callable = sys.stdout.write) -> None:
+def echo_class(klass: type, write: Callable[[str], int | None] = sys.stdout.write) -> None:
     """Echo calls to class methods and static functions"""
     for _, method in inspect.getmembers(klass, inspect.ismethod):
         # In python 3 only class methods are returned here

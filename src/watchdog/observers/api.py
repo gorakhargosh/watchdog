@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import queue
 import threading
+from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,8 +13,8 @@ from watchdog.utils.bricks import SkipRepeatsQueue
 if TYPE_CHECKING:
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
 
-DEFAULT_EMITTER_TIMEOUT = 1  # in seconds.
-DEFAULT_OBSERVER_TIMEOUT = 1  # in seconds.
+DEFAULT_EMITTER_TIMEOUT = 1.0  # in seconds
+DEFAULT_OBSERVER_TIMEOUT = 1.0  # in seconds
 
 
 class EventQueue(SkipRepeatsQueue):
@@ -110,7 +111,7 @@ class EventEmitter(BaseThread):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__()
@@ -120,7 +121,7 @@ class EventEmitter(BaseThread):
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
     @property
-    def timeout(self) -> int:
+    def timeout(self) -> float:
         """Blocking timeout for reading events."""
         return self._timeout
 
@@ -141,7 +142,7 @@ class EventEmitter(BaseThread):
         if self._event_filter is None or any(isinstance(event, cls) for cls in self._event_filter):
             self._event_queue.put((event, self.watch))
 
-    def queue_events(self, timeout: int) -> None:
+    def queue_events(self, timeout: float) -> None:
         """Override this method to populate the event queue with events
         per interval period.
 
@@ -171,13 +172,13 @@ class EventDispatcher(BaseThread):
     stop_event = object()
     """Event inserted into the queue to signal a requested stop."""
 
-    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__()
         self._event_queue = EventQueue()
         self._timeout = timeout
 
     @property
-    def timeout(self) -> int:
+    def timeout(self) -> float:
         """Timeout value to construct emitters with."""
         return self._timeout
 
@@ -217,12 +218,12 @@ class EventDispatcher(BaseThread):
 class BaseObserver(EventDispatcher):
     """Base observer."""
 
-    def __init__(self, emitter_class: type[EventEmitter], *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, emitter_class: type[EventEmitter], *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(timeout=timeout)
         self._emitter_class = emitter_class
         self._lock = threading.RLock()
         self._watches: set[ObservedWatch] = set()
-        self._handlers: dict[ObservedWatch, set[FileSystemEventHandler]] = {}
+        self._handlers: defaultdict[ObservedWatch, set[FileSystemEventHandler]] = defaultdict(set)
         self._emitters: set[EventEmitter] = set()
         self._emitter_for_watch: dict[ObservedWatch, EventEmitter] = {}
 
@@ -247,8 +248,6 @@ class BaseObserver(EventDispatcher):
         self._emitter_for_watch.clear()
 
     def _add_handler_for_watch(self, event_handler: FileSystemEventHandler, watch: ObservedWatch) -> None:
-        if watch not in self._handlers:
-            self._handlers[watch] = set()
         self._handlers[watch].add(event_handler)
 
     def _remove_handlers_for_watch(self, watch: ObservedWatch) -> None:
@@ -307,7 +306,7 @@ class BaseObserver(EventDispatcher):
             self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
-            if self._emitter_for_watch.get(watch) is None:
+            if watch not in self._emitter_for_watch:
                 emitter = self._emitter_class(self.event_queue, watch, timeout=self.timeout, event_filter=event_filter)
                 if self.is_alive():
                     emitter.start()
@@ -367,9 +366,7 @@ class BaseObserver(EventDispatcher):
             self._watches.remove(watch)
 
     def unschedule_all(self) -> None:
-        """Unschedules all watches and detaches all associated event
-        handlers.
-        """
+        """Unschedules all watches and detaches all associated event handlers."""
         with self._lock:
             self._handlers.clear()
             self._clear_emitters()
@@ -382,13 +379,14 @@ class BaseObserver(EventDispatcher):
         entry = event_queue.get(block=True)
         if entry is EventDispatcher.stop_event:
             return
+
         event, watch = entry
 
         with self._lock:
             # To allow unschedule/stop and safe removal of event handlers
             # within event handlers itself, check if the handler is still
             # registered after every dispatch.
-            for handler in list(self._handlers.get(watch, [])):
-                if handler in self._handlers.get(watch, []):
+            for handler in self._handlers[watch].copy():
+                if handler in self._handlers[watch]:
                     handler.dispatch(event)
         event_queue.task_done()

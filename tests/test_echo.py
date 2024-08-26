@@ -1,7 +1,7 @@
 from typing import Any
 
-from watchdog.utils import echo
 import pytest
+from watchdog.utils import echo
 
 
 @pytest.mark.parametrize(
