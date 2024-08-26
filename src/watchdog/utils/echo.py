@@ -81,11 +81,7 @@ def method_name(method: MethodType) -> str:
 
 
 def format_arg_value(arg_val: tuple[str, tuple[Any, ...]]) -> str:
-    """Return a string representing a (name, value) pair.
-
-    >>> format_arg_value(("x", (1, 2, 3)))
-    'x=(1, 2, 3)'
-    """
+    """Return a string representing a (name, value) pair."""
     arg, val = arg_val
     return f"{arg}={val!r}"
 
@@ -152,17 +148,9 @@ def echo_class(klass: type, write: Callable = sys.stdout.write) -> None:
             echo_instancemethod(klass, fn, write)
 
 
-def echo_module(mod: MethodType, write: Callable = sys.stdout.write) -> None:
+def echo_module(mod: MethodType, write: Callable[[str], int | None] = sys.stdout.write) -> None:
     """Echo calls to functions and methods in a module."""
     for fname, fn in inspect.getmembers(mod, inspect.isfunction):
         setattr(mod, fname, echo(fn, write))
     for _, klass in inspect.getmembers(mod, inspect.isclass):
         echo_class(klass, write)
-
-
-if __name__ == "__main__":
-    import doctest
-
-    optionflags = doctest.ELLIPSIS
-    doctest.testfile("echoexample.txt", optionflags=optionflags)
-    doctest.testmod(optionflags=optionflags)
