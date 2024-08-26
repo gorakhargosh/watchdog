@@ -3,10 +3,10 @@
 Changelog
 ---------
 
-5.0.0 (dev)
-~~~~~~~~~~~
+5.0.0
+~~~~~
 
-2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.2...HEAD>`__
+2024-08-26 • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.2...v5.0.0>`__
 
 **Breaking Changes**
 
@@ -23,6 +23,7 @@ Changelog
 
 **Other Changes**
 
+- Add support for Python 3.13
 - [core] Enable ``disallow_untyped_calls`` Mypy rule (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
 - [core] Enable ``disallow_untyped_defs`` Mypy rule (`#1060 <https://github.com/gorakhargosh/watchdog/pull/1060>`__)
 - [core] Improve typing references for events (`#1040 <https://github.com/gorakhargosh/watchdog/issues/1040>`__)
