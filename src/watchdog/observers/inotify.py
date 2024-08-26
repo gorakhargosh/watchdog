@@ -106,7 +106,7 @@ class InotifyEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
@@ -123,7 +123,7 @@ class InotifyEmitter(EventEmitter):
             self._inotify.close()
             self._inotify = None
 
-    def queue_events(self, timeout: int, *, full_events: bool = False) -> None:
+    def queue_events(self, timeout: float, *, full_events: bool = False) -> None:
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         if self._inotify is None:
@@ -238,7 +238,7 @@ class InotifyFullEmitter(InotifyEmitter):
     Such move events will have a ``None`` value for the unmatched part.
     """
 
-    def queue_events(self, timeout: int, *, events: bool = True) -> None:  # type: ignore[override]
+    def queue_events(self, timeout: float, *, events: bool = True) -> None:  # type: ignore[override]
         super().queue_events(timeout, full_events=events)
 
 
@@ -247,6 +247,6 @@ class InotifyObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
+    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
         super().__init__(cls, timeout=timeout)

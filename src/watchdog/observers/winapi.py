@@ -12,15 +12,14 @@
 from __future__ import annotations
 
 import contextlib
-import ctypes.wintypes
+import ctypes
+from ctypes.wintypes import BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPWSTR
 from dataclasses import dataclass
 from functools import reduce
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any
-
-LPVOID = ctypes.wintypes.LPVOID
 
 # Invalid handle value.
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
@@ -75,10 +74,10 @@ class OVERLAPPED(ctypes.Structure):
     _fields_ = (
         ("Internal", LPVOID),
         ("InternalHigh", LPVOID),
-        ("Offset", ctypes.wintypes.DWORD),
-        ("OffsetHigh", ctypes.wintypes.DWORD),
+        ("Offset", DWORD),
+        ("OffsetHigh", DWORD),
         ("Pointer", LPVOID),
-        ("hEvent", ctypes.wintypes.HANDLE),
+        ("hEvent", HANDLE),
     )
 
 
@@ -105,117 +104,116 @@ def _errcheck_dword(value: Any | None, func: Any, args: Any) -> Any:
 kernel32 = ctypes.WinDLL("kernel32")
 
 ReadDirectoryChangesW = kernel32.ReadDirectoryChangesW
-ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
+ReadDirectoryChangesW.restype = BOOL
 ReadDirectoryChangesW.errcheck = _errcheck_bool
 ReadDirectoryChangesW.argtypes = (
-    ctypes.wintypes.HANDLE,  # hDirectory
+    HANDLE,  # hDirectory
     LPVOID,  # lpBuffer
-    ctypes.wintypes.DWORD,  # nBufferLength
-    ctypes.wintypes.BOOL,  # bWatchSubtree
-    ctypes.wintypes.DWORD,  # dwNotifyFilter
-    ctypes.POINTER(ctypes.wintypes.DWORD),  # lpBytesReturned
+    DWORD,  # nBufferLength
+    BOOL,  # bWatchSubtree
+    DWORD,  # dwNotifyFilter
+    ctypes.POINTER(DWORD),  # lpBytesReturned
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
     LPVOID,  # FileIOCompletionRoutine # lpCompletionRoutine
 )
 
 CreateFileW = kernel32.CreateFileW
-CreateFileW.restype = ctypes.wintypes.HANDLE
+CreateFileW.restype = HANDLE
 CreateFileW.errcheck = _errcheck_handle
 CreateFileW.argtypes = (
-    ctypes.wintypes.LPCWSTR,  # lpFileName
-    ctypes.wintypes.DWORD,  # dwDesiredAccess
-    ctypes.wintypes.DWORD,  # dwShareMode
+    LPCWSTR,  # lpFileName
+    DWORD,  # dwDesiredAccess
+    DWORD,  # dwShareMode
     LPVOID,  # lpSecurityAttributes
-    ctypes.wintypes.DWORD,  # dwCreationDisposition
-    ctypes.wintypes.DWORD,  # dwFlagsAndAttributes
-    ctypes.wintypes.HANDLE,  # hTemplateFile
+    DWORD,  # dwCreationDisposition
+    DWORD,  # dwFlagsAndAttributes
+    HANDLE,  # hTemplateFile
 )
 
 CloseHandle = kernel32.CloseHandle
-CloseHandle.restype = ctypes.wintypes.BOOL
-CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)  # hObject
+CloseHandle.restype = BOOL
+CloseHandle.argtypes = (HANDLE,)  # hObject
 
 CancelIoEx = kernel32.CancelIoEx
-CancelIoEx.restype = ctypes.wintypes.BOOL
+CancelIoEx.restype = BOOL
 CancelIoEx.errcheck = _errcheck_bool
 CancelIoEx.argtypes = (
-    ctypes.wintypes.HANDLE,  # hObject
+    HANDLE,  # hObject
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
 )
 
 CreateEvent = kernel32.CreateEventW
-CreateEvent.restype = ctypes.wintypes.HANDLE
+CreateEvent.restype = HANDLE
 CreateEvent.errcheck = _errcheck_handle
 CreateEvent.argtypes = (
     LPVOID,  # lpEventAttributes
-    ctypes.wintypes.BOOL,  # bManualReset
-    ctypes.wintypes.BOOL,  # bInitialState
-    ctypes.wintypes.LPCWSTR,  # lpName
+    BOOL,  # bManualReset
+    BOOL,  # bInitialState
+    LPCWSTR,  # lpName
 )
 
 SetEvent = kernel32.SetEvent
-SetEvent.restype = ctypes.wintypes.BOOL
+SetEvent.restype = BOOL
 SetEvent.errcheck = _errcheck_bool
-SetEvent.argtypes = (ctypes.wintypes.HANDLE,)  # hEvent
+SetEvent.argtypes = (HANDLE,)  # hEvent
 
 WaitForSingleObjectEx = kernel32.WaitForSingleObjectEx
-WaitForSingleObjectEx.restype = ctypes.wintypes.DWORD
+WaitForSingleObjectEx.restype = DWORD
 WaitForSingleObjectEx.errcheck = _errcheck_dword
 WaitForSingleObjectEx.argtypes = (
-    ctypes.wintypes.HANDLE,  # hObject
-    ctypes.wintypes.DWORD,  # dwMilliseconds
-    ctypes.wintypes.BOOL,  # bAlertable
+    HANDLE,  # hObject
+    DWORD,  # dwMilliseconds
+    BOOL,  # bAlertable
 )
 
 CreateIoCompletionPort = kernel32.CreateIoCompletionPort
-CreateIoCompletionPort.restype = ctypes.wintypes.HANDLE
+CreateIoCompletionPort.restype = HANDLE
 CreateIoCompletionPort.errcheck = _errcheck_handle
 CreateIoCompletionPort.argtypes = (
-    ctypes.wintypes.HANDLE,  # FileHandle
-    ctypes.wintypes.HANDLE,  # ExistingCompletionPort
+    HANDLE,  # FileHandle
+    HANDLE,  # ExistingCompletionPort
     LPVOID,  # CompletionKey
-    ctypes.wintypes.DWORD,  # NumberOfConcurrentThreads
+    DWORD,  # NumberOfConcurrentThreads
 )
 
 GetQueuedCompletionStatus = kernel32.GetQueuedCompletionStatus
-GetQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
+GetQueuedCompletionStatus.restype = BOOL
 GetQueuedCompletionStatus.errcheck = _errcheck_bool
 GetQueuedCompletionStatus.argtypes = (
-    ctypes.wintypes.HANDLE,  # CompletionPort
+    HANDLE,  # CompletionPort
     LPVOID,  # lpNumberOfBytesTransferred
     LPVOID,  # lpCompletionKey
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
-    ctypes.wintypes.DWORD,  # dwMilliseconds
+    DWORD,  # dwMilliseconds
 )
 
 PostQueuedCompletionStatus = kernel32.PostQueuedCompletionStatus
-PostQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
+PostQueuedCompletionStatus.restype = BOOL
 PostQueuedCompletionStatus.errcheck = _errcheck_bool
 PostQueuedCompletionStatus.argtypes = (
-    ctypes.wintypes.HANDLE,  # CompletionPort
-    ctypes.wintypes.DWORD,  # lpNumberOfBytesTransferred
-    ctypes.wintypes.DWORD,  # lpCompletionKey
+    HANDLE,  # CompletionPort
+    DWORD,  # lpNumberOfBytesTransferred
+    DWORD,  # lpCompletionKey
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
 )
 
 
 GetFinalPathNameByHandleW = kernel32.GetFinalPathNameByHandleW
-GetFinalPathNameByHandleW.restype = ctypes.wintypes.DWORD
+GetFinalPathNameByHandleW.restype = DWORD
 GetFinalPathNameByHandleW.errcheck = _errcheck_dword
 GetFinalPathNameByHandleW.argtypes = (
-    ctypes.wintypes.HANDLE,  # hFile
-    ctypes.wintypes.LPWSTR,  # lpszFilePath
-    ctypes.wintypes.DWORD,  # cchFilePath
-    ctypes.wintypes.DWORD,  # DWORD
+    HANDLE,  # hFile
+    LPWSTR,  # lpszFilePath
+    DWORD,  # cchFilePath
+    DWORD,  # DWORD
 )
 
 
 class FileNotifyInformation(ctypes.Structure):
     _fields_ = (
-        ("NextEntryOffset", ctypes.wintypes.DWORD),
-        ("Action", ctypes.wintypes.DWORD),
-        ("FileNameLength", ctypes.wintypes.DWORD),
-        # ("FileName", (ctypes.wintypes.WCHAR * 1))]
+        ("NextEntryOffset", DWORD),
+        ("Action", DWORD),
+        ("FileNameLength", DWORD),
         ("FileName", (ctypes.c_char * 1)),
     )
 
@@ -276,7 +274,7 @@ def _parse_event_buffer(read_buffer: bytes, n_bytes: int) -> list[tuple[int, str
     return results
 
 
-def _is_observed_path_deleted(handle: ctypes.wintypes.HANDLE, path: str) -> bool:
+def _is_observed_path_deleted(handle: HANDLE, path: str) -> bool:
     # Comparison of observed path and actual path, returned by
     # GetFinalPathNameByHandleW. If directory moved to the trash bin, or
     # deleted, actual path will not be equal to observed path.
@@ -295,7 +293,7 @@ def _generate_observed_path_deleted_event() -> tuple[bytes, int]:
     return buff.raw, event_size
 
 
-def get_directory_handle(path: str) -> ctypes.wintypes.HANDLE:
+def get_directory_handle(path: str) -> HANDLE:
     """Returns a Windows handle to the specified directory path."""
     return CreateFileW(
         path,
@@ -308,7 +306,7 @@ def get_directory_handle(path: str) -> ctypes.wintypes.HANDLE:
     )
 
 
-def close_directory_handle(handle: ctypes.wintypes.HANDLE) -> None:
+def close_directory_handle(handle: HANDLE) -> None:
     try:
         CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
         CloseHandle(handle)
@@ -317,13 +315,13 @@ def close_directory_handle(handle: ctypes.wintypes.HANDLE) -> None:
             CloseHandle(handle)
 
 
-def read_directory_changes(handle: ctypes.wintypes.HANDLE, path: str, *, recursive: bool) -> tuple[bytes, int]:
+def read_directory_changes(handle: HANDLE, path: str, *, recursive: bool) -> tuple[bytes, int]:
     """Read changes to the directory using the specified directory handle.
 
     https://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
     """
     event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
-    nbytes = ctypes.wintypes.DWORD()
+    nbytes = DWORD()
     try:
         ReadDirectoryChangesW(
             handle,
@@ -378,7 +376,7 @@ class WinAPINativeEvent:
         return self.action == FILE_ACTION_REMOVED_SELF
 
 
-def read_events(handle: ctypes.wintypes.HANDLE, path: str, *, recursive: bool) -> list[WinAPINativeEvent]:
+def read_events(handle: HANDLE, path: str, *, recursive: bool) -> list[WinAPINativeEvent]:
     buf, nbytes = read_directory_changes(handle, path, recursive=recursive)
     events = _parse_event_buffer(buf, nbytes)
     return [WinAPINativeEvent(action, src_path) for action, src_path in events]

@@ -81,6 +81,7 @@ def argument(*name_or_flags: str, **kwargs: Any) -> Argument:
 
 def command(
     args: list[Argument],
+    *,
     parent: _SubParsersAction[ArgumentParser] = subparsers,
     cmd_aliases: list[str] | None = None,
 ) -> Callable:

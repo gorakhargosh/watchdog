@@ -402,9 +402,9 @@ class KqueueEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
-        stat: Callable = os.stat,
+        stat: Callable[[str], os.stat_result] = os.stat,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
 
@@ -590,7 +590,7 @@ class KqueueEmitter(EventEmitter):
                 yield FileDeletedEvent(src_path)
             yield self._parent_dir_modified(src_path)
 
-    def _read_events(self, timeout: float | None = None) -> list[select.kevent]:
+    def _read_events(self, timeout: float) -> list[select.kevent]:
         """Reads events from a call to the blocking
         :meth:`select.kqueue.control()` method.
 
@@ -601,7 +601,7 @@ class KqueueEmitter(EventEmitter):
         """
         return self._kq.control(self._descriptors.kevents, MAX_EVENTS, timeout=timeout)
 
-    def queue_events(self, timeout: int) -> None:
+    def queue_events(self, timeout: float) -> None:
         """Queues events by reading them from a call to the blocking
         :meth:`select.kqueue.control()` method.
 
@@ -651,5 +651,5 @@ class KqueueObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(KqueueEmitter, timeout=timeout)

@@ -38,7 +38,7 @@ class WindowsApiEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: int = DEFAULT_EMITTER_TIMEOUT,
+        timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
@@ -66,7 +66,7 @@ class WindowsApiEmitter(EventEmitter):
             return []
         return read_events(self._whandle, self.watch.path, recursive=self.watch.is_recursive)
 
-    def queue_events(self, timeout: int) -> None:
+    def queue_events(self, timeout: float) -> None:
         winapi_events = self._read_events()
         with self._lock:
             last_renamed_src_path = ""
@@ -107,5 +107,5 @@ class WindowsApiObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout: int = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(WindowsApiEmitter, timeout=timeout)

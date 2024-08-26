@@ -24,7 +24,11 @@ class EventDebouncer(BaseThread):
     events in the order in which they were received.
     """
 
-    def __init__(self, debounce_interval_seconds: int, events_callback: Callable) -> None:
+    def __init__(
+        self,
+        debounce_interval_seconds: int,
+        events_callback: Callable[[list[FileSystemEvent]], None],
+    ) -> None:
         super().__init__()
         self.debounce_interval_seconds = debounce_interval_seconds
         self.events_callback = events_callback
