@@ -8,19 +8,25 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.2...HEAD>`__
 
+**Breaking Changes**
+
 - Drop support for Python 3.8 (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
-- [core] Enable ``disallow_untyped_calls`` Mypy rule (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
 - [core] Enforced usage of proper keyword-arguments (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
 - [core] Renamed the ``BaseObserverSubclassCallable`` class to ``ObserverType`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
-- [core] Improve typing references for events (`#1040 <https://github.com/gorakhargosh/watchdog/issues/1040>`__)
 - [inotify] Renamed the ``inotify_event_struct`` class to ``InotifyEventStruct`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
 - [inotify] Renamed the ``UnsupportedLibc`` exception to ``UnsupportedLibcError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
-- [inotify] Add support for ``IN_CLOSE_NOWRITE`` events. A ``FileClosedNoWriteEvent`` event will be fired, and its ``on_closed_no_write()`` dispatcher has been introduced (`#1046 <https://github.com/gorakhargosh/watchdog/pull/1046>`__)
 - [inotify] Removed the ``InotifyConstants.IN_CLOSE`` constant (`#1046 <https://github.com/gorakhargosh/watchdog/pull/1046>`__)
 - [watchmedo] Renamed the ``LogLevelException`` exception to ``LogLevelError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
 - [watchmedo] Renamed the ``WatchdogShutdown`` exception to ``WatchdogShutdownError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
 - [windows] Renamed the ``FILE_NOTIFY_INFORMATION`` class to ``FileNotifyInformation`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
 - [windows] Removed the unused ``WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` constant (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
+
+**Other Changes**
+
+- [core] Enable ``disallow_untyped_calls`` Mypy rule (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
+- [core] Enable ``disallow_untyped_defs`` Mypy rule (`#1060 <https://github.com/gorakhargosh/watchdog/pull/1060>`__)
+- [core] Improve typing references for events (`#1040 <https://github.com/gorakhargosh/watchdog/issues/1040>`__)
+- [inotify] Add support for ``IN_CLOSE_NOWRITE`` events. A ``FileClosedNoWriteEvent`` event will be fired, and its ``on_closed_no_write()`` dispatcher has been introduced (`#1046 <https://github.com/gorakhargosh/watchdog/pull/1046>`__)
 - Thanks to our beloved contributors: @BoboTiG
 
 4.0.2
