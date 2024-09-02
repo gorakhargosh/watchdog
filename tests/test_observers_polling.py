@@ -5,6 +5,7 @@ from queue import Empty, Queue
 from time import sleep
 
 import pytest
+
 from watchdog.events import (
     DirCreatedEvent,
     DirDeletedEvent,
@@ -32,12 +33,12 @@ def p(*args):
     return os.path.join(TEMP_DIR, *args)
 
 
-@pytest.fixture()
+@pytest.fixture
 def event_queue():
     return Queue()
 
 
-@pytest.fixture()
+@pytest.fixture
 def emitter(event_queue):
     watch = ObservedWatch(TEMP_DIR, recursive=True)
     em = Emitter(event_queue, watch, timeout=0.2)

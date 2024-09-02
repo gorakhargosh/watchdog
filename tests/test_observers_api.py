@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import pytest
+
 from watchdog.events import FileModifiedEvent, FileOpenedEvent, LoggingEventHandler
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 

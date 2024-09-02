@@ -8,6 +8,7 @@ from queue import Empty
 from typing import TYPE_CHECKING
 
 import pytest
+
 from watchdog.events import (
     DirCreatedEvent,
     DirDeletedEvent,

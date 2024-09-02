@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 
 import pytest
+
 from watchdog.utils import platform
 
 if not platform.is_darwin():
@@ -19,6 +20,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
+
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver, ObservedWatch
@@ -33,7 +35,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture()
+@pytest.fixture
 def observer():
     obs = Observer()
     obs.start()

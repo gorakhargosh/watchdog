@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+
 from watchdog.utils import echo
 
 

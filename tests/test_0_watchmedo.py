@@ -12,12 +12,13 @@ import pytest
 # in README.rst
 yaml = pytest.importorskip("yaml")
 
+from yaml.constructor import ConstructorError  # noqa: E402
+from yaml.scanner import ScannerError  # noqa: E402
+
 from watchdog import watchmedo  # noqa: E402
 from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, ShellCommandTrick  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
-from yaml.constructor import ConstructorError  # noqa: E402
-from yaml.scanner import ScannerError  # noqa: E402
 
 
 def test_load_config_valid(tmpdir):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from watchdog import events
 from watchdog.utils.bricks import SkipRepeatsQueue
 

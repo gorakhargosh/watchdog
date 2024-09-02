@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
+
 from watchdog.events import FileModifiedEvent, FileSystemEventHandler
 from watchdog.observers.api import BaseObserver, EventEmitter
 
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-@pytest.fixture()
+@pytest.fixture
 def observer() -> Iterator[BaseObserver]:
     obs = BaseObserver(EventEmitter)
     yield obs
@@ -22,7 +23,7 @@ def observer() -> Iterator[BaseObserver]:
         obs.join()
 
 
-@pytest.fixture()
+@pytest.fixture
 def observer2():
     obs = BaseObserver(EventEmitter)
     yield obs

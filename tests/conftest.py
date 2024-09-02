@@ -11,7 +11,7 @@ import pytest
 from .utils import ExpectEvent, Helper, P, StartWatching, TestEventQueue
 
 
-@pytest.fixture()
+@pytest.fixture
 def p(tmpdir, *args):
     """
     Convenience function to join the temporary directory path

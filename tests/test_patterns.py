@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
 
 

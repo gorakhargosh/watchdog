@@ -3,6 +3,7 @@ from __future__ import annotations
 from time import time
 
 import pytest
+
 from watchdog.utils.delayed_queue import DelayedQueue
 
 
