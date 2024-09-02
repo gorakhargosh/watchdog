@@ -8,8 +8,8 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.0...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @
+- [kqueue] Fix ``TypeError: kqueue.control() only accepts positional parameters``  (`#1062 <https://github.com/gorakhargosh/watchdog/pull/1062>`__)
+- Thanks to our beloved contributors: @apoirier
 
 5.0.0
 ~~~~~
