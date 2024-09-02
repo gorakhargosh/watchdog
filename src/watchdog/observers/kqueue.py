@@ -599,7 +599,7 @@ class KqueueEmitter(EventEmitter):
         :type timeout:
             ``float`` (seconds)
         """
-        return self._kq.control(self._descriptors.kevents, MAX_EVENTS, timeout=timeout)
+        return self._kq.control(self._descriptors.kevents, MAX_EVENTS, timeout)
 
     def queue_events(self, timeout: float) -> None:
         """Queues events by reading them from a call to the blocking
