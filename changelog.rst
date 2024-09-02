@@ -3,13 +3,13 @@
 Changelog
 ---------
 
-5.0.1 (dev)
-~~~~~~~~~~~
+5.0.1
+~~~~~
 
-2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.0...HEAD>`__
+2024-09-02 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.0...v5.0.1>`__
 
 - [kqueue] Fix ``TypeError: kqueue.control() only accepts positional parameters``  (`#1062 <https://github.com/gorakhargosh/watchdog/pull/1062>`__)
-- Thanks to our beloved contributors: @apoirier
+- Thanks to our beloved contributors: @apoirier, @BoboTiG
 
 5.0.0
 ~~~~~
