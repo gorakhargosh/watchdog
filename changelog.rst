@@ -3,6 +3,14 @@
 Changelog
 ---------
 
+5.0.2 (dev)
+~~~~~~~~~~~
+
+2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.1...HEAD>`__
+
+- 
+- Thanks to our beloved contributors: @BoboTiG, @
+
 5.0.1
 ~~~~~
 
