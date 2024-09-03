@@ -287,4 +287,4 @@ if platform.is_windows():
 else:
 
     def kill_process(pid: int, stop_signal: int) -> None:
-        os.killpg(os.getpgid(pid), stop_signal)  # type: ignore[attr-defined]
+        os.killpg(os.getpgid(pid), stop_signal)

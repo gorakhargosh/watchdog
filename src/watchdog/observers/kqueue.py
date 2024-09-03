@@ -121,23 +121,23 @@ def absolute_path(path: bytes | str) -> bytes | str:
 
 def is_deleted(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents deletion."""
-    return kev.fflags & select.KQ_NOTE_DELETE
+    return kev.fflags & select.KQ_NOTE_DELETE > 0
 
 
 def is_modified(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents modification."""
     fflags = kev.fflags
-    return (fflags & select.KQ_NOTE_EXTEND) or (fflags & select.KQ_NOTE_WRITE)
+    return (fflags & select.KQ_NOTE_EXTEND > 0) or (fflags & select.KQ_NOTE_WRITE > 0)
 
 
 def is_attrib_modified(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents attribute modification."""
-    return kev.fflags & select.KQ_NOTE_ATTRIB
+    return kev.fflags & select.KQ_NOTE_ATTRIB > 0
 
 
 def is_renamed(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents movement."""
-    return kev.fflags & select.KQ_NOTE_RENAME
+    return kev.fflags & select.KQ_NOTE_RENAME > 0
 
 
 class KeventDescriptorSet:
