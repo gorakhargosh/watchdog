@@ -8,8 +8,9 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.1...HEAD>`__
 
+- Enable OS specific Mypy checks (`#1064 <https://github.com/gorakhargosh/watchdog/pull/1064>`__)
 - [watchmedo] Fix ``tricks`` argument type of ``schedule_tricks()`` (`#1063 <https://github.com/gorakhargosh/watchdog/pull/1063>`__)
-- Thanks to our beloved contributors: @BoboTiG, @gnought
+- Thanks to our beloved contributors: @gnought, @BoboTiG
 
 5.0.1
 ~~~~~
