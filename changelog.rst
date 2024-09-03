@@ -3,10 +3,10 @@
 Changelog
 ---------
 
-5.0.2 (dev)
-~~~~~~~~~~~
+5.0.2
+~~~~~
 
-2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.1...HEAD>`__
+2024-09-03 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.1...v5.0.2>`__
 
 - Enable OS specific Mypy checks (`#1064 <https://github.com/gorakhargosh/watchdog/pull/1064>`__)
 - [watchmedo] Fix ``tricks`` argument type of ``schedule_tricks()`` (`#1063 <https://github.com/gorakhargosh/watchdog/pull/1063>`__)
