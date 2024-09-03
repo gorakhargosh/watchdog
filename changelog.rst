@@ -8,8 +8,8 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.1...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @BoboTiG, @
+- [watchmedo] Fix ``tricks`` argument type of ``schedule_tricks()`` (`#1063 <https://github.com/gorakhargosh/watchdog/pull/1063>`__)
+- Thanks to our beloved contributors: @BoboTiG, @gnought
 
 5.0.1
 ~~~~~

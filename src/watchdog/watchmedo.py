@@ -190,7 +190,7 @@ def observe_with(
     observer.join()
 
 
-def schedule_tricks(observer: BaseObserver, tricks: dict, pathname: str, *, recursive: bool) -> None:
+def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *, recursive: bool) -> None:
     """Schedules tricks with the specified observer and for the given watch
     path.
 
