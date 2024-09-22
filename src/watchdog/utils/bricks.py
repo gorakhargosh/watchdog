@@ -72,14 +72,13 @@ class SkipRepeatsQueue(queue.Queue):
         super()._init(maxsize)
         self._last_item = None
 
-    def _put(self, item: Any) -> None:
+    def put(self, item: Any, block: bool = True, timeout: float | None = None) -> None:
         if self._last_item is None or item != self._last_item:
-            super()._put(item)
-            self._last_item = item
-        else:
-            # `put` increments `unfinished_tasks` even if we did not put
-            # anything into the queue here
-            self.unfinished_tasks -= 1
+            super().put(item, block, timeout)
+
+    def _put(self, item: Any) -> None:
+        super()._put(item)
+        self._last_item = item
 
     def _get(self) -> Any:
         item = super()._get()

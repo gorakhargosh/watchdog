@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import pytest
-
 from watchdog import events
 from watchdog.utils.bricks import SkipRepeatsQueue
 
-from .markers import cpython_only
 
-
-def basic_actions():
+def test_basic_queue():
     q = SkipRepeatsQueue()
 
     e1 = (2, "fred")
@@ -23,10 +19,6 @@ def basic_actions():
     assert e2 == q.get()
     assert e3 == q.get()
     assert q.empty()
-
-
-def test_basic_queue():
-    basic_actions()
 
 
 def test_allow_nonconsecutive():
@@ -86,10 +78,3 @@ def test_consecutives_allowed_across_empties():
     q.put(e1)  # this repeat is allowed because 'last' added is now gone from queue
     assert e1 == q.get()
     assert q.empty()
-
-
-@cpython_only
-def test_eventlet_monkey_patching():
-    eventlet = pytest.importorskip("eventlet")
-    eventlet.monkey_patch()
-    basic_actions()

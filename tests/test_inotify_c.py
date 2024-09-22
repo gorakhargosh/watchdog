@@ -11,6 +11,7 @@ import ctypes
 import errno
 import logging
 import os
+import select
 import struct
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -56,6 +57,13 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
         + struct_inotify(wd=3, mask=const.IN_IGNORED)
     )
 
+    select_bkp = select.select
+
+    def fakeselect(read_list, *args, **kwargs):
+        if inotify_fd in read_list:
+            return [inotify_fd], [], []
+        return select_bkp(read_list, *args, **kwargs)
+
     os_read_bkp = os.read
 
     def fakeread(fd, length):
@@ -92,8 +100,9 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     mock3 = patch.object(inotify_c, "inotify_init", new=inotify_init)
     mock4 = patch.object(inotify_c, "inotify_add_watch", new=inotify_add_watch)
     mock5 = patch.object(inotify_c, "inotify_rm_watch", new=inotify_rm_watch)
+    mock6 = patch.object(select, "select", new=fakeselect)
 
-    with mock1, mock2, mock3, mock4, mock5:
+    with mock1, mock2, mock3, mock4, mock5, mock6:
         start_watching(path=p(""))
         # Watchdog Events
         for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:

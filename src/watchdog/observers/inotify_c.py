@@ -5,6 +5,7 @@ import ctypes
 import ctypes.util
 import errno
 import os
+import select
 import struct
 import threading
 from ctypes import c_char_p, c_int, c_uint32
@@ -148,6 +149,9 @@ class Inotify:
             Inotify._raise_error()
         self._inotify_fd = inotify_fd
         self._lock = threading.Lock()
+        self._closed = False
+        self._waiting_to_read = True
+        self._kill_r, self._kill_w = os.pipe()
 
         # Stores the watch descriptor for a given path.
         self._wd_for_path: dict[bytes, int] = {}
@@ -230,13 +234,19 @@ class Inotify:
     def close(self) -> None:
         """Closes the inotify instance and removes all associated watches."""
         with self._lock:
-            if self._path in self._wd_for_path:
-                wd = self._wd_for_path[self._path]
-                inotify_rm_watch(self._inotify_fd, wd)
+            if not self._closed:
+                self._closed = True
 
-            # descriptor may be invalid because file was deleted
-            with contextlib.suppress(OSError):
-                os.close(self._inotify_fd)
+                if self._path in self._wd_for_path:
+                    wd = self._wd_for_path[self._path]
+                    inotify_rm_watch(self._inotify_fd, wd)
+
+                if self._waiting_to_read:
+                    # inotify_rm_watch() should write data to _inotify_fd and wake
+                    # the thread, but writing to the kill channel will gaurentee this
+                    os.write(self._kill_w, b'!')
+                else:
+                    self._close_resources()
 
     def read_events(self, *, event_buffer_size: int = DEFAULT_EVENT_BUFFER_SIZE) -> list[InotifyEvent]:
         """Reads events from inotify and yields them."""
@@ -276,6 +286,21 @@ class Inotify:
         event_buffer = None
         while True:
             try:
+                with self._lock:
+                    if self._closed:
+                        return []
+
+                    self._waiting_to_read = True
+
+                select.select([self._inotify_fd, self._kill_r], [], [])
+
+                with self._lock:
+                    self._waiting_to_read = False
+
+                    if self._closed:
+                        self._close_resources()
+                        return []
+
                 event_buffer = os.read(self._inotify_fd, event_buffer_size)
             except OSError as e:
                 if e.errno == errno.EINTR:
@@ -339,6 +364,11 @@ class Inotify:
                     event_list.extend(_recursive_simulate(src_path))
 
         return event_list
+
+    def _close_resources(self):
+        os.close(self._inotify_fd)
+        os.close(self._kill_r)
+        os.close(self._kill_w)
 
     # Non-synchronized methods.
     def _add_dir_watch(self, path: bytes, mask: int, *, recursive: bool) -> None:
