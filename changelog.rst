@@ -3,13 +3,13 @@
 Changelog
 ---------
 
-5.0.3 (dev)
-~~~~~~~~~~~
+5.0.3
+~~~~~
 
-2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.2...HEAD>`__
+2024-09-27 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.2...v5.0.3>`__
 
-- 
-- Thanks to our beloved contributors: @BoboTiG
+- [inotify] Improve cleaning up ``Inotify`` threads, and add ``eventlet`` test cases (`#1070 <https://github.com/gorakhargosh/watchdog/pull/1070>`__)
+- Thanks to our beloved contributors: @BoboTiG, @ethan-vanderheijden
 
 5.0.2
 ~~~~~
