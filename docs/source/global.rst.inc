@@ -4,7 +4,7 @@
 .. |author_email| replace:: contact@tiger-222.fr
 .. |copyright| replace:: Copyright 2011-2024 Yesudeep Mangalapilly, Mickaël Schoentgen & contributors.
 .. |project_name| replace:: ``watchdog``
-.. |project_version| replace:: 5.0.3
+.. |project_version| replace:: 5.0.4
 
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
 .. _code repository: https://github.com/gorakhargosh/watchdog
