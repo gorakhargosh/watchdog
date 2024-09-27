@@ -72,7 +72,10 @@ class SkipRepeatsQueue(queue.Queue):
         super()._init(maxsize)
         self._last_item = None
 
-    def put(self, item: Any, block: bool = True, timeout: float | None = None) -> None:
+    def put(self, item: Any, block: bool = True, timeout: float | None = None) -> None:  # noqa: FBT001,FBT002
+        """This method will be used by `eventlet`, when enabled, so we cannot use force proper keyword-only
+        arguments nor touch the signature. Also, the `timeout` argument will be ignored in that case.
+        """
         if self._last_item is None or item != self._last_item:
             super().put(item, block, timeout)
 

@@ -244,7 +244,7 @@ class Inotify:
                 if self._waiting_to_read:
                     # inotify_rm_watch() should write data to _inotify_fd and wake
                     # the thread, but writing to the kill channel will gaurentee this
-                    os.write(self._kill_w, b'!')
+                    os.write(self._kill_w, b"!")
                 else:
                     self._close_resources()
 
@@ -365,7 +365,7 @@ class Inotify:
 
         return event_list
 
-    def _close_resources(self):
+    def _close_resources(self) -> None:
         os.close(self._inotify_fd)
         os.close(self._kill_r)
         os.close(self._kill_w)

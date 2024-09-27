@@ -1,4 +1,4 @@
-if __name__ == '__main__':
+if __name__ == "__main__":
     import eventlet
 
     eventlet.monkey_patch()
@@ -7,10 +7,11 @@ if __name__ == '__main__':
     import sys
     import tempfile
 
-    from watchdog.observers import Observer
     from watchdog.events import LoggingEventHandler
+    from watchdog.observers import Observer
 
     with tempfile.TemporaryDirectory() as temp_dir:
+
         def run_observer():
             event_handler = LoggingEventHandler()
             observer = Observer()
@@ -20,7 +21,7 @@ if __name__ == '__main__':
             observer.stop()
 
         def on_alarm(signum, frame):
-            print("Observer.stop() never finished!", file=sys.stderr)
+            print("Observer.stop() never finished!", file=sys.stderr)  # noqa: T201
             sys.exit(1)
 
         signal.signal(signal.SIGALRM, on_alarm)

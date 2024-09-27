@@ -102,12 +102,12 @@ class Helper:
 
 
 def run_isolated_test(path):
-    ISOALTED_TEST_PREFIX = os.path.join('tests', 'isolated')
-    path = os.path.abspath(os.path.join(ISOALTED_TEST_PREFIX, path))
+    isolated_test_prefix = os.path.join("tests", "isolated")
+    path = os.path.abspath(os.path.join(isolated_test_prefix, path))
 
-    src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
+    src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
     new_env = os.environ.copy()
-    new_env['PYTHONPATH'] = os.pathsep.join(sys.path + [src_dir])
+    new_env["PYTHONPATH"] = os.pathsep.join([*sys.path, src_dir])
 
     new_argv = [sys.executable, path]
 
@@ -122,6 +122,6 @@ def run_isolated_test(path):
         p.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         p.kill()
-        assert False, 'timed out'
+        raise
 
     assert p.returncode == 0
