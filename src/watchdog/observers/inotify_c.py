@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import contextlib
 import ctypes
 import ctypes.util
@@ -167,7 +168,9 @@ class Inotify:
             self._add_dir_watch(path, event_mask, recursive=recursive)
         else:
             self._add_watch(path, event_mask)
-        self._moved_from_events: dict[int, InotifyEvent] = {}
+        self._moved_from_events: dict[int, EventPathAndTime] = {}
+        thread_cleaner = threading.Thread(target=self.clear_move_records_older_than, args=(5,), daemon=True)
+        thread_cleaner.start()
 
     @property
     def event_mask(self) -> int:
@@ -189,9 +192,18 @@ class Inotify:
         """The file descriptor associated with the inotify instance."""
         return self._inotify_fd
 
-    def clear_move_records(self) -> None:
-        """Clear cached records of MOVED_FROM events"""
-        self._moved_from_events = {}
+    def clear_move_records_older_than(self, delay_sec: int) -> None:
+        """Clears cached records of MOVED_FROM events older than delay_sec."""
+        sleep_max = 10
+        while True:
+            if len(self._moved_from_events) != 0:
+                item =next(iter(self._moved_from_events))
+                if self._moved_from_events[item].time < (time.time() - delay_sec):
+                    del self._moved_from_events[item]
+                else:
+                    time.sleep(delay_sec)
+            else:
+                time.sleep(sleep_max)
 
     def source_for_move(self, destination_event: InotifyEvent) -> bytes | None:
         """The source path corresponding to the given MOVED_TO event.
@@ -208,8 +220,9 @@ class Inotify:
         """Save this event as the source event for future MOVED_TO events to
         reference.
         """
-        self._moved_from_events[event.cookie] = event
-
+        path_and_time = EventPathAndTime(event.src_path)
+        self._moved_from_events[event.cookie] = path_and_time
+        
     def add_watch(self, path: bytes) -> None:
         """Adds a watch for the given path.
 
@@ -586,3 +599,15 @@ class InotifyEvent:
             f" mask={self._get_mask_string(self.mask)}, cookie={self.cookie},"
             f" name={os.fsdecode(self.name)!r}>"
         )
+
+class EventPathAndTime:
+    def __init__(self, src_path: bytes) -> None:
+        self._time = time.time()
+        self._src_path = src_path
+
+    @property
+    def src_path(self) -> bytes:
+        return self._src_path
+    @property
+    def time(self) -> float:
+        return self._time
