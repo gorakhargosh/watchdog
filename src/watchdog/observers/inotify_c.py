@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import atexit
 import time
 import contextlib
 import ctypes
@@ -10,10 +9,8 @@ import os
 import select
 import struct
 import threading
-import traceback
 from ctypes import c_char_p, c_int, c_uint32
 from functools import reduce
-from threading import Thread
 from typing import TYPE_CHECKING
 
 from watchdog.utils import UnsupportedLibcError
@@ -146,14 +143,8 @@ class Inotify:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def g(self):
-        for line in traceback.format_stack():
-            print(line.strip())
-
     def __init__(self, path: bytes, *, recursive: bool = False, event_mask: int | None = None) -> None:
-
         # The file descriptor associated with the inotify instance.
-
         inotify_fd = inotify_init()
         if inotify_fd == -1:
             Inotify._raise_error()
@@ -477,7 +468,6 @@ class Inotify:
             name = event_buffer[i + 16 : i + 16 + length].rstrip(b"\0")
             i += 16 + length
             yield wd, mask, cookie, name
-
 
 
 class InotifyEvent:
