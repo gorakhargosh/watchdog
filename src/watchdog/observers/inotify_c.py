@@ -253,7 +253,6 @@ class Inotify:
 
     def close(self) -> None:
         """Closes the inotify instance and removes all associated watches."""
-        #self.g()
         with self._lock:
             if not self._closed:
                 self._closed = True
