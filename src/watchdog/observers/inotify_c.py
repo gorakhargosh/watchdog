@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import time
 import contextlib
 import ctypes
@@ -9,8 +10,10 @@ import os
 import select
 import struct
 import threading
+import traceback
 from ctypes import c_char_p, c_int, c_uint32
 from functools import reduce
+from threading import Thread
 from typing import TYPE_CHECKING
 
 from watchdog.utils import UnsupportedLibcError
@@ -143,8 +146,14 @@ class Inotify:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
+    def g(self):
+        for line in traceback.format_stack():
+            print(line.strip())
+
     def __init__(self, path: bytes, *, recursive: bool = False, event_mask: int | None = None) -> None:
+
         # The file descriptor associated with the inotify instance.
+
         inotify_fd = inotify_init()
         if inotify_fd == -1:
             Inotify._raise_error()
@@ -168,9 +177,12 @@ class Inotify:
             self._add_dir_watch(path, event_mask, recursive=recursive)
         else:
             self._add_watch(path, event_mask)
+
         self._moved_from_events: dict[int, EventPathAndTime] = {}
-        thread_cleaner = threading.Thread(target=self.clear_move_records_older_than, args=(5,), daemon=True)
-        thread_cleaner.start()
+        self.stop_event = threading.Event()
+        self.cleaner_thread = threading.Thread(target=self.clear_move_records_older_than, args=(5,self.stop_event))
+        self.cleaner_thread.start()
+
 
     @property
     def event_mask(self) -> int:
@@ -192,10 +204,10 @@ class Inotify:
         """The file descriptor associated with the inotify instance."""
         return self._inotify_fd
 
-    def clear_move_records_older_than(self, delay_sec: int) -> None:
+    def clear_move_records_older_than(self, delay_sec: int, stop_event: threading.Event) -> None:
         """Clears cached records of MOVED_FROM events older than delay_sec."""
         sleep_max = 10
-        while True:
+        while not stop_event.is_set():
             if len(self._moved_from_events) != 0:
                 item =next(iter(self._moved_from_events))
                 if self._moved_from_events[item].time < (time.time() - delay_sec):
@@ -204,6 +216,10 @@ class Inotify:
                     time.sleep(delay_sec)
             else:
                 time.sleep(sleep_max)
+
+    def stop_cleaner(self):
+        self.stop_event.set()
+        self.cleaner_thread.join()
 
     def source_for_move(self, destination_event: InotifyEvent) -> bytes | None:
         """The source path corresponding to the given MOVED_TO event.
@@ -246,9 +262,11 @@ class Inotify:
 
     def close(self) -> None:
         """Closes the inotify instance and removes all associated watches."""
+        #self.g()
         with self._lock:
             if not self._closed:
                 self._closed = True
+                self.stop_cleaner()
 
                 if self._path in self._wd_for_path:
                     wd = self._wd_for_path[self._path]
@@ -459,6 +477,7 @@ class Inotify:
             name = event_buffer[i + 16 : i + 16 + length].rstrip(b"\0")
             i += 16 + length
             yield wd, mask, cookie, name
+
 
 
 class InotifyEvent:
