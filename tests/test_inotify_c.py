@@ -64,6 +64,24 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
             return [inotify_fd], [], []
         return select_bkp(read_list, *args, **kwargs)
 
+    poll_bkp = select.poll
+
+    class Fakepoll:
+        def __init__(self):
+            self._orig = poll_bkp()
+            self._fake = False
+
+        def register(self, fd, *args, **kwargs):
+            if fd == inotify_fd:
+                self._fake = True
+                return None
+            return self._orig.register(fd, *args, **kwargs)
+
+        def poll(self, *args, **kwargs):
+            if self._fake:
+                return None
+            return self._orig.poll(*args, **kwargs)
+
     os_read_bkp = os.read
 
     def fakeread(fd, length):
@@ -101,8 +119,9 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     mock4 = patch.object(inotify_c, "inotify_add_watch", new=inotify_add_watch)
     mock5 = patch.object(inotify_c, "inotify_rm_watch", new=inotify_rm_watch)
     mock6 = patch.object(select, "select", new=fakeselect)
+    mock7 = patch.object(select, "poll", new=Fakepoll)
 
-    with mock1, mock2, mock3, mock4, mock5, mock6:
+    with mock1, mock2, mock3, mock4, mock5, mock6, mock7:
         start_watching(path=p(""))
         # Watchdog Events
         for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:

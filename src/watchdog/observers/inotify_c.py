@@ -9,8 +9,8 @@ import select
 import struct
 import threading
 from ctypes import c_char_p, c_int, c_uint32
-from functools import reduce
-from typing import TYPE_CHECKING
+from functools import partial, reduce
+from typing import TYPE_CHECKING, Any, Callable
 
 from watchdog.utils import UnsupportedLibcError
 
@@ -153,6 +153,14 @@ class Inotify:
         self._waiting_to_read = True
         self._kill_r, self._kill_w = os.pipe()
 
+        if hasattr(select, "poll"):
+            self._poller = select.poll()
+            self._poller.register(self._inotify_fd, select.POLLIN)
+            self._poller.register(self._kill_r, select.POLLIN)
+            self._poll: Callable[[], Any] = partial(self._poller.poll)
+        else:
+            self._poll = partial(select.select, (self._inotify_fd, self._kill_r))
+
         # Stores the watch descriptor for a given path.
         self._wd_for_path: dict[bytes, int] = {}
         self._path_for_wd: dict[int, bytes] = {}
@@ -292,7 +300,7 @@ class Inotify:
 
                     self._waiting_to_read = True
 
-                select.select([self._inotify_fd, self._kill_r], [], [])
+                self._poll()
 
                 with self._lock:
                     self._waiting_to_read = False
