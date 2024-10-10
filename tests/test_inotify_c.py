@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
+
 import pytest
 
 from watchdog.utils import platform
@@ -187,3 +189,23 @@ def test_event_equality(p: P) -> None:
     assert event1 == event2
     assert event1 != event3
     assert event2 != event3
+
+
+def test_select_fd(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+    # We open a file 2048 times to ensure that we exhaust 1024 file
+    # descriptors, the limit of a select() call.
+    path = p("new_file")
+    with open(path, "a"):
+        pass
+    with ExitStack() as stack:
+        for _i in range(2048):
+            stack.enter_context(open(path))
+
+        # Watch this file for deletion (copied from `test_watch_file`)
+        path = p("this_is_a_file")
+        with open(path, "a"):
+            pass
+        start_watching(path=path)
+        os.remove(path)
+        event, _ = event_queue.get(timeout=5)
+        assert repr(event)
