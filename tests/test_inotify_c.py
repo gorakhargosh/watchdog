@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
+
 import pytest
 
 from watchdog.utils import platform
@@ -64,6 +66,24 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
             return [inotify_fd], [], []
         return select_bkp(read_list, *args, **kwargs)
 
+    poll_bkp = select.poll
+
+    class Fakepoll:
+        def __init__(self):
+            self._orig = poll_bkp()
+            self._fake = False
+
+        def register(self, fd, *args, **kwargs):
+            if fd == inotify_fd:
+                self._fake = True
+                return None
+            return self._orig.register(fd, *args, **kwargs)
+
+        def poll(self, *args, **kwargs):
+            if self._fake:
+                return None
+            return self._orig.poll(*args, **kwargs)
+
     os_read_bkp = os.read
 
     def fakeread(fd, length):
@@ -101,8 +121,9 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     mock4 = patch.object(inotify_c, "inotify_add_watch", new=inotify_add_watch)
     mock5 = patch.object(inotify_c, "inotify_rm_watch", new=inotify_rm_watch)
     mock6 = patch.object(select, "select", new=fakeselect)
+    mock7 = patch.object(select, "poll", new=Fakepoll)
 
-    with mock1, mock2, mock3, mock4, mock5, mock6:
+    with mock1, mock2, mock3, mock4, mock5, mock6, mock7:
         start_watching(path=p(""))
         # Watchdog Events
         for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:
@@ -168,3 +189,23 @@ def test_event_equality(p: P) -> None:
     assert event1 == event2
     assert event1 != event3
     assert event2 != event3
+
+
+def test_select_fd(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+    # We open a file 2048 times to ensure that we exhaust 1024 file
+    # descriptors, the limit of a select() call.
+    path = p("new_file")
+    with open(path, "a"):
+        pass
+    with ExitStack() as stack:
+        for _i in range(2048):
+            stack.enter_context(open(path))
+
+        # Watch this file for deletion (copied from `test_watch_file`)
+        path = p("this_is_a_file")
+        with open(path, "a"):
+            pass
+        start_watching(path=path)
+        os.remove(path)
+        event, _ = event_queue.get(timeout=5)
+        assert repr(event)

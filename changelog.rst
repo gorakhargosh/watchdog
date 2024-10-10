@@ -8,7 +8,7 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.3...HEAD>`__
 
--
+- [inotify] Use of ``select.poll()`` instead of deprecated ``select.select()``, if available. (`#1078 <https://github.com/gorakhargosh/watchdog/pull/1078>`__)
 - Thanks to our beloved contributors: @BoboTiG, @
 
 5.0.3
