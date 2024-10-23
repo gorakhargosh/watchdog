@@ -9,8 +9,8 @@ import select
 import struct
 import threading
 from ctypes import c_char_p, c_int, c_uint32
-from functools import partial, reduce
-from typing import TYPE_CHECKING, Any, Callable
+from functools import reduce
+from typing import TYPE_CHECKING
 
 from watchdog.utils import UnsupportedLibcError
 
@@ -150,16 +150,17 @@ class Inotify:
         self._inotify_fd = inotify_fd
         self._lock = threading.Lock()
         self._closed = False
-        self._waiting_to_read = True
+        self._is_reading = True
         self._kill_r, self._kill_w = os.pipe()
 
+        # _check_inotify_fd will return true if we can read _inotify_fd without blocking
         if hasattr(select, "poll"):
             self._poller = select.poll()
             self._poller.register(self._inotify_fd, select.POLLIN)
             self._poller.register(self._kill_r, select.POLLIN)
-            self._poll: Callable[[], Any] = partial(self._poller.poll)
+            self._check_inotify_fd = lambda: any(fd == self._inotify_fd for fd, _ in self._poller.poll())
         else:
-            self._poll = partial(select.select, (self._inotify_fd, self._kill_r))
+            self._check_inotify_fd = lambda: self._inotify_fd in select.select([self._inotify_fd, self._kill_r], [], [])[0]
 
         # Stores the watch descriptor for a given path.
         self._wd_for_path: dict[bytes, int] = {}
@@ -249,7 +250,7 @@ class Inotify:
                     wd = self._wd_for_path[self._path]
                     inotify_rm_watch(self._inotify_fd, wd)
 
-                if self._waiting_to_read:
+                if self._is_reading:
                     # inotify_rm_watch() should write data to _inotify_fd and wake
                     # the thread, but writing to the kill channel will gaurentee this
                     os.write(self._kill_w, b"!")
@@ -298,18 +299,17 @@ class Inotify:
                     if self._closed:
                         return []
 
-                    self._waiting_to_read = True
+                    self._is_reading = True
 
-                self._poll()
+                if self._check_inotify_fd():
+                    event_buffer = os.read(self._inotify_fd, event_buffer_size)
 
                 with self._lock:
-                    self._waiting_to_read = False
+                    self._is_reading = False
 
                     if self._closed:
                         self._close_resources()
                         return []
-
-                event_buffer = os.read(self._inotify_fd, event_buffer_size)
             except OSError as e:
                 if e.errno == errno.EINTR:
                     continue
