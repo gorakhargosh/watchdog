@@ -1,8 +1,11 @@
 Watchdog
 ========
 
-|Build Status|
-|CirrusCI Status|
+|PyPI Version|
+|PyPI Status|
+|PyPI Python Versions|
+|GitHub Build Status|
+|GitHub License|
 
 Python API and shell utilities to monitor file system events.
 
@@ -270,7 +273,13 @@ to do:
 .. _file.monitor: https://github.com/pke/file.monitor
 .. _pyfilesystem: https://github.com/PyFilesystem/pyfilesystem
 
-.. |Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/watchdog.svg
+   :target: https://pypi.python.org/pypi/watchdog/
+.. |PyPI Status| image:: https://img.shields.io/pypi/status/watchdog.svg
+   :target: https://pypi.python.org/pypi/watchdog/
+.. |PyPI Python Versions| image:: https://img.shields.io/pypi/pyversions/watchdog.svg
+   :target: https://pypi.python.org/pypi/watchdog/
+.. |Github Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
    :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
-.. |CirrusCI Status| image:: https://api.cirrus-ci.com/github/gorakhargosh/watchdog.svg
-   :target: https://cirrus-ci.com/github/gorakhargosh/watchdog/
+.. |GitHub License| image:: https://img.shields.io/github/license/gorakhargosh/watchdog.svg
+   :target: https://github.com/gorakhargosh/watchdog/blob/master/LICENSE
