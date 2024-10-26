@@ -60,7 +60,7 @@ If you are using type annotations it is important to note that
 hold the "best" observer class available on your platform.
 
 In order to correctly type your own code your should use
-`watchdog.observers.base.BaseObserver`. For example:
+`watchdog.observers.api.BaseObserver`. For example:
 
     from watchdog.observers import Observer
     from watchdog.observers.api import BaseObserver
