@@ -52,3 +52,22 @@ file system changes and simply print them to the console::
         observer.join()
 
 To stop the program, press Control-C.
+
+Typing
+------
+If you are using type annotations it is important to note that
+`watchdog.observers.Observer` is not actually a class; it is a variable that
+hold the "best" observer class available on your platform.
+
+In order to correctly type your own code your should use
+`watchdog.observers.base.BaseObserver`. For example:
+
+    from watchdog.observers import Observer
+    from watchdog.observers.api import BaseObserver
+
+    def my_func(o: BaseObserver) -> None:
+        # Do something with o
+        return
+
+    observer: BaseObserver = Observer()
+    my_func(observer)
