@@ -158,9 +158,18 @@ class Inotify:
             self._poller = select.poll()
             self._poller.register(self._inotify_fd, select.POLLIN)
             self._poller.register(self._kill_r, select.POLLIN)
-            self._check_inotify_fd = lambda: any(fd == self._inotify_fd for fd, _ in self._poller.poll())
+
+            def do_poll() -> bool:
+                return any(fd == self._inotify_fd for fd, _ in self._poller.poll())
+
+            self._check_inotify_fd = do_poll
         else:
-            self._check_inotify_fd = lambda: self._inotify_fd in select.select([self._inotify_fd, self._kill_r], [], [])[0]
+
+            def do_select() -> bool:
+                result = select.select([self._inotify_fd, self._kill_r], [], [])
+                return self._inotify_fd in result[0]
+
+            self._check_inotify_fd = do_select
 
         # Stores the watch descriptor for a given path.
         self._wd_for_path: dict[bytes, int] = {}
@@ -292,7 +301,7 @@ class Inotify:
                     events.append(e)
             return events
 
-        event_buffer = None
+        event_buffer = b""
         while True:
             try:
                 with self._lock:
