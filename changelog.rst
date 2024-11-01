@@ -8,8 +8,25 @@ Changelog
 
 2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.3...HEAD>`__
 
+- Pin test dependecies.
+- [docs] Add typing info to quick start. (`#1082 <https://github.com/gorakhargosh/watchdog/pull/1082>`__)
 - [inotify] Use of ``select.poll()`` instead of deprecated ``select.select()``, if available. (`#1078 <https://github.com/gorakhargosh/watchdog/pull/1078>`__)
-- Thanks to our beloved contributors: @BoboTiG, @
+- [inotify] Fix reading inotify file descriptor after closing it. (`#1081 <https://github.com/gorakhargosh/watchdog/pull/1081>`__)
+- [utils] The ``stop_signal`` keyword-argument type of the ``AutoRestartTrick`` class can now be either a ``signal.Signals`` or an ``int``.
+- [utils] Added the ``__repr__()`` method to the ``Trick`` class.
+- [utils] Removed the unused ``name()`` function from the ``echo`` module.
+- [utils] Removed the unused ``is_classmethod()`` function from the ``echo`` module.
+- [utils] Removed the unused ``ic_method(met()`` function from the ``echo`` module.
+- [utils] Removed the unused ``is_class_private_name()`` function from the ``echo`` module.
+- [utils] Removed the unused ``method_name()`` function from the ``echo`` module.
+- [utils] Removed the unused ``echo_instancemethod()`` function from the ``echo`` module.
+- [utils] Removed the unused ``echo_class()`` function from the ``echo`` module.
+- [utils] Removed the unused ``echo_module()`` function from the ``echo`` module.
+- [watchmedo] Fixed Mypy issues.
+- [watchmedo] Added the ``__repr__()`` method to the ``HelpFormatter`` class.
+- [watchmedo] Removed the ``--trace`` CLI argument from the ``watchmedo log`` command, useless since events are logged by default at the ``LoggerTrick`` class level.
+- [windows] Fixed Mypy issues.
+- Thanks to our beloved contributors: @BoboTiG, @g-pichlern, @ethan-vanderheijden, @nhairs
 
 5.0.3
 ~~~~~
