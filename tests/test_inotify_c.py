@@ -81,7 +81,7 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
         def poll(self, *args, **kwargs):
             if self._fake:
-                return None
+                return [(inotify_fd, select.POLLIN)]
             return self._orig.poll(*args, **kwargs)
 
     os_read_bkp = os.read
