@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import time
@@ -17,7 +18,7 @@ from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
 from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
-from watchdog.tricks import AutoRestartTrick, ShellCommandTrick  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
 
 
@@ -231,6 +232,38 @@ def test_auto_restart_arg_parsing():
     assert args.directories == ["."]
     assert args.kill_after == pytest.approx(12.5)
     assert args.debounce_interval == pytest.approx(0.2)
+
+
+def test_auto_restart_events_echoed(tmpdir, caplog):
+    script = make_dummy_script(tmpdir, n=2)
+
+    with caplog.at_level(logging.INFO):
+        trick = AutoRestartTrick([sys.executable, script])
+        trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar2.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar3.baz"))
+
+    records = [record.getMessage().strip() for record in caplog.get_records(when="call")]
+    assert records == [
+        "on_any_event(self=<AutoRestartTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<AutoRestartTrick>, event=FileOpenedEvent(src_path='foo/bar2.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<AutoRestartTrick>, event=FileOpenedEvent(src_path='foo/bar3.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
+
+
+def test_logger_events_echoed(caplog):
+    with caplog.at_level(logging.INFO):
+        trick = LoggerTrick()
+        trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar2.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar3.baz"))
+
+    records = [record.getMessage().strip() for record in caplog.get_records(when="call")]
+    assert records == [
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar2.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar3.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
 
 
 def test_shell_command_arg_parsing():

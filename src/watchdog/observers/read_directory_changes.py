@@ -86,12 +86,10 @@ class WindowsApiEmitter(EventEmitter):
                     else:
                         self.queue_event(FileMovedEvent(src_path, dest_path))
                 elif winapi_event.is_modified:
-                    cls = DirModifiedEvent if os.path.isdir(src_path) else FileModifiedEvent
-                    self.queue_event(cls(src_path))
+                    self.queue_event((DirModifiedEvent if os.path.isdir(src_path) else FileModifiedEvent)(src_path))
                 elif winapi_event.is_added:
                     isdir = os.path.isdir(src_path)
-                    cls = DirCreatedEvent if isdir else FileCreatedEvent
-                    self.queue_event(cls(src_path))
+                    self.queue_event((DirCreatedEvent if isdir else FileCreatedEvent)(src_path))
                     if isdir and self.watch.is_recursive:
                         for sub_created_event in generate_sub_created_events(src_path):
                             self.queue_event(sub_created_event)

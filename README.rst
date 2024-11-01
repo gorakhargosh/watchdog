@@ -128,7 +128,7 @@ Install from PyPI using ``pip``:
     $ python -m pip install -U watchdog
 
     # or to install the watchmedo utility:
-    $ python -m pip install -U "watchdog[watchmedo]"
+    $ python -m pip install -U 'watchdog[watchmedo]'
 
 Install from source:
 
