@@ -3,6 +3,14 @@
 Changelog
 ---------
 
+6.0.1-dev
+~~~~~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v6.0.0...HEAD>`__
+
+- 
+- Thanks to our beloved contributors: @BoboTiG, @
+
 6.0.0
 ~~~~~
 
@@ -26,7 +34,7 @@ Changelog
 - [watchmedo] Added the ``__repr__()`` method to the ``HelpFormatter`` class.
 - [watchmedo] Removed the ``--trace`` CLI argument from the ``watchmedo log`` command, useless since events are logged by default at the ``LoggerTrick`` class level.
 - [windows] Fixed Mypy issues.
-- Thanks to our beloved contributors: @BoboTiG, @g-pichlern, @ethan-vanderheijden, @nhairs
+- Thanks to our beloved contributors: @BoboTiG, @g-pichler, @ethan-vanderheijden, @nhairs
 
 5.0.3
 ~~~~~
