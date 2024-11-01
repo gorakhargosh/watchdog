@@ -36,7 +36,7 @@ def mkdir(path, *, parents=False):
         try:
             os.makedirs(path)
         except OSError as e:
-            if not e.errno == errno.EEXIST:
+            if e.errno != errno.EEXIST:
                 raise
     else:
         os.mkdir(path)

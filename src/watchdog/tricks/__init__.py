@@ -46,6 +46,9 @@ echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
 class Trick(PatternMatchingEventHandler):
     """Your tricks should subclass this class."""
 
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__}>"
+
     @classmethod
     def generate_yaml(cls) -> str:
         return f"""- {cls.__module__}.{cls.__name__}:

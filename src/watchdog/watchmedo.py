@@ -50,6 +50,9 @@ class HelpFormatter(RawDescriptionHelpFormatter):
         kwargs["max_help_position"] = max_help_position
         super().__init__(*args, **kwargs)
 
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__}>"
+
     def _split_lines(self, text: str, width: int) -> list[str]:
         text = dedent(text).strip() + "\n\n"
         return text.splitlines()
@@ -428,7 +431,6 @@ def tricks_generate_yaml(args: Namespace) -> None:
             type=float,
             help="Use this as the polling interval/blocking timeout.",
         ),
-        argument("--trace", action="store_true", help="Dumps complete dispatching trace."),
         argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
         argument(
             "--debug-force-kqueue",
@@ -455,11 +457,6 @@ def tricks_generate_yaml(args: Namespace) -> None:
 def log(args: Namespace) -> None:
     """Command to log file system events to the console."""
     from watchdog.tricks import LoggerTrick
-    from watchdog.utils import echo
-
-    if args.trace:
-        class_module_logger = logging.getLogger(LoggerTrick.__module__)
-        echo.echo_class(LoggerTrick, write=lambda msg: class_module_logger.info(msg))
 
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     handler = LoggerTrick(
