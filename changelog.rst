@@ -3,10 +3,10 @@
 Changelog
 ---------
 
-5.0.4-dev
-~~~~~~~~~
+6.0.0
+~~~~~
 
-2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.3...HEAD>`__
+2024-11-01 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.3...v6.0.0>`__
 
 - Pin test dependecies.
 - [docs] Add typing info to quick start. (`#1082 <https://github.com/gorakhargosh/watchdog/pull/1082>`__)
