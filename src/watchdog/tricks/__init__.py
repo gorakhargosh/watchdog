@@ -158,7 +158,7 @@ class AutoRestartTrick(Trick):
         patterns: list[str] | None = None,
         ignore_patterns: list[str] | None = None,
         ignore_directories: bool = False,
-        stop_signal: signal.Signals = signal.SIGINT,
+        stop_signal: signal.Signals | int = signal.SIGINT,
         kill_after: int = 10,
         debounce_interval_seconds: int = 0,
         restart_on_command_exit: bool = True,
@@ -177,7 +177,7 @@ class AutoRestartTrick(Trick):
         )
 
         self.command = command
-        self.stop_signal = stop_signal
+        self.stop_signal = stop_signal.value if isinstance(stop_signal, signal.Signals) else stop_signal
         self.kill_after = kill_after
         self.debounce_interval_seconds = debounce_interval_seconds
         self.restart_on_command_exit = restart_on_command_exit
