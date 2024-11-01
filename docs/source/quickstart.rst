@@ -65,9 +65,9 @@ In order to correctly type your own code your should use
     from watchdog.observers import Observer
     from watchdog.observers.api import BaseObserver
 
-    def my_func(o: BaseObserver) -> None:
-        # Do something with o
-        return
+    def my_func(obs: BaseObserver) -> None:
+        # Do something with obs
+        pass
 
     observer: BaseObserver = Observer()
     my_func(observer)
