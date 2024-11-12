@@ -37,9 +37,17 @@ class ObservedWatch:
         Optional collection of :class:`watchdog.events.FileSystemEvent` to watch
     """
 
-    def __init__(self, path: str | Path, *, recursive: bool, event_filter: list[type[FileSystemEvent]] | None = None):
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        recursive: bool,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
+    ):
         self._path = str(path) if isinstance(path, Path) else path
         self._is_recursive = recursive
+        self._follow_symlink = follow_symlink
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
     @property
@@ -51,6 +59,11 @@ class ObservedWatch:
     def is_recursive(self) -> bool:
         """Determines whether subdirectories are watched for the path."""
         return self._is_recursive
+
+    @property
+    def follow_symlink(self) -> bool:
+        """Determines whether symlink are followed."""
+        return self._follow_symlink
 
     @property
     def event_filter(self) -> frozenset[type[FileSystemEvent]] | None:
@@ -274,6 +287,7 @@ class BaseObserver(EventDispatcher):
         *,
         recursive: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
     ) -> ObservedWatch:
         """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
@@ -302,7 +316,7 @@ class BaseObserver(EventDispatcher):
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter)
+            watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
             self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
