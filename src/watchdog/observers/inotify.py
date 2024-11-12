@@ -116,7 +116,8 @@ class InotifyEmitter(EventEmitter):
     def on_thread_start(self) -> None:
         path = os.fsencode(self.watch.path)
         event_mask = self.get_event_mask_from_filter()
-        self._inotify = InotifyBuffer(path, recursive=self.watch.is_recursive, event_mask=event_mask)
+        self._inotify = InotifyBuffer(path, recursive=self.watch.is_recursive, event_mask=event_mask,
+                                      follow_symlink=self.watch.follow_symlink)
 
     def on_thread_stop(self) -> None:
         if self._inotify:
