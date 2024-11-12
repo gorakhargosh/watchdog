@@ -37,8 +37,14 @@ class ObservedWatch:
         Optional collection of :class:`watchdog.events.FileSystemEvent` to watch
     """
 
-    def __init__(self, path: str | Path, *, recursive: bool, event_filter: list[type[FileSystemEvent]] | None = None,
-                 follow_symlink: bool = False):
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        recursive: bool,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
+    ):
         self._path = str(path) if isinstance(path, Path) else path
         self._is_recursive = recursive
         self._follow_symlink = follow_symlink
@@ -281,7 +287,7 @@ class BaseObserver(EventDispatcher):
         *,
         recursive: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
-        follow_symlink: bool = False
+        follow_symlink: bool = False,
     ) -> ObservedWatch:
         """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.

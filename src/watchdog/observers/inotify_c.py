@@ -142,8 +142,9 @@ class Inotify:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
 
-    def __init__(self, path: bytes, *, recursive: bool = False, event_mask: int | None = None,
-                 follow_symlink: bool = False) -> None:
+    def __init__(
+        self, path: bytes, *, recursive: bool = False, event_mask: int | None = None, follow_symlink: bool = False
+    ) -> None:
         # The file descriptor associated with the inotify instance.
         inotify_fd = inotify_init()
         if inotify_fd == -1:
@@ -410,7 +411,7 @@ class Inotify:
             for root, dirnames, _ in os.walk(path):
                 for dirname in dirnames:
                     full_path = os.path.join(root, dirname)
-                    if os.path.islink(full_path) and not self._follow_symlink:
+                    if not self._follow_symlink and os.path.islink(full_path):
                         continue
                     self._add_watch(full_path, mask)
 
