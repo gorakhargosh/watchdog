@@ -13,7 +13,7 @@ import time
 
 from watchdog.observers.inotify_buffer import InotifyBuffer
 
-from .shell import mkdir, mount_tmpfs, mv, rm, touch, unmount
+from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
 
 
 def wait_for_move_event(read_event):
@@ -65,6 +65,21 @@ def test_move_internal(p):
     inotify.close()
 
 
+@pytest.mark.timeout(5)
+def test_move_internal_symlink_followed(p):
+    mkdir(p("dir", "dir1"), parents=True)
+    mkdir(p("dir", "dir2"))
+    touch(p("dir", "dir1", "a"))
+    symlink(p("dir"), p("symdir"), target_is_directory=True)
+
+    inotify = InotifyBuffer(p("symdir").encode(), recursive=True, follow_symlink=True)
+    mv(p("dir", "dir1", "a"), p("dir", "dir2", "b"))
+    frm, to = wait_for_move_event(inotify.read_event)
+    assert frm.src_path == p("symdir", "dir1", "a").encode()
+    assert to.src_path == p("symdir", "dir2", "b").encode()
+    inotify.close()
+
+
 @pytest.mark.timeout(10)
 def test_move_internal_batch(p):
     n = 100
@@ -94,6 +109,21 @@ def test_delete_watched_directory(p):
     mkdir(p("dir"))
     inotify = InotifyBuffer(p("dir").encode())
     rm(p("dir"), recursive=True)
+
+    # Wait for the event to be picked up
+    inotify.read_event()
+
+    # Ensure InotifyBuffer shuts down cleanly without raising an exception
+    inotify.close()
+
+
+@pytest.mark.timeout(5)
+def test_delete_watched_directory_symlink_followed(p):
+    mkdir(p("dir", "dir2"), parents=True)
+    symlink(p("dir"), p("symdir"), target_is_directory=True)
+
+    inotify = InotifyBuffer(p("symdir").encode(), follow_symlink=True)
+    rm(p("dir", "dir2"), recursive=True)
 
     # Wait for the event to be picked up
     inotify.read_event()

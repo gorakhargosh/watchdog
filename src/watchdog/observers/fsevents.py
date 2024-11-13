@@ -337,5 +337,6 @@ class FSEventsObserver(BaseObserver):
         if isinstance(path, str):
             path = unicodedata.normalize("NFC", path)
 
-        return super().schedule(event_handler, path, recursive=recursive, follow_symlink=follow_symlink,
-                                event_filter=event_filter)
+        return super().schedule(
+            event_handler, path, recursive=recursive, follow_symlink=follow_symlink, event_filter=event_filter
+        )
