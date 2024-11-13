@@ -42,6 +42,10 @@ def mkdir(path, *, parents=False):
         os.mkdir(path)
 
 
+def symlink(source, destination, *, target_is_directory: bool = False):
+    os.symlink(source, destination, target_is_directory=target_is_directory)
+
+
 def rm(path, *, recursive=False):
     """Deletes files or directories."""
     if os.path.isdir(path):
