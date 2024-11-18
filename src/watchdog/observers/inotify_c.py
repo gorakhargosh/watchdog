@@ -408,7 +408,7 @@ class Inotify:
             raise OSError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), path)
         self._add_watch(path, mask)
         if recursive:
-            for root, dirnames, _ in os.walk(path):
+            for root, dirnames, _ in os.walk(path, followlinks=self._follow_symlink):
                 for dirname in dirnames:
                     full_path = os.path.join(root, dirname)
                     if not self._follow_symlink and os.path.islink(full_path):
