@@ -11,7 +11,8 @@ import os
 import random
 import time
 
-from watchdog.observers.inotify_buffer import InotifyBuffer
+from watchdog.observers.inotify_c import InotifyConstants
+from watchdog.observers.inotify_buffer import InotifyBuffer, InotifyEvent
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
 
@@ -126,7 +127,29 @@ def test_delete_watched_directory_symlink_followed(p):
     rm(p("dir", "dir2"), recursive=True)
 
     # Wait for the event to be picked up
-    inotify.read_event()
+    event = inotify.read_event()
+    while not isinstance(event, InotifyEvent) or (
+            event.mask != (InotifyConstants.IN_DELETE | InotifyConstants.IN_ISDIR)):
+        event = inotify.read_event()
+
+    # Ensure InotifyBuffer shuts down cleanly without raising an exception
+    inotify.close()
+
+
+@pytest.mark.timeout(5)
+def test_delete_watched_directory_symlink_followed_recursive(p):
+    mkdir(p("dir"), parents=True)
+    mkdir(p("dir2", "dir3", "dir4"), parents=True)
+    symlink(p("dir2"), p("dir", "symdir"), target_is_directory=True)
+
+    inotify = InotifyBuffer(p("dir").encode(), follow_symlink=True, recursive=True)
+    rm(p("dir2", "dir3", "dir4"), recursive=True)
+
+    # Wait for the event to be picked up
+    event = inotify.read_event()
+    while not isinstance(event, InotifyEvent) or (
+            event.mask != (InotifyConstants.IN_DELETE | InotifyConstants.IN_ISDIR)):
+        event = inotify.read_event()
 
     # Ensure InotifyBuffer shuts down cleanly without raising an exception
     inotify.close()
