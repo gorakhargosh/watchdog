@@ -353,7 +353,7 @@ class WinAPINativeEvent:
 
     @property
     def is_added(self) -> bool:
-        return self.action == FILE_ACTION_CREATED
+        return self.action == FILE_ACTION_ADDED
 
     @property
     def is_removed(self) -> bool:

@@ -11,8 +11,8 @@ import os
 import random
 import time
 
-from watchdog.observers.inotify_c import InotifyConstants
 from watchdog.observers.inotify_buffer import InotifyBuffer, InotifyEvent
+from watchdog.observers.inotify_c import InotifyConstants
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
 
@@ -129,7 +129,8 @@ def test_delete_watched_directory_symlink_followed(p):
     # Wait for the event to be picked up
     event = inotify.read_event()
     while not isinstance(event, InotifyEvent) or (
-            event.mask != (InotifyConstants.IN_DELETE | InotifyConstants.IN_ISDIR)):
+        event.mask != (InotifyConstants.IN_DELETE | InotifyConstants.IN_ISDIR)
+    ):
         event = inotify.read_event()
 
     # Ensure InotifyBuffer shuts down cleanly without raising an exception
@@ -148,7 +149,8 @@ def test_delete_watched_directory_symlink_followed_recursive(p):
     # Wait for the event to be picked up
     event = inotify.read_event()
     while not isinstance(event, InotifyEvent) or (
-            event.mask != (InotifyConstants.IN_DELETE | InotifyConstants.IN_ISDIR)):
+        event.mask != (InotifyConstants.IN_DELETE | InotifyConstants.IN_ISDIR)
+    ):
         event = inotify.read_event()
 
     # Ensure InotifyBuffer shuts down cleanly without raising an exception
