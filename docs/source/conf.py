@@ -22,8 +22,8 @@ sys.path.insert(0, SRC_DIR_PATH)
 import watchdog.version  # noqa: E402
 
 PROJECT_NAME = "watchdog"
-AUTHOR_NAME = "Yesudeep Mangalapilly, Mickaël Schoentgen, and contributors"
-COPYRIGHT = f"2010-2024, {AUTHOR_NAME}"
+AUTHOR_NAME = "Mickaël Schoentgen & contributors"
+COPYRIGHT = f"2010-2025, {AUTHOR_NAME}"
 
 
 # -- General configuration -----------------------------------------------------

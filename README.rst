@@ -223,7 +223,7 @@ Licensing
 
 Watchdog is licensed under the terms of the `Apache License, version 2.0`_.
 
-- Copyright 2018-2024 Mickaël Schoentgen & contributors
+- Copyright 2018-2025 Mickaël Schoentgen & contributors
 - Copyright 2014-2018 Thomas Amland & contributors
 - Copyright 2012-2014 Google, Inc.
 - Copyright 2011-2012 Yesudeep Mangalapilly

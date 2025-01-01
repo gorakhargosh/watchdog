@@ -2,7 +2,7 @@
 
 .. |author_name| replace:: Mickaël Schoentgen
 .. |author_email| replace:: contact@tiger-222.fr
-.. |copyright| replace:: Copyright 2011-2024 Yesudeep Mangalapilly, Mickaël Schoentgen & contributors.
+.. |copyright| replace:: Copyright 2010-2025 Mickaël Schoentgen & contributors.
 .. |project_name| replace:: ``watchdog``
 .. |project_version| replace:: 5.0.4
 

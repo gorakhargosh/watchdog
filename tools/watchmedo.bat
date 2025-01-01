@@ -1,4 +1,4 @@
-@REM Copyright 2018-2024 Mickaël Schoentgen & contributors
+@REM Copyright 2018-2025 Mickaël Schoentgen & contributors
 @REM Copyright 2012-2018 Google, Inc.
 @REM Copyright 2011-2012 Yesudeep Mangalapilly
 @REM Copyright 2001-2010 The SCons Foundation

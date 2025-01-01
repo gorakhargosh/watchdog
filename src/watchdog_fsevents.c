@@ -1,7 +1,7 @@
 /**
  * watchdog_fsevents.c: Python-C bridge to the OS X FSEvents API.
  *
- * Copyright 2018-2024 Mickaël Schoentgen & contributors
+ * Copyright 2018-2025 Mickaël Schoentgen & contributors
  * Copyright 2012-2018 Google, Inc.
  * Copyright 2011-2012 Yesudeep Mangalapilly <yesudeep@gmail.com>
  * Copyright 2010-2011 Malthe Borch <mborch@gmail.com>

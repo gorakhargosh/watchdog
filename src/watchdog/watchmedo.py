@@ -59,7 +59,7 @@ class HelpFormatter(RawDescriptionHelpFormatter):
 
 
 epilog = """\
-Copyright 2018-2024 Mickaël Schoentgen & contributors
+Copyright 2018-2025 Mickaël Schoentgen & contributors
 Copyright 2014-2018 Thomas Amland & contributors
 Copyright 2012-2014 Google, Inc.
 Copyright 2011-2012 Yesudeep Mangalapilly
