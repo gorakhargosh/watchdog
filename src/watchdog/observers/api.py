@@ -283,7 +283,7 @@ class BaseObserver(EventDispatcher):
     def schedule(
         self,
         event_handler: FileSystemEventHandler,
-        path: str,
+        path: str | Path,
         *,
         recursive: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
@@ -301,7 +301,7 @@ class BaseObserver(EventDispatcher):
         :param path:
             Directory path that will be monitored.
         :type path:
-            ``str``
+            ``str`` or :class:`pathlib.Path`
         :param recursive:
             ``True`` if events will be emitted for sub-directories
             traversed recursively; ``False`` otherwise.

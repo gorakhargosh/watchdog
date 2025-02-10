@@ -12,6 +12,7 @@ import os
 import threading
 import time
 import unicodedata
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import _watchdog_fsevents as _fsevents
@@ -326,7 +327,7 @@ class FSEventsObserver(BaseObserver):
     def schedule(
         self,
         event_handler: FileSystemEventHandler,
-        path: str,
+        path: str | Path,
         *,
         recursive: bool = False,
         follow_symlink: bool = False,
