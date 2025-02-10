@@ -8,8 +8,8 @@ Changelog
 
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v6.0.0...HEAD>`__
 
-- 
-- Thanks to our beloved contributors: @BoboTiG, @
+- Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
+- Thanks to our beloved contributors: @BoboTiG, @tybug
 
 6.0.0
 ~~~~~
