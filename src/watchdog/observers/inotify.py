@@ -5,6 +5,7 @@
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: Tim Cuthbertson <tim+github@gfxmonk.net>
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Joachim Coenen <joachimcoenen@icloud.com>
 :platforms: Linux 2.6.13+.
 
 .. ADMONITION:: About system requirements
@@ -51,10 +52,13 @@ Some extremely useful articles and documentation:
 
 from __future__ import annotations
 
+import contextlib
+import errno
 import logging
 import os
 import threading
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import Protocol, Type, cast, Callable, TYPE_CHECKING
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -73,13 +77,232 @@ from watchdog.events import (
     generate_sub_moved_events,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
-from watchdog.observers.inotify_buffer import InotifyBuffer
-from watchdog.observers.inotify_c import InotifyConstants
+from watchdog.observers.inotify_buffer import InotifyBuffer, GroupedInotifyEvent
+from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WatchCallback, WATCHDOG_ALL_EVENTS
 
 if TYPE_CHECKING:
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.observers.inotify_c import InotifyEvent, Mask, WatchDescriptor
 
 logger = logging.getLogger(__name__)
+
+
+class FileSystemEventCtor(Protocol):
+    def __call__(self, src_path: str, dest_path: str = "") -> FileSystemEvent:
+        ...
+
+
+@dataclass()
+class InotifyWatch(WatchCallback):
+    """Linux inotify(7) API wrapper class.
+
+    :param path:
+        The directory path for which we want an inotify object.
+    :type path:
+        :class:`bytes`
+    :param is_recursive:
+        ``True`` if subdirectories should be monitored; ``False`` otherwise.
+    """
+    # todo find better name
+
+    _inotify_fd: InotifyFD
+    """The inotify instance to use"""
+    path: bytes
+    """The path associated with the inotify instance."""
+    event_handler: Callable[[InotifyEvent], None]
+    """What to do with each event."""
+    is_recursive: bool = field(default=False, kw_only=True)
+    """Whether we are watching directories recursively."""
+    event_mask: Mask = field(default=False, kw_only=True)
+    """The event mask for this inotify instance."""
+    follow_symlink: bool = field(default=False, kw_only=True)
+
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _id: int = field(init=False)
+
+    _active_callbacks_by_watch: dict[WatchDescriptor, bytes] = field(default_factory=dict, init=False)
+    _active_callbacks_by_path: dict[bytes, WatchDescriptor] = field(default_factory=dict, init=False)
+
+    _moved_from_events: dict[int, InotifyEvent] = field(default_factory=dict, init=False)
+
+    def __post_init__(self):
+        self.event_mask: Mask = InotifyWatch.build_event_mask(self.event_mask, self.follow_symlink)
+        self._id: int = id(self)
+        self._activate()
+
+    @staticmethod
+    def build_event_mask(event_mask: Mask, follow_symlink: bool) -> Mask:
+        if follow_symlink:
+            event_mask &= ~InotifyConstants.IN_DONT_FOLLOW
+        else:
+            event_mask |= InotifyConstants.IN_DONT_FOLLOW
+        return event_mask
+
+    @property
+    def is_active(self) -> bool:
+        """Returns True if there are any callbacks active"""
+        return bool(self._active_callbacks_by_watch)
+
+    def _clear_move_records(self) -> None:
+        """Clear cached records of MOVED_FROM events"""
+        self._moved_from_events.clear()
+
+    def _source_for_move(self, destination_event: InotifyEvent) -> bytes | None:
+        """The source path corresponding to the given MOVED_TO event.
+
+        If the source path is outside the monitored directories, None
+        is returned instead.
+        """
+        if destination_event.cookie in self._moved_from_events:
+            return self._moved_from_events[destination_event.cookie].src_path
+        return None
+
+    def _remember_move_from_event(self, event: InotifyEvent) -> None:
+        """Save this event as the source event for future MOVED_TO events to
+        reference.
+        """
+        self._moved_from_events[event.cookie] = event
+
+    @property
+    def _callback(self) -> WatchCallback:
+        return self
+
+    def on_watch_deleted(self, wd: WatchDescriptor) -> None:
+        """Called when a watch that ths callback is registered at is removed. This is the case when the watched object is deleted."""
+        with self._lock:
+            path = self._active_callbacks_by_watch.pop(wd)
+            del self._active_callbacks_by_path[path]
+
+    def on_event(self, event: InotifyEvent, watch_path: bytes) -> None:
+        """called for every event for each watch this callback is registered at."""
+        # todo look into desired behavior for IN_MOVE_SELF events (keep watching?, stop watching?)
+        if event.is_moved_from:
+            with self._lock:
+                # todo remove callbacks if there is no matching move_to event.
+                self._remember_move_from_event(event)
+        elif event.is_moved_to:
+            with self._lock:
+                move_src_path = self._source_for_move(event)
+                move_dst_path = event.src_path
+                self._move_watches(move_src_path, move_dst_path)
+                # TODO: When a directory from another part of the
+                #  filesystem is moved into a watched directory, this
+                #  will not generate events for the directory tree.
+                #  We need to coalesce IN_MOVED_TO events and those
+                #  IN_MOVED_TO events which don't pair up with
+                #  IN_MOVED_FROM events should be marked IN_CREATE
+                #  instead relative to this directory.
+        elif event.is_create:
+            if event.is_directory and self.is_recursive:
+                with self._lock:  # also watch newly created directories
+                    self._add_all_callbacks(event.src_path)
+
+        self.event_handler(event)
+
+        if event.is_create and event.is_directory and self.is_recursive:
+            for sub_event in self._recursive_simulate(event.src_path):
+                self.event_handler(sub_event)
+
+    def _recursive_simulate(self, src_path: bytes) -> list[InotifyEvent]:
+        # HACK: We need to traverse the directory path recursively and simulate
+        # events for newly  created subdirectories/files.
+        # This will handle: mkdir -p foobar/blah/bar; touch foobar/afile
+        events = []
+        for root, dirnames, filenames in os.walk(src_path, followlinks=self.follow_symlink):
+            for dirname in dirnames:
+                full_path = os.path.join(root, dirname)
+                wd_dir = self._active_callbacks_by_path[os.path.dirname(full_path)]
+                mask = Mask(InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR)
+                events.append(InotifyEvent(wd_dir, mask, 0, dirname, full_path))
+
+            for filename in filenames:
+                full_path = os.path.join(root, filename)
+                wd_parent_dir = self._active_callbacks_by_path[os.path.dirname(full_path)]
+                mask = InotifyConstants.IN_CREATE
+                events.append(InotifyEvent(wd_parent_dir, mask, 0, filename, full_path))
+        return events
+
+    def deactivate(self) -> None:
+        """Removes all associated watches."""
+        with self._lock:
+            for wd in self._active_callbacks_by_watch.copy():
+                self._remove_callback(wd)
+
+    def _activate(self) -> None:
+        """Adds a watch (optionally recursively) for the given directory path
+        to monitor events specified by the mask.
+        """
+        with self._lock:
+            if self.is_active:
+                return
+            if self.is_recursive:
+                if not os.path.isdir(self.path):
+                    raise OSError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), self.path)
+
+            self._add_all_callbacks(self.path)
+
+    # Non-synchronized methods:
+
+    def _move_watches(self, move_src_path: bytes | None, move_dst_path: bytes) -> None:
+        """moves all watches that are inside the directory move_src_path to move_dst_path"""
+        moved_watch = self._active_callbacks_by_path.pop(move_src_path, None)
+        if moved_watch is not None:
+            self._active_callbacks_by_watch[moved_watch] = move_dst_path
+            self._active_callbacks_by_path[move_dst_path] = moved_watch
+
+            # move all watches within this directory
+            move_src_prefix = move_src_path + os.path.sep.encode()
+            for path, wd in self._active_callbacks_by_path.copy().items():
+                if path.startswith(move_src_prefix):
+                    del self._active_callbacks_by_path[path]
+
+                    path = path.replace(move_src_path, move_dst_path, 1)
+                    self._active_callbacks_by_watch[wd] = path
+                    self._active_callbacks_by_path[path] = wd
+
+    def _add_all_callbacks(self, path: bytes) -> None:
+        """Adds a watch (optionally recursively) for the given directory path
+        to monitor events specified by the mask.
+
+        :param path:
+            Path to monitor
+        """
+        is_dir = os.path.isdir(path)
+        self._add_callback(path)
+        if is_dir and self.is_recursive:
+            for root, dirnames, _ in os.walk(path, followlinks=self.follow_symlink):
+                for dirname in dirnames:
+                    full_path = os.path.join(root, dirname)
+                    if not self.follow_symlink and os.path.islink(full_path):
+                        continue
+                    self._add_callback(full_path)
+
+    def _add_callback(self, path: bytes) -> None:
+        """Adds a callback for the given path to monitor events specified by the
+        mask.
+
+        :param path:
+            Path to monitor
+        """
+        with contextlib.suppress(OSError):
+            wd = self._inotify_fd.add_callback(path, self.event_mask, self._callback, self._id)
+            self._active_callbacks_by_path[path] = wd
+            self._active_callbacks_by_watch[wd] = path
+
+    def _remove_callback(self, wd: WatchDescriptor) -> None:
+        """removes a callback for the given path.
+
+        :param wd:
+            WatchDescriptor
+        """
+        path = self._active_callbacks_by_watch.pop(wd)
+        del self._active_callbacks_by_path[path]
+        self._inotify_fd.remove_callback(wd, self._id)
+
+
+def _select_event_type(dirEvent: Type[FileSystemEvent], fileEvent: Type[FileSystemEvent], is_directory: bool) -> FileSystemEventCtor:
+    """selects the correct FileSystemEvent Type based on `is_directory` and returns it."""
+    return cast(FileSystemEventCtor, dirEvent if is_directory else fileEvent)
 
 
 class InotifyEmitter(EventEmitter):
@@ -108,22 +331,31 @@ class InotifyEmitter(EventEmitter):
         *,
         timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
+        inotify_fd: InotifyFD | None = None
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
-        self._lock = threading.Lock()
-        self._inotify: InotifyBuffer | None = None
+        self._lock: threading.Lock = threading.Lock()
+        self._inotify_fd: InotifyFD = inotify_fd if inotify_fd is not None else InotifyFD.get_instance()
+        self._inotify_buffer: InotifyBuffer = InotifyBuffer()
+        self._inotify: InotifyWatch | None = None
 
     def on_thread_start(self) -> None:
         path = os.fsencode(self.watch.path)
         event_mask = self.get_event_mask_from_filter()
-        self._inotify = InotifyBuffer(
-            path, recursive=self.watch.is_recursive, event_mask=event_mask, follow_symlink=self.watch.follow_symlink
+        self._inotify = InotifyWatch(
+            self._inotify_fd,
+            path,
+            self._inotify_buffer.put_event,
+            is_recursive=self.watch.is_recursive,
+            event_mask=event_mask,
+            follow_symlink=self.watch.follow_symlink
         )
 
     def on_thread_stop(self) -> None:
-        if self._inotify:
-            self._inotify.close()
+        if self._inotify is not None:
+            self._inotify.deactivate()
             self._inotify = None
+        self._inotify_buffer.close()
 
     def queue_events(self, timeout: float, *, full_events: bool = False) -> None:
         # If "full_events" is true, then the method will report unmatched move events as separate events
@@ -135,16 +367,20 @@ class InotifyEmitter(EventEmitter):
             if self._inotify is None:
                 logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
                 return
-            event = self._inotify.read_event()
+            event = self._inotify_buffer.read_event()
             if event is None:
                 return
+            self.build_and_queue_event(event)
 
-            cls: type[FileSystemEvent]
+    def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = False) -> None:
+        """called for every event for each watch this callback is registered at."""
+        if True:  # keeps the following block indented to preserve git history
+            cls: FileSystemEventCtor
             if isinstance(event, tuple):
                 move_from, move_to = event
                 src_path = self._decode_path(move_from.src_path)
                 dest_path = self._decode_path(move_to.src_path)
-                cls = DirMovedEvent if move_from.is_directory else FileMovedEvent
+                cls = _select_event_type(DirMovedEvent, FileMovedEvent, move_from.is_directory)
                 self.queue_event(cls(src_path, dest_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
@@ -156,54 +392,51 @@ class InotifyEmitter(EventEmitter):
             src_path = self._decode_path(event.src_path)
             if event.is_moved_to:
                 if full_events:
-                    cls = DirMovedEvent if event.is_directory else FileMovedEvent
+                    cls = _select_event_type(DirMovedEvent, FileMovedEvent, event.is_directory)
                     self.queue_event(cls("", src_path))
                 else:
-                    cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                    cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, event.is_directory)
                     self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 if event.is_directory and self.watch.is_recursive:
                     for sub_created_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_created_event)
             elif event.is_attrib or event.is_modify:
-                cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+                cls = _select_event_type(DirModifiedEvent, FileModifiedEvent, event.is_directory)
                 self.queue_event(cls(src_path))
             elif event.is_delete or (event.is_moved_from and not full_events):
-                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, event.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_moved_from and full_events:
-                cls = DirMovedEvent if event.is_directory else FileMovedEvent
+                cls = _select_event_type(DirMovedEvent, FileMovedEvent, event.is_directory)
                 self.queue_event(cls(src_path, ""))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_create:
-                cls = DirCreatedEvent if event.is_directory else FileCreatedEvent
+                cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, event.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             elif event.is_delete_self and src_path == self.watch.path:
-                cls = DirDeletedEvent if event.is_directory else FileDeletedEvent
+                cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, event.is_directory)
                 self.queue_event(cls(src_path))
                 self.stop()
             elif not event.is_directory:
                 if event.is_open:
-                    cls = FileOpenedEvent
-                    self.queue_event(cls(src_path))
+                    self.queue_event(FileOpenedEvent(src_path))
                 elif event.is_close_write:
-                    cls = FileClosedEvent
-                    self.queue_event(cls(src_path))
+                    self.queue_event(FileClosedEvent(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 elif event.is_close_nowrite:
-                    cls = FileClosedNoWriteEvent
-                    self.queue_event(cls(src_path))
+                    self.queue_event(FileClosedNoWriteEvent(src_path))
 
-    def _decode_path(self, path: bytes | str) -> bytes | str:
+    def _decode_path(self, path: bytes) -> bytes | str:
         """Decode path only if unicode string was passed to this emitter."""
         return path if isinstance(self.watch.path, bytes) else os.fsdecode(path)
 
-    def get_event_mask_from_filter(self) -> int | None:
+    def get_event_mask_from_filter(self) -> Mask:
         """Optimization: Only include events we are filtering in inotify call."""
         if self._event_filter is None:
-            return None
+            return WATCHDOG_ALL_EVENTS
 
         # Always listen to delete self
         event_mask = InotifyConstants.IN_DELETE_SELF
@@ -236,12 +469,12 @@ class InotifyEmitter(EventEmitter):
 
 
 class InotifyFullEmitter(InotifyEmitter):
-    """inotify(7)-based event emitter. By default this class produces move events even if they are not matched
+    """inotify(7)-based event emitter. By default, this class produces move events even if they are not matched
     Such move events will have a ``None`` value for the unmatched part.
     """
 
-    def queue_events(self, timeout: float, *, events: bool = True) -> None:  # type: ignore[override]
-        super().queue_events(timeout, full_events=events)
+    def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = True) -> None:  # type: ignore[override]
+        super().build_and_queue_event(event, full_events=full_events)
 
 
 class InotifyObserver(BaseObserver):

@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
-from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
+from watchdog.observers.inotify_c import InotifyFD, InotifyConstants, InotifyEvent, WatchDescriptor
 
 if TYPE_CHECKING:
     from .utils import Helper, P, StartWatching, TestEventQueue
@@ -151,7 +151,7 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 )
 def test_raise_error(error, pattern):
     with patch.object(ctypes, "get_errno", new=lambda: error), pytest.raises(OSError, match=pattern) as exc:
-        Inotify._raise_error()  # noqa: SLF001
+        InotifyFD._raise_error()  # noqa: SLF001
     assert exc.value.errno == error
 
 
@@ -180,8 +180,8 @@ def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatc
 
 
 def test_event_equality(p: P) -> None:
-    wd_parent_dir = 42
-    filename = "file.ext"
+    wd_parent_dir = WatchDescriptor(42)
+    filename = b"file.ext"
     full_path = p(filename)
     event1 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
     event2 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
