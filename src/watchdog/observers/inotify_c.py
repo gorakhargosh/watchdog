@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import errno
+import logging
 import os
 import select
 import struct
@@ -11,12 +12,14 @@ import warnings
 from ctypes import c_char_p, c_int, c_uint32
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import TYPE_CHECKING, ClassVar, Callable, NewType, Protocol
+from typing import TYPE_CHECKING, ClassVar, Callable, NewType, Protocol, cast
 
 from watchdog.utils import UnsupportedLibcError, BaseThread
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+logger = logging.getLogger(__name__)
 
 libc = ctypes.CDLL(None)
 
@@ -29,15 +32,9 @@ if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") o
 # TODOs:
 # - todo use enum.Flag for events & mask.
 # - todo handle watches that do not follow move events
-# - todo handle recursive watches
-# - todo fire DirModifiedEvents
+# - todo fire DirModifiedEvents (?)
 # - todo investigate: inotify does not generate move events for self? (e.g. watch on file F and F gets moved)
 #     observation 1: watch follows the file, but no move event is generated.
-# - todo handle this scenario:
-#     1: crete watch for file F
-#     2: move or rename F
-#     3: create new watch for F at new Path
-#     4: there now must be 2 Watch objects registered with the same watch id or the original Watch object must be reused
 # - todo
 # ##############################################################################
 
@@ -45,11 +42,11 @@ if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") o
 WatchDescriptor = NewType("WatchDescriptor", int)
 Mask = NewType("Mask", int)
 
-inotify_add_watch: Callable[[int, bytes, int], WatchDescriptor] = ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc))
+inotify_add_watch = cast(Callable[[int, bytes, int], WatchDescriptor], ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc)))
 
-inotify_rm_watch: Callable[[int, WatchDescriptor], int] = ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc))
+inotify_rm_watch = cast(Callable[[int, WatchDescriptor], int], ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc)))
 
-inotify_init = ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc))
+inotify_init = cast(Callable[[], int], ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc)))
 
 
 class InotifyConstants:
@@ -166,8 +163,11 @@ DEFAULT_NUM_EVENTS = 2048
 DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 
 
+CallbackId = NewType("CallbackId", int)
+
+
 class WatchCallback(Protocol):
-    def on_event(self, event: InotifyEvent, watch_path: bytes) -> None:
+    def on_event(self, event: InotifyEvent) -> None:
         """called for every event for each watch this callback is registered at."""
         ...
 
@@ -181,11 +181,18 @@ class Watch:
     """Represents an inotify watch"""
     wd: WatchDescriptor
     """the inotify watch descriptor"""
-    path: bytes
-    """the (original) path being watched"""
     mask: Mask
     """the mask used"""
-    callbacks: dict[int, WatchCallback] = field(default_factory=dict, init=False, compare=False)
+    _initial_creation_path: bytes
+    """the original(!) path being watched.
+    .. NOTE:: Do **NOT** use when creating or interpreting events, finding watches
+    or similar. This is purely meant to help debugging.
+
+    If a watched file/folder gets moved and we create a new watch for the
+    file/folder at the new path, inotify will give us the same watch descriptor,
+    which is still remembered undr the old path.
+    """
+    callbacks: dict[CallbackId, WatchCallback] = field(default_factory=dict, init=False, compare=False)
     """callbacks to be called when an event for this watch is fired. dict[<some form of id>, Callback]"""
 
     @property
@@ -195,8 +202,8 @@ class Watch:
     def short_str(self) -> str:
         contents = ", ".join([
             f"wd={self.wd}",
-            f"path={self.path!r}",
             f"mask={_get_mask_string(self.mask)}",
+            f"_initial_creation_path={self._initial_creation_path!r}",
         ])
         return f"<{type(self).__name__}: {contents}>"
 
@@ -213,14 +220,6 @@ class InotifyFD(BaseThread):
     _instance: ClassVar[InotifyFD | None] = None
     _global_lock: ClassVar[threading.Lock] = threading.Lock()
 
-    def __new__(cls) -> InotifyFD:
-        # enforce that InotifyFD is a singleton.
-        with cls._global_lock:
-            if cls._instance is None:
-                cls._instance = super(InotifyFD, cls).__new__(cls)
-                cls._instance.__init__()
-        return cls._instance
-
     def __init__(self) -> None:
         super().__init__()
         if hasattr(self, "is_initialized"):
@@ -229,7 +228,8 @@ class InotifyFD(BaseThread):
             self.is_initialized = True
 
         # The file descriptor associated with the inotify instance.
-        self._inotify_fd = self._create_inotify_fd()
+        self._inotify_fd: int = self._create_inotify_fd()
+
         self._lock = threading.Lock()
         self._closed = False
         self._is_reading = True
@@ -243,11 +243,8 @@ class InotifyFD(BaseThread):
         else:
             self._poller = None
 
-        # Stores the watch descriptor for a given path.
-        self._watch_for_path: dict[bytes, Watch] = {}
+        # Stores the callbacks for a given watch descriptor.
         self._watch_for_wd: dict[WatchDescriptor, Watch] = {}
-
-        self.start()
 
     @classmethod
     def _create_inotify_fd(cls) -> int:
@@ -258,14 +255,15 @@ class InotifyFD(BaseThread):
 
     @classmethod
     def get_instance(cls) -> InotifyFD:
-        return InotifyFD()
+        """Use this class method to get a running InotifyFD instance."""
+        with cls._global_lock:
+            # enforce that InotifyFD is a singleton.
+            if cls._instance is None:
+                cls._instance = InotifyFD()
+                cls._instance.start()
+            return cls._instance
 
-    @property
-    def fd(self) -> int:
-        """The file descriptor associated with the inotify instance."""
-        return self._inotify_fd
-
-    def add_callback(self, path: bytes, mask: Mask, callback: WatchCallback, id_: int) -> WatchDescriptor:
+    def add_callback(self, path: bytes, mask: Mask, callback: WatchCallback, id_: CallbackId) -> WatchDescriptor:
         """Adds a callback for the given path to monitor events specified by the
         mask. If a watch already exists for the given path, it is reused.
         If a callback with the given id_ already exists for this watch, it is overwritten and a warning is generated.
@@ -281,26 +279,26 @@ class InotifyFD(BaseThread):
             The id must be unique only within a given watch.
         """
         with self._lock:
-            return self._add_callback(path, mask, callback, id_).wd
+            return self._add_callback(path, mask, callback, id_)
 
-    def remove_callback(self, wd: WatchDescriptor, id_: int) -> None:
-        """Removes a callback for the given WatchDescriptor. If it was the last callback on
-        the watch, the watch is removed. Otherwise, just the callback is removed
-        from the watch.
-        If no watch for the given WatchDescriptor exists or no callback with the given id_ for the watch exists, a
-        warning is generated.
+    def remove_callbacks(self, callbacks: list[tuple[WatchDescriptor, CallbackId]]) -> None:
+        """Removes callbacks from WatchDescriptors. If a callback was the last
+        callback on a watch, the watch is removed. Otherwise, just the callback
+        is removed from the watch.
+
+        If no watch for a given WatchDescriptor exists or no callback with the
+        given id_ for the watch exists, a warning is generated.
 
         Implementation Note:
         This does not use the path to identify a watch, because the _actual_
         path of a watch can change if the watched fil/folder is moved.
 
-        :param wd:
-            WatchDescriptor for which the callback will be removed.
-        :param id_:
-            Some form of id usd to identify the callback.
+        :param callbacks:
+            a list of (WatchDescriptor, callback id)-tuples for each of which the callback will be removed from the WatchDescriptor.
         """
         with self._lock:
-            self._remove_callback(wd, id_)
+            for wd, id_ in callbacks:
+                self._remove_callback(wd, id_)
 
     def on_thread_stop(self) -> None:
         self.close()
@@ -314,14 +312,14 @@ class InotifyFD(BaseThread):
 
     def close(self) -> None:
         """Closes the inotify instance and removes all associated watches."""
+        delete_callbacks = []
         with self._lock:
             if not self._closed:
                 self._closed = True
-                # todo notify callbacks
-                for watch in self._watch_for_path.values():
-                    inotify_rm_watch(self._inotify_fd, watch.wd)
+                for wd in self._watch_for_wd.copy():
+                    inotify_rm_watch(self._inotify_fd, wd)
+                    delete_callbacks.append((wd, self._remove_watch(wd)))
                 self._watch_for_wd.clear()
-                self._watch_for_path.clear()
 
                 if self._is_reading:
                     # inotify_rm_watch() should write data to _inotify_fd and wake
@@ -330,37 +328,42 @@ class InotifyFD(BaseThread):
                 else:
                     self._close_resources()
 
+        # execute callbacks outside of lock, as they might attempt to register / unregister watches:
+        for wd, callbacks in delete_callbacks:
+            for callback in callbacks:
+                callback.on_watch_deleted(wd)
+
     def handle_event(self, event: InotifyEvent):
-        if event.is_ignored:
-            # Clean up book-keeping for deleted watches.
-            self._remove_watch(event.wd)
-        else:
-            watch = self._watch_for_wd[event.wd]
-            for callback in watch.callbacks.values():
-                callback.on_event(event, watch.path)
+        with self._lock:
+            if event.is_ignored:
+                # Clean up book-keeping for deleted watches.
+                delete_callbacks = self._remove_watch(event.wd)
+                callbacks = ()
+            else:
+                delete_callbacks = ()
+                watch = self._watch_for_wd.get(event.wd)
+                if watch is not None:  # watch might have been removed already
+                    callbacks = list(watch.callbacks.values())  # copy, because watch.callbacks might change during later iteration
+                else:
+                    callbacks = ()
+
+        # execute callbacks outside of lock, as they might need to register / unregister watches:
+        for callback in callbacks:
+            callback.on_event(event)
+        for callback in delete_callbacks:
+            callback.on_watch_deleted(event.wd)
 
     def read_events(self, *, event_buffer_size: int = DEFAULT_EVENT_BUFFER_SIZE) -> list[InotifyEvent]:
         """
         Reads events from inotify and yields them.
         All appropriate exiting watches are automatically moved when a move event occurs.
         """
-
         event_buffer = self._read_event_buffer(event_buffer_size)
-        if event_buffer is None:
-            return []
-
-        with self._lock:
-            event_list = []
-            for wd, mask, cookie, name in InotifyFD._parse_event_buffer(event_buffer):
-                if wd == -1:
-                    continue
-
-                watch = self._watch_for_wd.get(wd)
-                if watch is not None:  # watch might have been removed already
-                    src_path = os.path.join(watch.path, name) if name else watch.path  # avoid trailing slash
-                    event_list.append(InotifyEvent(wd, mask, cookie, name, src_path))
-
-        return event_list
+        return [
+            InotifyEvent(wd, mask, cookie, name)
+            for wd, mask, cookie, name in InotifyFD._parse_event_buffer(event_buffer)
+            if wd != -1
+        ]
 
     # Non-synchronized methods.
 
@@ -372,7 +375,7 @@ class InotifyFD(BaseThread):
             result = select.select([self._inotify_fd, self._kill_r], [], [])
             return self._inotify_fd in result[0]
 
-    def _read_event_buffer(self, event_buffer_size: int) -> bytes | None:
+    def _read_event_buffer(self, event_buffer_size: int) -> bytes:
         """
         Reads from inotify and returns what was read.
         If inotify got closed or if an errno.EBADF occurred during reading, None is returned.
@@ -382,7 +385,7 @@ class InotifyFD(BaseThread):
             try:
                 with self._lock:
                     if self._closed:
-                        return None
+                        return b""
 
                     self._is_reading = True
 
@@ -394,13 +397,13 @@ class InotifyFD(BaseThread):
 
                     if self._closed:
                         self._close_resources()
-                        return None
+                        return b""
             except OSError as e:
                 if e.errno == errno.EINTR:
                     continue
 
                 if e.errno == errno.EBADF:
-                    return None
+                    return b""
 
                 raise
             break
@@ -411,7 +414,7 @@ class InotifyFD(BaseThread):
         os.close(self._kill_r)
         os.close(self._kill_w)
 
-    def _add_callback(self, path: bytes, mask: Mask, callback: WatchCallback, id_: int) -> Watch:
+    def _add_callback(self, path: bytes, mask: Mask, callback: WatchCallback, id_: CallbackId) -> WatchDescriptor:
         """Adds a callback for the given path to monitor events specified by the
         mask. If a watch already exists for the given path, it is reused.
         If a callback with the given id_ already exists for this watch, it is overwritten and a warning is generated.
@@ -426,17 +429,14 @@ class InotifyFD(BaseThread):
             Some form of id usd to identify the callback (for example to remove it later on...).
             The id must be unique only within a given watch.
         """
-        watch = self._watch_for_path.get(path)
-        if watch is None:
-            watch = self._create_watch(path, mask)
+        watch = self._get_or_create_watch(path, mask)
 
         if id_ in watch.callbacks:
             warnings.warn(f"Callback with id '{id_}' already exists for watch {watch.short_str}. It will be Overwritten.", RuntimeWarning, 3)
         watch.callbacks[id_] = callback
+        return watch.wd
 
-        return watch
-
-    def _create_watch(self, path: bytes, mask: Mask) -> Watch:
+    def _get_or_create_watch(self, path: bytes, mask: Mask) -> Watch:
         """Creates a watch for the given path to monitor events specified by the
         mask.
 
@@ -445,15 +445,17 @@ class InotifyFD(BaseThread):
         :param mask:
             Event bit mask.
         """
+        # returns an existing watch descriptor, if one already exists for path:
         wd = inotify_add_watch(self._inotify_fd, path, mask)
         if wd == -1:
             InotifyFD._raise_error()
-        watch = Watch(wd, path, mask)
-        self._watch_for_wd[wd] = watch
-        self._watch_for_path[path] = watch
+        watch = self._watch_for_wd.get(wd)
+        if watch is None:
+            watch = Watch(wd, mask, path)
+            self._watch_for_wd[wd] = watch
         return watch
 
-    def _remove_callback(self, wd: WatchDescriptor, id_: int) -> None:
+    def _remove_callback(self, wd: WatchDescriptor, id_: CallbackId) -> None:
         """Removes a callback for the given WatchDescriptor. If it was the last callback on
         the watch, the watch is removed. Otherwise, just the callback is removed
         from the watch.
@@ -467,25 +469,23 @@ class InotifyFD(BaseThread):
         """
         watch = self._watch_for_wd.get(wd)
         if watch is None:
-            warnings.warn(f"Trying to remove callback from a watch that does not exist. WatchDescriptor: {wd}, callback id: '{id_}'.", RuntimeWarning, 3)
+            logger.debug(f"Trying to remove callback from a watch that does not exist. WatchDescriptor: %s, callback id: '%s'.", wd, id_)
             return
 
         if watch.callbacks.pop(id_, None) is None:
             warnings.warn(f"Callback with id '{id_}' does not exist for watch {watch.short_str} and therefore cannot be removed.", RuntimeWarning, 3)
 
         if not watch.is_used:
-            self._remove_watch(watch.wd)
+            delete_callbacks = self._remove_watch(watch.wd)
             if inotify_rm_watch(self._inotify_fd, watch.wd) == -1:
                 InotifyFD._raise_error()
+            assert not delete_callbacks, f"delete_callbacks should be empty, but was: {delete_callbacks}"
 
-    def _remove_watch(self, wd: WatchDescriptor):
+    def _remove_watch(self, wd: WatchDescriptor) -> list[WatchCallback]:
         """Notifies all necessary objects of deleted watches and cleans up book-keeping.
         This does NOT call inotify_rm_watch."""
-        watch = self._watch_for_wd.pop(wd)
-        if self._watch_for_path[watch.path].wd == wd:  # why the extra check only here?
-            del self._watch_for_path[watch.path]
-            for callback in watch.callbacks.values():
-                callback.on_watch_deleted(watch.wd)
+        watch = self._watch_for_wd.pop(wd, None)
+        return list(watch.callbacks.values()) if watch is not None else []
 
     @staticmethod
     def _raise_error() -> None:
@@ -530,131 +530,91 @@ class InotifyFD(BaseThread):
 InotifyFD.get_instance()
 
 
+@dataclass(unsafe_hash=True, slots=True, frozen=True)
 class InotifyEvent:
     """Inotify event struct wrapper.
-
-    :param wd:
-        Watch descriptor
-    :param mask:
-        Event mask
-    :param cookie:
-        Event cookie
-    :param name:
-        Base name of the event source path.
-    :param src_path:
-        Full event source path.
     """
 
-    def __init__(self, wd: int, mask: int, cookie: int, name: bytes, src_path: bytes) -> None:
-        self._wd = wd
-        self._mask = mask
-        self._cookie = cookie
-        self._name = name
-        self._src_path = src_path
-
-    @property
-    def src_path(self) -> bytes:
-        return self._src_path
-
-    @property
-    def wd(self) -> int:
-        return self._wd
-
-    @property
-    def mask(self) -> int:
-        return self._mask
-
-    @property
-    def cookie(self) -> int:
-        return self._cookie
-
-    @property
-    def name(self) -> bytes:
-        return self._name
+    wd: WatchDescriptor
+    """Watch descriptor"""
+    mask: Mask
+    """Event mask"""
+    cookie: int
+    """Event cookie"""
+    name: bytes
+    """Base name of the event source path. might be empty"""
+    # src_path: bytes; We cannot set the src_path.
+    # See 'Problems With inotify' section in the module description
 
     @property
     def is_modify(self) -> bool:
-        return self._mask & InotifyConstants.IN_MODIFY > 0
+        return self.mask & InotifyConstants.IN_MODIFY > 0
 
     @property
     def is_close_write(self) -> bool:
-        return self._mask & InotifyConstants.IN_CLOSE_WRITE > 0
+        return self.mask & InotifyConstants.IN_CLOSE_WRITE > 0
 
     @property
     def is_close_nowrite(self) -> bool:
-        return self._mask & InotifyConstants.IN_CLOSE_NOWRITE > 0
+        return self.mask & InotifyConstants.IN_CLOSE_NOWRITE > 0
 
     @property
     def is_open(self) -> bool:
-        return self._mask & InotifyConstants.IN_OPEN > 0
+        return self.mask & InotifyConstants.IN_OPEN > 0
 
     @property
     def is_access(self) -> bool:
-        return self._mask & InotifyConstants.IN_ACCESS > 0
+        return self.mask & InotifyConstants.IN_ACCESS > 0
 
     @property
     def is_delete(self) -> bool:
-        return self._mask & InotifyConstants.IN_DELETE > 0
+        return self.mask & InotifyConstants.IN_DELETE > 0
 
     @property
     def is_delete_self(self) -> bool:
-        return self._mask & InotifyConstants.IN_DELETE_SELF > 0
+        return self.mask & InotifyConstants.IN_DELETE_SELF > 0
 
     @property
     def is_create(self) -> bool:
-        return self._mask & InotifyConstants.IN_CREATE > 0
+        return self.mask & InotifyConstants.IN_CREATE > 0
 
     @property
     def is_moved_from(self) -> bool:
-        return self._mask & InotifyConstants.IN_MOVED_FROM > 0
+        return self.mask & InotifyConstants.IN_MOVED_FROM > 0
 
     @property
     def is_moved_to(self) -> bool:
-        return self._mask & InotifyConstants.IN_MOVED_TO > 0
+        return self.mask & InotifyConstants.IN_MOVED_TO > 0
 
     @property
     def is_move(self) -> bool:
-        return self._mask & InotifyConstants.IN_MOVE > 0
+        return self.mask & InotifyConstants.IN_MOVE > 0
 
     @property
     def is_move_self(self) -> bool:
-        return self._mask & InotifyConstants.IN_MOVE_SELF > 0
+        return self.mask & InotifyConstants.IN_MOVE_SELF > 0
 
     @property
     def is_attrib(self) -> bool:
-        return self._mask & InotifyConstants.IN_ATTRIB > 0
+        return self.mask & InotifyConstants.IN_ATTRIB > 0
 
     @property
     def is_ignored(self) -> bool:
-        return self._mask & InotifyConstants.IN_IGNORED > 0
+        return self.mask & InotifyConstants.IN_IGNORED > 0
 
     @property
     def is_directory(self) -> bool:
         # It looks like the kernel does not provide this information for
         # IN_DELETE_SELF and IN_MOVE_SELF. In this case, assume it's a dir.
         # See also: https://github.com/seb-m/pyinotify/blob/2c7e8f8/python2/pyinotify.py#L897
-        return self.is_delete_self or self.is_move_self or self._mask & InotifyConstants.IN_ISDIR > 0
-
-    @property
-    def key(self) -> tuple[bytes, int, int, int, bytes]:
-        return self._src_path, self._wd, self._mask, self._cookie, self._name
-
-    def __eq__(self, inotify_event: object) -> bool:
-        if not isinstance(inotify_event, InotifyEvent):
-            return NotImplemented
-        return self.key == inotify_event.key
-
-    def __ne__(self, inotify_event: object) -> bool:
-        if not isinstance(inotify_event, InotifyEvent):
-            return NotImplemented
-        return self.key != inotify_event.key
-
-    def __hash__(self) -> int:
-        return hash(self.key)
+        return self.is_delete_self or self.is_move_self or self.mask & InotifyConstants.IN_ISDIR > 0
 
     def __repr__(self) -> str:
-        return (
-            f"<{type(self).__name__}: src_path={self.src_path!r}, wd={self.wd},"
-            f" mask={_get_mask_string(self.mask)}, cookie={self.cookie},"
-            f" name={os.fsdecode(self.name)!r}>"
-        )
+        contents = ", ".join([
+            # f"src_path={self.src_path!r}",
+            f"wd={self.wd}",
+            f"mask={_get_mask_string(self.mask)}",
+            f"cookie={self.cookie}",
+            f"name={os.fsdecode(self.name)!r}",
+        ])
+        return f"<{type(self).__name__}: {contents}>"

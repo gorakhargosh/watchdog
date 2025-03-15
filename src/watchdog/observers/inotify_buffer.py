@@ -9,14 +9,21 @@
 from __future__ import annotations
 
 import logging
-from typing import TypeAlias
+from typing import TypeAlias, NamedTuple
 
 from watchdog.observers.inotify_c import InotifyEvent
 from watchdog.utils.delayed_queue import DelayedQueue
 
 logger = logging.getLogger(__name__)
 
-GroupedInotifyEvent: TypeAlias = InotifyEvent | tuple[InotifyEvent, InotifyEvent]
+
+class PathedInotifyEvent(NamedTuple):
+    """An InotifyEvent and its full source path"""
+    ev: InotifyEvent
+    path: bytes
+
+
+GroupedInotifyEvent: TypeAlias = PathedInotifyEvent | tuple[PathedInotifyEvent, PathedInotifyEvent]
 
 
 # todo rename to InotifyMoveEventGrouper
@@ -37,25 +44,25 @@ class InotifyBuffer:
         """
         return self._queue.get()
 
-    def put_event(self, event: InotifyEvent) -> None:
+    def put_event(self, event: PathedInotifyEvent) -> None:
         """Add an event to the `queue`. When adding an IN_MOVE_TO event, remove
         the previous added matching IN_MOVE_FROM event and add them back to the
         queue as a tuple.
         """
         logger.debug("in-event %s", event)
         # Only add delay for unmatched move_from events
-        should_delay = event.is_moved_from
+        should_delay = event.ev.is_moved_from
 
-        if event.is_moved_to:
+        if event.ev.is_moved_to:
             event = self._group_moved_to_event(event)
 
         self._queue.put(event, delay=should_delay)
 
-    def _group_moved_to_event(self, to_event: InotifyEvent) -> GroupedInotifyEvent:
+    def _group_moved_to_event(self, to_event: PathedInotifyEvent) -> GroupedInotifyEvent:
         """Group any matching move events by check if a matching move_from is in delay queue already"""
 
         def matching_from_event(event: GroupedInotifyEvent) -> bool:
-            return not isinstance(event, tuple) and event.is_moved_from and event.cookie == to_event.cookie
+            return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == to_event.ev.cookie
 
         # Check if move_from is in delayqueue already
         from_event = self._queue.remove(matching_from_event)
@@ -63,6 +70,12 @@ class InotifyBuffer:
             logger.debug("could not find matching move_from event")
 
         return (from_event, to_event) if from_event is not None else to_event
+
+    def get_queued_moved_from_event(self, cookie: int) -> PathedInotifyEvent | None:
+        def matching_from_event(event: GroupedInotifyEvent) -> bool:
+            return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
+
+        return self._queue.find(matching_from_event)
 
     def close(self) -> None:
         self._queue.close()
