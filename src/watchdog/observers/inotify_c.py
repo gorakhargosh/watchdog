@@ -478,7 +478,7 @@ class InotifyFD(BaseThread):
         if not watch.is_used:
             delete_callbacks = self._remove_watch(watch.wd)
             if inotify_rm_watch(self._inotify_fd, watch.wd) == -1:
-                InotifyFD._raise_error()
+                InotifyFD._raise_error(ignore_invalid_argument=True)  # ignore if a watch doesn't exist anymore
             assert not delete_callbacks, f"delete_callbacks should be empty, but was: {delete_callbacks}"
 
     def _remove_watch(self, wd: WatchDescriptor) -> list[WatchCallback]:
@@ -488,7 +488,7 @@ class InotifyFD(BaseThread):
         return list(watch.callbacks.values()) if watch is not None else []
 
     @staticmethod
-    def _raise_error() -> None:
+    def _raise_error(*, ignore_invalid_argument: bool = False) -> None:
         """Raises errors for inotify failures."""
         err = ctypes.get_errno()
 
@@ -497,6 +497,9 @@ class InotifyFD(BaseThread):
 
         if err == errno.EMFILE:
             raise OSError(errno.EMFILE, "inotify instance limit reached")
+
+        if ignore_invalid_argument and err == errno.EINVAL:
+            return  # ignore
 
         if err != errno.EACCES:
             raise OSError(err, os.strerror(err))
