@@ -14,7 +14,7 @@ import os
 import random
 
 from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
-from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WATCHDOG_ALL_EVENTS
+from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WATCHDOG_ALL_EVENTS, Mask
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
 
@@ -186,3 +186,70 @@ def test_unmount_watched_directory_filesystem(p):
     assert not inotify.is_active
     assert not inotify._active_callbacks_by_watch
     assert not inotify._active_callbacks_by_watch
+
+
+def assert_event(inotify: InotifyWatchGroup, expected_path: str, expected_kind: Mask):
+    event = inotify.read_event()
+    assert event.path == expected_path.encode()
+    assert event.ev.mask & expected_kind
+
+
+def assert_touch_events(inotify: InotifyWatchGroup, expected_path: str):
+    assert_event(inotify, expected_path, InotifyConstants.IN_OPEN)
+    assert_event(inotify, expected_path, InotifyConstants.IN_ATTRIB)
+    assert_event(inotify, expected_path, InotifyConstants.IN_CLOSE_WRITE)
+
+
+@pytest.mark.timeout(5)
+def test_watch_groups_are_independent(p):
+    original_path = p("rootdir", "dir1", "a")
+    destination_path = p("rootdir", "dir2", "b")
+
+    def setup() -> None:
+        mkdir(p("rootdir"))
+        mkdir(p("rootdir", "dir1"))
+        mkdir(p("rootdir", "dir2"))
+        touch(original_path)
+
+    def run() -> None:
+        mv(original_path, destination_path)
+        touch(destination_path)  # generates events after the move.
+        rm(destination_path)  # generates delete event after the move.
+
+    def cleanup() -> None:
+        rm(p("rootdir"), recursive=True)
+
+    def assert_inotify_a_events(inotify_a: InotifyWatchGroup) -> None:
+        # check inotify_a uses the original path of the file.
+        assert_touch_events(inotify_a, original_path)
+        assert_event(inotify_a, original_path, InotifyConstants.IN_ATTRIB)
+        assert_event(inotify_a, original_path, InotifyConstants.IN_DELETE_SELF)
+
+    def assert_inotify_root_events(inotify_root: InotifyWatchGroup) -> None:
+        # check inotify_root tracks the new path of the file.
+        ev1_move = wait_for_move_event(inotify_root.read_event)
+        assert not isinstance(ev1_move, PathedInotifyEvent)
+        assert_touch_events(inotify_root, destination_path)
+        assert_event(inotify_root, destination_path, InotifyConstants.IN_DELETE)
+
+    # inotify_a works alone:
+    setup()
+    inotify_a = create_inotify_watch(original_path.encode())
+    run()
+    assert_inotify_a_events(inotify_a)
+    inotify_a.deactivate()
+    cleanup()
+
+    # inotify_a is not affected by inotify_root:
+    setup()
+    inotify_a = create_inotify_watch(original_path.encode())
+    inotify_root = create_inotify_watch(p("rootdir").encode(), recursive=True)
+    run()
+    assert_inotify_a_events(inotify_a)  # still no move events, and original path for all events
+    assert_inotify_root_events(inotify_root)
+    inotify_root.deactivate()
+    inotify_a.deactivate()
+    cleanup()
+
+
+

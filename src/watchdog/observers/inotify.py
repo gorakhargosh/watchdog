@@ -55,9 +55,7 @@
     other InotifyWatchGroups for exactly the right set of paths or not. The same
     goes for coalescing move events.
 
-    Therefore both things are handled by the InotifyWatchGroups themselves.
-    todo:
-     Also add a test for that.
+    Therefore, both things are handled by the InotifyWatchGroups themselves.
 
 Some extremely useful articles and documentation:
 
