@@ -12,12 +12,12 @@ import warnings
 from ctypes import c_char_p, c_int, c_uint32
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import TYPE_CHECKING, ClassVar, Callable, NewType, Protocol, cast
+from typing import TYPE_CHECKING, Callable, ClassVar, NewType, Protocol, cast
 
-from watchdog.utils import UnsupportedLibcError, BaseThread
+from watchdog.utils import BaseThread, UnsupportedLibcError
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -31,47 +31,51 @@ if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") o
 WatchDescriptor = NewType("WatchDescriptor", int)
 Mask = NewType("Mask", int)
 
-inotify_add_watch = cast(Callable[[int, bytes, int], WatchDescriptor], ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc)))
+inotify_add_watch = cast(
+    Callable[[int, bytes, int], WatchDescriptor],
+    ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc)))
 
-inotify_rm_watch = cast(Callable[[int, WatchDescriptor], int], ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc)))
+inotify_rm_watch = cast(
+    Callable[[int, WatchDescriptor], int],
+    ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc)))
 
 inotify_init = cast(Callable[[], int], ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc)))
 
 
 class InotifyConstants:
     # User-space events
-    IN_ACCESS: ClassVar[Mask] = 0x00000001  # File was accessed.
-    IN_MODIFY: ClassVar[Mask] = 0x00000002  # File was modified.
-    IN_ATTRIB: ClassVar[Mask] = 0x00000004  # Meta-data changed.
-    IN_CLOSE_WRITE: ClassVar[Mask] = 0x00000008  # Writable file was closed.
-    IN_CLOSE_NOWRITE: ClassVar[Mask] = 0x00000010  # Unwritable file closed.
-    IN_OPEN: ClassVar[Mask] = 0x00000020  # File was opened.
-    IN_MOVED_FROM: ClassVar[Mask] = 0x00000040  # File was moved from X.
-    IN_MOVED_TO: ClassVar[Mask] = 0x00000080  # File was moved to Y.
-    IN_CREATE: ClassVar[Mask] = 0x00000100  # Subfile was created.
-    IN_DELETE: ClassVar[Mask] = 0x00000200  # Subfile was deleted.
-    IN_DELETE_SELF: ClassVar[Mask] = 0x00000400  # Self was deleted.
-    IN_MOVE_SELF: ClassVar[Mask] = 0x00000800  # Self was moved.
+    IN_ACCESS: ClassVar[Mask] = Mask(0x00000001)  # File was accessed.
+    IN_MODIFY: ClassVar[Mask] = Mask(0x00000002)  # File was modified.
+    IN_ATTRIB: ClassVar[Mask] = Mask(0x00000004)  # Meta-data changed.
+    IN_CLOSE_WRITE: ClassVar[Mask] = Mask(0x00000008)  # Writable file was closed.
+    IN_CLOSE_NOWRITE: ClassVar[Mask] = Mask(0x00000010)  # Unwritable file closed.
+    IN_OPEN: ClassVar[Mask] = Mask(0x00000020)  # File was opened.
+    IN_MOVED_FROM: ClassVar[Mask] = Mask(0x00000040)  # File was moved from X.
+    IN_MOVED_TO: ClassVar[Mask] = Mask(0x00000080)  # File was moved to Y.
+    IN_CREATE: ClassVar[Mask] = Mask(0x00000100)  # Subfile was created.
+    IN_DELETE: ClassVar[Mask] = Mask(0x00000200)  # Subfile was deleted.
+    IN_DELETE_SELF: ClassVar[Mask] = Mask(0x00000400)  # Self was deleted.
+    IN_MOVE_SELF: ClassVar[Mask] = Mask(0x00000800)  # Self was moved.
 
     # Helper user-space events.
-    IN_MOVE: ClassVar[Mask] = IN_MOVED_FROM | IN_MOVED_TO  # Moves.
+    IN_MOVE: ClassVar[Mask] = Mask(IN_MOVED_FROM | IN_MOVED_TO)  # Moves.
 
     # Events sent by the kernel to a watch.
-    IN_UNMOUNT: ClassVar[Mask] = 0x00002000  # Backing file system was unmounted.
-    IN_Q_OVERFLOW: ClassVar[Mask] = 0x00004000  # Event queued overflowed.
-    IN_IGNORED: ClassVar[Mask] = 0x00008000  # File was ignored.
+    IN_UNMOUNT: ClassVar[Mask] = Mask(0x00002000)  # Backing file system was unmounted.
+    IN_Q_OVERFLOW: ClassVar[Mask] = Mask(0x00004000)  # Event queued overflowed.
+    IN_IGNORED: ClassVar[Mask] = Mask(0x00008000)  # File was ignored.
 
     # Special flags.
-    IN_ONLYDIR: ClassVar[Mask] = 0x01000000  # Only watch the path if it's a directory.
-    IN_DONT_FOLLOW: ClassVar[Mask] = 0x02000000  # Do not follow a symbolic link.
-    IN_EXCL_UNLINK: ClassVar[Mask] = 0x04000000  # Exclude events on unlinked objects
-    IN_MASK_ADD: ClassVar[Mask] = 0x20000000  # Add to the mask of an existing watch.
-    IN_ISDIR: ClassVar[Mask] = 0x40000000  # Event occurred against directory.
-    IN_ONESHOT: ClassVar[Mask] = 0x80000000  # Only send event once.
+    IN_ONLYDIR: ClassVar[Mask] = Mask(0x01000000)  # Only watch the path if it's a directory.
+    IN_DONT_FOLLOW: ClassVar[Mask] = Mask(0x02000000)  # Do not follow a symbolic link.
+    IN_EXCL_UNLINK: ClassVar[Mask] = Mask(0x04000000)  # Exclude events on unlinked objects
+    IN_MASK_ADD: ClassVar[Mask] = Mask(0x20000000)  # Add to the mask of an existing watch.
+    IN_ISDIR: ClassVar[Mask] = Mask(0x40000000)  # Event occurred against directory.
+    IN_ONESHOT: ClassVar[Mask] = Mask(0x80000000)  # Only send event once.
 
     # All user-space events.
     IN_ALL_EVENTS: ClassVar[Mask] = reduce(
-        lambda x, y: x | y,
+        lambda x, y: Mask(x | y),
         [
             IN_ACCESS,
             IN_MODIFY,
@@ -89,8 +93,8 @@ class InotifyConstants:
     )
 
     # Flags for ``inotify_init1``
-    IN_CLOEXEC: ClassVar[Mask] = 0x02000000
-    IN_NONBLOCK: ClassVar[Mask] = 0x00004000
+    IN_CLOEXEC: ClassVar[Mask] = Mask(0x02000000)
+    IN_NONBLOCK: ClassVar[Mask] = Mask(0x00004000)
 
 
 INOTIFY_ALL_CONSTANTS: dict[str, Mask] = {
@@ -102,7 +106,7 @@ INOTIFY_ALL_CONSTANTS: dict[str, Mask] = {
 
 # Watchdog's API cares only about these events.
 WATCHDOG_ALL_EVENTS: Mask = reduce(
-    lambda x, y: x | y,
+    lambda x, y: Mask(x | y),
     [
         InotifyConstants.IN_MODIFY,
         InotifyConstants.IN_ATTRIB,
@@ -161,7 +165,8 @@ class WatchCallback(Protocol):
         ...
 
     def on_watch_deleted(self, wd: WatchDescriptor) -> None:
-        """Called when a watch that ths callback is registered at is removed. This is the case when the watched object is deleted."""
+        """Called when a watch that ths callback is registered at is removed.
+        This is the case when the watched object is deleted."""
         ...
 
 
@@ -214,8 +219,7 @@ class InotifyFD(BaseThread):
         super().__init__()
         if hasattr(self, "is_initialized"):
             return  # do not initialize the singleton twice.
-        else:
-            self.is_initialized = True
+        self.is_initialized = True
 
         # The file descriptor associated with the inotify instance.
         self._inotify_fd: int = self._create_inotify_fd()
@@ -227,7 +231,7 @@ class InotifyFD(BaseThread):
 
         # used by _check_inotify_fd to tell if we can read _inotify_fd without blocking
         if hasattr(select, "poll"):
-            self._poller = select.poll()
+            self._poller: select.poll | None = select.poll()
             self._poller.register(self._inotify_fd, select.POLLIN)
             self._poller.register(self._kill_r, select.POLLIN)
         else:
@@ -284,7 +288,8 @@ class InotifyFD(BaseThread):
         path of a watch can change if the watched fil/folder is moved.
 
         :param callbacks:
-            a list of (WatchDescriptor, callback id)-tuples for each of which the callback will be removed from the WatchDescriptor.
+            a list of (WatchDescriptor, callback id)-tuples for each of which
+            the callback will be removed from the WatchDescriptor.
         """
         with self._lock:
             for wd, id_ in callbacks:
@@ -323,19 +328,19 @@ class InotifyFD(BaseThread):
             for callback in callbacks:
                 callback.on_watch_deleted(wd)
 
-    def handle_event(self, event: InotifyEvent):
+    def handle_event(self, event: InotifyEvent) -> None:
         with self._lock:
             if event.is_ignored:
                 # Clean up book-keeping for deleted watches.
-                delete_callbacks = self._remove_watch(event.wd)
-                callbacks = ()
+                delete_callbacks: Sequence[WatchCallback] = self._remove_watch(event.wd)
+                callbacks: Sequence[WatchCallback] = ()
             else:
                 delete_callbacks = ()
                 watch = self._watch_for_wd.get(event.wd)
-                if watch is not None:  # watch might have been removed already
-                    callbacks = list(watch.callbacks.values())  # copy, because watch.callbacks might change during later iteration
-                else:
-                    callbacks = ()
+
+                # watch might have been removed already. Also copy, because
+                # watch.callbacks might change during later iteration
+                callbacks = list(watch.callbacks.values()) if watch is not None else ()
 
         # execute callbacks outside of lock, as they might need to register / unregister watches:
         for callback in callbacks:
@@ -361,9 +366,9 @@ class InotifyFD(BaseThread):
         """return true if we can read _inotify_fd without blocking"""
         if self._poller is not None:
             return any(fd == self._inotify_fd for fd, _ in self._poller.poll())
-        else:
-            result = select.select([self._inotify_fd, self._kill_r], [], [])
-            return self._inotify_fd in result[0]
+
+        result = select.select([self._inotify_fd, self._kill_r], [], [])
+        return self._inotify_fd in result[0]
 
     def _read_event_buffer(self, event_buffer_size: int) -> bytes:
         """
@@ -422,7 +427,8 @@ class InotifyFD(BaseThread):
         watch = self._get_or_create_watch(path, mask)
 
         if id_ in watch.callbacks:
-            warnings.warn(f"Callback with id '{id_}' already exists for watch {watch.short_str}. It will be Overwritten.", RuntimeWarning, 3)
+            msg = f"Callback with id '{id_}' already exists for watch {watch.short_str}. It will be Overwritten."
+            warnings.warn(msg, RuntimeWarning, stacklevel=3)
         watch.callbacks[id_] = callback
         return watch.wd
 
@@ -459,11 +465,13 @@ class InotifyFD(BaseThread):
         """
         watch = self._watch_for_wd.get(wd)
         if watch is None:
-            logger.debug(f"Trying to remove callback from a watch that does not exist. WatchDescriptor: %s, callback id: '%s'.", wd, id_)
+            msg = "Trying to remove callback from a watch that does not exist. WatchDescriptor: %s, callback id: '%s'."
+            logger.debug(msg, wd, id_)
             return
 
         if watch.callbacks.pop(id_, None) is None:
-            warnings.warn(f"Callback with id '{id_}' does not exist for watch {watch.short_str} and therefore cannot be removed.", RuntimeWarning, 3)
+            msg = f"Callback with id '{id_}' does not exist for watch {watch.short_str} and therefore cannot be removed"
+            warnings.warn(msg, RuntimeWarning, stacklevel=3)
 
         if not watch.is_used:
             delete_callbacks = self._remove_watch(watch.wd)
@@ -471,7 +479,7 @@ class InotifyFD(BaseThread):
                 InotifyFD._raise_error(ignore_invalid_argument=True)  # ignore if a watch doesn't exist anymore
             assert not delete_callbacks, f"delete_callbacks should be empty, but was: {delete_callbacks}"
 
-    def _remove_watch(self, wd: WatchDescriptor) -> list[WatchCallback]:
+    def _remove_watch(self, wd: WatchDescriptor) -> Sequence[WatchCallback]:
         """Notifies all necessary objects of deleted watches and cleans up book-keeping.
         This does NOT call inotify_rm_watch."""
         watch = self._watch_for_wd.pop(wd, None)
@@ -604,7 +612,6 @@ class InotifyEvent:
 
     def __repr__(self) -> str:
         contents = ", ".join([
-            # f"src_path={self.src_path!r}",
             f"wd={self.wd}",
             f"mask={_get_mask_string(self.mask)}",
             f"cookie={self.cookie}",

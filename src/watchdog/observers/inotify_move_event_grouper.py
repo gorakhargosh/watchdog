@@ -9,13 +9,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, NamedTuple, Union
+from typing import TYPE_CHECKING, NamedTuple, Union, cast
 
-from watchdog.observers.inotify_c import InotifyEvent
 from watchdog.utils.delayed_queue import DelayedQueue
 
 if TYPE_CHECKING:
     from typing import TypeAlias
+
+    from watchdog.observers.inotify_c import InotifyEvent
 
 logger = logging.getLogger(__name__)
 
@@ -56,20 +57,20 @@ class InotifyMoveEventGrouper:
         # Only add delay for unmatched move_from events
         should_delay = event.ev.is_moved_from
 
-        if event.ev.is_moved_to:
-            event = self._group_moved_to_event(event)
+        grouped_event = self._group_moved_to_event(event) if event.ev.is_moved_to else event
 
-        self._queue.put(event, delay=should_delay)
+        self._queue.put(grouped_event, delay=should_delay)
 
     def _group_moved_to_event(self, to_event: PathedInotifyEvent) -> GroupedInotifyEvent:
         """Group any matching move events by checking if a matching move_from is
         in delay queue already and removing it"""
+        cookie = to_event.ev.cookie
 
         def matching_from_event(event: GroupedInotifyEvent) -> bool:
-            return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == to_event.ev.cookie
+            return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
 
         # Check if move_from is in delayqueue already
-        from_event = self._queue.remove(matching_from_event)
+        from_event = cast(PathedInotifyEvent, self._queue.remove(matching_from_event))
         if from_event is None:
             logger.debug("could not find matching move_from event")
 
@@ -81,7 +82,7 @@ class InotifyMoveEventGrouper:
         def matching_from_event(event: GroupedInotifyEvent) -> bool:
             return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
 
-        return self._queue.find(matching_from_event)
+        return cast(PathedInotifyEvent, self._queue.find(matching_from_event))
 
     def close(self) -> None:
         """closes the queue"""

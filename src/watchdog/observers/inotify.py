@@ -47,8 +47,10 @@
     inotify has some limitations:
 
     - A watch on a fil/folder is not informed when the file/folder itself or any containing (outer) folders  is moved.
-    - When a file is moved from a watched directory to a different directory, there will only be a IN_MOVE_FROM event for the watch on that directory.
-    - When a file is moved from an unwatched directory to a watched directory, there will only be a IN_MOVE_TO event for the watch on that directory.
+    - When a file is moved from a watched directory to a different directory, there will only be an IN_MOVE_FROM event
+      for the watch on that directory.
+    - When a file is moved from an unwatched directory to a watched directory, there will only be an IN_MOVE_TO event
+      for the watch on that directory.
 
     If we were to keep track of the path of watches in InotifyFD, an
     InotifyWatchGroup would get different events depending on whether there are
@@ -71,7 +73,7 @@ import logging
 import os
 import threading
 from dataclasses import dataclass, field
-from typing import Protocol, Type, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, cast
 
 from watchdog.events import (
     DirCreatedEvent,
@@ -90,18 +92,30 @@ from watchdog.events import (
     generate_sub_moved_events,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
-from watchdog.observers.inotify_move_event_grouper import InotifyMoveEventGrouper, GroupedInotifyEvent, PathedInotifyEvent
-from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WatchCallback, WATCHDOG_ALL_EVENTS, CallbackId
+from watchdog.observers.inotify_c import (
+    WATCHDOG_ALL_EVENTS,
+    CallbackId,
+    InotifyConstants,
+    InotifyEvent,
+    InotifyFD,
+    Mask,
+    WatchCallback,
+    WatchDescriptor,
+)
+from watchdog.observers.inotify_move_event_grouper import (
+    GroupedInotifyEvent,
+    InotifyMoveEventGrouper,
+    PathedInotifyEvent,
+)
 
 if TYPE_CHECKING:
     from watchdog.observers.api import EventQueue, ObservedWatch
-    from watchdog.observers.inotify_c import InotifyEvent, Mask, WatchDescriptor
 
 logger = logging.getLogger(__name__)
 
 
 class FileSystemEventCtor(Protocol):
-    def __call__(self, src_path: str, dest_path: str = "") -> FileSystemEvent:
+    def __call__(self, src_path: bytes | str, dest_path: bytes | str = "") -> FileSystemEvent:
         ...
 
 
@@ -147,16 +161,16 @@ class InotifyWatchGroup(WatchCallback):
     _active_callbacks_by_path: dict[bytes, WatchDescriptor] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
-        self.event_mask = InotifyWatchGroup.build_event_mask(self.event_mask, self.follow_symlink)
+        self.event_mask = InotifyWatchGroup.build_event_mask(self.event_mask, follow_symlink=self.follow_symlink)
         self._id = CallbackId(id(self))
         self._activate()
 
     @staticmethod
-    def build_event_mask(event_mask: Mask, follow_symlink: bool) -> Mask:
+    def build_event_mask(event_mask: Mask, *, follow_symlink: bool) -> Mask:
         if follow_symlink:
-            event_mask &= ~InotifyConstants.IN_DONT_FOLLOW
+            event_mask = Mask(event_mask & ~InotifyConstants.IN_DONT_FOLLOW)
         else:
-            event_mask |= InotifyConstants.IN_DONT_FOLLOW
+            event_mask = Mask(event_mask | InotifyConstants.IN_DONT_FOLLOW)
         return event_mask
 
     @property
@@ -187,7 +201,8 @@ class InotifyWatchGroup(WatchCallback):
         return self._move_event_grouper.read_event()
 
     def on_watch_deleted(self, wd: WatchDescriptor) -> None:
-        """Called when a watch that ths callback is registered at is removed. This is the case when the watched object is deleted."""
+        """Called when a watch that ths callback is registered at is removed.
+        This is the case when the watched object is deleted."""
         with self._lock:
             if not self.is_active:
                 return
@@ -199,8 +214,11 @@ class InotifyWatchGroup(WatchCallback):
             if not self.is_active:
                 return
             src_path = self._build_event_source_path(event)
+            if src_path is None:
+                return
 
-            # todo look into desired behavior for IN_MOVE_SELF events (keep watching?, stop watching?, are they even possible?)
+            # todo look into desired behavior for IN_MOVE_SELF events
+            #  (keep watching?, stop watching?, are they even possible?)
             if event.is_moved_from:
                 # TODO: When a directory from a watched directory
                 #  is moved into another part of the filesystem, this
@@ -211,12 +229,14 @@ class InotifyWatchGroup(WatchCallback):
                 #  instead relative to this directory. And the respective
                 #  callbacks for the directory and sub directory must be removed.
                 #
-                #  also: hold back all other events for this directory and its subdirectories, until we know whether it is still watched
+                #  also: hold back all other events for this directory and its
+                #  subdirectories, until we know whether it is still watched
                 pass
             elif event.is_moved_to:
                 move_src_path = self._source_for_move(event.cookie)
                 move_dst_path = src_path
-                self._move_watches(move_src_path, move_dst_path)
+                if move_src_path is not None:
+                    self._move_watches(move_src_path, move_dst_path)
                 # TODO: When a directory from another part of the
                 #  filesystem is moved into a watched directory, this
                 #  will not generate events for the directory tree.
@@ -224,16 +244,16 @@ class InotifyWatchGroup(WatchCallback):
                 #  IN_MOVED_TO events which don't pair up with
                 #  IN_MOVED_FROM events should be marked IN_CREATE
                 #  instead relative to this directory.
-            elif event.is_create:
-                if event.is_directory and self.is_recursive:
-                    self._add_all_callbacks(src_path)
+            elif event.is_create and event.is_directory and self.is_recursive:
+                self._add_all_callbacks(src_path)
 
             self._move_event_grouper.put_event(PathedInotifyEvent(event, src_path))
 
             if event.is_create and event.is_directory and self.is_recursive:
                 for sub_event in self._recursive_simulate(src_path):
                     sub_src_path = self._build_event_source_path(sub_event)
-                    self._move_event_grouper.put_event(PathedInotifyEvent(sub_event, sub_src_path))
+                    if sub_src_path is not None:
+                        self._move_event_grouper.put_event(PathedInotifyEvent(sub_event, sub_src_path))
 
     def _recursive_simulate(self, src_path: bytes) -> list[InotifyEvent]:
         # HACK: We need to traverse the directory path recursively and simulate
@@ -281,7 +301,7 @@ class InotifyWatchGroup(WatchCallback):
             return None
         return os.path.join(watched_path, event.name) if event.name else watched_path  # avoid trailing slash
 
-    def _move_watches(self, move_src_path: bytes | None, move_dst_path: bytes) -> None:
+    def _move_watches(self, move_src_path: bytes, move_dst_path: bytes) -> None:
         """moves all watches that are inside the directory move_src_path to move_dst_path"""
         moved_watch = self._active_callbacks_by_path.pop(move_src_path, None)
         if moved_watch is not None:
@@ -346,9 +366,10 @@ class InotifyWatchGroup(WatchCallback):
             self._active_callbacks_by_path[path] = wd2
 
 
-def _select_event_type(dirEvent: Type[FileSystemEvent], fileEvent: Type[FileSystemEvent], is_directory: bool) -> FileSystemEventCtor:
+def _select_event_type(dir_event: type[FileSystemEvent], file_event: type[FileSystemEvent], *, is_directory: bool
+                       ) -> FileSystemEventCtor:
     """selects the correct FileSystemEvent Type based on `is_directory` and returns it."""
-    return cast(FileSystemEventCtor, dirEvent if is_directory else fileEvent)
+    return cast(FileSystemEventCtor, dir_event if is_directory else file_event)
 
 
 class InotifyEmitter(EventEmitter):
@@ -423,7 +444,7 @@ class InotifyEmitter(EventEmitter):
             move_from, move_to = event
             src_path = self._decode_path(move_from.path)
             dest_path = self._decode_path(move_to.path)
-            cls = _select_event_type(DirMovedEvent, FileMovedEvent, move_from.ev.is_directory)
+            cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=move_from.ev.is_directory)
             self.queue_event(cls(src_path, dest_path))
             self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
@@ -432,44 +453,43 @@ class InotifyEmitter(EventEmitter):
                     self.queue_event(sub_moved_event)
         else:
             src_path = self._decode_path(event.path)
-            event = event.ev
-            if event.is_moved_to:
+            if event.ev.is_moved_to:
                 if full_events:
-                    cls = _select_event_type(DirMovedEvent, FileMovedEvent, event.is_directory)
+                    cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
                     self.queue_event(cls("", src_path))
                 else:
-                    cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, event.is_directory)
+                    cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=event.ev.is_directory)
                     self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                if event.is_directory and self.watch.is_recursive:
+                if event.ev.is_directory and self.watch.is_recursive:
                     for sub_created_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_created_event)
-            elif event.is_attrib or event.is_modify:
-                cls = _select_event_type(DirModifiedEvent, FileModifiedEvent, event.is_directory)
+            elif event.ev.is_attrib or event.ev.is_modify:
+                cls = _select_event_type(DirModifiedEvent, FileModifiedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
-            elif event.is_delete or (event.is_moved_from and not full_events):
-                cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, event.is_directory)
+            elif event.ev.is_delete or (event.ev.is_moved_from and not full_events):
+                cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-            elif event.is_moved_from and full_events:
-                cls = _select_event_type(DirMovedEvent, FileMovedEvent, event.is_directory)
+            elif event.ev.is_moved_from and full_events:
+                cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path, ""))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-            elif event.is_create:
-                cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, event.is_directory)
+            elif event.ev.is_create:
+                cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-            elif event.is_delete_self and src_path == self.watch.path:
-                cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, event.is_directory)
+            elif event.ev.is_delete_self and src_path == self.watch.path:
+                cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.stop()
-            elif not event.is_directory:
-                if event.is_open:
+            elif not event.ev.is_directory:
+                if event.ev.is_open:
                     self.queue_event(FileOpenedEvent(src_path))
-                elif event.is_close_write:
+                elif event.ev.is_close_write:
                     self.queue_event(FileClosedEvent(src_path))
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                elif event.is_close_nowrite:
+                elif event.ev.is_close_nowrite:
                     self.queue_event(FileClosedNoWriteEvent(src_path))
 
     def _decode_path(self, path: bytes) -> bytes | str:
@@ -486,27 +506,27 @@ class InotifyEmitter(EventEmitter):
 
         for cls in self._event_filter:
             if cls in {DirMovedEvent, FileMovedEvent}:
-                event_mask |= InotifyConstants.IN_MOVE
+                event_mask = Mask(event_mask | InotifyConstants.IN_MOVE)
             elif cls in {DirCreatedEvent, FileCreatedEvent}:
-                event_mask |= InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE
+                event_mask = Mask(event_mask | InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE)
             elif cls is DirModifiedEvent:
-                event_mask |= (
+                event_mask = Mask(event_mask | (
                     InotifyConstants.IN_MOVE
                     | InotifyConstants.IN_ATTRIB
                     | InotifyConstants.IN_MODIFY
                     | InotifyConstants.IN_CREATE
                     | InotifyConstants.IN_CLOSE_WRITE
-                )
+                ))
             elif cls is FileModifiedEvent:
-                event_mask |= InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY
+                event_mask = Mask(event_mask | InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY)
             elif cls in {DirDeletedEvent, FileDeletedEvent}:
-                event_mask |= InotifyConstants.IN_DELETE
+                event_mask = Mask(event_mask | InotifyConstants.IN_DELETE)
             elif cls is FileClosedEvent:
-                event_mask |= InotifyConstants.IN_CLOSE_WRITE
+                event_mask = Mask(event_mask | InotifyConstants.IN_CLOSE_WRITE)
             elif cls is FileClosedNoWriteEvent:
-                event_mask |= InotifyConstants.IN_CLOSE_NOWRITE
+                event_mask = Mask(event_mask | InotifyConstants.IN_CLOSE_NOWRITE)
             elif cls is FileOpenedEvent:
-                event_mask |= InotifyConstants.IN_OPEN
+                event_mask = Mask(event_mask | InotifyConstants.IN_OPEN)
 
         return event_mask
 
@@ -516,7 +536,7 @@ class InotifyFullEmitter(InotifyEmitter):
     Such move events will have a ``None`` value for the unmatched part.
     """
 
-    def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = True) -> None:  # type: ignore[override]
+    def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = True) -> None:
         super().build_and_queue_event(event, full_events=full_events)
 
 

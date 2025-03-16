@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
-from watchdog.observers.inotify_c import InotifyFD, InotifyConstants, InotifyEvent, WatchDescriptor
+from watchdog.observers.inotify_c import InotifyConstants, InotifyEvent, InotifyFD, WatchDescriptor
 
 if TYPE_CHECKING:
     from .utils import Helper, P, StartWatching, TestEventQueue
@@ -142,11 +142,12 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
                 helper.close()
         finally:
             # reset InotifyFD singleton
-            if inotify_c.InotifyFD._instance.is_alive():
-                inotify_c.InotifyFD._instance.stop()
-                inotify_c.InotifyFD._instance.join()
-            elif not inotify_c.InotifyFD._instance._closed:
-                inotify_c.InotifyFD._instance.close()
+            inotify_fd_instance = inotify_c.InotifyFD._instance  # noqa: SLF001
+            if inotify_fd_instance.is_alive():
+                inotify_fd_instance.stop()
+                inotify_fd_instance.join()
+            elif not inotify_fd_instance._closed:  # noqa: SLF001
+                inotify_fd_instance.close()
 
     assert inotify_fd.last == 3  # Number of directories
     assert inotify_fd.buf == b""  # Didn't miss any event

@@ -13,7 +13,7 @@ import os
 import random
 
 from watchdog.observers.inotify import InotifyWatchGroup
-from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WATCHDOG_ALL_EVENTS, Mask
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS, InotifyConstants, InotifyFD, Mask
 from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
@@ -180,8 +180,8 @@ def test_unmount_watched_directory_filesystem(p):
     # Ensure InotifyBuffer shuts down cleanly without raising an exception
     inotify.deactivate()
     assert not inotify.is_active
-    assert not inotify._active_callbacks_by_watch
-    assert not inotify._active_callbacks_by_watch
+    assert not inotify._active_callbacks_by_watch  # noqa: SLF001
+    assert not inotify._active_callbacks_by_watch  # noqa: SLF001
 
 
 def assert_event(inotify: InotifyWatchGroup, expected_path: str, expected_kind: Mask):
