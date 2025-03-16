@@ -165,7 +165,7 @@ class WatchCallback(Protocol):
         ...
 
 
-@dataclass(slots=True)
+@dataclass
 class Watch:
     """Represents an inotify watch"""
     wd: WatchDescriptor
@@ -523,7 +523,7 @@ class InotifyFD(BaseThread):
 InotifyFD.get_instance()
 
 
-@dataclass(unsafe_hash=True, slots=True, frozen=True)
+@dataclass(unsafe_hash=True, frozen=True)
 class InotifyEvent:
     """Inotify event struct wrapper.
     """
