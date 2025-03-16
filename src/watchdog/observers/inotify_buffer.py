@@ -39,8 +39,8 @@ class InotifyBuffer:
 
     def read_event(self) -> GroupedInotifyEvent | None:
         """Returns a single event or a tuple of from/to events in case of a
-        paired move event. If this buffer has been closed, immediately return
-        None.
+        paired move event. If this buffer has been closed, raise the Closed
+        exception.
         """
         return self._queue.get()
 
