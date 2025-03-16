@@ -200,7 +200,7 @@ class InotifyWatchGroup(WatchCallback):
                 return
             src_path = self._build_event_source_path(event)
 
-            # todo look into desired behavior for IN_MOVE_SELF events (keep watching?, stop watching?)
+            # todo look into desired behavior for IN_MOVE_SELF events (keep watching?, stop watching?, are they even possible?)
             if event.is_moved_from:
                 # TODO: When a directory from a watched directory
                 #  is moved into another part of the filesystem, this
@@ -244,14 +244,12 @@ class InotifyWatchGroup(WatchCallback):
             for dirname in dirnames:
                 full_path = os.path.join(root, dirname)
                 wd_dir = self._active_callbacks_by_path[os.path.dirname(full_path)]
-                # todo handle missing callback because a subfolder has been created between self._add_all_callbacks(src_path) and this line of code.
                 mask = Mask(InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR)
                 events.append(InotifyEvent(wd_dir, mask, 0, dirname))
 
             for filename in filenames:
                 full_path = os.path.join(root, filename)
                 wd_parent_dir = self._active_callbacks_by_path[os.path.dirname(full_path)]
-                # todo handle missing callback because a subfolder has been created between self._add_all_callbacks(src_path) and this line of code.
                 mask = InotifyConstants.IN_CREATE
                 events.append(InotifyEvent(wd_parent_dir, mask, 0, filename))
         return events
@@ -278,7 +276,8 @@ class InotifyWatchGroup(WatchCallback):
 
     def _build_event_source_path(self, event: InotifyEvent) -> bytes | None:
         watched_path = self._active_callbacks_by_watch.get(event.wd)
-        if watched_path is None:  # todo investigate: can we *actually* get events for WatchDescriptor that have already been removed?
+        if watched_path is None:
+            # investigate: can we *actually* get events for a WatchDescriptor that has already been removed?
             return None
         return os.path.join(watched_path, event.name) if event.name else watched_path  # avoid trailing slash
 

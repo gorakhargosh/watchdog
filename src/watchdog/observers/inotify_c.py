@@ -28,17 +28,6 @@ if not hasattr(libc, "inotify_init") or not hasattr(libc, "inotify_add_watch") o
     raise UnsupportedLibcError(error)
 
 
-# ##############################################################################
-# TODOs:
-# - todo use enum.Flag for events & mask.
-# - todo handle watches that do not follow move events
-# - todo fire DirModifiedEvents (?)
-# - todo investigate: inotify does not generate move events for self? (e.g. watch on file F and F gets moved)
-#     observation 1: watch follows the file, but no move event is generated.
-# - todo
-# ##############################################################################
-
-
 WatchDescriptor = NewType("WatchDescriptor", int)
 Mask = NewType("Mask", int)
 
@@ -104,7 +93,7 @@ class InotifyConstants:
     IN_NONBLOCK: ClassVar[Mask] = 0x00004000
 
 
-INOTIFY_ALL_CONSTANTS: dict[str, Mask] = {  # todo remove once mask uses enum.Flags.
+INOTIFY_ALL_CONSTANTS: dict[str, Mask] = {
     name: getattr(InotifyConstants, name)
     for name in dir(InotifyConstants)
     if name.startswith("IN_") and name not in {"IN_ALL_EVENTS", "IN_MOVE"}
@@ -130,7 +119,7 @@ WATCHDOG_ALL_EVENTS: Mask = reduce(
 )
 
 
-def _get_mask_string(mask: int) -> str:  # todo remove once mask uses enum.Flags.
+def _get_mask_string(mask: int) -> str:
     return "|".join(
         name for name, c_val in INOTIFY_ALL_CONSTANTS.items() if mask & c_val
     )
