@@ -82,7 +82,7 @@ from watchdog.events import (
     generate_sub_moved_events,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
-from watchdog.observers.inotify_buffer import InotifyBuffer, GroupedInotifyEvent, PathedInotifyEvent
+from watchdog.observers.inotify_move_event_grouper import InotifyMoveEventGrouper, GroupedInotifyEvent, PathedInotifyEvent
 from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WatchCallback, WATCHDOG_ALL_EVENTS, CallbackId
 
 if TYPE_CHECKING:
@@ -120,7 +120,7 @@ class InotifyWatch(WatchCallback):
     """The event mask for this inotify instance."""
     follow_symlink: bool = field(default=False, kw_only=True)
 
-    _inotify_buffer: InotifyBuffer = field(default_factory=InotifyBuffer, init=False)
+    _move_event_grouper: InotifyMoveEventGrouper = field(default_factory=InotifyMoveEventGrouper, init=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _id: CallbackId = field(init=False)
 
@@ -153,7 +153,7 @@ class InotifyWatch(WatchCallback):
         If the source path is outside the monitored directories, None
         is returned instead.
         """
-        src_event = self._inotify_buffer.get_queued_moved_from_event(cookie)
+        src_event = self._move_event_grouper.get_queued_moved_from_event(cookie)
         if src_event is not None:
             return src_event.path
         return None
@@ -167,7 +167,7 @@ class InotifyWatch(WatchCallback):
         paired move event. If this buffer has been closed, raise the Closed
         exception.
         """
-        return self._inotify_buffer.read_event()
+        return self._move_event_grouper.read_event()
 
     def on_watch_deleted(self, wd: WatchDescriptor) -> None:
         """Called when a watch that ths callback is registered at is removed. This is the case when the watched object is deleted."""
@@ -211,12 +211,12 @@ class InotifyWatch(WatchCallback):
                 if event.is_directory and self.is_recursive:
                     self._add_all_callbacks(src_path)
 
-            self._inotify_buffer.put_event(PathedInotifyEvent(event, src_path))
+            self._move_event_grouper.put_event(PathedInotifyEvent(event, src_path))
 
             if event.is_create and event.is_directory and self.is_recursive:
                 for sub_event in self._recursive_simulate(src_path):
                     sub_src_path = self._build_event_source_path(sub_event)
-                    self._inotify_buffer.put_event(PathedInotifyEvent(sub_event, sub_src_path))
+                    self._move_event_grouper.put_event(PathedInotifyEvent(sub_event, sub_src_path))
 
     def _recursive_simulate(self, src_path: bytes) -> list[InotifyEvent]:
         # HACK: We need to traverse the directory path recursively and simulate
@@ -244,7 +244,7 @@ class InotifyWatch(WatchCallback):
         with self._lock:
             self._is_active = False
             self._remove_callbacks(list(self._active_callbacks_by_watch))
-            self._inotify_buffer.close()
+            self._move_event_grouper.close()
 
     def _activate(self) -> None:
         """Adds a watch (optionally recursively) for the given directory path

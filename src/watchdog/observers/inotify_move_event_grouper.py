@@ -1,5 +1,5 @@
 """:module: watchdog.observers.inotify_buffer
-:synopsis: A wrapper for ``Inotify``.
+:synopsis: queue-like class for ``Inotify`` to group move events.
 :author: thomas.amland@gmail.com (Thomas Amland)
 :author: contact@tiger-222.fr (Mickaël Schoentgen)
 :author: Joachim Coenen <joachimcoenen@icloud.com>
@@ -26,10 +26,10 @@ class PathedInotifyEvent(NamedTuple):
 GroupedInotifyEvent: TypeAlias = PathedInotifyEvent | tuple[PathedInotifyEvent, PathedInotifyEvent]
 
 
-# todo rename to InotifyMoveEventGrouper
-class InotifyBuffer:
-    """A queue-like class for `Inotify` that holds events for `delay` seconds. During
-    this time, IN_MOVED_FROM and IN_MOVED_TO events are paired.
+class InotifyMoveEventGrouper:
+    """A queue-like class for `Inotify` that holds IN_MOVE_FROM events for
+    `delay` seconds. During this time, IN_MOVED_FROM and IN_MOVED_TO events are
+    paired.
     """
 
     delay = 0.5
@@ -59,7 +59,8 @@ class InotifyBuffer:
         self._queue.put(event, delay=should_delay)
 
     def _group_moved_to_event(self, to_event: PathedInotifyEvent) -> GroupedInotifyEvent:
-        """Group any matching move events by check if a matching move_from is in delay queue already"""
+        """Group any matching move events by checking if a matching move_from is
+        in delay queue already and removing it"""
 
         def matching_from_event(event: GroupedInotifyEvent) -> bool:
             return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == to_event.ev.cookie
@@ -72,10 +73,13 @@ class InotifyBuffer:
         return (from_event, to_event) if from_event is not None else to_event
 
     def get_queued_moved_from_event(self, cookie: int) -> PathedInotifyEvent | None:
+        """Finds a queued IN_MOVED_FROM event with the give cookie, but does not
+        remove it."""
         def matching_from_event(event: GroupedInotifyEvent) -> bool:
             return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
 
         return self._queue.find(matching_from_event)
 
     def close(self) -> None:
+        """closes the queue"""
         self._queue.close()

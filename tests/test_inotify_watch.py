@@ -13,7 +13,7 @@ if not platform.is_linux():
 import os
 import random
 
-from watchdog.observers.inotify_buffer import GroupedInotifyEvent, PathedInotifyEvent
+from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
 from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WATCHDOG_ALL_EVENTS
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
