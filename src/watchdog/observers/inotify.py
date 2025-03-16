@@ -43,9 +43,19 @@
     This emitter implementation therefore automatically adds watches for
     sub-directories if running in recursive mode.
 
-    todo:
-     Add centralized 'Problems With inotify' section! (about not knowing when a watch moved, but some recursive InotifyEmitters might get the info for contained files;
-     for sake of consistency and principle of least surprise we try to avoid InotifyEmitters behaving differently depending on the existence of other emitters.
+.. ADMONITION:: Challenges with the inotify API:
+    inotify has some limitations:
+
+    - A watch on a fil/folder is not informed when the file/folder itself or any containing (outer) folders  is moved.
+    - When a file is moved from a watched directory to a different directory, there will only be a IN_MOVE_FROM event for the watch on that directory.
+    - When a file is moved from an unwatched directory to a watched directory, there will only be a IN_MOVE_TO event for the watch on that directory.
+
+    If we were to keep track of the path of watches in InotifyFD, an
+    InotifyWatchGroup would get different events depending on whether there are
+    other InotifyWatchGroups for exactly the right set of paths or not. The same
+    goes for coalescing move events.
+
+    Therefore both things are handled by the InotifyWatchGroups themselves.
     todo:
      Also add a test for that.
 
@@ -100,6 +110,16 @@ class FileSystemEventCtor(Protocol):
 @dataclass
 class InotifyWatchGroup(WatchCallback):
     """Linux inotify(7) API wrapper class.
+
+    Bundles everything needed to watch a file or (possibly recursive) directory.
+    Manages the watches needed and coalesces IN_MOVE_FROM and IN_MOVE_TO events.
+
+    In order to preserve consistency the behavior of one InotifyWatchGroup must
+    be independent of the existence of any other InotifyWatchGroup.
+    Therefore, an InotifyWatchGroup is itself responsible for:
+
+    - keeping track of the actual path a watch watches (including tracking moves, if possible)
+    - coalescing move events.
 
     :param path:
         The directory path for which we want an inotify object.

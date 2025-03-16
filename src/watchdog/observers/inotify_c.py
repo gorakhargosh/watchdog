@@ -209,9 +209,10 @@ class Watch:
 
 
 class InotifyFD(BaseThread):
-    """Linux inotify(7) API wrapper class. Allows adding and removing callbacks
-    to specific inotify watches, keeps track of them and automatically calls the
-    appropriate callbacks for each event.
+    """Linux inotify(7) API wrapper class.
+    Allows adding and removing callbacks to specific inotify watches, keeps
+    track of them, and automatically calls the appropriate callbacks for each
+    event.
 
     Watches are created and removed as needed.
     """
@@ -547,7 +548,7 @@ class InotifyEvent:
     name: bytes
     """Base name of the event source path. might be empty"""
     # src_path: bytes; We cannot set the src_path.
-    # See 'Problems With inotify' section in the module description
+    # See 'Challenges With inotify' section in the description of inotify.py
 
     @property
     def is_modify(self) -> bool:
