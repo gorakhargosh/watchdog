@@ -44,9 +44,7 @@ def test_move_from(p):
 
     inotify = create_inotify_watch(p("dir1").encode())
     mv(p("dir1", "a"), p("dir2", "b"))
-    event = wait_for_move_event(inotify.read_event)
-    assert event.ev.is_moved_from
-    assert event.path == p("dir1", "a").encode()
+    assert_event(inotify, p("dir1", "a"), InotifyConstants.IN_MOVED_FROM)
     inotify.deactivate()
 
 
@@ -58,9 +56,7 @@ def test_move_to(p):
 
     inotify = create_inotify_watch(p("dir2").encode())
     mv(p("dir1", "a"), p("dir2", "b"))
-    event = wait_for_move_event(inotify.read_event)
-    assert event.ev.is_moved_to
-    assert event.path == p("dir2", "b").encode()
+    assert_event(inotify, p("dir2", "b"), InotifyConstants.IN_MOVED_TO)
     inotify.deactivate()
 
 
@@ -245,7 +241,7 @@ def test_watch_groups_are_independent(p):
     inotify_a = create_inotify_watch(original_path.encode())
     inotify_root = create_inotify_watch(p("rootdir").encode(), recursive=True)
     run()
-    assert_inotify_a_events(inotify_a)  # still no move events, and original path for all events
+    assert_inotify_a_events(inotify_a)
     assert_inotify_root_events(inotify_root)
     inotify_root.deactivate()
     inotify_a.deactivate()
