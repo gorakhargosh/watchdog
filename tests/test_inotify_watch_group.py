@@ -4,7 +4,6 @@ from typing import Callable
 
 import pytest
 
-from watchdog.observers.inotify import InotifyWatchGroup
 from watchdog.utils import platform
 
 if not platform.is_linux():
@@ -13,8 +12,9 @@ if not platform.is_linux():
 import os
 import random
 
-from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
+from watchdog.observers.inotify import InotifyWatchGroup
 from watchdog.observers.inotify_c import InotifyConstants, InotifyFD, WATCHDOG_ALL_EVENTS, Mask
+from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
 
