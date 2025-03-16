@@ -97,8 +97,8 @@ class FileSystemEventCtor(Protocol):
         ...
 
 
-@dataclass()
-class InotifyWatch(WatchCallback):
+@dataclass
+class InotifyWatchGroup(WatchCallback):
     """Linux inotify(7) API wrapper class.
 
     :param path:
@@ -108,7 +108,6 @@ class InotifyWatch(WatchCallback):
     :param is_recursive:
         ``True`` if subdirectories should be monitored; ``False`` otherwise.
     """
-    # todo find better name
 
     _inotify_fd: InotifyFD
     """The inotify instance to use"""
@@ -130,7 +129,7 @@ class InotifyWatch(WatchCallback):
     _active_callbacks_by_path: dict[bytes, WatchDescriptor] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
-        self.event_mask = InotifyWatch.build_event_mask(self.event_mask, self.follow_symlink)
+        self.event_mask = InotifyWatchGroup.build_event_mask(self.event_mask, self.follow_symlink)
         self._id = CallbackId(id(self))
         self._activate()
 
@@ -366,12 +365,12 @@ class InotifyEmitter(EventEmitter):
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock: threading.Lock = threading.Lock()
         self._inotify_fd: InotifyFD = inotify_fd if inotify_fd is not None else InotifyFD.get_instance()
-        self._inotify: InotifyWatch | None = None
+        self._inotify: InotifyWatchGroup | None = None
 
     def on_thread_start(self) -> None:
         path = os.fsencode(self.watch.path)
         event_mask = self.get_event_mask_from_filter()
-        self._inotify = InotifyWatch(
+        self._inotify = InotifyWatchGroup(
             self._inotify_fd,
             path,
             is_recursive=self.watch.is_recursive,

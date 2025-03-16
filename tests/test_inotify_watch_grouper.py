@@ -4,7 +4,7 @@ from typing import Callable
 
 import pytest
 
-from watchdog.observers.inotify import InotifyWatch
+from watchdog.observers.inotify import InotifyWatchGroup
 from watchdog.utils import platform
 
 if not platform.is_linux():
@@ -26,8 +26,8 @@ def wait_for_move_event(read_event: Callable[[], GroupedInotifyEvent]) -> Groupe
             return event
 
 
-def create_inotify_watch(path: bytes, *, recursive: bool = False, follow_symlink: bool = False) -> InotifyWatch:
-    return InotifyWatch(
+def create_inotify_watch(path: bytes, *, recursive: bool = False, follow_symlink: bool = False) -> InotifyWatchGroup:
+    return InotifyWatchGroup(
         InotifyFD.get_instance(),
         path,
         is_recursive=recursive,
