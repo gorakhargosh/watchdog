@@ -9,10 +9,13 @@
 from __future__ import annotations
 
 import logging
-from typing import TypeAlias, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, Union
 
 from watchdog.observers.inotify_c import InotifyEvent
 from watchdog.utils.delayed_queue import DelayedQueue
+
+if TYPE_CHECKING:
+    from typing import TypeAlias
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,7 @@ class PathedInotifyEvent(NamedTuple):
     path: bytes
 
 
-GroupedInotifyEvent: TypeAlias = PathedInotifyEvent | tuple[PathedInotifyEvent, PathedInotifyEvent]
+GroupedInotifyEvent: TypeAlias = Union[PathedInotifyEvent | tuple[PathedInotifyEvent, PathedInotifyEvent]]
 
 
 class InotifyMoveEventGrouper:
