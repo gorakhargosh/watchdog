@@ -65,13 +65,30 @@ class DelayedQueue(Generic[T]):
                     self._queue.popleft()
                     return head
 
-    def remove(self, predicate: Callable[[T], bool]) -> T | None:
-        """Remove and return the first items for which predicate is True,
+    def find(self, predicate: Callable[[T], bool]) -> T | None:
+        """return the first item for which predicate is True,
         ignoring delay.
         """
         with self._lock:
-            for i, (elem, *_) in enumerate(self._queue):
-                if predicate(elem):
-                    del self._queue[i]
-                    return elem
+            i_item = self._index_and_item(predicate)
+            return i_item[1] if i_item is not None else None
+
+    def remove(self, predicate: Callable[[T], bool]) -> T | None:
+        """Remove and return the first item for which predicate is True,
+        ignoring delay.
+        """
+        with self._lock:
+            i_item = self._index_and_item(predicate)
+            if i_item is not None:
+                del self._queue[i_item[0]]
+                return i_item[1]
+        return None
+
+    def _index_and_item(self, predicate: Callable[[T], bool]) -> tuple[int, T] | None:
+        """Return the index and value of the first item for which predicate is
+        True, ignoring delay. Returns -1 if nothing is found. Requires a lock.
+        """
+        for i, (elem, *_) in enumerate(self._queue):
+            if predicate(elem):
+                return i, elem
         return None
