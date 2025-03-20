@@ -7,6 +7,8 @@ Watchdog
 |GitHub Build Status|
 |GitHub License|
 
+|Patreon|
+
 Python API and shell utilities to monitor file system events.
 
 Works on 3.9+.
@@ -283,3 +285,5 @@ to do:
    :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
 .. |GitHub License| image:: https://img.shields.io/github/license/gorakhargosh/watchdog.svg
    :target: https://github.com/gorakhargosh/watchdog/blob/master/LICENSE
+.. |Patreon| image:: https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white
+   :target: https://www.patreon.com/mschoentgen
