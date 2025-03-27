@@ -7,7 +7,11 @@ Watchdog
 |GitHub Build Status|
 |GitHub License|
 
-|Patreon|
+.. tip::
+
+    Become **my boss** to help me work on this awesome software, and make the world better:
+
+   |Patreon|
 
 Python API and shell utilities to monitor file system events.
 
