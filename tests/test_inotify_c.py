@@ -178,6 +178,18 @@ def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatc
     event, _ = event_queue.get(timeout=5)
     assert repr(event)
 
+def test_watch_file_move(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+    folder = p()
+    path = p("this_is_a_file")
+    path_moved = p("this_is_a_file2")
+    with open(path, "a"):
+        pass
+    start_watching(path=folder)
+    os.rename(path, path_moved)
+    event, _ = event_queue.get(timeout=5)
+    assert event.src_path == path
+    assert event.dest_path == path_moved
+    assert repr(event)
 
 def test_event_equality(p: P) -> None:
     wd_parent_dir = 42
