@@ -2,8 +2,8 @@
     {
         "watchdog.tricks.LoggerTrick": {
             "patterns": [
-                "*.py",
-                "*.js"
+                "**/*.py",
+                "**/*.js"
             ]
         }
     },
@@ -22,7 +22,7 @@
             "suffix": ".min.js",
             "source_directory": "app/static/js/",
             "hash_names": true,
-            "patterns": ["*.js"],
+            "patterns": ["**/*.js"],
             "destination_directory": "app/public/js/",
             "compilation_level": "advanced",
             "mappings_module": "app/javascript_mappings.json"

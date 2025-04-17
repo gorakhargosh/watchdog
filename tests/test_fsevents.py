@@ -273,7 +273,7 @@ def test_recursive_check_accepts_relative_paths(p: P) -> None:
 
     cwd = os.getcwd()
     os.chdir(p())
-    event_handler = TestEventHandler(patterns=["*.json"], ignore_patterns=[], ignore_directories=True)
+    event_handler = TestEventHandler(patterns=["**/*.json"], ignore_patterns=[], ignore_directories=True)
     observer = Observer()
     observer.schedule(event_handler, ".")
     observer.start()

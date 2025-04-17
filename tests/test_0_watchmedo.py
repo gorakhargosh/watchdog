@@ -324,7 +324,7 @@ def test_tricks_from_file(command, tmp_path):
         """
 tricks:
 - watchdog.tricks.LoggerTrick:
-    patterns: ["*.py", "*.js"]
+    patterns: ["**/*.py", "**/*.js"]
 """
     )
     args = watchmedo.cli.parse_args([command, str(tricks_file)])

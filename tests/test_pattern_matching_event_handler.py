@@ -19,16 +19,16 @@ from watchdog.utils.patterns import filter_paths
 
 path_1 = "/path/xyz"
 path_2 = "/path/abc"
-g_allowed_patterns = ["*.py", "*.txt"]
-g_ignore_patterns = ["*.foo"]
+g_allowed_patterns = ["**/*.py", "**/*.txt"]
+g_ignore_patterns = ["**/*.foo"]
 
 
 def assert_patterns(event):
     paths = [event.src_path, event.dest_path] if hasattr(event, "dest_path") else [event.src_path]
     filtered_paths = filter_paths(
         paths,
-        included_patterns=["*.py", "*.txt"],
-        excluded_patterns=["*.pyc"],
+        included_patterns=["**/*.py", "**/*.txt"],
+        excluded_patterns=["**/*.pyc"],
         case_sensitive=False,
     )
     assert filtered_paths
@@ -36,8 +36,8 @@ def assert_patterns(event):
 
 def test_dispatch():
     # Utilities.
-    patterns = ["*.py", "*.txt"]
-    ignore_patterns = ["*.pyc"]
+    patterns = ["**/*.py", "**/*.txt"]
+    ignore_patterns = ["**/*.pyc"]
 
     dir_del_event_match = DirDeletedEvent("/path/blah.py")
     dir_del_event_not_match = DirDeletedEvent("/path/foobar")

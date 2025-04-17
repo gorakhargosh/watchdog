@@ -62,7 +62,7 @@ ignoring all directory events:
 .. code-block:: bash
 
     watchmedo log \
-        --patterns='*.py;*.txt' \
+        --patterns='**/*.py;**/*.txt' \
         --ignore-directories \
         --recursive \
         --verbose \
@@ -74,7 +74,7 @@ response to events:
 .. code-block:: bash
 
     watchmedo shell-command \
-        --patterns='*.py;*.txt' \
+        --patterns='**/*.py;**/*.txt' \
         --recursive \
         --command='echo "${watch_src_path}"' \
         .
@@ -101,9 +101,9 @@ An example ``tricks.yaml`` file:
 
     tricks:
     - watchdog.tricks.LoggerTrick:
-        patterns: ["*.py", "*.js"]
+        patterns: ["**/*.py", "**/*.js"]
     - watchmedo_webtricks.GoogleClosureTrick:
-        patterns: ['*.js']
+        patterns: ['**/*.js']
         hash_names: true
         mappings_format: json                  # json|yaml|python
         mappings_module: app/javascript_mappings

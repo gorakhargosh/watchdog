@@ -11,6 +11,10 @@ Changelog
 - Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
 - Thanks to our beloved contributors: @BoboTiG, @tybug
 
+**Breaking Changes**
+
+- Fix #798 by changing pattern matching from using `path.match` to `path.full_match` Users must update patterns to glob like syntax. E.g., `*.py` to `**/*.py`.
+
 6.0.0
 ~~~~~
 
