@@ -14,11 +14,41 @@ from __future__ import annotations
 #   - `PureWindowsPath` is always case-insensitive.
 #   - `PurePosixPath` is always case-sensitive.
 # Reference: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.match
-from pathlib import PurePosixPath, PureWindowsPath
+import re
+from pathlib import PurePath, PurePosixPath, PureWindowsPath
 from typing import TYPE_CHECKING
+
+from watchdog.utils.backwards_compat import translate  # type: ignore[attr-defined]
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+
+def _get_sep(path: PurePath) -> str:
+    """
+    Python < 3.13 doesn't have a clean way to expose the path separator
+    It's either this, or make use of `path._flavour.sep`
+    """
+    if isinstance(path, PureWindowsPath):
+        return "\\"
+    if isinstance(path, PurePosixPath):
+        return "/"
+    raise TypeError("Unsupported")
+
+
+def _full_match(path: PurePath, pattern: str) -> bool:
+    try:
+        return path.full_match(pattern)
+    except AttributeError:
+        # Replicate for python <3.13
+        # Please remove this, backwards_compat.py, and python license attributions
+        # if/when we can pin a release to python >= 3.13
+        # Construct a pathlib object using the same class as the path to get the
+        # same pattern path separater when constructing the regex
+        normalized_pattern = str(type(path)(pattern))
+        regex = translate(normalized_pattern, recursive=True, include_hidden=True, seps=_get_sep(path))
+        reobj = re.compile(regex)
+        return bool(reobj.match(str(path)))
 
 
 def _match_path(
@@ -42,7 +72,9 @@ def _match_path(
         error = f"conflicting patterns `{common_patterns}` included and excluded"
         raise ValueError(error)
 
-    return any(path.match(p) for p in included_patterns) and not any(path.match(p) for p in excluded_patterns)
+    return any(_full_match(path, p) for p in included_patterns) and not any(
+        _full_match(path, p) for p in excluded_patterns
+    )
 
 
 def filter_paths(
@@ -59,7 +91,7 @@ def filter_paths(
         ignored patterns.
     :param included_patterns:
         Allow filenames matching wildcard patterns specified in this list.
-        If no pattern list is specified, ["*"] is used as the default pattern,
+        If no pattern list is specified, ["**"] is used as the default pattern,
         which matches all files.
     :param excluded_patterns:
         Ignores filenames matching wildcard patterns specified in this list.
@@ -70,7 +102,7 @@ def filter_paths(
         A list of pathnames that matched the allowable patterns and passed
         through the ignored patterns.
     """
-    included = set(["*"] if included_patterns is None else included_patterns)
+    included = set(["**"] if included_patterns is None else included_patterns)
     excluded = set([] if excluded_patterns is None else excluded_patterns)
 
     for path in paths:
