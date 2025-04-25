@@ -1,7 +1,7 @@
 """:module: watchdog.utils
 :synopsis: Utility classes and functions.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Classes
 -------

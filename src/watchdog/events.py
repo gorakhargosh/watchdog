@@ -1,7 +1,7 @@
 """:module: watchdog.events
 :synopsis: File system events and event handlers.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Event Classes
 -------------

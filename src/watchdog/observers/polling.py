@@ -1,7 +1,7 @@
 """:module: watchdog.observers.polling
 :synopsis: Polling emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Classes
 -------

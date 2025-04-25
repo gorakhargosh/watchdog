@@ -2,7 +2,7 @@
 :module: tests.shell
 :synopsis: Common shell operations for testing.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 """
 
 from __future__ import annotations

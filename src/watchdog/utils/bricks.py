@@ -4,7 +4,7 @@
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: lalinsky@gmail.com (Lukáš Lalinský)
 :author: python@rcn.com (Raymond Hettinger)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Classes
 =======

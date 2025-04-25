@@ -2,7 +2,7 @@
 :synopsis: Common wildcard searching/filtering functionality for files.
 :author: boris.staletic@gmail.com (Boris Staletic)
 :author: yesudeep@gmail.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 """
 
 from __future__ import annotations

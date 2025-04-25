@@ -1,17 +1,17 @@
 """:module: watchdog.utils.dirsnapshot
 :synopsis: Directory snapshots and comparison.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 .. ADMONITION:: Where are the moved events? They "disappeared"
 
-        This implementation does not take partition boundaries
-        into consideration. It will only work when the directory
-        tree is entirely on the same file system. More specifically,
-        any part of the code that depends on inode numbers can
-        break if partition boundaries are crossed. In these cases,
-        the snapshot diff will represent file/directory movement as
-        created and deleted events.
+    This implementation does not take partition boundaries
+    into consideration. It will only work when the directory
+    tree is entirely on the same file system. More specifically,
+    any part of the code that depends on inode numbers can
+    break if partition boundaries are crossed. In these cases,
+    the snapshot diff will represent file/directory movement as
+    created and deleted events.
 
 Classes
 -------

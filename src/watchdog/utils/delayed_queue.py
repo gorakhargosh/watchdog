@@ -1,6 +1,6 @@
 """:module: watchdog.utils.delayed_queue
 :author: thomas.amland@gmail.com (Thomas Amland)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 """
 
 from __future__ import annotations

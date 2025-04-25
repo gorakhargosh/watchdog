@@ -1,7 +1,7 @@
 """:module: watchdog.observers.inotify_buffer
 :synopsis: queue-like class for ``Inotify`` to group move events.
 :author: thomas.amland@gmail.com (Thomas Amland)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 :author: Joachim Coenen <joachimcoenen@icloud.com>
 :platforms: linux 2.6.13+
 """

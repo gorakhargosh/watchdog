@@ -3,26 +3,32 @@
 Changelog
 ---------
 
-6.0.1-dev
+7.0.0-dev
 ~~~~~~~~~
 
 202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v6.0.0...HEAD>`__
 
-- Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
-- [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
-- [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
-- Thanks to our beloved contributors: @BoboTiG, @tybug
-
 **Breaking Changes**
 
-- Fix #798 by changing pattern matching from using `path.match` to `path.full_match` Users must update patterns to glob like syntax. E.g., `*.py` to `**/*.py`.
+- [core] Changed pattern matching mechanism from using ``path.match()`` to ``path.full_match()``. Users must update patterns to glob-like syntax: e.g., `*.py` to `**/*.py`. (`#1101 <https://github.com/gorakhargosh/watchdog/pull/1101>`__)
+
+**Other Changes**
+
+- [core] Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
+- [core] Add support for the ``follow_symlink`` keyword argument to ``ObservedWatch``. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
+- [fsevents] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
+- [inotify] Reduce number of created inotify instance. (`#1099 <https://github.com/gorakhargosh/watchdog/pull/1099>`__)
+- [inotify] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
+- [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
+- [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
+- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen
 
 6.0.0
 ~~~~~
 
 2024-11-01 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.3...v6.0.0>`__
 
-- Pin test dependecies.
+- Pin test dependencies.
 - [docs] Add typing info to quick start. (`#1082 <https://github.com/gorakhargosh/watchdog/pull/1082>`__)
 - [inotify] Use of ``select.poll()`` instead of deprecated ``select.select()``, if available. (`#1078 <https://github.com/gorakhargosh/watchdog/pull/1078>`__)
 - [inotify] Fix reading inotify file descriptor after closing it. (`#1081 <https://github.com/gorakhargosh/watchdog/pull/1081>`__)

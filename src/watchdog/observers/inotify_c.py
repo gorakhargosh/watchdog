@@ -288,7 +288,7 @@ class InotifyFD(BaseThread):
 
         Implementation Note:
         This does not use the path to identify a watch, because the _actual_
-        path of a watch can change if the watched fil/folder is moved.
+        path of a watch can change if the watched file/folder is moved.
 
         :param callbacks:
             a list of (WatchDescriptor, callback id)-tuples for each of which

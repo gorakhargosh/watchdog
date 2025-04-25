@@ -5,7 +5,7 @@
 :author: ryan@rfk.id.au (Ryan Kelly)
 :author: yesudeep@gmail.com (Yesudeep Mangalapilly)
 :author: thomas.amland@gmail.com (Thomas Amland)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 :platforms: windows
 """
 

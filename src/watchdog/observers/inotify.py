@@ -4,7 +4,7 @@
 :author: Luke McCarthy <luke@iogopro.co.uk>
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: Tim Cuthbertson <tim+github@gfxmonk.net>
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 :author: Joachim Coenen <joachimcoenen@icloud.com>
 :platforms: Linux 2.6.13+.
 
@@ -46,7 +46,7 @@
 .. ADMONITION:: Challenges with the inotify API:
     inotify has some limitations:
 
-    - A watch on a fil/folder is not informed when the file/folder itself or any containing (outer) folders  is moved.
+    - A watch on a file/folder is not informed when the file/folder itself or any containing (outer) folders  is moved.
     - When a file is moved from a watched directory to a different directory, there will only be an IN_MOVE_FROM event
       for the watch on that directory.
     - When a file is moved from an unwatched directory to a watched directory, there will only be an IN_MOVE_TO event
