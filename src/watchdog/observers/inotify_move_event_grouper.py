@@ -28,7 +28,7 @@ class PathedInotifyEvent(NamedTuple):
     path: bytes
 
 
-GroupedInotifyEvent: TypeAlias = Union[PathedInotifyEvent | tuple[PathedInotifyEvent, PathedInotifyEvent]]
+GroupedInotifyEvent: TypeAlias = Union[PathedInotifyEvent, tuple[PathedInotifyEvent, PathedInotifyEvent]]
 
 
 class InotifyMoveEventGrouper:
