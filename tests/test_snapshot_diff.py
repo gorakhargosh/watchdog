@@ -210,6 +210,7 @@ def test_empty_snapshot(p):
     mkdir(p("b", "c"), parents=True)
     ref = DirectorySnapshot(p(""))
     empty = EmptyDirectorySnapshot()
+    assert repr(empty) == "{}"
 
     diff = DirectorySnapshotDiff(empty, ref)
     assert diff.files_created == [p("a")]

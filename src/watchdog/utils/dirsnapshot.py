@@ -401,7 +401,7 @@ class EmptyDirectorySnapshot(DirectorySnapshot):
     """
 
     def __init__(self) -> None:
-        pass
+        self._stat_info: dict[bytes | str, os.stat_result] = {}
 
     @staticmethod
     def path(_: Any) -> None:
