@@ -33,11 +33,13 @@ Mask = NewType("Mask", int)
 
 inotify_add_watch = cast(
     Callable[[int, bytes, int], WatchDescriptor],
-    ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc)))
+    ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc)),
+)
 
 inotify_rm_watch = cast(
     Callable[[int, WatchDescriptor], int],
-    ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc)))
+    ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc)),
+)
 
 inotify_init = cast(Callable[[], int], ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc)))
 
@@ -124,9 +126,7 @@ WATCHDOG_ALL_EVENTS: Mask = reduce(
 
 
 def _get_mask_string(mask: int) -> str:
-    return "|".join(
-        name for name, c_val in INOTIFY_ALL_CONSTANTS.items() if mask & c_val
-    )
+    return "|".join(name for name, c_val in INOTIFY_ALL_CONSTANTS.items() if mask & c_val)
 
 
 class InotifyEventStruct(ctypes.Structure):
@@ -173,6 +173,7 @@ class WatchCallback(Protocol):
 @dataclass
 class Watch:
     """Represents an inotify watch"""
+
     wd: WatchDescriptor
     """the inotify watch descriptor"""
     mask: Mask
@@ -194,11 +195,13 @@ class Watch:
         return bool(self.callbacks)
 
     def short_str(self) -> str:
-        contents = ", ".join([
-            f"wd={self.wd}",
-            f"mask={_get_mask_string(self.mask)}",
-            f"_initial_creation_path={self._initial_creation_path!r}",
-        ])
+        contents = ", ".join(
+            [
+                f"wd={self.wd}",
+                f"mask={_get_mask_string(self.mask)}",
+                f"_initial_creation_path={self._initial_creation_path!r}",
+            ]
+        )
         return f"<{type(self).__name__}: {contents}>"
 
 
@@ -522,7 +525,7 @@ class InotifyFD(BaseThread):
         i = 0
         while i + 16 <= len(event_buffer):
             wd, mask, cookie, length = struct.unpack_from("iIII", event_buffer, i)
-            name = event_buffer[i + 16: i + 16 + length].rstrip(b"\0")
+            name = event_buffer[i + 16 : i + 16 + length].rstrip(b"\0")
             i += 16 + length
             yield wd, mask, cookie, name
 
@@ -533,8 +536,7 @@ InotifyFD.get_instance()
 
 @dataclass(unsafe_hash=True, frozen=True)
 class InotifyEvent:
-    """Inotify event struct wrapper.
-    """
+    """Inotify event struct wrapper."""
 
     wd: WatchDescriptor
     """Watch descriptor"""
@@ -611,10 +613,12 @@ class InotifyEvent:
         return self.is_delete_self or self.is_move_self or self.mask & InotifyConstants.IN_ISDIR > 0
 
     def __repr__(self) -> str:
-        contents = ", ".join([
-            f"wd={self.wd}",
-            f"mask={_get_mask_string(self.mask)}",
-            f"cookie={self.cookie}",
-            f"name={os.fsdecode(self.name)!r}",
-        ])
+        contents = ", ".join(
+            [
+                f"wd={self.wd}",
+                f"mask={_get_mask_string(self.mask)}",
+                f"cookie={self.cookie}",
+                f"name={os.fsdecode(self.name)!r}",
+            ]
+        )
         return f"<{type(self).__name__}: {contents}>"

@@ -38,7 +38,7 @@ def _get_sep(path: PurePath) -> str:
 
 def _full_match(path: PurePath, pattern: str) -> bool:
     try:
-        return path.full_match(pattern)
+        return path.full_match(pattern)  # type: ignore[attr-defined]
     except AttributeError:
         # Replicate for python <3.13
         # Please remove this, backwards_compat.py, and python license attributions

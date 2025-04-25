@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class PathedInotifyEvent(NamedTuple):
     """An InotifyEvent and its full source path"""
+
     ev: InotifyEvent
     path: bytes
 
@@ -79,6 +80,7 @@ class InotifyMoveEventGrouper:
     def get_queued_moved_from_event(self, cookie: int) -> PathedInotifyEvent | None:
         """Finds a queued IN_MOVED_FROM event with the give cookie, but does not
         remove it."""
+
         def matching_from_event(event: GroupedInotifyEvent) -> bool:
             return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
 

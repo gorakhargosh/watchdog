@@ -32,7 +32,7 @@ def create_inotify_watch(path: bytes, *, recursive: bool = False, follow_symlink
         path,
         is_recursive=recursive,
         follow_symlink=follow_symlink,
-        event_mask=WATCHDOG_ALL_EVENTS
+        event_mask=WATCHDOG_ALL_EVENTS,
     )
 
 
@@ -246,6 +246,3 @@ def test_watch_groups_are_independent(p):
     inotify_root.deactivate()
     inotify_a.deactivate()
     cleanup()
-
-
-

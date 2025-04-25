@@ -115,8 +115,7 @@ logger = logging.getLogger(__name__)
 
 
 class FileSystemEventCtor(Protocol):
-    def __call__(self, src_path: bytes | str, dest_path: bytes | str = "") -> FileSystemEvent:
-        ...
+    def __call__(self, src_path: bytes | str, dest_path: bytes | str = "") -> FileSystemEvent: ...
 
 
 @dataclass
@@ -366,8 +365,12 @@ class InotifyWatchGroup(WatchCallback):
             self._active_callbacks_by_path[path] = wd2
 
 
-def _select_event_type(dir_event: type[FileSystemEvent], file_event: type[FileSystemEvent], *, is_directory: bool
-                       ) -> FileSystemEventCtor:
+def _select_event_type(
+    dir_event: type[FileSystemEvent],
+    file_event: type[FileSystemEvent],
+    *,
+    is_directory: bool,
+) -> FileSystemEventCtor:
     """selects the correct FileSystemEvent Type based on `is_directory` and returns it."""
     return cast(FileSystemEventCtor, dir_event if is_directory else file_event)
 
@@ -398,7 +401,7 @@ class InotifyEmitter(EventEmitter):
         *,
         timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
-        inotify_fd: InotifyFD | None = None
+        inotify_fd: InotifyFD | None = None,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock: threading.Lock = threading.Lock()
@@ -413,7 +416,7 @@ class InotifyEmitter(EventEmitter):
             path,
             is_recursive=self.watch.is_recursive,
             event_mask=event_mask,
-            follow_symlink=self.watch.follow_symlink
+            follow_symlink=self.watch.follow_symlink,
         )
 
     def on_thread_stop(self) -> None:
@@ -510,13 +513,16 @@ class InotifyEmitter(EventEmitter):
             elif cls in {DirCreatedEvent, FileCreatedEvent}:
                 event_mask = Mask(event_mask | InotifyConstants.IN_MOVE | InotifyConstants.IN_CREATE)
             elif cls is DirModifiedEvent:
-                event_mask = Mask(event_mask | (
-                    InotifyConstants.IN_MOVE
-                    | InotifyConstants.IN_ATTRIB
-                    | InotifyConstants.IN_MODIFY
-                    | InotifyConstants.IN_CREATE
-                    | InotifyConstants.IN_CLOSE_WRITE
-                ))
+                event_mask = Mask(
+                    event_mask
+                    | (
+                        InotifyConstants.IN_MOVE
+                        | InotifyConstants.IN_ATTRIB
+                        | InotifyConstants.IN_MODIFY
+                        | InotifyConstants.IN_CREATE
+                        | InotifyConstants.IN_CLOSE_WRITE
+                    )
+                )
             elif cls is FileModifiedEvent:
                 event_mask = Mask(event_mask | InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY)
             elif cls in {DirDeletedEvent, FileDeletedEvent}:
