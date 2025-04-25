@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
-from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
+from watchdog.observers.inotify_c import InotifyConstants, InotifyEvent, InotifyFD, WatchDescriptor
 
 if TYPE_CHECKING:
     from .utils import Helper, P, StartWatching, TestEventQueue
@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def struct_inotify(wd, mask, cookie=0, length=0, name=b""):
+def struct_inotify(wd, mask, cookie=0, length=0, name=b"") -> bytes:
     assert len(name) <= length
     struct_format = (
         "="  # (native endianness, standard sizes)
@@ -45,11 +45,12 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     inotify_fd = type("FD", (object,), {})()
     inotify_fd.last = 0
     inotify_fd.wds = []
+    inotify_fd.buf = b""
 
     const = InotifyConstants()
 
     # CREATE DELETE CREATE DELETE DELETE_SELF IGNORE DELETE_SELF IGNORE
-    inotify_fd.buf = (
+    inotify_fd_buf = (
         struct_inotify(wd=1, mask=const.IN_CREATE | const.IN_ISDIR, length=16, name=b"subdir1")
         + struct_inotify(wd=1, mask=const.IN_DELETE | const.IN_ISDIR, length=16, name=b"subdir1")
     ) * 2 + (
@@ -122,18 +123,31 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     mock5 = patch.object(inotify_c, "inotify_rm_watch", new=inotify_rm_watch)
     mock6 = patch.object(select, "select", new=fakeselect)
     mock7 = patch.object(select, "poll", new=Fakepoll)
+    mock8 = patch.object(inotify_c.InotifyFD, "_instance", new=None)
 
-    with mock1, mock2, mock3, mock4, mock5, mock6, mock7:
-        start_watching(path=p(""))
-        # Watchdog Events
-        for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:
-            event = event_queue.get(timeout=5)[0]
-            assert isinstance(event, evt_cls)
-            assert event.src_path == p("subdir1")
-            event = event_queue.get(timeout=5)[0]
-            assert isinstance(event, DirModifiedEvent)
-            assert event.src_path == p("").rstrip(os.path.sep)
-        helper.close()
+    with mock1, mock2, mock3, mock4, mock5, mock6, mock7, mock8:
+        try:
+            try:
+                start_watching(path=p(""))
+                inotify_fd.buf = inotify_fd_buf
+                # Watchdog Events
+                for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:
+                    event = event_queue.get(timeout=5)[0]
+                    assert isinstance(event, evt_cls)
+                    assert event.src_path == p("subdir1")
+                    event = event_queue.get(timeout=5)[0]
+                    assert isinstance(event, DirModifiedEvent)
+                    assert event.src_path == p("").rstrip(os.path.sep)
+            finally:
+                helper.close()
+        finally:
+            # reset InotifyFD singleton
+            inotify_fd_instance = inotify_c.InotifyFD._instance  # noqa: SLF001
+            if inotify_fd_instance.is_alive():
+                inotify_fd_instance.stop()
+                inotify_fd_instance.join()
+            elif not inotify_fd_instance._closed:  # noqa: SLF001
+                inotify_fd_instance.close()
 
     assert inotify_fd.last == 3  # Number of directories
     assert inotify_fd.buf == b""  # Didn't miss any event
@@ -151,7 +165,7 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 )
 def test_raise_error(error, pattern):
     with patch.object(ctypes, "get_errno", new=lambda: error), pytest.raises(OSError, match=pattern) as exc:
-        Inotify._raise_error()  # noqa: SLF001
+        InotifyFD._raise_error()  # noqa: SLF001
     assert exc.value.errno == error
 
 
@@ -180,12 +194,11 @@ def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatc
 
 
 def test_event_equality(p: P) -> None:
-    wd_parent_dir = 42
-    filename = "file.ext"
-    full_path = p(filename)
-    event1 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
-    event2 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
-    event3 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_ACCESS, 0, filename, full_path)
+    wd_parent_dir = WatchDescriptor(42)
+    filename = b"file.ext"
+    event1 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename)
+    event2 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename)
+    event3 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_ACCESS, 0, filename)
     assert event1 == event2
     assert event1 != event3
     assert event2 != event3
