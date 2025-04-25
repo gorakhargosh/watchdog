@@ -144,11 +144,11 @@ class InotifyWatchGroup(WatchCallback):
     """The inotify instance to use"""
     path: bytes
     """Whether we are watching directories recursively."""
-    event_mask: Mask = field(kw_only=True)
+    event_mask: Mask = field(default=Mask(0))
     """The path associated with the inotify instance."""
-    is_recursive: bool = field(default=False, kw_only=True)
+    is_recursive: bool = False
     """The event mask for this inotify instance."""
-    follow_symlink: bool = field(default=False, kw_only=True)
+    follow_symlink: bool = False
 
     _move_event_grouper: InotifyMoveEventGrouper = field(default_factory=InotifyMoveEventGrouper, init=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
