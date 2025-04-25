@@ -153,6 +153,9 @@ class DirectorySnapshotDiff:
             len(self._dirs_moved),
         )
 
+    def __len__(self) -> int:
+        return sum(len(getattr(self, attr)) for attr in dir(self) if attr.startswith(("_dirs_", "_files_")))
+
     @property
     def files_created(self) -> list[bytes | str]:
         """List of files that were created."""

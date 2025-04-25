@@ -10,6 +10,7 @@ Changelog
 
 - Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
 - [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
+- [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
 - Thanks to our beloved contributors: @BoboTiG, @tybug
 
 **Breaking Changes**
