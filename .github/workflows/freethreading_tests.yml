@@ -12,21 +12,18 @@ jobs:
             matrix: linux
             emoji: 🐧
             runs-on: [ubuntu-latest]
-          - name: macOS
+          - name: macOS intel
             matrix: macos
             emoji: 🍎
-            runs-on: [macos-latest]
+            runs-on: [macos-13]
+          - name: macOS silicon
+            matrix: macos
+            emoji: 🍎
+            runs-on: [macos-14]
           - name: Windows
             matrix: windows
             emoji: 🪟
             runs-on: [windows-latest]
-        exclude:
-          - os:
-              matrix: macos
-            python: "pypy-3.13t"
-          - os:
-              matrix: windows
-            python: "pypy-3.13t"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv and set the python version
