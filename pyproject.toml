@@ -1,3 +1,15 @@
+[build-system]
+requires = [
+    # Pin to an older setuptools version for PyPy only, due to pypa/distutils#283
+    "setuptools; platform_python_implementation != 'PyPy'",
+    "setuptools<72.2; platform_python_implementation == 'PyPy'",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+enable = ["cpython-freethreading"]
+skip = "*t*_i686"
+
 [tool.coverage.report]
 exclude_also = [
     "if TYPE_CHECKING:",
