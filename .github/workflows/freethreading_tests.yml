@@ -32,16 +32,17 @@ jobs:
           version: "0.7.2"
           python-version: 3.13t
           enable-cache: false
+      - name: Disable Coverage
+        run: |
+          perl -i -ne 'print unless /--cov/' pyproject.toml
       - name: Set up Python
         run: uv python install
       - name: Install Dependencies
         run: |
-          uv pip install pytest-timeout pytest-run-parallel
+          uv pip install pytest-timeout pytest-run-parallel flaky
       - name: Editable build
         run: |
           uv pip install -v -e .
       - name: Run Tests
         run: |
-          set -xe
-          uv run --no-project python -m pytest --parallel-threads=2 --iterations=2 -v -s \
-                 --timeout=600 --durations=10 -m "not thread_unsafe"
+          uv run --no-project python -m pytest --parallel-threads=2 --iterations=2 -v -s --timeout=600 --durations=10 -m "not thread_unsafe"
