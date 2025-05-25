@@ -47,7 +47,7 @@ def emitter(event_queue):
     em.stop()
     em.join(5)
 
-
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test___init__(event_queue, emitter):
     sleep(SLEEP_TIME)
     mkdir(p("project"))
@@ -130,6 +130,7 @@ def test___init__(event_queue, emitter):
     assert expected == got
 
 
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_delete_watched_dir(event_queue, emitter):
     rm(p(""), recursive=True)
 

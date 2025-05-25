@@ -169,6 +169,7 @@ def test_raise_error(error, pattern):
     assert exc.value.errno == error
 
 
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     """
     Inotify can construct an event for a path containing non-ASCII.
@@ -204,6 +205,7 @@ def test_event_equality(p: P) -> None:
     assert event2 != event3
 
 
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_select_fd(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     # We open a file 2048 times to ensure that we exhaust 1024 file
     # descriptors, the limit of a select() call.

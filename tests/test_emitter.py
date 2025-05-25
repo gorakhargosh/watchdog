@@ -45,6 +45,7 @@ def rerun_filter(exc, *args):
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     start_watching()
     open(p("a"), "a").close()
@@ -65,6 +66,7 @@ def test_create(p: P, event_queue: TestEventQueue, start_watching: StartWatching
 
 @pytest.mark.skipif(not platform.is_linux(), reason="FileClosed*Event only supported in GNU/Linux")
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_closed(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     with open(p("a"), "a"):
         start_watching()
@@ -97,6 +99,7 @@ def test_closed(p: P, event_queue: TestEventQueue, start_watching: StartWatching
     platform.is_darwin() or platform.is_windows(),
     reason="Windows and macOS enforce proper encoding",
 )
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_create_wrong_encoding(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     start_watching()
     open(p("a_\udce4"), "a").close()
@@ -112,6 +115,7 @@ def test_create_wrong_encoding(p: P, event_queue: TestEventQueue, start_watching
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_delete(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkfile(p("a"))
 
@@ -125,6 +129,7 @@ def test_delete(p: P, start_watching: StartWatching, expect_event: ExpectEvent) 
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_modify(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkfile(p("a"))
     start_watching()
@@ -160,6 +165,7 @@ def test_chmod(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move(p: P, event_queue: TestEventQueue, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -189,6 +195,7 @@ def test_move(p: P, event_queue: TestEventQueue, start_watching: StartWatching, 
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_case_change(
     p: P,
     event_queue: TestEventQueue,
@@ -223,6 +230,7 @@ def test_case_change(
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_to(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -238,6 +246,7 @@ def test_move_to(p: P, start_watching: StartWatching, expect_event: ExpectEvent)
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_to_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -252,6 +261,7 @@ def test_move_to_full(p: P, event_queue: TestEventQueue, start_watching: StartWa
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_from(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -267,6 +277,7 @@ def test_move_from(p: P, start_watching: StartWatching, expect_event: ExpectEven
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_from_full(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -281,6 +292,7 @@ def test_move_from_full(p: P, event_queue: TestEventQueue, start_watching: Start
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_separate_consecutive_moves(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     mkfile(p("dir1", "a"))
@@ -322,6 +334,7 @@ def test_delete_self(p: P, start_watching: StartWatching, expect_event: ExpectEv
     platform.is_windows() or platform.is_bsd(),
     reason="Windows|BSD create another set of events for this test",
 )
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_fast_subdirectory_creation_deletion(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     root_dir = p("dir1")
     sub_dir = p("dir1", "subdir1")
@@ -373,6 +386,7 @@ def test_passing_bytes_should_give_bytes(p: P, event_queue: TestEventQueue, star
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_recursive_on(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     mkdir(p("dir1", "dir2", "dir3"), parents=True)
     start_watching()
@@ -399,6 +413,7 @@ def test_recursive_on(p: P, event_queue: TestEventQueue, start_watching: StartWa
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_recursive_off(
     p: P,
     event_queue: TestEventQueue,
@@ -443,6 +458,7 @@ def test_recursive_off(
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_renaming_top_level_directory(
     p: P,
     event_queue: TestEventQueue,
@@ -495,6 +511,7 @@ def test_renaming_top_level_directory(
 
 
 @pytest.mark.skipif(platform.is_windows(), reason="Windows create another set of events for this test")
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_nested_subdirectories(
     p: P,
     event_queue: TestEventQueue,
@@ -584,6 +601,7 @@ def test_move_nested_subdirectories_on_windows(
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 @pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_file_lifecyle(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     start_watching()
 
