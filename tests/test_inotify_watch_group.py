@@ -174,6 +174,7 @@ def test_delete_watched_directory_symlink_followed_recursive(p):
 
 @pytest.mark.timeout(5)
 @pytest.mark.skipif("GITHUB_REF" not in os.environ, reason="sudo password prompt")
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_unmount_watched_directory_filesystem(p):
     mkdir(p("dir1"))
     mount_tmpfs(p("dir1"))

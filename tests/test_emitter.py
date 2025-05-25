@@ -150,6 +150,7 @@ def test_modify(p: P, event_queue: TestEventQueue, start_watching: StartWatching
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_chmod(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkfile(p("a"))
     start_watching()
@@ -321,6 +322,7 @@ def test_separate_consecutive_moves(p: P, start_watching: StartWatching, expect_
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
 @pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_delete_self(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
     mkdir(p("dir1"))
     emitter = start_watching(path=p("dir1"))
@@ -367,6 +369,7 @@ def test_fast_subdirectory_creation_deletion(p: P, event_queue: TestEventQueue, 
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1, rerun_filter=rerun_filter)
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_passing_unicode_should_give_unicode(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     start_watching(path=str(p()))
     mkfile(p("a"))
@@ -556,6 +559,7 @@ def test_move_nested_subdirectories(
     not platform.is_windows(),
     reason="Non-Windows create another set of events for this test",
 )
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_nested_subdirectories_on_windows(
     p: P,
     event_queue: TestEventQueue,

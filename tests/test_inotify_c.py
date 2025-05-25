@@ -41,6 +41,7 @@ def struct_inotify(wd, mask, cookie=0, length=0, name=b"") -> bytes:
     return struct.pack(struct_format, wd, mask, cookie, length, name)
 
 
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     inotify_fd = type("FD", (object,), {})()
     inotify_fd.last = 0
