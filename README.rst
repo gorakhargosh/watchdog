@@ -195,6 +195,11 @@ not a very scalable way to monitor a deeply nested
 directory of files and directories with a large number of
 files.
 
+Free threaded support
+---------------------
+
+`watchdog` has support for being built and run under free-threaded CPython. However, a full thread saftey audit has not been completed, in particular this affects the `macOS FSEvents` interface.
+
 About using watchdog with editors like Vim
 ------------------------------------------
 

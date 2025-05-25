@@ -47,6 +47,7 @@ def emitter(event_queue):
     em.stop()
 
 
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test___init__(event_queue, emitter):
     emitter.start()
     sleep(SLEEP_TIME)
@@ -81,6 +82,7 @@ def test___init__(event_queue, emitter):
     assert expected == got
 
 
+@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_root_deleted(event_queue, emitter):
     r"""Test the event got when removing the watched folder.
     The regression to prevent is:
