@@ -912,5 +912,8 @@ PyInit__watchdog_fsevents(void){
     }
     watchdog_module_add_attributes(module);
     watchdog_module_init();
+#ifdef Py_GIL_DISABLED
+    PyUnstable_Module_SetGIL(module, Py_MOD_GIL_NOT_USED);
+#endif
     return module;
 }
