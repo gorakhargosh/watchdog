@@ -641,13 +641,13 @@ watchdog_add_watch(PyObject *self, PyObject *args)
                                               paths_to_watch,
                                               (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
     if (!stream_ref) {
-        PyMem_Del(stream_callback_info_ref);
+        PyMem_Free(stream_callback_info_ref);
         PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream");
         return NULL;
     }
     value = PyCapsule_New(stream_ref, NULL, watchdog_pycapsule_destructor);
     if (!value || !PyCapsule_IsValid(value, NULL)) {
-        PyMem_Del(stream_callback_info_ref);
+        PyMem_Free(stream_callback_info_ref);
         FSEventStreamInvalidate(stream_ref);
         FSEventStreamRelease(stream_ref);
         return NULL;
