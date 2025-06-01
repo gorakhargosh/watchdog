@@ -726,14 +726,13 @@ watchdog_read_events(PyObject *self, PyObject *args)
 #endif
 
     /* Allocate information and store thread state. */
-    value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
+    PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
         value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
         PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
         Py_INCREF(emitter_thread);
-        Py_INCREF(value);
     }
 
     /* No timeout, block until events. */
@@ -745,7 +744,6 @@ watchdog_read_events(PyObject *self, PyObject *args)
     if (PyDict_DelItem(thread_to_run_loop, emitter_thread) == 0)
     {
         Py_DECREF(emitter_thread);
-        Py_INCREF(value);
     }
 
     G_RETURN_NULL_IF(PyErr_Occurred());
