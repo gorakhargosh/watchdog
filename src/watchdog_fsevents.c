@@ -807,7 +807,8 @@ static PyObject *
 watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     UNUSED(self);
-    PyObject *value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
+    PyObject *value = NULL;
+    PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
     if (G_IS_NULL(value)) {
       goto success;
     }
@@ -822,6 +823,7 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
     }
 
  success:
+    Py_XDECREF(value);
     Py_INCREF(Py_None);
     return Py_None;
 }
