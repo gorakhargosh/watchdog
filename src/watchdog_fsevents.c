@@ -672,7 +672,9 @@ watchdog_add_watch(PyObject *self, PyObject *args)
 
     /* Get a reference to the runloop for the emitter thread
      * or to the current runloop. */
+    Py_BEGIN_CRITICAL_SECTION(thread_to_run_loop);
     PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    Py_END_CRITICAL_SECTION();
 
     /* Done handling global dictionaries */
     UNLOCK_GDATA_MUTEX;
@@ -736,7 +738,9 @@ watchdog_read_events(PyObject *self, PyObject *args)
 #endif
 
     /* Allocate information and store thread state. */
+    Py_BEGIN_CRITICAL_SECTION(thread_to_run_loop);
     PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    Py_END_CRITICAL_SECTION();
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
@@ -771,7 +775,10 @@ static PyObject *
 watchdog_flush_events(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
-    PyObject *value = PyDict_GetItem(watch_to_stream, watch);
+    PyObject *value = NULL;
+    Py_BEGIN_CRITICAL_SECTION(watch_to_stream);
+    PyDict_GetItemRef(watch_to_stream, watch, &value);
+    Py_END_CRITICAL_SECTION();
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
 
@@ -791,12 +798,16 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
     PyObject *streamref_capsule = NULL;
+    Py_BEGIN_CRITICAL_SECTION(watch_to_stream);
     PyDict_GetItemRef(watch_to_stream, watch, &streamref_capsule);
+    Py_END_CRITICAL_SECTION();
     if (!streamref_capsule) {
         // A watch might have been removed explicitly before, in which case we can simply early out.
         Py_RETURN_NONE;
     }
+    Py_BEGIN_CRITICAL_SECTION(watch_to_stream);
     PyDict_DelItem(watch_to_stream, watch);
+    Py_END_CRITICAL_SECTION();
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(streamref_capsule, NULL);
 
@@ -818,7 +829,9 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     UNUSED(self);
     PyObject *value = NULL;
+    Py_BEGIN_CRITICAL_SECTION(thread_to_run_loop);
     PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    Py_END_CRITICAL_SECTION();
     if (G_IS_NULL(value)) {
       goto success;
     }
