@@ -259,7 +259,7 @@ PyObject *thread_to_run_loop = NULL;
 PyObject *watch_to_stream = NULL;
 
 #ifdef Py_GIL_DISABLED
-  static PyMutex g_watchdog_module_data_lock = {0};
+  PyMutex g_watchdog_module_data_lock = {0};
   #define LOCK_GDATA_MUTEX PyMutex_Lock(&g_watchdog_module_data_lock)
   #define UNLOCK_GDATA_MUTEX PyMutex_Unlock(&g_watchdog_module_data_lock)
 #else
@@ -631,9 +631,13 @@ watchdog_add_watch(PyObject *self, PyObject *args)
                                           &emitter_thread, &watch,
                                           &python_callback, &paths_to_watch));
 
+    /* Ensure only one thread tries to add the watch */
+    LOCK_GDATA_MUTEX;
+
     /* Watch must not already be scheduled. */
     if(PyDict_Contains(watch_to_stream, watch) == 1) {
         PyErr_Format(PyExc_RuntimeError, "Cannot add watch %S - it is already scheduled", watch);
+        UNLOCK_GDATA_MUTEX;
         return NULL;
     }
 
@@ -641,6 +645,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     stream_callback_info_ref = PyMem_New(StreamCallbackInfo, 1);
     if(stream_callback_info_ref == NULL) {
         PyErr_SetString(PyExc_SystemError, "Failed allocating stream callback info");
+        UNLOCK_GDATA_MUTEX;
         return NULL;
     }
 
@@ -652,6 +657,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     if (!stream_ref) {
         PyMem_Free(stream_callback_info_ref);
         PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream");
+        UNLOCK_GDATA_MUTEX;
         return NULL;
     }
     value = PyCapsule_New(stream_ref, NULL, watchdog_pycapsule_destructor);
@@ -659,13 +665,17 @@ watchdog_add_watch(PyObject *self, PyObject *args)
         PyMem_Free(stream_callback_info_ref);
         FSEventStreamInvalidate(stream_ref);
         FSEventStreamRelease(stream_ref);
+        UNLOCK_GDATA_MUTEX;
         return NULL;
     }
     PyDict_SetItem(watch_to_stream, watch, value);
 
     /* Get a reference to the runloop for the emitter thread
      * or to the current runloop. */
-    value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
+    PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+
+    /* Done handling global dictionaries */
+    UNLOCK_GDATA_MUTEX;
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
