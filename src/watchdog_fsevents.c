@@ -258,6 +258,14 @@ PyObject *thread_to_run_loop = NULL;
  */
 PyObject *watch_to_stream = NULL;
 
+#ifdef Py_GIL_DISABLED
+  static PyMutex g_watchdog_module_data_lock = {0};
+  #define LOCK_GDATA_MUTEX PyMutex_Lock(&g_watchdog_module_data_lock)
+  #define UNLOCK_GDATA_MUTEX PyMutex_Unlock(&g_watchdog_module_data_lock)
+#else
+  #define LOCK_GDATA_MUTEX ((void)0)
+  #define UNLOCK_GDATA_MUTEX ((void)0)
+#endif
 
 /**
  * PyCapsule destructor.
@@ -520,11 +528,12 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
      * CFString array list. */
     for (i = 0; i < string_list_size; ++i)
     {
-        py_string = PyList_GetItem(py_string_list, i);
+        py_string = PyList_GetItemRef(py_string_list, i);
         G_RETURN_NULL_IF_NULL(py_string);
         cf_string = PyString_AsUTF8EncodedCFStringRef(py_string);
         G_RETURN_NULL_IF_NULL(cf_string);
         CFArraySetValueAtIndex(array_of_cf_string, i, cf_string);
+        Py_DECREF(py_string);
         CFRelease(cf_string);
     }
 
