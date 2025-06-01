@@ -259,12 +259,12 @@ PyObject *thread_to_run_loop = NULL;
 PyObject *watch_to_stream = NULL;
 
 #ifdef Py_GIL_DISABLED
-  PyMutex g_watchdog_module_data_lock = {0};
-  #define LOCK_GDATA_MUTEX PyMutex_Lock(&g_watchdog_module_data_lock)
-  #define UNLOCK_GDATA_MUTEX PyMutex_Unlock(&g_watchdog_module_data_lock)
+static PyMutex cache_lock = {0};
+#define LOCK() PyMutex_Lock(&cache_lock)
+#define UNLOCK() PyMutex_Unlock(&cache_lock)
 #else
-  #define LOCK_GDATA_MUTEX ((void)0)
-  #define UNLOCK_GDATA_MUTEX ((void)0)
+#define LOCK()
+#define UNLOCK()
 #endif
 
 /**
@@ -632,12 +632,12 @@ watchdog_add_watch(PyObject *self, PyObject *args)
                                           &python_callback, &paths_to_watch));
 
     /* Ensure only one thread tries to add the watch */
-    LOCK_GDATA_MUTEX;
+    LOCK();
 
     /* Watch must not already be scheduled. */
     if(PyDict_Contains(watch_to_stream, watch) == 1) {
         PyErr_Format(PyExc_RuntimeError, "Cannot add watch %S - it is already scheduled", watch);
-        UNLOCK_GDATA_MUTEX;
+        UNLOCK();
         return NULL;
     }
 
@@ -645,7 +645,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     stream_callback_info_ref = PyMem_New(StreamCallbackInfo, 1);
     if(stream_callback_info_ref == NULL) {
         PyErr_SetString(PyExc_SystemError, "Failed allocating stream callback info");
-        UNLOCK_GDATA_MUTEX;
+        UNLOCK();
         return NULL;
     }
 
@@ -657,7 +657,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     if (!stream_ref) {
         PyMem_Free(stream_callback_info_ref);
         PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream");
-        UNLOCK_GDATA_MUTEX;
+        UNLOCK();
         return NULL;
     }
     value = PyCapsule_New(stream_ref, NULL, watchdog_pycapsule_destructor);
@@ -665,19 +665,17 @@ watchdog_add_watch(PyObject *self, PyObject *args)
         PyMem_Free(stream_callback_info_ref);
         FSEventStreamInvalidate(stream_ref);
         FSEventStreamRelease(stream_ref);
-        UNLOCK_GDATA_MUTEX;
+        UNLOCK();
         return NULL;
     }
     PyDict_SetItem(watch_to_stream, watch, value);
 
     /* Get a reference to the runloop for the emitter thread
      * or to the current runloop. */
-    Py_BEGIN_CRITICAL_SECTION(thread_to_run_loop);
     PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
-    Py_END_CRITICAL_SECTION();
 
     /* Done handling global dictionaries */
-    UNLOCK_GDATA_MUTEX;
+    UNLOCK();
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
@@ -738,14 +736,16 @@ watchdog_read_events(PyObject *self, PyObject *args)
 #endif
 
     /* Allocate information and store thread state. */
-    Py_BEGIN_CRITICAL_SECTION(thread_to_run_loop);
+    LOCK();
     PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
-    Py_END_CRITICAL_SECTION();
+    UNLOCK();
     if (G_IS_NULL(value))
     {
         run_loop_ref = CFRunLoopGetCurrent();
         value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
+        LOCK();
         PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
+        UNLOCK();
         Py_INCREF(emitter_thread);
     }
 
@@ -755,10 +755,12 @@ watchdog_read_events(PyObject *self, PyObject *args)
     Py_END_ALLOW_THREADS;
 
     /* Clean up state information. */
+    LOCK();
     if (PyDict_DelItem(thread_to_run_loop, emitter_thread) == 0)
     {
         Py_DECREF(emitter_thread);
     }
+    UNLOCK();
 
     G_RETURN_NULL_IF(PyErr_Occurred());
 
@@ -776,14 +778,15 @@ watchdog_flush_events(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
     PyObject *value = NULL;
-    Py_BEGIN_CRITICAL_SECTION(watch_to_stream);
+    LOCK();
     PyDict_GetItemRef(watch_to_stream, watch, &value);
-    Py_END_CRITICAL_SECTION();
+    UNLOCK();
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
 
     FSEventStreamFlushSync(stream_ref);
 
+    Py_DECREF(value);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -798,16 +801,16 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
     PyObject *streamref_capsule = NULL;
-    Py_BEGIN_CRITICAL_SECTION(watch_to_stream);
+    LOCK();
     PyDict_GetItemRef(watch_to_stream, watch, &streamref_capsule);
-    Py_END_CRITICAL_SECTION();
+    UNLOCK();
     if (!streamref_capsule) {
         // A watch might have been removed explicitly before, in which case we can simply early out.
         Py_RETURN_NONE;
     }
-    Py_BEGIN_CRITICAL_SECTION(watch_to_stream);
+    LOCK();
     PyDict_DelItem(watch_to_stream, watch);
-    Py_END_CRITICAL_SECTION();
+    UNLOCK();
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(streamref_capsule, NULL);
 
@@ -829,9 +832,9 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     UNUSED(self);
     PyObject *value = NULL;
-    Py_BEGIN_CRITICAL_SECTION(thread_to_run_loop);
+    LOCK();
     PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
-    Py_END_CRITICAL_SECTION();
+    UNLOCK();
     if (G_IS_NULL(value)) {
       goto success;
     }
