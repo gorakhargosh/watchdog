@@ -14,6 +14,7 @@
 #include <CoreServices/CoreServices.h>
 #include <stdlib.h>
 #include <signal.h>
+#include "pythoncapi_compat.h"
 
 
 /* Compatibility; since fsevents won't set these on earlier macOS versions the properties will always be False */
