@@ -30,6 +30,7 @@ if is_macos or os.getenv("FORCE_MACOS_MACHINE", "0") == "1":
             sources=[
                 "src/watchdog_fsevents.c",
             ],
+            include_dirs=[SRC_DIR],
             libraries=["m"],
             define_macros=[
                 ("WATCHDOG_VERSION_STRING", '"' + version.VERSION_STRING + '"'),

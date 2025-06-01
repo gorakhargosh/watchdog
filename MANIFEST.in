@@ -4,6 +4,8 @@ include LICENSE
 include COPYING
 include AUTHORS
 recursive-include src *.py *.h *.c
+include src/watchdog_fsevents.c
+include src/pythoncapi_compat.h
 include src/watchdog/py.typed
 include tox.ini
 include docs/*.txt
