@@ -780,7 +780,8 @@ static PyObject *
 watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
-    PyObject *streamref_capsule = PyDict_GetItem(watch_to_stream, watch);
+    PyObject *streamref_capsule = NULL;
+    PyDict_GetItemRef(watch_to_stream, watch, &streamref_capsule);
     if (!streamref_capsule) {
         // A watch might have been removed explicitly before, in which case we can simply early out.
         Py_RETURN_NONE;
@@ -793,6 +794,7 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
     FSEventStreamInvalidate(stream_ref);
     FSEventStreamRelease(stream_ref);
 
+    Py_DECREF(streamref_capsule);
     Py_RETURN_NONE;
 }
 
