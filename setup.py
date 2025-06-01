@@ -122,7 +122,7 @@ setup(
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
-        "Programming Language :: Python :: Free Threading :: 2 - Beta",
+        "Programming Language :: Python :: Free Threading :: 1 - Unstable",
         "Programming Language :: C",
         "Topic :: Software Development :: Libraries",
         "Topic :: System :: Monitoring",
