@@ -303,6 +303,7 @@ PyObject * CFString_AsPyUnicode(CFStringRef cf_string_ref)
     if (G_IS_NULL(c_string_ptr)) {
         CFIndex length = CFStringGetLength(cf_string_ref);
         CFIndex max_size = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+        LOCK();
         char *buffer = (char *)malloc(max_size);
         if (CFStringGetCString(cf_string_ref, buffer, max_size, kCFStringEncodingUTF8)) {
             py_string = PyUnicode_FromString(buffer);
@@ -311,6 +312,7 @@ PyObject * CFString_AsPyUnicode(CFStringRef cf_string_ref)
             py_string = PyUnicode_FromString("");
         }
         free(buffer);
+        UNLOCK();
     } else {
         py_string = PyUnicode_FromString(c_string_ptr);
     }
@@ -580,6 +582,7 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
     G_RETURN_NULL_IF_NULL(paths);
 
     /* Create the event stream. */
+    LOCK();
     FSEventStreamContext stream_context = {
         0, stream_callback_info_ref, NULL, NULL, NULL
     };
@@ -595,6 +598,7 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
                                      | kFSEventStreamCreateFlagUseExtendedData
                                      | kFSEventStreamCreateFlagUseCFTypes);
     CFRelease(paths);
+    UNLOCK();
     return stream_ref;
 }
 
@@ -649,12 +653,14 @@ watchdog_add_watch(PyObject *self, PyObject *args)
         UNLOCK();
         return NULL;
     }
+    UNLOCK();
 
     /* Create an FSEvent stream and
      * Save the stream reference to the global watch-to-stream dictionary. */
     stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref,
                                               paths_to_watch,
                                               (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
+    LOCK();
     if (!stream_ref) {
         PyMem_Free(stream_callback_info_ref);
         PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream");
@@ -787,7 +793,6 @@ watchdog_flush_events(PyObject *self, PyObject *watch)
 
     FSEventStreamFlushSync(stream_ref);
 
-    Py_DECREF(value);
     Py_INCREF(Py_None);
     return Py_None;
 }
