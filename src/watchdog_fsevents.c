@@ -617,6 +617,8 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     PyObject *paths_to_watch = NULL;
     PyObject *python_callback = NULL;
     PyObject *value = NULL;
+    PyObject *result = NULL; // Error path indicator
+    int errind = 0;
 
     /* Ensure all arguments are received. */
     G_RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "OOOO:schedule",
@@ -624,18 +626,27 @@ watchdog_add_watch(PyObject *self, PyObject *args)
                                           &python_callback, &paths_to_watch));
 
     /* Ensure only one thread tries to add the watch */
+    Py_BEGIN_CRITICAL_SECTION(watch_to_stream);
 
     /* Watch must not already be scheduled. */
     if(PyDict_Contains(watch_to_stream, watch) == 1) {
         PyErr_Format(PyExc_RuntimeError, "Cannot add watch %S - it is already scheduled", watch);
-        return NULL;
+        errind = 1;
+        goto cleanup_critical_section;
     }
 
     /* Create an instance of the callback information structure. */
     stream_callback_info_ref = PyMem_New(StreamCallbackInfo, 1);
     if(stream_callback_info_ref == NULL) {
         PyErr_SetString(PyExc_SystemError, "Failed allocating stream callback info");
-        return NULL;
+        errind = 1;
+        goto cleanup_critical_section;
+    }
+
+    cleanup_critical_section:
+    Py_END_CRITICAL_SECTION();
+    if (errind == 1) {
+        return result;
     }
 
     /* Create an FSEvent stream and
@@ -655,11 +666,13 @@ watchdog_add_watch(PyObject *self, PyObject *args)
         FSEventStreamRelease(stream_ref);
         return NULL;
     }
+    Py_BEGIN_CRITICAL_SECTION2(watch_to_stream, thread_to_run_loop);
     PyDict_SetItem(watch_to_stream, watch, value);
 
     /* Get a reference to the runloop for the emitter thread
      * or to the current runloop. */
     PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    Py_END_CRITICAL_SECTION2();
 
     /* Done handling global dictionaries */
     if (G_IS_NULL(value))
@@ -695,8 +708,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 
 
