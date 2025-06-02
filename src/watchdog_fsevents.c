@@ -795,7 +795,9 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
         // A watch might have been removed explicitly before, in which case we can simply early out.
         Py_RETURN_NONE;
     }
-    PyDict_DelItem(watch_to_stream, watch);
+    if (PyDict_DelItem(watch_to_stream, watch) < 0){
+        Py_RETURN_NONE;
+    }
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(streamref_capsule, NULL);
 
