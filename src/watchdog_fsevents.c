@@ -671,8 +671,15 @@ watchdog_add_watch(PyObject *self, PyObject *args)
 
     /* Get a reference to the runloop for the emitter thread
      * or to the current runloop. */
-    PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    errind = PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
     Py_END_CRITICAL_SECTION2();
+    if (errind < 0) {
+        PyMem_Free(stream_callback_info_ref);
+        FSEventStreamInvalidate(stream_ref);
+        FSEventStreamRelease(stream_ref);
+        PyErr_SetString(PyExc_RuntimeError, "Failed to get a reference to the emitter or current runloop");
+        return NULL;
+    }
 
     /* Done handling global dictionaries */
     if (G_IS_NULL(value))
@@ -734,13 +741,21 @@ watchdog_read_events(PyObject *self, PyObject *args)
 #endif
 
     /* Allocate information and store thread state. */
-    PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    switch (PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value)){
+        case -1:
+            return NULL;
+        case 0:
+            run_loop_ref = CFRunLoopGetCurrent();
+            value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
+            PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
+            Py_INCREF(emitter_thread);
+            break;
+        default:
+            break;
+    }
+
     if (G_IS_NULL(value))
     {
-        run_loop_ref = CFRunLoopGetCurrent();
-        value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
-        PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
-        Py_INCREF(emitter_thread);
     }
 
     /* No timeout, block until events. */
@@ -756,8 +771,7 @@ watchdog_read_events(PyObject *self, PyObject *args)
 
     G_RETURN_NULL_IF(PyErr_Occurred());
 
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 
 PyDoc_STRVAR(watchdog_flush_events__doc__,
@@ -770,14 +784,15 @@ watchdog_flush_events(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
     PyObject *value = NULL;
-    PyDict_GetItemRef(watch_to_stream, watch, &value);
+    if (PyDict_GetItemRef(watch_to_stream, watch, &value) < 0){
+        return NULL;
+    }
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
 
     FSEventStreamFlushSync(stream_ref);
 
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 
 PyDoc_STRVAR(watchdog_remove_watch__doc__,
@@ -790,13 +805,11 @@ watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
     PyObject *streamref_capsule = NULL;
-    PyDict_GetItemRef(watch_to_stream, watch, &streamref_capsule);
-    if (!streamref_capsule) {
-        // A watch might have been removed explicitly before, in which case we can simply early out.
+    if (PyDict_GetItemRef(watch_to_stream, watch, &streamref_capsule) == 0){
         Py_RETURN_NONE;
     }
     if (PyDict_DelItem(watch_to_stream, watch) < 0){
-        Py_RETURN_NONE;
+        return NULL;
     }
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(streamref_capsule, NULL);
@@ -819,9 +832,13 @@ watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     UNUSED(self);
     PyObject *value = NULL;
-    PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
-    if (G_IS_NULL(value)) {
-      goto success;
+    switch (PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value)){
+        case -1:
+            return NULL;
+        case 0:
+            goto success;
+        default:
+            break;
     }
 
     CFRunLoopRef run_loop_ref = PyCapsule_GetPointer(value, NULL);
