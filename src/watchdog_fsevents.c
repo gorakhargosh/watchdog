@@ -617,7 +617,6 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     PyObject *paths_to_watch = NULL;
     PyObject *python_callback = NULL;
     PyObject *value = NULL;
-    PyObject *result = NULL; // Error path indicator
     int errind = 0;
 
     /* Ensure all arguments are received. */
@@ -646,7 +645,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     cleanup_critical_section:
     Py_END_CRITICAL_SECTION();
     if (errind == 1) {
-        return result;
+        return NULL;
     }
 
     /* Create an FSEvent stream and
@@ -752,10 +751,6 @@ watchdog_read_events(PyObject *self, PyObject *args)
             break;
         default:
             break;
-    }
-
-    if (G_IS_NULL(value))
-    {
     }
 
     /* No timeout, block until events. */
