@@ -68,8 +68,8 @@ class SkipRepeatsQueue(queue.Queue):
     based on the OrderedSetQueue below
     """
 
-    def _init(self, maxsize: int) -> None:
-        super()._init(maxsize)
+    def __init__(self, maxsize: int = 0) -> None:
+        super().__init__(maxsize)
         self._last_item = None
 
     def put(self, item: Any, block: bool = True, timeout: float | None = None) -> None:  # noqa: FBT001,FBT002
