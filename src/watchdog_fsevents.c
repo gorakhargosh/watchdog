@@ -446,6 +446,9 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
         CFRunLoopStop(stream_callback_info_ref->run_loop_ref);
     }
 
+    /* Clean up callback result reference */
+    Py_XDECREF(callback_result);
+
     /* Release the lock and restore thread state. */
     PyThreadState_Swap(saved_thread_state);
     PyGILState_Release(gil_state);
