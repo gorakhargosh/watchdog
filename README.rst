@@ -15,7 +15,10 @@ Watchdog
 
 Python API and shell utilities to monitor file system events.
 
-Works on 3.9+.
+Works on Python 3.9+.
+
+![A brown dog with large ears, sitting and smiling, surrounded by high piles of paper files.](https://raw.githubusercontent.com/gorakhargosh/watchdog/master/docs/source/watchdog_logo.svg)
+
 
 Example API Usage
 -----------------
