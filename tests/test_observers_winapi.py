@@ -22,7 +22,7 @@ from time import sleep
 
 import pytest
 
-from watchdog.events import DirCreatedEvent, DirMovedEvent
+from watchdog.events import DirCreatedEvent, DirMovedEvent, FileCreatedEvent, FileModifiedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
@@ -137,3 +137,40 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_named_stream(event_queue, emitter):
+    mkdir(p())
+
+    emitter.start()
+    sleep(SLEEP_TIME)
+
+    with open(p("test.txt"), "w") as f:
+        f.write("test")
+
+    sleep(SLEEP_TIME)
+
+    with open(p("test.txt:stream"), "a") as f:
+        f.write("test")
+
+    sleep(SLEEP_TIME)
+    emitter.stop()
+
+    expected = {
+        FileCreatedEvent(p("test.txt")),
+        FileModifiedEvent(p("test.txt")),
+        FileCreatedEvent(p("test.txt:stream")),
+        FileModifiedEvent(p("test.txt:stream")),
+    }
+
+    # Check for stream-related events
+    got = set()
+    while True:
+        try:
+            event, _ = event_queue.get_nowait()
+        except Empty:
+            break
+        else:
+            got.add(event)
+
+    assert expected == got
