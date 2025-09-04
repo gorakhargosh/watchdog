@@ -45,7 +45,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install build dependencies
@@ -71,7 +71,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install build dependencies
@@ -99,7 +99,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Build source distribution
