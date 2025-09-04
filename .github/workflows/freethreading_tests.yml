@@ -25,7 +25,7 @@ jobs:
             emoji: 🪟
             runs-on: [windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install uv and set the python version
         uses: astral-sh/setup-uv@v5
         with:
