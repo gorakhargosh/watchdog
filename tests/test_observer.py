@@ -32,7 +32,6 @@ def observer2():
         obs.join()
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_schedule_should_start_emitter_if_running(observer):
     observer.start()
     observer.schedule(None, "")
@@ -46,7 +45,6 @@ def test_schedule_should_not_start_emitter_if_not_running(observer):
     assert not emitter.is_alive()
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_start_should_start_emitter(observer):
     observer.schedule(None, "")
     observer.start()
@@ -54,7 +52,6 @@ def test_start_should_start_emitter(observer):
     assert emitter.is_alive()
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_stop_should_stop_emitter(observer):
     observer.schedule(None, "")
     observer.start()
@@ -66,7 +63,6 @@ def test_stop_should_stop_emitter(observer):
     assert not emitter.is_alive()
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_unschedule_self(observer):
     """
     Tests that unscheduling a watch from within an event handler correctly
@@ -89,7 +85,6 @@ def test_unschedule_self(observer):
     assert len(observer.emitters) == 0
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_schedule_after_unschedule_all(observer):
     observer.start()
     observer.schedule(None, "")
@@ -112,7 +107,6 @@ def test_2_observers_on_the_same_path(observer, observer2):
     assert len(observer2.emitters) == 1
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_start_failure_should_not_prevent_further_try(observer):
     observer.schedule(None, "")
     emitters = observer.emitters
@@ -138,7 +132,6 @@ def test_start_failure_should_not_prevent_further_try(observer):
     assert len(observer.emitters) == 1
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_schedule_failure_should_not_prevent_future_schedules(observer):
     observer.start()
 
