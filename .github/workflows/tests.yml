@@ -60,6 +60,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.13t"
           - "pypy-3.9"
         exclude:
           - os:
@@ -83,4 +84,10 @@ jobs:
         run: python -m pip install tox
 
       - name: Run tests
+        if: endsWith(matrix.python, 't') != true
         run: python -m tox -q -e py
+
+      - name: Run tests (free-threaded Python)
+        if: endsWith(matrix.python, 't') == true
+        run: |
+          python -m tox -q -e py -- --parallel-threads=2 --iterations=2 --timeout=600 --durations=10 --skip-thread-unsafe=True
