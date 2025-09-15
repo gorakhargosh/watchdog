@@ -8,7 +8,6 @@ from watchdog.utils.delayed_queue import DelayedQueue
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_delayed_get():
     q = DelayedQueue[str](2)
     q.put("", delay=True)

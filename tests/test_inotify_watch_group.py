@@ -37,7 +37,6 @@ def create_inotify_watch(path: bytes, *, recursive: bool = False, follow_symlink
 
 
 @pytest.mark.timeout(5)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_from(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -50,7 +49,6 @@ def test_move_from(p):
 
 
 @pytest.mark.timeout(5)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_to(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -63,7 +61,6 @@ def test_move_to(p):
 
 
 @pytest.mark.timeout(5)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_internal(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -78,7 +75,6 @@ def test_move_internal(p):
 
 
 @pytest.mark.timeout(5)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_internal_symlink_followed(p):
     mkdir(p("dir", "dir1"), parents=True)
     mkdir(p("dir", "dir2"))
@@ -94,7 +90,6 @@ def test_move_internal_symlink_followed(p):
 
 
 @pytest.mark.timeout(10)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_internal_batch(p):
     n = 100
     mkdir(p("dir1"))
@@ -132,7 +127,6 @@ def test_delete_watched_directory(p):
 
 
 @pytest.mark.timeout(5)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_delete_watched_directory_symlink_followed(p):
     mkdir(p("dir", "dir2"), parents=True)
     symlink(p("dir"), p("symdir"), target_is_directory=True)
@@ -152,7 +146,6 @@ def test_delete_watched_directory_symlink_followed(p):
 
 
 @pytest.mark.timeout(5)
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_delete_watched_directory_symlink_followed_recursive(p):
     mkdir(p("dir"), parents=True)
     mkdir(p("dir2", "dir3", "dir4"), parents=True)
@@ -174,7 +167,6 @@ def test_delete_watched_directory_symlink_followed_recursive(p):
 
 @pytest.mark.timeout(5)
 @pytest.mark.skipif("GITHUB_REF" not in os.environ, reason="sudo password prompt")
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_unmount_watched_directory_filesystem(p):
     mkdir(p("dir1"))
     mount_tmpfs(p("dir1"))

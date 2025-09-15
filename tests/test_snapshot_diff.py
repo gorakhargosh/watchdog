@@ -25,7 +25,6 @@ def wait():
         time.sleep(0.5)
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_pickle(p):
     """It should be possible to pickle a snapshot."""
     mkdir(p("dir1"))
@@ -33,7 +32,6 @@ def test_pickle(p):
     pickle.dumps(snasphot)
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_to(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -44,7 +42,6 @@ def test_move_to(p):
     assert diff.files_created == [p("dir2", "b")]
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_to_with_context_manager(p):
     mkdir(p("dir1"))
     touch(p("dir1", "a"))
@@ -59,7 +56,6 @@ def test_move_to_with_context_manager(p):
     assert dir2_cm.diff.files_created == [p("dir2", "b")]
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_from(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -70,7 +66,6 @@ def test_move_from(p):
     assert diff.files_deleted == [p("dir1", "a")]
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_internal(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -83,7 +78,6 @@ def test_move_internal(p):
     assert diff.files_deleted == []
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_move_replace(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -97,7 +91,6 @@ def test_move_replace(p):
     assert diff.files_created == []
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_dir_modify_on_create(p):
     ref = DirectorySnapshot(p(""))
     wait()
@@ -106,7 +99,6 @@ def test_dir_modify_on_create(p):
     assert diff.dirs_modified == [p("")]
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_dir_modify_on_move(p):
     mkdir(p("dir1"))
     mkdir(p("dir2"))
@@ -129,7 +121,6 @@ def test_detect_modify_for_moved_files(p):
     assert diff.files_modified == [p("a")]
 
 
-@pytest.mark.thread_unsafe(reason="Uses recwarn")
 def test_replace_dir_with_file(p):
     # Replace a dir with a file of the same name just before the normal listdir
     # call and ensure it doesn't cause an exception
