@@ -1,5 +1,17 @@
 # Third Party Licenses
 
+## Python C-API compatibility header
+
+This project includes the `pythoncapi_compat.h` header provided by the
+`pythoncapi-compat` project. It is located in the `src` directory.
+
+This header is included to allow writing code using C API constructs only
+available in newer Python versions.
+
+**License**: Zero Clause BSD
+**Copyright**: Contributors to the pythoncapi_compat project.
+**Source**: https://github.com/python/pythoncapi_compat
+
 ## Python Standard Library Compatibility Code
 
 This project includes the following unmodified functions from the Python 3.13 standard library:
@@ -14,6 +26,23 @@ These are included in `backwards_compat.py` to provide backwards compatibility w
 **Source**: https://github.com/python/cpython
 
 ---
+
+### Zero Clause BSD License
+
+BSD Zero Clause License
+
+Copyright Contributors to the pythoncapi_compat project.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
 
 ### Python Software Foundation License Version 2
 
@@ -32,3 +61,4 @@ These are included in `backwards_compat.py` to provide backwards compatibility w
 7. Nothing in this License Agreement shall be deemed to create any relationship of agency, partnership, or joint venture between PSF and Licensee.  This License Agreement does not grant permission to use PSF trademarks or trade name in a trademark sense to endorse or promote products or services of Licensee, or any third party.
 
 8. By copying, installing or otherwise using Python, Licensee agrees to be bound by the terms and conditions of this License Agreement.
+
