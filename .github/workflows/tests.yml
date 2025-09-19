@@ -93,4 +93,4 @@ jobs:
         run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
 
       - name: Run tests
-        run: python -m tox -q -e py
+        run: python -m tox -q -e py -- --timeout=120
