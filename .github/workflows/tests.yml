@@ -87,4 +87,6 @@ jobs:
         run: python -m pip install tox
 
       - name: Run tests
-        run: python -m tox -q -e py
+        # use a timeout to prevent CI hangs caused by
+        # deadlocks due to threading bugs
+        run: python -m tox -q -e py -- --timeout=120
