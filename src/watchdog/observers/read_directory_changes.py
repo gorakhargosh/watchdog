@@ -58,9 +58,14 @@ class WindowsApiEmitter(EventEmitter):
             sleep(0.01)
 
     def on_thread_stop(self) -> None:
-        whandle = self._whandle
+        # Lock to prevent closing handles repeatedly if
+        # on_thread_stop is called concurrently. See
+        # https://github.com/gorakhargosh/watchdog/issues/1132.
+        with self._lock:
+            whandle = self._whandle
+            if whandle:
+                self._whandle = None
         if whandle:
-            self._whandle = None
             close_directory_handle(whandle)
 
     def _read_events(self) -> list[WinAPINativeEvent]:
