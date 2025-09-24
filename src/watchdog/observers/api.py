@@ -408,9 +408,8 @@ class BaseObserver(EventDispatcher):
         # To allow unschedule/stop and safe removal of event handlers
         # within event handlers itself, check if the handler is still
         # registered after every dispatch.
-        for handler in self._handlers[watch].copy():
-            with self._lock:
-                if handler not in self._handlers[watch]:
-                    continue
-            handler.dispatch(event)
+        with self._lock:
+            for handler in self._handlers[watch].copy():
+                if handler in self._handlers[watch]:
+                    handler.dispatch(event)
         event_queue.task_done()
