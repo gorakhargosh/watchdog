@@ -58,8 +58,10 @@ class WindowsApiEmitter(EventEmitter):
             sleep(0.01)
 
     def on_thread_stop(self) -> None:
-        if self._whandle:
-            close_directory_handle(self._whandle)
+        whandle = self._whandle
+        if whandle:
+            self._whandle = None
+            close_directory_handle(whandle)
 
     def _read_events(self) -> list[WinAPINativeEvent]:
         if not self._whandle:
