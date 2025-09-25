@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import faulthandler
 import gc
 import os
 import threading
@@ -27,10 +28,15 @@ def _no_thread_leaks():
     We do not use pytest-threadleak because it is not reliable.
     """
     old_thread_count = threading.active_count()
-    yield
-    gc.collect()  # Clear the stuff from other function-level fixtures
-    assert threading.active_count() == old_thread_count  # Only previously existing threads
 
+    yield
+
+    # Clear the stuff from other function-level fixtures
+    gc.collect()
+
+    # Only previously existing threads, allowing for threads that were
+    # being cleaned up while this test was starting
+    assert threading.active_count() <= old_thread_count
 
 @pytest.fixture(autouse=True)
 def _no_warnings(recwarn):

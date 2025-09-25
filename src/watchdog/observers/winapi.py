@@ -293,9 +293,12 @@ def _generate_observed_path_deleted_event() -> tuple[bytes, int]:
     return buff.raw, event_size
 
 
+OPEN_HANDLES = set()
+
+
 def get_directory_handle(path: str) -> HANDLE:
     """Returns a Windows handle to the specified directory path."""
-    return CreateFileW(
+    handle = CreateFileW(
         path,
         FILE_LIST_DIRECTORY,
         WATCHDOG_FILE_SHARE_FLAGS,
@@ -304,9 +307,16 @@ def get_directory_handle(path: str) -> HANDLE:
         WATCHDOG_FILE_FLAGS,
         None,
     )
+    OPEN_HANDLES.add(handle)
+    return handle
 
 
 def close_directory_handle(handle: HANDLE) -> None:
+    try:
+        OPEN_HANDLES.remove(handle)
+    except KeyError:
+        # another thread already closed the handle
+        return
     try:
         CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
         CloseHandle(handle)
