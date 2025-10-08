@@ -186,6 +186,10 @@ a line similar to::
 
     ulimit -n 1024
 
+or::
+
+    ulimit -n unlimited
+
 This is an inherent problem with kqueue because it uses
 file descriptors to monitor files. That plus the enormous
 amount of bookkeeping that watchdog needs to do in order
