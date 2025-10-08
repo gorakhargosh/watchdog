@@ -56,6 +56,9 @@ class BaseThread(threading.Thread):
         :meth:`stop()` calls this method.
 
         This method is called immediately after the thread is signaled to stop.
+
+        Note that this can be called concurrently with on_thread_start,
+        so tear-down of state may need synchronization.
         """
 
     def stop(self) -> None:
@@ -69,10 +72,20 @@ class BaseThread(threading.Thread):
 
         This method is called right before this thread is started and this
         object's run() method is invoked.
+
+        Note that this can be called concurrently with on_thread_stop,
+        so any set-up of state may need synchronization.
         """
 
     def start(self) -> None:
+        if self._stopped_event.is_set():
+            # stop was called before start, so don't start
+            return
         self.on_thread_start()
+        if self._stopped_event.is_set():
+            # stop was called while we were doing setup,
+            # so don't actually spawn a thread
+            return
         threading.Thread.start(self)
 
 
