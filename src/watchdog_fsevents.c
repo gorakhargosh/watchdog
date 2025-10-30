@@ -14,6 +14,7 @@
 #include <CoreServices/CoreServices.h>
 #include <stdlib.h>
 #include <signal.h>
+#include "pythoncapi_compat.h"
 
 
 /* Compatibility; since fsevents won't set these on earlier macOS versions the properties will always be False */
@@ -523,12 +524,16 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
      * CFString array list. */
     for (i = 0; i < string_list_size; ++i)
     {
-        py_string = PyList_GetItem(py_string_list, i);
+        py_string = PyList_GetItemRef(py_string_list, i);
         G_RETURN_NULL_IF_NULL(py_string);
         cf_string = PyString_AsUTF8EncodedCFStringRef(py_string);
-        G_RETURN_NULL_IF_NULL(cf_string);
+        if (cf_string == NULL) {
+            Py_DECREF(py_string);
+            return NULL;
+        }
         CFArraySetValueAtIndex(array_of_cf_string, i, cf_string);
         CFRelease(cf_string);
+        Py_DECREF(py_string);
     }
 
     return array_of_cf_string;
@@ -659,10 +664,16 @@ watchdog_add_watch(PyObject *self, PyObject *args)
 
     /* Get a reference to the runloop for the emitter thread
      * or to the current runloop. */
-    value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
-    if (G_IS_NULL(value))
+    int res = PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    if (res == 0)
     {
         run_loop_ref = CFRunLoopGetCurrent();
+    }
+    else if (res < 0) {
+        PyMem_Del(stream_callback_info_ref);
+        FSEventStreamInvalidate(stream_ref);
+        FSEventStreamRelease(stream_ref);
+        return NULL;
     }
     else
     {
@@ -690,9 +701,11 @@ watchdog_add_watch(PyObject *self, PyObject *args)
         // There's no documentation on _why_ this might fail - "it ought to always succeed". But if it fails the
         // documentation says to "fall back to performing recursive scans of the directories [...] as appropriate".
         PyErr_SetString(PyExc_SystemError, "Cannot start fsevents stream. Use a kqueue or polling observer instead.");
+        Py_XDECREF(value);
         return NULL;
     }
 
+    Py_XDECREF(value);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -720,14 +733,17 @@ watchdog_read_events(PyObject *self, PyObject *args)
 #endif
 
     /* Allocate information and store thread state. */
-    value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
-    if (G_IS_NULL(value))
+    int res = PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    if (res == 0)
     {
         run_loop_ref = CFRunLoopGetCurrent();
         value = PyCapsule_New(run_loop_ref, NULL, watchdog_pycapsule_destructor);
         PyDict_SetItem(thread_to_run_loop, emitter_thread, value);
         Py_INCREF(emitter_thread);
         Py_INCREF(value);
+    }
+    else if (res < 0) {
+        return NULL;
     }
 
     /* No timeout, block until events. */
@@ -739,10 +755,10 @@ watchdog_read_events(PyObject *self, PyObject *args)
     if (PyDict_DelItem(thread_to_run_loop, emitter_thread) == 0)
     {
         Py_DECREF(emitter_thread);
-        Py_INCREF(value);
+    } else {
+        Py_DECREF(value);
+        return NULL;
     }
-
-    G_RETURN_NULL_IF(PyErr_Occurred());
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -757,12 +773,21 @@ static PyObject *
 watchdog_flush_events(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
-    PyObject *value = PyDict_GetItem(watch_to_stream, watch);
+    PyObject *value;
+    int res = PyDict_GetItemRef(watch_to_stream, watch, &value);
+    if (res < 0) {
+        return NULL;
+    }
+    if (res == 0) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
 
     FSEventStreamRef stream_ref = PyCapsule_GetPointer(value, NULL);
 
     FSEventStreamFlushSync(stream_ref);
 
+    Py_DECREF(value);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -776,19 +801,30 @@ static PyObject *
 watchdog_remove_watch(PyObject *self, PyObject *watch)
 {
     UNUSED(self);
-    PyObject *streamref_capsule = PyDict_GetItem(watch_to_stream, watch);
-    if (!streamref_capsule) {
+    PyObject *streamref_capsule;
+    int res = PyDict_GetItemRef(watch_to_stream, watch, &streamref_capsule);
+    if (res < 0) {
+        return NULL;
+    }
+    if (res == 0) {
         // A watch might have been removed explicitly before, in which case we can simply early out.
         Py_RETURN_NONE;
     }
-    PyDict_DelItem(watch_to_stream, watch);
+    if (PyDict_DelItem(watch_to_stream, watch) == 0) {
+        FSEventStreamRef stream_ref = PyCapsule_GetPointer(streamref_capsule, NULL);
 
-    FSEventStreamRef stream_ref = PyCapsule_GetPointer(streamref_capsule, NULL);
+        FSEventStreamStop(stream_ref);
+        FSEventStreamInvalidate(stream_ref);
+        FSEventStreamRelease(stream_ref);
+    } else {
+        // Found a valid entry in watch_to_stream earlier in this function, so
+        // there must be a race and another thread simultaneously removed the
+        // watch. Since the other thread already cleaned up, we just clear the
+        // KeyError. This should only be possible on the free-threaded build.
+        PyErr_Clear();
+    }
 
-    FSEventStreamStop(stream_ref);
-    FSEventStreamInvalidate(stream_ref);
-    FSEventStreamRelease(stream_ref);
-
+    Py_DECREF(streamref_capsule);
     Py_RETURN_NONE;
 }
 
@@ -801,19 +837,28 @@ static PyObject *
 watchdog_stop(PyObject *self, PyObject *emitter_thread)
 {
     UNUSED(self);
-    PyObject *value = PyDict_GetItem(thread_to_run_loop, emitter_thread);
-    if (G_IS_NULL(value)) {
+    PyObject *value;
+    int res = PyDict_GetItemRef(thread_to_run_loop, emitter_thread, &value);
+    if (res < 0) {
+        return NULL;
+    }
+    else if (res == 0) {
       goto success;
     }
 
     CFRunLoopRef run_loop_ref = PyCapsule_GetPointer(value, NULL);
-    G_RETURN_NULL_IF(PyErr_Occurred());
+    if (PyErr_Occurred()) {
+        Py_DECREF(value);
+        return NULL;
+    }
 
     /* Stop the run loop. */
     if (G_IS_NOT_NULL(run_loop_ref))
     {
         CFRunLoopStop(run_loop_ref);
     }
+
+    Py_DECREF(value);
 
  success:
     Py_INCREF(Py_None);
