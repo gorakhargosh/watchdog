@@ -525,7 +525,7 @@ Changelog
 
 - Event emitters are no longer started on schedule if ``Observer`` is not
   already running
-- [mac] Fixed used arguments to pass clang compilation (`#265 <https://github.com/gorakhargosh/watchdog/pull/265>`__)
+- [mac] Fixed unused arguments to pass clang compilation (`#265 <https://github.com/gorakhargosh/watchdog/pull/265>`__)
 - [snapshot] Fixed a possible race condition crash on directory deletion (`#281 <https://github.com/gorakhargosh/watchdog/pull/281>`__)
 - [windows] Fixed an error when watching the same folder again (`#270 <https://github.com/gorakhargosh/watchdog/pull/270>`__)
 - Thanks to our beloved contributors: @tamland, @apetrone, @Falldog,
