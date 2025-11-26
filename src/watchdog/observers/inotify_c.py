@@ -165,7 +165,7 @@ class WatchCallback(Protocol):
         ...
 
     def on_watch_deleted(self, wd: WatchDescriptor) -> None:
-        """Called when a watch that ths callback is registered at is removed.
+        """Called when a watch that this callback is registered at is removed.
         This is the case when the watched object is deleted."""
         ...
 

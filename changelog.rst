@@ -136,7 +136,7 @@ Changelog
 - [events] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggingEventHandler``
 - [tests] Improve ``FileSystemEvent`` coverage
 - [watchmedo] Log all events in ``LoggerTrick``
-- [windows] The ``observers.read_directory_changes.WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` hack was removed. The constant will be kept to prevent breaking other softwares.
+- [windows] The ``observers.read_directory_changes.WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` hack was removed. The constant will be kept to prevent breaking other software.
 - Thanks to our beloved contributors: @BoboTiG, @msabramo
 
 3.0.0
@@ -525,7 +525,7 @@ Changelog
 
 - Event emitters are no longer started on schedule if ``Observer`` is not
   already running
-- [mac] Fixed usued arguments to pass clang compilation (`#265 <https://github.com/gorakhargosh/watchdog/pull/265>`__)
+- [mac] Fixed unused arguments to pass clang compilation (`#265 <https://github.com/gorakhargosh/watchdog/pull/265>`__)
 - [snapshot] Fixed a possible race condition crash on directory deletion (`#281 <https://github.com/gorakhargosh/watchdog/pull/281>`__)
 - [windows] Fixed an error when watching the same folder again (`#270 <https://github.com/gorakhargosh/watchdog/pull/270>`__)
 - Thanks to our beloved contributors: @tamland, @apetrone, @Falldog,

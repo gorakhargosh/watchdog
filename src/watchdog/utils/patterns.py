@@ -44,7 +44,7 @@ def _full_match(path: PurePath, pattern: str) -> bool:
         # Please remove this, backwards_compat.py, and python license attributions
         # if/when we can pin a release to python >= 3.13
         # Construct a pathlib object using the same class as the path to get the
-        # same pattern path separater when constructing the regex
+        # same pattern path separator when constructing the regex
         normalized_pattern = str(type(path)(pattern))
         regex = translate(normalized_pattern, recursive=True, include_hidden=True, seps=_get_sep(path))
         reobj = re.compile(regex)
