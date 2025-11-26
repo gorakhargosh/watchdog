@@ -42,14 +42,14 @@ Steps to setting up a clean environment:
 .. code:: bash
 
     $ . venv/bin/activate
-    (venv)$ python -m pip instal -e '.'
+    (venv)$ python -m pip install -e '.'
 
 4. Windows
 
 .. code:: batch
 
     > venv\Scripts\activate
-    (venv)> python -m pip instal -e '.'
+    (venv)> python -m pip install -e '.'
 
 That's it with the setup. Now you're ready to hack on |project_name|.
 

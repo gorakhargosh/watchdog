@@ -202,7 +202,7 @@ files.
 Free threaded support
 ---------------------
 
-`watchdog` has support for being built and run under free-threaded CPython. However, a full thread saftey audit has not been completed, in particular this affects the `macOS FSEvents` interface.
+`watchdog` has support for being built and run under free-threaded CPython. However, a full thread safety audit has not been completed, in particular this affects the `macOS FSEvents` interface.
 
 About using watchdog with editors like Vim
 ------------------------------------------
