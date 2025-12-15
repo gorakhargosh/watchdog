@@ -14,6 +14,7 @@ Changelog
 
 **Other Changes**
 
+- [freebsd] Supports ``inotify`` on FreeBSD 15. (`#1147 <https://github.com/gorakhargosh/watchdog/pull/1147>`__)
 - [core] Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
 - [core] Add support for the ``follow_symlink`` keyword argument to ``ObservedWatch``. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
 - [fsevents] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
@@ -21,7 +22,7 @@ Changelog
 - [inotify] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
 - [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
 - [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
-- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen
+- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide
 
 6.0.0
 ~~~~~
