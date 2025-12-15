@@ -56,7 +56,7 @@ jobs:
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
       - name: Artifacts list
         run: ls -l wheelhouse
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: python-package-distributions-macos
           path: ./wheelhouse/*.whl
@@ -84,7 +84,7 @@ jobs:
           done
       - name: Artifacts list
         run: ls -l dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: python-package-distributions-pure-wheels
           path: ./dist/*.whl
@@ -107,7 +107,7 @@ jobs:
       - name: Artifacts list
         run: ls -l dist
       - name: Store the source distribution
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: python-package-distributions-source
           path: dist/*.tar.gz
