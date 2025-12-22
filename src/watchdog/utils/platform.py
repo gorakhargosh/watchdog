@@ -24,8 +24,9 @@ def get_platform_name() -> str:
         major = release.split(".")[0]
         if int(major) >= 15:
             return PLATFORM_LINUX # FreeBSD 15+ have full inotify support
+        return PLATFORM_BSD
 
-    if sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
+    if sys.platform.startswith(("dragonfly", "netbsd", "openbsd", "bsd")):
         return PLATFORM_BSD
 
     return PLATFORM_UNKNOWN
