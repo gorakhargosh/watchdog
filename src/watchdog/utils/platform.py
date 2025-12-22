@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys
+import sys, os
 
 PLATFORM_WINDOWS = "windows"
 PLATFORM_LINUX = "linux"
@@ -19,10 +19,14 @@ def get_platform_name() -> str:
     if sys.platform.startswith("linux"):
         return PLATFORM_LINUX
 
-    if sys.platform == "freebsd15": # FreeBSD 15+ supports inotify
-        return PLATFORM_LINUX
+    if sys.platform.startswith("freebsd"):
+        release = os.uname().release
+        major = int(release.split(".", 1)[0])
+        if major >= 15:
+            return PLATFORM_LINUX  # FreeBSD 15+ have full inotify support
+        return PLATFORM_BSD
 
-    if sys.platform.startswith(("dragonfly", "freebsd", "netbsd", "openbsd", "bsd")):
+    if sys.platform.startswith(("dragonfly", "netbsd", "openbsd", "bsd")):
         return PLATFORM_BSD
 
     return PLATFORM_UNKNOWN
