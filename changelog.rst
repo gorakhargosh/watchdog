@@ -14,7 +14,7 @@ Changelog
 
 **Other Changes**
 
-- [freebsd] Supports ``inotify`` on FreeBSD 15. (`#1147 <https://github.com/gorakhargosh/watchdog/pull/1147>`__)
+- [freebsd] Supports ``inotify`` on FreeBSD 15+. (`#1147 <https://github.com/gorakhargosh/watchdog/pull/1147>`__)
 - [core] Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
 - [core] Add support for the ``follow_symlink`` keyword argument to ``ObservedWatch``. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
 - [fsevents] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
