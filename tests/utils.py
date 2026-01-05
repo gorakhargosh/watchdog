@@ -4,8 +4,8 @@ import dataclasses
 import os
 import subprocess
 import sys
-from queue import Queue
-from typing import Protocol
+from queue import Empty, Queue
+from typing import Any, Protocol
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
@@ -81,6 +81,13 @@ class Helper:
 
         return emitter
 
+    def events_checker(self) -> _EventsChecker:
+        """Utility function to create a new event checker instance.  Use add()
+        to add events to check for.  Call check_events() to check that those
+        events have been emitted.
+        """
+        return _EventsChecker(self)
+
     def expect_event(self, expected_event: FileSystemEvent, timeout: float = 2) -> None:
         """Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
 
@@ -125,3 +132,108 @@ def run_isolated_test(path):
         raise
 
     assert p.returncode == 0
+
+
+class EventsChecker(Protocol):
+    def __call__(self) -> _EventsChecker: ...
+
+
+@dataclasses.dataclass()
+class _ExpectedEvent:
+    """Specifies what kind of event we are expecting.  The `expected_class` is required,
+    everything else is optional (not checked if it is None).
+    """
+    expected_class: type
+    src_path: str | None = None
+    dest_path: str | None = None
+
+
+class _EventsChecker:
+    # If True, output verbose debugging to stderr.
+    DEBUG = False
+
+    expected_events: list[_ExpectedEvent]
+
+    def __init__(self, helper: Helper):
+        self.tmp = helper.tmp
+        self.event_queue = helper.event_queue
+        self.expected_events = []
+
+    def _debug(self, *args: Any) -> None:
+        if self.DEBUG:
+            print(*args, file=sys.stderr)  # noqa: T201
+
+    def _make_path(self, path: str | None) -> str | None:
+        if path is None:
+            return None
+        if path == "":
+            # an empty path is kept as-is
+            return ""
+        # convert to platform specific path and normalize
+        parts = path.split("/")
+        path = os.path.join(self.tmp, *parts)
+        return os.path.normpath(path)
+
+    def add(self, expected_class: type, src_path: str | None = None, dest_path: str | None = None) -> None:
+        """Add details for an expected event.  The `expected_class` argument
+        is required, everything else is optional.  The order that events are
+        received does not matter but adding the same kind of event more than
+        once will require that it appears more than once.
+
+        Note that paths are provided as relative to `tmp` and using the forward
+        slash separator. They will be converted to absolute paths using `tmp`
+        and normalized.  An empty path, i.e. "", is kept as-is.
+        """
+        self.expected_events.append(_ExpectedEvent(expected_class, src_path, dest_path))
+
+    def check_events(self, timeout: float = 2) -> None:
+        """Read events from the events queue (waiting for up to `timeout` for new events
+        to appear).  Confirm that expected events, as specified by calling
+        add(), appear in the sequence of events receieved.
+
+        Note that order of events does not matter and receiving extra events is
+        considered okay.
+        """
+        expected_events = list(self.expected_events)
+        if self.DEBUG:
+            self._debug("expecting events:")
+            for e in expected_events:
+                self._debug("  ", e.expected_class.__name__, e.src_path, self._make_path(e.src_path))
+
+        found_events = []
+        while True:
+            # Read all the available events until we timeout.
+            try:
+                event = self.event_queue.get(timeout=timeout)[0]
+            except Empty:
+                self._debug("event queue timeout")
+                break
+            self._debug("got event", event.__class__.__name__, event.src_path)
+            found_events.append(event)
+
+        # Check that events received contain the expected events.  This is
+        # an inefficient way to do it, O(n*m) but since the list of expected
+        # events should be fairly short, this is okay.  Using a list allows
+        # the expected events to contain the same kind of event more than
+        # once.
+        for event in found_events:
+            for i, expected_event in enumerate(expected_events):
+                if not isinstance(event, expected_event.expected_class):
+                    continue  # wrong class
+                src_path = self._make_path(expected_event.src_path)
+                if src_path is not None and src_path != event.src_path:
+                    continue  # wrong src_path
+                dest_path = self._make_path(expected_event.dest_path)
+                if dest_path is not None and dest_path != event.dest_path:
+                    continue  # wrong dest_path
+                self._debug("matched event", expected_events[i])
+                del expected_events[i]
+                break
+
+        if expected_events:
+            # Fail, we did not find some of the expected events.
+            if self.DEBUG:
+                self._debug("missing events:")
+                for e in expected_events:
+                    self._debug("  ", e.expected_class.__name__, e.src_path)
+            assert not expected_events, "some expected events not found"
