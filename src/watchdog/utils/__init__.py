@@ -41,6 +41,8 @@ class BaseThread(threading.Thread):
             self.daemon = True
         else:
             self.setDaemon(True)
+        self._thread_life_lock = threading.Lock()
+        self._started_event: threading.Event | None = None
         self._stopped_event = threading.Event()
 
     @property
@@ -56,11 +58,23 @@ class BaseThread(threading.Thread):
         :meth:`stop()` calls this method.
 
         This method is called immediately after the thread is signaled to stop.
+
+        Note that this can be called concurrently with on_thread_start,
+        so tear-down of state may need synchronization.
         """
 
     def stop(self) -> None:
         """Signals the thread to stop."""
-        self._stopped_event.set()
+        with self._thread_life_lock:
+            if self._stopped_event.is_set():
+                return
+            started_event = self._started_event
+        if started_event is not None:
+            started_event.wait()
+        with self._thread_life_lock:
+            if self._stopped_event.is_set():
+                return
+            self._stopped_event.set()
         self.on_thread_stop()
 
     def on_thread_start(self) -> None:
@@ -69,11 +83,24 @@ class BaseThread(threading.Thread):
 
         This method is called right before this thread is started and this
         object's run() method is invoked.
+
+        Note that this can be called concurrently with on_thread_stop,
+        so any set-up of state may need synchronization.
         """
 
     def start(self) -> None:
-        self.on_thread_start()
-        threading.Thread.start(self)
+        with self._thread_life_lock:
+            if self._stopped_event.is_set():
+                # stop was called before start, so don't start
+                return
+            self._started_event = threading.Event()
+        try:
+            self.on_thread_start()
+            threading.Thread.start(self)
+        finally:
+            with self._thread_life_lock:
+                self._started_event.set()
+                self._started_event = None
 
 
 def load_module(module_name: str) -> ModuleType:
