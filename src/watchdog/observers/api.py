@@ -280,6 +280,18 @@ class BaseObserver(EventDispatcher):
                 raise
         super().start()
 
+    def __enter__(self) -> BaseObserver:
+        """Context manager entry. Starts the observer if not already running."""
+        if not self.is_alive():
+            self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit. Stops the observer and waits for it to finish."""
+        if self.is_alive():
+            self.stop()
+            self.join()
+
     def schedule(
         self,
         event_handler: FileSystemEventHandler,

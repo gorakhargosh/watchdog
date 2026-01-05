@@ -53,6 +53,30 @@ file system changes and simply print them to the console::
 
 To stop the program, press Control-C.
 
+Alternatively, you can use the observer as a context manager for cleaner code::
+
+    import time
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.observers import Observer
+
+
+    class MyEventHandler(FileSystemEventHandler):
+        def on_any_event(self, event: FileSystemEvent) -> None:
+            print(event)
+
+
+    event_handler = MyEventHandler()
+    observer = Observer()
+    observer.schedule(event_handler, ".", recursive=True)
+
+    with observer:
+        while True:
+            time.sleep(1)
+
+The context manager automatically handles starting and stopping the observer,
+ensuring proper cleanup even if an exception occurs.
+
 Typing
 ------
 
