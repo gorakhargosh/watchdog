@@ -189,6 +189,7 @@ class EventDispatcher(BaseThread):
         super().__init__()
         self._event_queue = EventQueue()
         self._timeout = timeout
+        self._lock = threading.RLock()
 
     @property
     def timeout(self) -> float:
@@ -222,6 +223,9 @@ class EventDispatcher(BaseThread):
 
     def run(self) -> None:
         while self.should_keep_running():
+            with self._lock:
+                if not self.should_keep_running():
+                    return
             try:
                 self.dispatch_events(self.event_queue)
             except queue.Empty:
@@ -234,7 +238,6 @@ class BaseObserver(EventDispatcher):
     def __init__(self, emitter_class: type[EventEmitter], *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(timeout=timeout)
         self._emitter_class = emitter_class
-        self._lock = threading.RLock()
         self._watches: set[ObservedWatch] = set()
         self._handlers: defaultdict[ObservedWatch, set[FileSystemEventHandler]] = defaultdict(set)
         self._emitters: set[EventEmitter] = set()
@@ -272,12 +275,15 @@ class BaseObserver(EventDispatcher):
         return self._emitters
 
     def start(self) -> None:
-        for emitter in self._emitters.copy():
-            try:
-                emitter.start()
-            except Exception:
-                self._remove_emitter(emitter)
-                raise
+        with self._lock:
+            for emitter in self._emitters.copy():
+                if not self.should_keep_running():
+                    break
+                try:
+                    emitter.start()
+                except Exception:
+                    self._remove_emitter(emitter)
+                    raise
         super().start()
 
     def schedule(
@@ -390,6 +396,9 @@ class BaseObserver(EventDispatcher):
         self.unschedule_all()
 
     def dispatch_events(self, event_queue: EventQueue) -> None:
+        with self._lock:
+            if not self.should_keep_running():
+                return
         entry = event_queue.get(block=True)
         if entry is EventDispatcher.stop_event:
             return
