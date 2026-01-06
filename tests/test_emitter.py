@@ -50,6 +50,8 @@ def test_create(
     if platform.is_linux():
         checker.add(FileOpenedEvent, "a")
         checker.add(FileClosedEvent, "a")
+    if not platform.is_windows():
+        checker.add(DirModifiedEvent, ".")
 
     checker.check_events()
 
