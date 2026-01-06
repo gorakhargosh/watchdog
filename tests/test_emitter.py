@@ -46,12 +46,19 @@ def test_create(
     open(p("a"), "a").close()
 
     checker = events_checker()
-    checker.add(FileCreatedEvent, "a")
-    if platform.is_linux():
-        checker.add(FileOpenedEvent, "a")
-        checker.add(FileClosedEvent, "a")
-    if not platform.is_windows():
+    if platform.is_darwin():
+        checker.add(FileCreatedEvent, "a")
         checker.add(DirModifiedEvent, ".")
+        checker.add(FileModifiedEvent, "a")
+    else:
+        checker.add(FileCreatedEvent, "a")
+        if not platform.is_windows():
+            checker.add(DirModifiedEvent, ".")
+        if platform.is_linux():
+            checker.add(FileOpenedEvent, "a")
+            checker.add(FileClosedEvent, "a")
+        if not platform.is_windows():
+            checker.add(DirModifiedEvent, ".")
 
     checker.check_events()
 
@@ -88,11 +95,15 @@ def test_create_wrong_encoding(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
     start_watching()
-    open(p("a_\udce4"), "a").close()
+    filename = "a_\udce4"
+    open(p(filename), "a").close()
 
     checker = events_checker()
-    checker.add(FileCreatedEvent, "a_\udce4")
+    checker.add(FileCreatedEvent, filename)
     if not platform.is_windows():
+        checker.add(DirModifiedEvent, ".")
+        checker.add(FileOpenedEvent, filename)
+        checker.add(FileClosedEvent, filename)
         checker.add(DirModifiedEvent, ".")
     checker.check_events()
 
@@ -106,10 +117,15 @@ def test_delete(
     rm(p("a"))
 
     checker = events_checker()
-    checker.add(FileDeletedEvent, "a")
-
-    if not platform.is_windows():
+    if platform.is_darwin():
         checker.add(DirModifiedEvent, ".")
+        checker.add(FileModifiedEvent, "a")
+        checker.add(FileDeletedEvent, "a")
+        checker.add(DirModifiedEvent, ".")
+    else:
+        checker.add(FileDeletedEvent, "a")
+        if not platform.is_windows():
+            checker.add(DirModifiedEvent, ".")
 
     checker.check_events()
 
@@ -123,10 +139,17 @@ def test_modify(
     touch(p("a"))
 
     checker = events_checker()
-    checker.add(FileModifiedEvent, "a")
-    if platform.is_linux():
-        checker.add(FileOpenedEvent, "a")
-        checker.add(FileClosedEvent, "a")
+    if platform.is_darwin():
+        checker.add(FileModifiedEvent, "a")
+        checker.add(DirModifiedEvent, ".")
+    else:
+        if platform.is_linux():
+            checker.add(FileOpenedEvent, "a")
+        checker.add(FileModifiedEvent, "a")
+        if platform.is_linux():
+            checker.add(FileClosedEvent, "a")
+        if not platform.is_windows():
+            checker.add(DirModifiedEvent, ".")
     checker.check_events()
 
 
@@ -159,11 +182,11 @@ def test_move_simple(
     checker = events_checker()
     if not platform.is_windows():
         checker.add(FileMovedEvent, "dir1/a", dest_path="dir2/b")
+        checker.add(DirModifiedEvent, "dir1")
+        checker.add(DirModifiedEvent, "dir2")
     else:
         checker.add(FileDeletedEvent, "dir1/a")
         checker.add(FileCreatedEvent, "dir2/b")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, "dir1")
         checker.add(DirModifiedEvent, "dir2")
     checker.check_events()
 
@@ -184,11 +207,11 @@ def test_case_change(
     checker = events_checker()
     if not platform.is_windows():
         checker.add(FileMovedEvent, "dir1/file", dest_path="dir2/FILE")
+        checker.add(DirModifiedEvent, "dir1")
+        checker.add(DirModifiedEvent, "dir2")
     else:
         checker.add(FileDeletedEvent, "dir1/file")
         checker.add(FileCreatedEvent, "dir2/FILE")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, "dir1")
         checker.add(DirModifiedEvent, "dir2")
     checker.check_events()
 
@@ -223,6 +246,8 @@ def test_move_to_full(
     checker = events_checker()
     # The src_path should be blank since the path was not watched
     checker.add(FileMovedEvent, "", dest_path="dir2/b")
+    if not platform.is_windows():
+        checker.add(DirModifiedEvent, "dir2")
     checker.check_events()
 
 
@@ -256,6 +281,8 @@ def test_move_from_full(
     checker = events_checker()
     # dest_path should be blank since not watched
     checker.add(FileMovedEvent, "dir1/a", dest_path="")
+    if not platform.is_windows():
+        checker.add(DirModifiedEvent, "dir1")
     checker.check_events()
 
 
@@ -274,6 +301,7 @@ def test_separate_consecutive_moves(
         checker.add(FileDeletedEvent, "dir1/a")
         checker.add(DirModifiedEvent, "dir1")
         checker.add(FileCreatedEvent, "dir1/d")
+        checker.add(DirModifiedEvent, "dir1")
     else:
         checker.add(FileDeletedEvent, "dir1/a")
         checker.add(FileCreatedEvent, "dir1/d")
@@ -347,8 +375,11 @@ def test_recursive_on(
     touch(p("dir1", "dir2", "dir3", "a"))
 
     checker = events_checker()
-    checker.add(FileCreatedEvent, "dir1/dir2/dir3/a")
-    if not platform.is_windows():
+    if platform.is_windows():
+        checker.add(FileCreatedEvent, "dir1/dir2/dir3/a")
+        checker.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+    else:
+        checker.add(FileCreatedEvent, "dir1/dir2/dir3/a")
         checker.add(DirModifiedEvent, "dir1/dir2/dir3")
 
         if platform.is_linux():
@@ -356,6 +387,11 @@ def test_recursive_on(
 
         if not platform.is_bsd():
             checker.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+
+        if platform.is_linux():
+            checker.add(FileClosedEvent, "dir1/dir2/dir3/a")
+
+        checker.add(DirModifiedEvent, "dir1/dir2/dir3")
 
     checker.check_events()
 
@@ -385,12 +421,18 @@ def test_recursive_off(
     mkfile(p("b"))
 
     checker = events_checker()
-    checker.add(FileCreatedEvent, "b")
-    if not platform.is_windows():
+    if platform.is_darwin():
+        checker.add(FileCreatedEvent, "b")
         checker.add(DirModifiedEvent, ".")
-        if platform.is_linux():
-            checker.add(FileOpenedEvent, "b")
-            checker.add(FileClosedEvent, "b")
+        checker.add(FileModifiedEvent, "b")
+    else:
+        checker.add(FileCreatedEvent, "b")
+        if not platform.is_windows():
+            checker.add(DirModifiedEvent, ".")
+            if platform.is_linux():
+                checker.add(FileOpenedEvent, "b")
+                checker.add(FileClosedEvent, "b")
+            checker.add(DirModifiedEvent, ".")
     checker.check_events()
 
     # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
@@ -442,10 +484,15 @@ def test_renaming_top_level_directory(
 
     mv(p("a"), p("a2"))
     checker = events_checker()
-    checker.add(DirMovedEvent, "a", dest_path="a2")
-    if not platform.is_windows():
+    if platform.is_windows():
+        checker.add(DirMovedEvent, "a", dest_path="a2")
+        checker.add(DirMovedEvent, "a/b", dest_path="a2/b")
+        checker.add(DirModifiedEvent, "a2")
+    else:
+        checker.add(DirMovedEvent, "a", dest_path="a2")
         checker.add(DirModifiedEvent, ".")
-    checker.add(DirMovedEvent, "a/b", dest_path="a2/b")
+        checker.add(DirModifiedEvent, ".")
+        checker.add(DirMovedEvent, "a/b", dest_path="a2/b")
     checker.check_events()
 
     open(p("a2", "b", "c"), "a").close()
@@ -453,8 +500,10 @@ def test_renaming_top_level_directory(
     checker = events_checker()
     checker.add(FileCreatedEvent, "a2/b/c")
     if platform.is_linux():
+        checker.add(DirModifiedEvent, "a2/b")
         checker.add(FileOpenedEvent, "a2/b/c")
         checker.add(FileClosedEvent, "a2/b/c")
+        checker.add(DirModifiedEvent, "a2/b")
     checker.check_events()
 
 
@@ -481,9 +530,12 @@ def test_move_nested_subdirectories(
     touch(p("dir2/dir3", "a"))
 
     checker = events_checker()
-    checker.add(FileModifiedEvent, "dir2/dir3/a")
     if platform.is_linux():
         checker.add(FileOpenedEvent, "dir2/dir3/a")
+    checker.add(FileModifiedEvent, "dir2/dir3/a")
+    if platform.is_linux():
+        checker.add(FileClosedEvent, "dir2/dir3/a")
+        checker.add(DirModifiedEvent, "dir2/dir3")
     checker.check_events()
 
 
@@ -507,6 +559,8 @@ def test_move_nested_subdirectories_on_windows(
     checker.add(DirCreatedEvent, "dir2")
     checker.add(DirCreatedEvent, "dir2/dir3")
     checker.add(FileCreatedEvent, "dir2/dir3/a")
+    checker.add(DirModifiedEvent, "dir2")
+    checker.add(DirModifiedEvent, "dir2/dir3")
     checker.check_events()
 
     touch(p("dir2/dir3", "a"))
@@ -528,15 +582,30 @@ def test_file_lifecyle(
     rm(p("b"))
 
     checker = events_checker()
-    checker.add(FileCreatedEvent, "a")
-    checker.add(FileModifiedEvent, "a")
-    checker.add(FileMovedEvent, "a", dest_path="b")
-    checker.add(FileDeletedEvent, "b")
 
     if platform.is_linux():
+        checker.add(FileCreatedEvent, "a")
+        checker.add(DirModifiedEvent, ".")
+
         checker.add(FileOpenedEvent, "a")
         checker.add(FileClosedEvent, "a")
+        checker.add(DirModifiedEvent, ".")
+
         checker.add(FileOpenedEvent, "a")
+        checker.add(FileModifiedEvent, "a")
         checker.add(FileClosedEvent, "a")
+        checker.add(DirModifiedEvent, ".")
+
+        checker.add(FileMovedEvent, "a", dest_path="b")
+        checker.add(DirModifiedEvent, ".")
+        checker.add(DirModifiedEvent, ".")
+
+        checker.add(FileDeletedEvent, "b")
+        checker.add(DirModifiedEvent, ".")
+    else:
+        checker.add(FileCreatedEvent, "a")
+        checker.add(FileModifiedEvent, "a")
+        checker.add(FileMovedEvent, "a", dest_path="b")
+        checker.add(FileDeletedEvent, "b")
 
     checker.check_events()
