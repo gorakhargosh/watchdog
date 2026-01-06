@@ -4,6 +4,7 @@ import contextlib
 
 import pytest
 
+from watchdog.events import DirCreatedEvent
 from watchdog.utils import platform
 
 if not platform.is_darwin():
@@ -29,7 +30,7 @@ from watchdog.observers.fsevents import FSEventsEmitter
 from .shell import touch
 
 if TYPE_CHECKING:
-    from .utils import P, StartWatching, TestEventQueue
+    from .utils import EventsChecker, P, StartWatching
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -228,7 +229,7 @@ def test_unschedule_removed_folder(observer: BaseObserver, p: P) -> None:
     observer.unschedule(w)
 
 
-def test_converting_cfstring_to_pyunicode(p: P, start_watching: StartWatching, event_queue: TestEventQueue) -> None:
+def test_converting_cfstring_to_pyunicode(p: P, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     """See https://github.com/gorakhargosh/watchdog/issues/762"""
 
     tmpdir = p()
@@ -238,8 +239,9 @@ def test_converting_cfstring_to_pyunicode(p: P, start_watching: StartWatching, e
 
     try:
         mkdir(p(dirname))
-        event, _ = event_queue.get()
-        assert event.src_path.endswith(dirname)
+        checker = events_checker()
+        checker.add(DirCreatedEvent, dirname)
+        checker.check_events()
     finally:
         emitter.stop()
 

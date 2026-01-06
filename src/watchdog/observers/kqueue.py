@@ -610,14 +610,14 @@ class KqueueEmitter(EventEmitter):
         :type timeout:
             ``float`` (seconds)
         """
-        with self._lock:
-            try:
-                event_list = self._read_events(timeout)
-                # TODO: investigate why order appears to be reversed
-                event_list.reverse()
+        try:
+            event_list = self._read_events(timeout)
+            # TODO: investigate why order appears to be reversed
+            event_list.reverse()
 
-                # Take a fresh snapshot of the directory and update the
-                # saved snapshot.
+            # Take a fresh snapshot of the directory and update the
+            # saved snapshot.
+            with self._lock:
                 new_snapshot = DirectorySnapshot(self.watch.path, recursive=self.watch.is_recursive)
                 ref_snapshot = self._snapshot
                 self._snapshot = new_snapshot
@@ -635,9 +635,9 @@ class KqueueEmitter(EventEmitter):
                     for event in self._gen_kqueue_events(kev, ref_snapshot, new_snapshot):
                         self.queue_event(event)
 
-            except OSError as e:
-                if e.errno != errno.EBADF:
-                    raise
+        except OSError as e:
+            if e.errno != errno.EBADF:
+                raise
 
     def on_thread_stop(self) -> None:
         # Clean up.

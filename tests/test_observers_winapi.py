@@ -57,6 +57,7 @@ def test___init__(event_queue, emitter):
 
     sleep(SLEEP_TIME)
     emitter.stop()
+    sleep(SLEEP_TIME)  # give time for background threads to exit
 
     # What we need here for the tests to pass is a collection type
     # that is:
@@ -76,6 +77,10 @@ def test___init__(event_queue, emitter):
         except Empty:
             break
         else:
+            if event.event_type == "modified":
+                # On Windows can get one or two modified events.  Ignore
+                # them to make test more deterministic.
+                continue
             got.add(event)
 
     assert expected == got
