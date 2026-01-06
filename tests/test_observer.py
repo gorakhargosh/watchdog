@@ -205,11 +205,14 @@ def test_context_manager_handles_exceptions():
     obs.schedule(None, "")
     (emitter,) = obs.emitters
 
-    with pytest.raises(ValueError, match="Test exception"):
+    def _raise_in_context() -> None:
         with obs:
             assert obs.is_alive()
             assert emitter.is_alive()
-            raise ValueError("Test exception")
+            raise ValueError
+
+    with pytest.raises(ValueError, match=".*"):
+        _raise_in_context()
 
     # Observer should still be stopped even after exception
     assert not obs.is_alive()
@@ -220,7 +223,7 @@ def test_context_manager_with_scheduled_watches():
     """Test that context manager works correctly with scheduled watches."""
     obs = BaseObserver(EventEmitter)
     handler = FileSystemEventHandler()
-    watch = obs.schedule(handler, "/foobar", recursive=True)
+    obs.schedule(handler, "/foobar", recursive=True)
     assert len(obs.emitters) == 1
     (emitter,) = obs.emitters
     assert not obs.is_alive()

@@ -7,10 +7,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from typing_extensions import Self
+
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
+    import types
+
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
 
 DEFAULT_EMITTER_TIMEOUT = 1.0  # in seconds
@@ -280,13 +284,18 @@ class BaseObserver(EventDispatcher):
                 raise
         super().start()
 
-    def __enter__(self) -> BaseObserver:
+    def __enter__(self) -> Self:
         """Context manager entry. Starts the observer if not already running."""
         if not self.is_alive():
             self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Context manager exit. Stops the observer and waits for it to finish."""
         if self.is_alive():
             self.stop()
