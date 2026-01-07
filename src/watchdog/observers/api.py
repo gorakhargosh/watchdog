@@ -11,6 +11,10 @@ from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
+    import types
+
+    from typing_extensions import Self
+
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
 
 DEFAULT_EMITTER_TIMEOUT = 1.0  # in seconds
@@ -279,6 +283,23 @@ class BaseObserver(EventDispatcher):
                 self._remove_emitter(emitter)
                 raise
         super().start()
+
+    def __enter__(self) -> Self:
+        """Context manager entry. Starts the observer if not already running."""
+        if not self.is_alive():
+            self.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
+        """Context manager exit. Stops the observer and waits for it to finish."""
+        if self.is_alive():
+            self.stop()
+            self.join()
 
     def schedule(
         self,

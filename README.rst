@@ -47,6 +47,29 @@ as command-line arguments and logs events generated:
         observer.stop()
         observer.join()
 
+Alternatively, you can use the observer as a context manager for cleaner code:
+
+.. code-block:: python
+
+    import time
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.observers import Observer
+
+
+    class MyEventHandler(FileSystemEventHandler):
+        def on_any_event(self, event: FileSystemEvent) -> None:
+            print(event)
+
+
+    event_handler = MyEventHandler()
+    observer = Observer()
+    observer.schedule(event_handler, ".", recursive=True)
+
+    with observer:
+        while True:
+            time.sleep(1)
+
 
 Shell Utilities
 ---------------

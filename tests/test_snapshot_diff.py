@@ -4,7 +4,6 @@ import errno
 import os
 import pickle
 import time
-import pytest
 from unittest.mock import patch
 
 from watchdog.utils import platform

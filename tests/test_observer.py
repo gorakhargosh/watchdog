@@ -147,3 +147,92 @@ def test_schedule_failure_should_not_prevent_future_schedules(observer):
     # Re-scheduling the watch should work
     observer.schedule(None, "")
     assert len(observer.emitters) == 1
+
+
+def test_context_manager_starts_observer():
+    """Test that context manager starts observer if not already started."""
+    obs = BaseObserver(EventEmitter)
+    obs.schedule(None, "")
+    (emitter,) = obs.emitters
+    assert not obs.is_alive()
+    assert not emitter.is_alive()
+
+    with obs:
+        assert obs.is_alive()
+        assert emitter.is_alive()
+
+    assert not obs.is_alive()
+    assert not emitter.is_alive()
+
+
+def test_context_manager_with_already_started_observer():
+    """Test that context manager doesn't try to start observer if already started."""
+    obs = BaseObserver(EventEmitter)
+    obs.schedule(None, "")
+    obs.start()
+    (emitter,) = obs.emitters
+    assert obs.is_alive()
+    assert emitter.is_alive()
+
+    # Using context manager with already started observer should not raise
+    with obs:
+        assert obs.is_alive()
+        assert emitter.is_alive()
+
+    assert not obs.is_alive()
+    assert not emitter.is_alive()
+
+
+def test_context_manager_stops_on_exit():
+    """Test that context manager stops and joins observer on exit."""
+    obs = BaseObserver(EventEmitter)
+    obs.schedule(None, "")
+    (emitter,) = obs.emitters
+
+    with obs:
+        assert obs.is_alive()
+        assert emitter.is_alive()
+        # Exit context
+
+    # After exiting context, observer should be stopped
+    assert not obs.is_alive()
+    assert not emitter.is_alive()
+
+
+def test_context_manager_handles_exceptions():
+    """Test that context manager properly cleans up even when exceptions occur."""
+    obs = BaseObserver(EventEmitter)
+    obs.schedule(None, "")
+    (emitter,) = obs.emitters
+
+    def _raise_in_context() -> None:
+        with obs:
+            assert obs.is_alive()
+            assert emitter.is_alive()
+            raise ValueError
+
+    with pytest.raises(ValueError, match=".*"):
+        _raise_in_context()
+
+    # Observer should still be stopped even after exception
+    assert not obs.is_alive()
+    assert not emitter.is_alive()
+
+
+def test_context_manager_with_scheduled_watches():
+    """Test that context manager works correctly with scheduled watches."""
+    obs = BaseObserver(EventEmitter)
+    handler = FileSystemEventHandler()
+    obs.schedule(handler, "/foobar", recursive=True)
+    assert len(obs.emitters) == 1
+    (emitter,) = obs.emitters
+    assert not obs.is_alive()
+    assert not emitter.is_alive()
+
+    with obs:
+        assert obs.is_alive()
+        assert emitter.is_alive()
+        assert len(obs.emitters) == 1
+
+    assert not obs.is_alive()
+    assert not emitter.is_alive()

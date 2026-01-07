@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import sys, os
+import os
+import sys
 
 PLATFORM_WINDOWS = "windows"
 PLATFORM_LINUX = "linux"
