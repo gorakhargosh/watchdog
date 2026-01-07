@@ -274,10 +274,12 @@ class _EventsChecker:
         else:
             self._check_events_without_order(found_events)
 
-    def __enter__(self) -> _EventsChecker:
+    def __enter__(self) -> _EventsChecker:  # noqa: PYI034
+        # This could be annotated to return `Self` but that type is available
+        # only in Python 3.11+.
         return self
 
-    def __exit__(self, type, value, traceback) -> None:
-        if value is None:
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        if exc_value is None:
             # do check only if there is no error
             self.check_events()
