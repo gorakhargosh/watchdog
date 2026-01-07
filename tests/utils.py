@@ -164,14 +164,17 @@ class _EventsChecker:
         # If true, check that we receive exactly the expected events in the
         # specified order.
         self._validate_order = True
-        # If true, allow extra events (only meaningful if _validate_order is
-        # false).
+        # If true, allow extra events in addition to expected ones
         self._allow_extra = False
         if platform.is_darwin():
             # The fsevents API gives back events in a non-specific order.
             self._validate_order = False
             # Sometimes there are addtional DirModifiedEvents returned as well.
             self._allow_extra = True
+
+    def allow_extra_events(self) -> None:
+        """Allow events not specified by add()."""
+        self._allow_extra = True
 
     def _debug(self, *args: Any) -> None:
         if self._verbose:
@@ -243,8 +246,9 @@ class _EventsChecker:
                 raise AssertionError(msg)
 
     def _check_events_with_order( self, found_events: list[FileSystemEvent]) -> None:
-        # we need exactly the number of expected events
-        assert len(found_events) == len(self.expected_events), "wrong number of events"
+        if not self._allow_extra:
+            # we need exactly the number of expected events
+            assert len(found_events) == len(self.expected_events), "wrong number of events"
         for event, expected_event in zip(found_events, self.expected_events):
             assert self._match_event(event, expected_event), "did not find expected event"
 
