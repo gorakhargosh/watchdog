@@ -48,8 +48,6 @@ def test_create(
     with events_checker() as ec:
         if platform.is_darwin():
             ec.add(FileCreatedEvent, "a")
-            ec.add(DirModifiedEvent, ".")
-            ec.add(FileModifiedEvent, "a")
         else:
             ec.add(FileCreatedEvent, "a")
             if not platform.is_windows():
@@ -113,9 +111,6 @@ def test_delete(
     with events_checker() as ec:
         if platform.is_darwin():
             ec.add(DirModifiedEvent, ".")
-            ec.add(FileModifiedEvent, "a")
-            ec.add(FileDeletedEvent, "a")
-            ec.add(DirModifiedEvent, ".")
         else:
             ec.add(FileDeletedEvent, "a")
             if not platform.is_windows():
@@ -133,7 +128,6 @@ def test_modify(
     with events_checker() as ec:
         if platform.is_darwin():
             ec.add(FileModifiedEvent, "a")
-            ec.add(DirModifiedEvent, ".")
         else:
             if platform.is_linux():
                 ec.add(FileOpenedEvent, "a")
@@ -357,7 +351,11 @@ def test_recursive_on(
     touch(p("dir1", "dir2", "dir3", "a"))
 
     with events_checker() as ec:
-        if platform.is_windows():
+        if platform.is_darwin():
+            ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
+            ec.add(DirModifiedEvent, "dir1/dir2/dir3")
+            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+        elif platform.is_windows():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
         else:
@@ -404,7 +402,6 @@ def test_recursive_off(
         if platform.is_darwin():
             ec.add(FileCreatedEvent, "b")
             ec.add(DirModifiedEvent, ".")
-            ec.add(FileModifiedEvent, "b")
         else:
             ec.add(FileCreatedEvent, "b")
             if not platform.is_windows():
