@@ -45,22 +45,20 @@ def test_create(
     start_watching()
     open(p("a"), "a").close()
 
-    checker = events_checker()
-    if platform.is_darwin():
-        checker.add(FileCreatedEvent, "a")
-        checker.add(DirModifiedEvent, ".")
-        checker.add(FileModifiedEvent, "a")
-    else:
-        checker.add(FileCreatedEvent, "a")
-        if not platform.is_windows():
-            checker.add(DirModifiedEvent, ".")
-        if platform.is_linux():
-            checker.add(FileOpenedEvent, "a")
-            checker.add(FileClosedEvent, "a")
-        if not platform.is_windows():
-            checker.add(DirModifiedEvent, ".")
-
-    checker.check_events()
+    with events_checker() as ec:
+        if platform.is_darwin():
+            ec.add(FileCreatedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
+            ec.add(FileModifiedEvent, "a")
+        else:
+            ec.add(FileCreatedEvent, "a")
+            if not platform.is_windows():
+                ec.add(DirModifiedEvent, ".")
+            if platform.is_linux():
+                ec.add(FileOpenedEvent, "a")
+                ec.add(FileClosedEvent, "a")
+            if not platform.is_windows():
+                ec.add(DirModifiedEvent, ".")
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="FileClosed*Event only supported in GNU/Linux")
@@ -70,21 +68,18 @@ def test_closed(
     with open(p("a"), "a"):
         start_watching()
 
-    checker = events_checker()
+    with events_checker() as ec:
+        # After file creation/open in append mode
+        ec.add(FileClosedEvent, "a")
 
-    # After file creation/open in append mode
-    checker.add(FileClosedEvent, "a")
-
-    checker.add(DirModifiedEvent, ".")
-    checker.check_events()
+        ec.add(DirModifiedEvent, ".")
 
     # After read-only, only IN_CLOSE_NOWRITE is emitted
     open(p("a")).close()
 
-    checker = events_checker()
-    checker.add(FileOpenedEvent, "a")
-    checker.add(FileClosedNoWriteEvent, "a")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileOpenedEvent, "a")
+        ec.add(FileClosedNoWriteEvent, "a")
 
 
 @pytest.mark.skipif(
@@ -98,14 +93,13 @@ def test_create_wrong_encoding(
     filename = "a_\udce4"
     open(p(filename), "a").close()
 
-    checker = events_checker()
-    checker.add(FileCreatedEvent, filename)
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, ".")
-        checker.add(FileOpenedEvent, filename)
-        checker.add(FileClosedEvent, filename)
-        checker.add(DirModifiedEvent, ".")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileCreatedEvent, filename)
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, ".")
+            ec.add(FileOpenedEvent, filename)
+            ec.add(FileClosedEvent, filename)
+            ec.add(DirModifiedEvent, ".")
 
 
 def test_delete(
@@ -116,18 +110,16 @@ def test_delete(
     start_watching()
     rm(p("a"))
 
-    checker = events_checker()
-    if platform.is_darwin():
-        checker.add(DirModifiedEvent, ".")
-        checker.add(FileModifiedEvent, "a")
-        checker.add(FileDeletedEvent, "a")
-        checker.add(DirModifiedEvent, ".")
-    else:
-        checker.add(FileDeletedEvent, "a")
-        if not platform.is_windows():
-            checker.add(DirModifiedEvent, ".")
-
-    checker.check_events()
+    with events_checker() as ec:
+        if platform.is_darwin():
+            ec.add(DirModifiedEvent, ".")
+            ec.add(FileModifiedEvent, "a")
+            ec.add(FileDeletedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
+        else:
+            ec.add(FileDeletedEvent, "a")
+            if not platform.is_windows():
+                ec.add(DirModifiedEvent, ".")
 
 
 def test_modify(
@@ -138,19 +130,18 @@ def test_modify(
 
     touch(p("a"))
 
-    checker = events_checker()
-    if platform.is_darwin():
-        checker.add(FileModifiedEvent, "a")
-        checker.add(DirModifiedEvent, ".")
-    else:
-        if platform.is_linux():
-            checker.add(FileOpenedEvent, "a")
-        checker.add(FileModifiedEvent, "a")
-        if platform.is_linux():
-            checker.add(FileClosedEvent, "a")
-        if not platform.is_windows():
-            checker.add(DirModifiedEvent, ".")
-    checker.check_events()
+    with events_checker() as ec:
+        if platform.is_darwin():
+            ec.add(FileModifiedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
+        else:
+            if platform.is_linux():
+                ec.add(FileOpenedEvent, "a")
+            ec.add(FileModifiedEvent, "a")
+            if platform.is_linux():
+                ec.add(FileClosedEvent, "a")
+            if not platform.is_windows():
+                ec.add(DirModifiedEvent, ".")
 
 
 def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
@@ -161,9 +152,8 @@ def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching,
     # allows setting the read-only flag.
     os.chmod(p("a"), stat.S_IREAD)
 
-    checker = events_checker()
-    checker.add(FileModifiedEvent, "a")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileModifiedEvent, "a")
 
     # Reset permissions to allow cleanup.
     os.chmod(p("a"), stat.S_IWRITE)
@@ -179,16 +169,15 @@ def test_move_simple(
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    checker = events_checker()
-    if not platform.is_windows():
-        checker.add(FileMovedEvent, "dir1/a", dest_path="dir2/b")
-        checker.add(DirModifiedEvent, "dir1")
-        checker.add(DirModifiedEvent, "dir2")
-    else:
-        checker.add(FileDeletedEvent, "dir1/a")
-        checker.add(FileCreatedEvent, "dir2/b")
-        checker.add(DirModifiedEvent, "dir2")
-    checker.check_events()
+    with events_checker() as ec:
+        if not platform.is_windows():
+            ec.add(FileMovedEvent, "dir1/a", dest_path="dir2/b")
+            ec.add(DirModifiedEvent, "dir1")
+            ec.add(DirModifiedEvent, "dir2")
+        else:
+            ec.add(FileDeletedEvent, "dir1/a")
+            ec.add(FileCreatedEvent, "dir2/b")
+            ec.add(DirModifiedEvent, "dir2")
 
 
 def test_case_change(
@@ -204,16 +193,15 @@ def test_case_change(
 
     mv(p("dir1", "file"), p("dir2", "FILE"))
 
-    checker = events_checker()
-    if not platform.is_windows():
-        checker.add(FileMovedEvent, "dir1/file", dest_path="dir2/FILE")
-        checker.add(DirModifiedEvent, "dir1")
-        checker.add(DirModifiedEvent, "dir2")
-    else:
-        checker.add(FileDeletedEvent, "dir1/file")
-        checker.add(FileCreatedEvent, "dir2/FILE")
-        checker.add(DirModifiedEvent, "dir2")
-    checker.check_events()
+    with events_checker() as ec:
+        if not platform.is_windows():
+            ec.add(FileMovedEvent, "dir1/file", dest_path="dir2/FILE")
+            ec.add(DirModifiedEvent, "dir1")
+            ec.add(DirModifiedEvent, "dir2")
+        else:
+            ec.add(FileDeletedEvent, "dir1/file")
+            ec.add(FileCreatedEvent, "dir2/FILE")
+            ec.add(DirModifiedEvent, "dir2")
 
 
 def test_move_to(
@@ -226,11 +214,10 @@ def test_move_to(
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    checker = events_checker()
-    checker.add(FileCreatedEvent, "dir2/b")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, "dir2")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileCreatedEvent, "dir2/b")
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, "dir2")
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
@@ -243,12 +230,11 @@ def test_move_to_full(
     start_watching(path=p("dir2"), use_full_emitter=True)
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    checker = events_checker()
-    # The src_path should be blank since the path was not watched
-    checker.add(FileMovedEvent, "", dest_path="dir2/b")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, "dir2")
-    checker.check_events()
+    with events_checker() as ec:
+        # The src_path should be blank since the path was not watched
+        ec.add(FileMovedEvent, "", dest_path="dir2/b")
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, "dir2")
 
 
 def test_move_from(
@@ -261,11 +247,10 @@ def test_move_from(
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    checker = events_checker()
-    checker.add(FileDeletedEvent, "dir1/a")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, "dir1")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileDeletedEvent, "dir1/a")
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, "dir1")
 
 
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
@@ -278,12 +263,11 @@ def test_move_from_full(
     start_watching(path=p("dir1"), use_full_emitter=True)
     mv(p("dir1", "a"), p("dir2", "b"))
 
-    checker = events_checker()
-    # dest_path should be blank since not watched
-    checker.add(FileMovedEvent, "dir1/a", dest_path="")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, "dir1")
-    checker.check_events()
+    with events_checker() as ec:
+        # dest_path should be blank since not watched
+        ec.add(FileMovedEvent, "dir1/a", dest_path="")
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, "dir1")
 
 
 def test_separate_consecutive_moves(
@@ -296,16 +280,15 @@ def test_separate_consecutive_moves(
     mv(p("dir1", "a"), p("c"))
     mv(p("b"), p("dir1", "d"))
 
-    checker = events_checker()
-    if not platform.is_windows():
-        checker.add(FileDeletedEvent, "dir1/a")
-        checker.add(DirModifiedEvent, "dir1")
-        checker.add(FileCreatedEvent, "dir1/d")
-        checker.add(DirModifiedEvent, "dir1")
-    else:
-        checker.add(FileDeletedEvent, "dir1/a")
-        checker.add(FileCreatedEvent, "dir1/d")
-    checker.check_events()
+    with events_checker() as ec:
+        if not platform.is_windows():
+            ec.add(FileDeletedEvent, "dir1/a")
+            ec.add(DirModifiedEvent, "dir1")
+            ec.add(FileCreatedEvent, "dir1/d")
+            ec.add(DirModifiedEvent, "dir1")
+        else:
+            ec.add(FileDeletedEvent, "dir1/a")
+            ec.add(FileCreatedEvent, "dir1/d")
 
 
 @pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
@@ -316,9 +299,8 @@ def test_delete_self(
     emitter = start_watching(path=p("dir1"))
     rm(p("dir1"), recursive=True)
 
-    checker = events_checker()
-    checker.add(DirDeletedEvent, "dir1")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(DirDeletedEvent, "dir1")
 
     emitter.join(5)
     assert not emitter.is_alive()
@@ -341,12 +323,12 @@ def test_fast_subdirectory_creation_deletion(
         rm(sub_dir, recursive=True)
         time.sleep(0.1)  # required for macOS emitter to catch up with us
 
-    checker = events_checker()
-    for _ in range(times):
-        checker.add(DirCreatedEvent, "dir1/sub_dir1")
-        checker.add(DirModifiedEvent, "dir1")
-        checker.add(DirDeletedEvent, "dir1/sub_dir1")
-        checker.add(DirModifiedEvent, "dir1")
+    with events_checker() as ec:
+        for _ in range(times):
+            ec.add(DirCreatedEvent, "dir1/subdir1")
+            ec.add(DirModifiedEvent, "dir1")
+            ec.add(DirDeletedEvent, "dir1/subdir1")
+            ec.add(DirModifiedEvent, "dir1")
 
 
 def test_passing_unicode_should_give_unicode(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
@@ -374,26 +356,24 @@ def test_recursive_on(
     start_watching()
     touch(p("dir1", "dir2", "dir3", "a"))
 
-    checker = events_checker()
-    if platform.is_windows():
-        checker.add(FileCreatedEvent, "dir1/dir2/dir3/a")
-        checker.add(FileModifiedEvent, "dir1/dir2/dir3/a")
-    else:
-        checker.add(FileCreatedEvent, "dir1/dir2/dir3/a")
-        checker.add(DirModifiedEvent, "dir1/dir2/dir3")
+    with events_checker() as ec:
+        if platform.is_windows():
+            ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
+            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+        else:
+            ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
+            ec.add(DirModifiedEvent, "dir1/dir2/dir3")
 
-        if platform.is_linux():
-            checker.add(FileOpenedEvent, "dir1/dir2/dir3/a")
+            if platform.is_linux():
+                ec.add(FileOpenedEvent, "dir1/dir2/dir3/a")
 
-        if not platform.is_bsd():
-            checker.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+            if not platform.is_bsd():
+                ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
 
-        if platform.is_linux():
-            checker.add(FileClosedEvent, "dir1/dir2/dir3/a")
+            if platform.is_linux():
+                ec.add(FileClosedEvent, "dir1/dir2/dir3/a")
 
-        checker.add(DirModifiedEvent, "dir1/dir2/dir3")
-
-    checker.check_events()
+            ec.add(DirModifiedEvent, "dir1/dir2/dir3")
 
 
 def check_empty_queue(event_queue: TestEventQueue) -> None:
@@ -420,20 +400,19 @@ def test_recursive_off(
 
     mkfile(p("b"))
 
-    checker = events_checker()
-    if platform.is_darwin():
-        checker.add(FileCreatedEvent, "b")
-        checker.add(DirModifiedEvent, ".")
-        checker.add(FileModifiedEvent, "b")
-    else:
-        checker.add(FileCreatedEvent, "b")
-        if not platform.is_windows():
-            checker.add(DirModifiedEvent, ".")
-            if platform.is_linux():
-                checker.add(FileOpenedEvent, "b")
-                checker.add(FileClosedEvent, "b")
-            checker.add(DirModifiedEvent, ".")
-    checker.check_events()
+    with events_checker() as ec:
+        if platform.is_darwin():
+            ec.add(FileCreatedEvent, "b")
+            ec.add(DirModifiedEvent, ".")
+            ec.add(FileModifiedEvent, "b")
+        else:
+            ec.add(FileCreatedEvent, "b")
+            if not platform.is_windows():
+                ec.add(DirModifiedEvent, ".")
+                if platform.is_linux():
+                    ec.add(FileOpenedEvent, "b")
+                    ec.add(FileClosedEvent, "b")
+                ec.add(DirModifiedEvent, ".")
 
     # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
     if platform.is_darwin():
@@ -443,21 +422,18 @@ def test_recursive_off(
         check_empty_queue(event_queue)
 
         mkdir(p("dir3"))
-        checker = events_checker()
-        checker.add(DirModifiedEvent, ".")  # the contents of the parent directory changed
-        checker.check_events()
+        with events_checker() as ec:
+            ec.add(DirModifiedEvent, ".")  # the contents of the parent directory changed
 
         mv(p("dir1", "dir2", "somefile"), p("somefile"))
-        checker = events_checker()
-        checker.add(FileMovedEvent, "dir1/dir2/somefile", dest_path="somefile")
-        checker.add(DirModifiedEvent, ".")
-        checker.check_events()
+        with events_checker() as ec:
+            ec.add(FileMovedEvent, "dir1/dir2/somefile", dest_path="somefile")
+            ec.add(DirModifiedEvent, ".")
 
         mv(p("dir1", "dir2"), p("dir2"))
-        checker = events_checker()
-        checker.add(DirMovedEvent, "dir1/dir2", dest_path="dir2")
-        checker.add(DirModifiedEvent, ".")
-        checker.check_events()
+        with events_checker() as ec:
+            ec.add(DirMovedEvent, "dir1/dir2", dest_path="dir2")
+            ec.add(DirModifiedEvent, ".")
 
 
 def test_renaming_top_level_directory(
@@ -469,42 +445,38 @@ def test_renaming_top_level_directory(
     start_watching()
 
     mkdir(p("a"))
-    checker = events_checker()
-    checker.add(DirCreatedEvent, "a")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, ".")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(DirCreatedEvent, "a")
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, ".")
 
     mkdir(p("a", "b"))
-    checker = events_checker()
-    checker.add(DirCreatedEvent, "a/b")
-    if not platform.is_windows():
-        checker.add(DirModifiedEvent, "a")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(DirCreatedEvent, "a/b")
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, "a")
 
     mv(p("a"), p("a2"))
-    checker = events_checker()
-    if platform.is_windows():
-        checker.add(DirMovedEvent, "a", dest_path="a2")
-        checker.add(DirMovedEvent, "a/b", dest_path="a2/b")
-        checker.add(DirModifiedEvent, "a2")
-    else:
-        checker.add(DirMovedEvent, "a", dest_path="a2")
-        checker.add(DirModifiedEvent, ".")
-        checker.add(DirModifiedEvent, ".")
-        checker.add(DirMovedEvent, "a/b", dest_path="a2/b")
-    checker.check_events()
+    with events_checker() as ec:
+        if platform.is_windows():
+            ec.add(DirMovedEvent, "a", dest_path="a2")
+            ec.add(DirMovedEvent, "a/b", dest_path="a2/b")
+            ec.add(DirModifiedEvent, "a2")
+        else:
+            ec.add(DirMovedEvent, "a", dest_path="a2")
+            ec.add(DirModifiedEvent, ".")
+            ec.add(DirModifiedEvent, ".")
+            ec.add(DirMovedEvent, "a/b", dest_path="a2/b")
 
     open(p("a2", "b", "c"), "a").close()
 
-    checker = events_checker()
-    checker.add(FileCreatedEvent, "a2/b/c")
-    if platform.is_linux():
-        checker.add(DirModifiedEvent, "a2/b")
-        checker.add(FileOpenedEvent, "a2/b/c")
-        checker.add(FileClosedEvent, "a2/b/c")
-        checker.add(DirModifiedEvent, "a2/b")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileCreatedEvent, "a2/b/c")
+        if platform.is_linux():
+            ec.add(DirModifiedEvent, "a2/b")
+            ec.add(FileOpenedEvent, "a2/b/c")
+            ec.add(FileClosedEvent, "a2/b/c")
+            ec.add(DirModifiedEvent, "a2/b")
 
 
 @pytest.mark.skipif(platform.is_windows(), reason="Windows create another set of events for this test")
@@ -519,24 +491,22 @@ def test_move_nested_subdirectories(
     start_watching()
     mv(p("dir1/dir2"), p("dir2"))
 
-    checker = events_checker()
-    checker.add(DirMovedEvent, "dir1/dir2", dest_path="dir2")
-    checker.add(DirModifiedEvent, "dir1")
-    checker.add(DirModifiedEvent, ".")
-    checker.add(DirMovedEvent, "dir1/dir2/dir3", dest_path="dir2/dir3")
-    checker.add(FileMovedEvent, "dir1/dir2/dir3/a", dest_path="dir2/dir3/a")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(DirMovedEvent, "dir1/dir2", dest_path="dir2")
+        ec.add(DirModifiedEvent, "dir1")
+        ec.add(DirModifiedEvent, ".")
+        ec.add(DirMovedEvent, "dir1/dir2/dir3", dest_path="dir2/dir3")
+        ec.add(FileMovedEvent, "dir1/dir2/dir3/a", dest_path="dir2/dir3/a")
 
     touch(p("dir2/dir3", "a"))
 
-    checker = events_checker()
-    if platform.is_linux():
-        checker.add(FileOpenedEvent, "dir2/dir3/a")
-    checker.add(FileModifiedEvent, "dir2/dir3/a")
-    if platform.is_linux():
-        checker.add(FileClosedEvent, "dir2/dir3/a")
-        checker.add(DirModifiedEvent, "dir2/dir3")
-    checker.check_events()
+    with events_checker() as ec:
+        if platform.is_linux():
+            ec.add(FileOpenedEvent, "dir2/dir3/a")
+        ec.add(FileModifiedEvent, "dir2/dir3/a")
+        if platform.is_linux():
+            ec.add(FileClosedEvent, "dir2/dir3/a")
+            ec.add(DirModifiedEvent, "dir2/dir3")
 
 
 @pytest.mark.skipif(
@@ -554,20 +524,18 @@ def test_move_nested_subdirectories_on_windows(
     start_watching(path=p(""))
     mv(p("dir1/dir2"), p("dir2"))
 
-    checker = events_checker()
-    checker.add(FileDeletedEvent, "dir1/dir2")
-    checker.add(DirCreatedEvent, "dir2")
-    checker.add(DirCreatedEvent, "dir2/dir3")
-    checker.add(FileCreatedEvent, "dir2/dir3/a")
-    checker.add(DirModifiedEvent, "dir2")
-    checker.add(DirModifiedEvent, "dir2/dir3")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileDeletedEvent, "dir1/dir2")
+        ec.add(DirCreatedEvent, "dir2")
+        ec.add(DirCreatedEvent, "dir2/dir3")
+        ec.add(FileCreatedEvent, "dir2/dir3/a")
+        ec.add(DirModifiedEvent, "dir2")
+        ec.add(DirModifiedEvent, "dir2/dir3")
 
     touch(p("dir2/dir3", "a"))
 
-    checker = events_checker()
-    checker.add(FileModifiedEvent, "dir2/dir3/a")
-    checker.check_events()
+    with events_checker() as ec:
+        ec.add(FileModifiedEvent, "dir2/dir3/a")
 
 
 @pytest.mark.skipif(platform.is_bsd(), reason="BSD create another set of events for this test")
@@ -581,31 +549,28 @@ def test_file_lifecyle(
     mv(p("a"), p("b"))
     rm(p("b"))
 
-    checker = events_checker()
+    with events_checker() as ec:
+        if platform.is_linux():
+            ec.add(FileCreatedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
 
-    if platform.is_linux():
-        checker.add(FileCreatedEvent, "a")
-        checker.add(DirModifiedEvent, ".")
+            ec.add(FileOpenedEvent, "a")
+            ec.add(FileClosedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
 
-        checker.add(FileOpenedEvent, "a")
-        checker.add(FileClosedEvent, "a")
-        checker.add(DirModifiedEvent, ".")
+            ec.add(FileOpenedEvent, "a")
+            ec.add(FileModifiedEvent, "a")
+            ec.add(FileClosedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
 
-        checker.add(FileOpenedEvent, "a")
-        checker.add(FileModifiedEvent, "a")
-        checker.add(FileClosedEvent, "a")
-        checker.add(DirModifiedEvent, ".")
+            ec.add(FileMovedEvent, "a", dest_path="b")
+            ec.add(DirModifiedEvent, ".")
+            ec.add(DirModifiedEvent, ".")
 
-        checker.add(FileMovedEvent, "a", dest_path="b")
-        checker.add(DirModifiedEvent, ".")
-        checker.add(DirModifiedEvent, ".")
-
-        checker.add(FileDeletedEvent, "b")
-        checker.add(DirModifiedEvent, ".")
-    else:
-        checker.add(FileCreatedEvent, "a")
-        checker.add(FileModifiedEvent, "a")
-        checker.add(FileMovedEvent, "a", dest_path="b")
-        checker.add(FileDeletedEvent, "b")
-
-    checker.check_events()
+            ec.add(FileDeletedEvent, "b")
+            ec.add(DirModifiedEvent, ".")
+        else:
+            ec.add(FileCreatedEvent, "a")
+            ec.add(FileModifiedEvent, "a")
+            ec.add(FileMovedEvent, "a", dest_path="b")
+            ec.add(FileDeletedEvent, "b")

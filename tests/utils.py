@@ -81,12 +81,15 @@ class Helper:
 
         return emitter
 
-    def events_checker(self) -> _EventsChecker:
-        """Utility function to create a new event checker instance.  Use add()
-        to add events to check for.  Call check_events() to check that those
-        events have been emitted.
+    def events_checker(self, *, verbose: bool = False) -> _EventsChecker:
+        """Utility function to create a new event checker instance.  Use as a context
+        manager and call add() to add events to check for.  The events in the queue
+        will automatically be checked when the "with" block is exited.
+
+        If `verbose` is true, print details of expected and found events to stdout (to assist with
+        developing or debugging tests).
         """
-        return _EventsChecker(self)
+        return _EventsChecker(self, verbose=verbose)
 
     def expect_event(self, expected_event: FileSystemEvent, timeout: float = 2) -> None:
         """Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
@@ -150,15 +153,14 @@ class _ExpectedEvent:
 
 
 class _EventsChecker:
-    # If True, output verbose debugging to stdout.
-    DEBUG = True
 
     expected_events: list[_ExpectedEvent]
 
-    def __init__(self, helper: Helper):
+    def __init__(self, helper: Helper, *, verbose: bool = False):
         self.tmp = helper.tmp
         self.event_queue = helper.event_queue
         self.expected_events = []
+        self._verbose = verbose
         # If true, check that we receive exactly the expected events in the
         # specified order.
         self._validate_order = True
@@ -172,7 +174,7 @@ class _EventsChecker:
             self._allow_extra = True
 
     def _debug(self, *args: Any) -> None:
-        if self.DEBUG:
+        if self._verbose:
             print(" == events checker == ", *args)  # noqa: T201
 
     def _make_path(self, path: str | None) -> str | None:
@@ -226,7 +228,7 @@ class _EventsChecker:
                     break
         if expected_events:
             # Fail, we did not find some of the expected events.
-            if self.DEBUG:
+            if self._verbose:
                 self._debug("missing:")
                 for e in expected_events:
                     self._debug("  ", e.expected_class.__name__, e.src_path)
@@ -251,10 +253,10 @@ class _EventsChecker:
         new events to appear).  Confirm that expected events, as specified by
         calling add(), appear in the sequence of events receieved.
         """
-        if self.DEBUG:
+        if self._verbose:
             self._debug("expecting:")
             for e in self.expected_events:
-                self._debug("  ", e.expected_class.__name__, e.src_path, self._make_path(e.src_path))
+                self._debug("  ", e.expected_class.__name__, repr(e.src_path))
 
         found_events = []
         while True:
@@ -264,10 +266,18 @@ class _EventsChecker:
             except Empty:
                 self._debug("event queue timeout")
                 break
-            self._debug("got:", event.__class__.__name__, event.src_path)
+            self._debug("got:", event.__class__.__name__, repr(event.src_path))
             found_events.append(event)
 
         if self._validate_order:
             self._check_events_with_order(found_events)
         else:
             self._check_events_without_order(found_events)
+
+    def __enter__(self) -> _EventsChecker:
+        return self
+
+    def __exit__(self, type, value, traceback) -> None:
+        if value is None:
+            # do check only if there is no error
+            self.check_events()

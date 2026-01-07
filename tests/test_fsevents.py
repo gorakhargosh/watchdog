@@ -239,9 +239,8 @@ def test_converting_cfstring_to_pyunicode(p: P, start_watching: StartWatching, e
 
     try:
         mkdir(p(dirname))
-        checker = events_checker()
-        checker.add(DirCreatedEvent, dirname)
-        checker.check_events()
+        with events_checker() as ec:
+            ec.add(DirCreatedEvent, dirname)
     finally:
         emitter.stop()
 
