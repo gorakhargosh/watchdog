@@ -7,13 +7,13 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from typing_extensions import Self
-
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
     import types
+
+    from typing_extensions import Self
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
 
