@@ -4,7 +4,7 @@ import dataclasses
 import os
 import subprocess
 import sys
-from queue import Empty, Queue
+from queue import Queue
 from typing import Protocol
 
 from watchdog.events import FileSystemEvent
@@ -86,16 +86,7 @@ class Helper:
 
         Provides some robustness for the otherwise flaky nature of asynchronous notifications.
         """
-        try:
-            actual_event = self.event_queue.get(timeout=timeout)[0]
-            if actual_event != expected_event:
-                raise AssertionError(  # noqa: TRY003
-                    f"Expected event {expected_event!r}, but got {actual_event!r}"
-                )
-        except Empty as e:
-            raise AssertionError(  # noqa: TRY003
-                f"Expected event {expected_event!r} not received within {timeout} seconds"
-            ) from e
+        assert self.event_queue.get(timeout=timeout)[0] == expected_event
 
     def close(self) -> None:
         for emitter in self.emitters:

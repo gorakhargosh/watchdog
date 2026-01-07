@@ -18,7 +18,6 @@ from watchdog.events import (
 )
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
-from watchdog.utils import platform
 
 from .shell import mkdir, mkdtemp, msize, mv, rm, touch
 
@@ -117,10 +116,6 @@ def test___init__(event_queue, emitter):
 
     expected.add(FileMovedEvent(p("fromfile"), p("project", "tofile")))
     expected.add(DirMovedEvent(p("project", "blah"), p("project", "boo")))
-
-    # macOS may generate an additional FileModifiedEvent for fromfile during move
-    if platform.is_darwin():
-        expected.add(FileModifiedEvent(p("fromfile")))
 
     got = set()
 

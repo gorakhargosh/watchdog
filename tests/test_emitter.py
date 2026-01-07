@@ -458,8 +458,7 @@ def test_renaming_top_level_directory(
 
     mkdir(p("a", "b"))
     expect_event(DirCreatedEvent(p("a", "b")))
-    if not platform.is_windows():
-        expect_event(DirModifiedEvent(p("a")))
+    expect_event(DirModifiedEvent(p("a")))
 
     mv(p("a"), p("a2"))
     expect_event(DirMovedEvent(p("a"), p("a2")))
