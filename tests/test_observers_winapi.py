@@ -57,6 +57,7 @@ def test___init__(event_queue, emitter):
 
     sleep(SLEEP_TIME)
     emitter.stop()
+    sleep(SLEEP_TIME)  # time for background thread to exit
 
     # What we need here for the tests to pass is a collection type
     # that is:

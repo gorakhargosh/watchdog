@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
+import queue
+import threading
 from ctypes.wintypes import BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPWSTR
 from dataclasses import dataclass
 from functools import reduce
@@ -68,6 +70,7 @@ WAIT_TIMEOUT = 0x00000102
 
 # Error codes
 ERROR_OPERATION_ABORTED = 995
+ERROR_ELEMENT_NOT_FOUND = 1168
 
 
 class OVERLAPPED(ctypes.Structure):
@@ -259,7 +262,8 @@ BUFFER_SIZE = 64000
 PATH_BUFFER_SIZE = 2048
 
 
-def _parse_event_buffer(read_buffer: bytes, n_bytes: int) -> list[tuple[int, str]]:
+def _parse_event_buffer(read_buffer: bytes) -> list[tuple[int, str]]:
+    n_bytes = len(read_buffer)
     results = []
     while n_bytes > 0:
         fni = ctypes.cast(read_buffer, LPFNI)[0]  # type: ignore[arg-type]
@@ -283,17 +287,17 @@ def _is_observed_path_deleted(handle: HANDLE, path: str) -> bool:
     return buff.value != path
 
 
-def _generate_observed_path_deleted_event() -> tuple[bytes, int]:
+def _generate_observed_path_deleted_event() -> bytes:
     # Create synthetic event for notify that observed directory is deleted
     path = ctypes.create_unicode_buffer(".")
     event = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
     event_size = ctypes.sizeof(event)
     buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
     ctypes.memmove(buff, ctypes.addressof(event), event_size)
-    return buff.raw, event_size
+    return buff.raw[:event_size]
 
 
-def get_directory_handle(path: str) -> HANDLE:
+def _get_directory_handle(path: str) -> HANDLE:
     """Returns a Windows handle to the specified directory path."""
     return CreateFileW(
         path,
@@ -306,44 +310,19 @@ def get_directory_handle(path: str) -> HANDLE:
     )
 
 
-def close_directory_handle(handle: HANDLE) -> None:
+def _cancel_handle_io(handle: HANDLE) -> None:
     try:
-        CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
-        CloseHandle(handle)
-    except OSError:
-        with contextlib.suppress(Exception):
-            CloseHandle(handle)
-
-
-def read_directory_changes(handle: HANDLE, path: str, *, recursive: bool) -> tuple[bytes, int]:
-    """Read changes to the directory using the specified directory handle.
-
-    https://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
-    """
-    event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
-    nbytes = DWORD()
-    try:
-        ReadDirectoryChangesW(
-            handle,
-            ctypes.byref(event_buffer),
-            len(event_buffer),
-            recursive,
-            WATCHDOG_FILE_NOTIFY_FLAGS,
-            ctypes.byref(nbytes),
-            None,
-            None,
-        )
+        CancelIoEx(handle, None)
     except OSError as e:
-        if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
-            return event_buffer.raw, 0
-
-        # Handle the case when the root path is deleted
-        if _is_observed_path_deleted(handle, path):
-            return _generate_observed_path_deleted_event()
-
+        if e.winerror == ERROR_ELEMENT_NOT_FOUND:  # type: ignore[attr-defined]
+            # Happens when the directory has been deleted, ignore.
+            return
         raise
 
-    return event_buffer.raw, int(nbytes.value)
+
+def _close_directory_handle(handle: HANDLE) -> None:
+    with contextlib.suppress(OSError):
+        CloseHandle(handle)
 
 
 @dataclass(unsafe_hash=True)
@@ -376,7 +355,108 @@ class WinAPINativeEvent:
         return self.action == FILE_ACTION_REMOVED_SELF
 
 
-def read_events(handle: HANDLE, path: str, *, recursive: bool) -> list[WinAPINativeEvent]:
-    buf, nbytes = read_directory_changes(handle, path, recursive=recursive)
-    events = _parse_event_buffer(buf, nbytes)
-    return [WinAPINativeEvent(action, src_path) for action, src_path in events]
+class DirectoryChangeReader:
+    """Uses ReadDirectoryChangesW() to detect file system changes.  A separate
+    thread is used to make that call in order to reduce the time window
+    in that events may be lost.  The processing of data receieved from
+    ReadDirectoryChangesW() is queued and processed by another thread.
+    """
+
+    def __init__(self, path: str, *, recursive: bool) -> None:
+        self._path = path
+        self._recursive = recursive
+        self._reader_thread: threading.Thread | None = None
+        self._handle: HANDLE | None = None
+        self._should_stop = False
+        self._buf_queue: queue.Queue = queue.Queue()
+        self._lock = threading.Lock()
+
+    def _run_inner(self, handle: HANDLE, event_buffer: ctypes.Array[ctypes.c_char], nbytes: DWORD) -> None:
+        # This runs in its own thread and it makes a single call to
+        # ReadDirectoryChangesW().  This blocks until at least some events are
+        # available (or there is an error).  We will re-use the _event_buffer
+        # and so we copy the data into a second buffer (double-buffering
+        # technique) and queue it for another thread to process.  This reduces
+        # the time window in which we could miss events.
+        try:
+            ReadDirectoryChangesW(
+                handle,
+                ctypes.byref(event_buffer),
+                len(event_buffer),
+                self._recursive,
+                WATCHDOG_FILE_NOTIFY_FLAGS,
+                ctypes.byref(nbytes),
+                None,
+                None,
+            )
+            buf = event_buffer.raw[: nbytes.value]
+        except OSError as e:
+            if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
+                return
+            if _is_observed_path_deleted(handle, self._path):
+                # Handle the case when the root path is deleted
+                with self._lock:
+                    # Additional calls to ReadDirectoryChangesW() will fail so stop.
+                    self._should_stop = True
+                # Create synthetic event for deletion
+                buf = _generate_observed_path_deleted_event()
+            else:
+                raise
+        self._buf_queue.put(buf)
+
+    def _run(self) -> None:
+        with self._lock:
+            assert self._handle is None
+            handle = self._handle = _get_directory_handle(self._path)
+        # To improve performance and reduce the window in which events can be
+        # missed, we re-use these for each call to _run_inner().
+        event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
+        nbytes = DWORD()
+        try:
+            while not self._should_stop:
+                self._run_inner(handle, event_buffer, nbytes)
+        finally:
+            # Note that a HANDLE value can be re-used by the OS once we close
+            # it.  So we need to be careful not to hang on to the value after
+            # we close it.
+            with self._lock:
+                self._handle = None
+            _close_directory_handle(handle)
+
+    def start(self) -> None:
+        with self._lock:
+            assert self._reader_thread is None
+            if self._should_stop:
+                return  # stop already called, do not start
+            self._reader_thread = threading.Thread(target=self._run)
+        self._reader_thread.start()
+
+    def stop(self) -> None:
+        with self._lock:
+            if self._should_stop:
+                return  # already stopping
+            self._should_stop = True
+            reader_thread = self._reader_thread
+            if reader_thread is None:
+                return  # never started
+            self._reader_thread = None
+            if self._handle is not None:
+                # Note that we don't close the handle here but let the reader
+                # thread do that.  The _should_stop flag will tell it to exit the
+                # _run loop, cleanup and exit.  Since it might be blocked inside
+                # ReadDirectoryChangesW, we call CancelIoEx to wake it. This
+                # cancel call is done while holding self._lock so that the run
+                # thread cannot race with us and close the handle before we
+                # make this call.
+                _cancel_handle_io(self._handle)
+        reader_thread.join()
+
+    def get_events(self, timeout: float) -> list[WinAPINativeEvent]:
+        events = []
+        while True:
+            try:
+                buf = self._buf_queue.get(timeout=timeout)
+            except queue.Empty:
+                break
+            events.extend(_parse_event_buffer(buf))
+        return [WinAPINativeEvent(action, src_path) for action, src_path in events]
