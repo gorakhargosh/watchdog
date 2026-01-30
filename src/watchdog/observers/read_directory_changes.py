@@ -94,7 +94,9 @@ class WindowsApiEmitter(EventEmitter):
                     for sub_created_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_created_event)
             elif winapi_event.is_removed:
-                self.queue_event(FileDeletedEvent(src_path))
+                # Use is_directory from extended file info to correctly identify
+                # deleted directories (fixes issue #1153)
+                self.queue_event((DirDeletedEvent if winapi_event.is_directory else FileDeletedEvent)(src_path))
             elif winapi_event.is_removed_self:
                 self.queue_event(DirDeletedEvent(self.watch.path))
                 should_stop = True
