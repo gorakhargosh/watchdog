@@ -7,7 +7,7 @@ from time import sleep
 
 import pytest
 
-from watchdog.events import DirCreatedEvent, DirMovedEvent
+from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirMovedEvent, FileCreatedEvent, FileDeletedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
@@ -127,3 +127,85 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_directory_deleted_event(event_queue, emitter):
+    """Test that deleting a directory produces DirDeletedEvent, not FileDeletedEvent.
+
+    This is a regression test for issue #1153 where deleted directories were
+    incorrectly reported as FileDeletedEvent because os.path.isdir() cannot
+    determine the type of a deleted path.
+
+    The fix uses ReadDirectoryChangesExW which provides FileAttributes in the
+    event data, allowing us to correctly identify deleted directories.
+    """
+    emitter.start()
+    sleep(SLEEP_TIME)
+
+    # Create a directory and a file
+    mkdir(p("testdir"))
+    sleep(SLEEP_TIME)
+
+    # Delete the directory
+    rm(p("testdir"), recursive=True)
+    sleep(SLEEP_TIME)
+
+    emitter.stop()
+    sleep(SLEEP_TIME)
+
+    got = []
+    while True:
+        try:
+            event, _ = event_queue.get_nowait()
+        except Empty:
+            break
+        else:
+            if event.event_type == "modified":
+                # Ignore modified events for deterministic tests
+                continue
+            got.append(event)
+
+    # Should have DirCreatedEvent and DirDeletedEvent (not FileDeletedEvent)
+    assert DirCreatedEvent(p("testdir")) in got
+    assert DirDeletedEvent(p("testdir")) in got
+    # Make sure we didn't get FileDeletedEvent for the directory
+    assert FileDeletedEvent(p("testdir")) not in got
+
+
+def test_file_deleted_event(event_queue, emitter):
+    """Test that deleting a file still produces FileDeletedEvent.
+
+    This ensures our fix for directory deletion doesn't break file deletion events.
+    """
+    from .shell import touch
+
+    emitter.start()
+    sleep(SLEEP_TIME)
+
+    # Create a file
+    touch(p("testfile.txt"))
+    sleep(SLEEP_TIME)
+
+    # Delete the file
+    rm(p("testfile.txt"))
+    sleep(SLEEP_TIME)
+
+    emitter.stop()
+    sleep(SLEEP_TIME)
+
+    got = []
+    while True:
+        try:
+            event, _ = event_queue.get_nowait()
+        except Empty:
+            break
+        else:
+            if event.event_type == "modified":
+                continue
+            got.append(event)
+
+    # Should have FileCreatedEvent and FileDeletedEvent
+    assert FileCreatedEvent(p("testfile.txt")) in got
+    assert FileDeletedEvent(p("testfile.txt")) in got
+    # Make sure we didn't get DirDeletedEvent for the file
+    assert DirDeletedEvent(p("testfile.txt")) not in got
