@@ -514,11 +514,11 @@ def generate_sub_moved_events(
     for root, directories, filenames in os.walk(dest_dir_path):  # type: ignore[type-var]
         for directory in directories:
             full_path = os.path.join(root, directory)  # type: ignore[call-overload]
-            renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else ""
+            renamed_path = src_dir_path + full_path[len(dest_dir_path):] if src_dir_path else ""
             yield DirMovedEvent(renamed_path, full_path, is_synthetic=True)
         for filename in filenames:
             full_path = os.path.join(root, filename)  # type: ignore[call-overload]
-            renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else ""
+            renamed_path = src_dir_path + full_path[len(dest_dir_path):] if src_dir_path else ""
             yield FileMovedEvent(renamed_path, full_path, is_synthetic=True)
 
 
