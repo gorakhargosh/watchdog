@@ -413,6 +413,7 @@ class BaseObserver(EventDispatcher):
     def dispatch_events(self, event_queue: EventQueue) -> None:
         entry = event_queue.get(block=True)
         if entry is EventDispatcher.stop_event:
+            event_queue.task_done()
             return
 
         event, watch = entry
