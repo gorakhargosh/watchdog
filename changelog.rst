@@ -23,6 +23,7 @@ Changelog
 - [inotify] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
 - [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
 - [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
+- [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
 - Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide
 
 6.0.0
