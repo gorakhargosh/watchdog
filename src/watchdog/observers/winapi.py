@@ -120,6 +120,28 @@ ReadDirectoryChangesW.argtypes = (
     LPVOID,  # FileIOCompletionRoutine # lpCompletionRoutine
 )
 
+# ReadDirectoryChangesExW is available on Windows 10 and later.
+# It provides extended information including FileAttributes which allows
+# us to determine if a deleted item was a directory.
+ReadDirectoryChangesExW = kernel32.ReadDirectoryChangesExW
+ReadDirectoryChangesExW.restype = BOOL
+ReadDirectoryChangesExW.errcheck = _errcheck_bool
+ReadDirectoryChangesExW.argtypes = (
+    HANDLE,  # hDirectory
+    LPVOID,  # lpBuffer
+    DWORD,  # nBufferLength
+    BOOL,  # bWatchSubtree
+    DWORD,  # dwNotifyFilter
+    ctypes.POINTER(DWORD),  # lpBytesReturned
+    ctypes.POINTER(OVERLAPPED),  # lpOverlapped
+    LPVOID,  # lpCompletionRoutine
+    DWORD,  # ReadDirectoryNotifyInformationClass
+)
+
+# ReadDirectoryNotifyInformationClass values
+ReadDirectoryNotifyInformation = 1
+ReadDirectoryNotifyExtendedInformation = 2
+
 CreateFileW = kernel32.CreateFileW
 CreateFileW.restype = HANDLE
 CreateFileW.errcheck = _errcheck_handle
@@ -224,6 +246,33 @@ class FileNotifyInformation(ctypes.Structure):
 LPFNI = ctypes.POINTER(FileNotifyInformation)
 
 
+# FILE_NOTIFY_EXTENDED_INFORMATION structure for ReadDirectoryChangesExW
+# https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_notify_extended_information
+class FileNotifyExtendedInformation(ctypes.Structure):
+    _fields_ = (
+        ("NextEntryOffset", DWORD),
+        ("Action", DWORD),
+        ("CreationTime", ctypes.c_longlong),
+        ("LastModificationTime", ctypes.c_longlong),
+        ("LastChangeTime", ctypes.c_longlong),
+        ("LastAccessTime", ctypes.c_longlong),
+        ("AllocatedLength", ctypes.c_longlong),
+        ("FileSize", ctypes.c_longlong),
+        ("FileAttributes", DWORD),
+        ("ReparsePointTag", DWORD),
+        ("FileId", ctypes.c_longlong),
+        ("ParentFileId", ctypes.c_longlong),
+        ("FileNameLength", DWORD),
+        ("FileName", (ctypes.c_char * 1)),
+    )
+
+
+LPFNEI = ctypes.POINTER(FileNotifyExtendedInformation)
+
+# File attribute constant for directories
+FILE_ATTRIBUTE_DIRECTORY = 0x10
+
+
 # We don't need to recalculate these flags every time a call is made to
 # the win32 API functions.
 WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
@@ -262,15 +311,35 @@ BUFFER_SIZE = 64000
 PATH_BUFFER_SIZE = 2048
 
 
-def _parse_event_buffer(read_buffer: bytes) -> list[tuple[int, str]]:
+def _parse_event_buffer(read_buffer: bytes, *, extended: bool = False) -> list[tuple[int, str, bool]]:
+    """Parse the event buffer from ReadDirectoryChangesW/ReadDirectoryChangesExW.
+
+    Args:
+        read_buffer: The raw buffer from the Windows API call.
+        extended: If True, parse as FILE_NOTIFY_EXTENDED_INFORMATION (from ReadDirectoryChangesExW).
+                  If False, parse as FILE_NOTIFY_INFORMATION (from ReadDirectoryChangesW).
+
+    Returns:
+        List of tuples: (action, filename, is_directory)
+        When extended=False, is_directory is always False (unknown).
+    """
     n_bytes = len(read_buffer)
     results = []
     while n_bytes > 0:
-        fni = ctypes.cast(read_buffer, LPFNI)[0]  # type: ignore[arg-type]
-        ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
-        filename = ctypes.string_at(ptr, fni.FileNameLength)
-        results.append((fni.Action, filename.decode("utf-16")))
-        num_to_skip = fni.NextEntryOffset
+        if extended:
+            fnei = ctypes.cast(read_buffer, LPFNEI)[0]  # type: ignore[arg-type]
+            ptr = ctypes.addressof(fnei) + FileNotifyExtendedInformation.FileName.offset
+            filename = ctypes.string_at(ptr, fnei.FileNameLength)
+            is_dir = bool(fnei.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            results.append((fnei.Action, filename.decode("utf-16"), is_dir))
+            num_to_skip = fnei.NextEntryOffset
+        else:
+            fni = ctypes.cast(read_buffer, LPFNI)[0]  # type: ignore[arg-type]
+            ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
+            filename = ctypes.string_at(ptr, fni.FileNameLength)
+            # Without extended info, we cannot determine if it was a directory
+            results.append((fni.Action, filename.decode("utf-16"), False))
+            num_to_skip = fni.NextEntryOffset
         if num_to_skip <= 0:
             break
         read_buffer = read_buffer[num_to_skip:]
@@ -329,6 +398,7 @@ def _close_directory_handle(handle: HANDLE) -> None:
 class WinAPINativeEvent:
     action: int
     src_path: str
+    is_directory: bool = False  # Whether the item was a directory (from extended info)
 
     @property
     def is_added(self) -> bool:
@@ -373,13 +443,18 @@ class DirectoryChangeReader:
 
     def _run_inner(self, handle: HANDLE, event_buffer: ctypes.Array[ctypes.c_char], nbytes: DWORD) -> None:
         # This runs in its own thread and it makes a single call to
-        # ReadDirectoryChangesW().  This blocks until at least some events are
+        # ReadDirectoryChangesExW().  This blocks until at least some events are
         # available (or there is an error).  We will re-use the _event_buffer
         # and so we copy the data into a second buffer (double-buffering
         # technique) and queue it for another thread to process.  This reduces
         # the time window in which we could miss events.
+        #
+        # We use ReadDirectoryChangesExW instead of ReadDirectoryChangesW to get
+        # extended information including FileAttributes, which allows us to
+        # correctly identify deleted directories (see issue #1153).
+        # Note: ReadDirectoryChangesExW is only available on Windows 10+.
         try:
-            ReadDirectoryChangesW(
+            ReadDirectoryChangesExW(
                 handle,
                 ctypes.byref(event_buffer),
                 len(event_buffer),
@@ -388,6 +463,7 @@ class DirectoryChangeReader:
                 ctypes.byref(nbytes),
                 None,
                 None,
+                ReadDirectoryNotifyExtendedInformation,
             )
             buf = event_buffer.raw[: nbytes.value]
         except OSError as e:
@@ -396,7 +472,7 @@ class DirectoryChangeReader:
             if _is_observed_path_deleted(handle, self._path):
                 # Handle the case when the root path is deleted
                 with self._lock:
-                    # Additional calls to ReadDirectoryChangesW() will fail so stop.
+                    # Additional calls to ReadDirectoryChangesExW() will fail so stop.
                     self._should_stop = True
                 # Create synthetic event for deletion
                 buf = _generate_observed_path_deleted_event()
@@ -464,5 +540,6 @@ class DirectoryChangeReader:
                 buf = self._buf_queue.get(timeout=timeout)
             except queue.Empty:
                 break
-            events.extend(_parse_event_buffer(buf))
-        return [WinAPINativeEvent(action, src_path) for action, src_path in events]
+            # Use extended=True since we're using ReadDirectoryChangesExW
+            events.extend(_parse_event_buffer(buf, extended=True))
+        return [WinAPINativeEvent(action, src_path, is_dir) for action, src_path, is_dir in events]
