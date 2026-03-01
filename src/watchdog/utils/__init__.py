@@ -41,6 +41,11 @@ class BaseThread(threading.Thread):
             self.daemon = True
         else:
             self.setDaemon(True)
+        # Provides synchronization for start() and stop().  They can be
+        # called multiple times, out-of-order or concurrently.  We want to do
+        # something predicable in all cases.
+        self._thread_life_lock = threading.Lock()
+        self._started_event: threading.Event | None = None
         self._stopped_event = threading.Event()
 
     @property
@@ -60,7 +65,16 @@ class BaseThread(threading.Thread):
 
     def stop(self) -> None:
         """Signals the thread to stop."""
-        self._stopped_event.set()
+        with self._thread_life_lock:
+            if self._stopped_event.is_set():
+                return  # already stopped
+            started_event = self._started_event
+        if started_event is not None:
+            started_event.wait()  # not finished start, wait
+        with self._thread_life_lock:
+            if self._stopped_event.is_set():
+                return  # we raced with another stop, done
+            self._stopped_event.set()
         self.on_thread_stop()
 
     def on_thread_start(self) -> None:
@@ -72,8 +86,18 @@ class BaseThread(threading.Thread):
         """
 
     def start(self) -> None:
-        self.on_thread_start()
-        threading.Thread.start(self)
+        with self._thread_life_lock:
+            if self._stopped_event.is_set():
+                return  # stop() was called, so don't start
+            self._started_event = threading.Event()
+        try:
+            self.on_thread_start()
+            threading.Thread.start(self)
+        finally:
+            with self._thread_life_lock:
+                # indicate to stop() methods waiting that start is done
+                self._started_event.set()
+                self._started_event = None
 
 
 def load_module(module_name: str) -> ModuleType:
