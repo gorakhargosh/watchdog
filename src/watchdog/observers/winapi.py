@@ -461,7 +461,7 @@ class DirectoryChangeReader:
         events = []
         while True:
             try:
-                buf = self._buf_queue.get(timeout=timeout)
+                buf = self._buf_queue.get(False)
             except queue.Empty:
                 break
             events.extend(_parse_event_buffer(buf))
