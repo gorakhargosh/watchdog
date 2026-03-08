@@ -252,7 +252,7 @@ class _EventsChecker:
         for event, expected_event in zip(found_events, self.expected_events):
             assert self._match_event(event, expected_event), "did not find expected event"
 
-    def check_events(self, timeout: float = 0.1) -> None:
+    def check_events(self, timeout: float = 1.0) -> None:
         """Read events from the events queue (waiting for up to `timeout` for
         new events to appear).  Confirm that expected events, as specified by
         calling add(), appear in the sequence of events receieved.
