@@ -97,6 +97,7 @@ class ShellCommandTrick(Trick):
 
         self.process: subprocess.Popen[bytes] | None = None
         self._process_watchers: set[ProcessWatcher] = set()
+        self._process_watchers_lock = threading.Lock()
 
     def on_any_event(self, event: FileSystemEvent) -> None:
         if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
@@ -140,15 +141,21 @@ class ShellCommandTrick(Trick):
             self.process.wait()
         else:
             process_watcher = ProcessWatcher(self.process, None)
-            self._process_watchers.add(process_watcher)
+            with self._process_watchers_lock:
+                self._process_watchers.add(process_watcher)
             process_watcher.process_termination_callback = functools.partial(
-                self._process_watchers.discard,
+                self._discard_process_watcher,
                 process_watcher,
             )
             process_watcher.start()
 
+    def _discard_process_watcher(self, process_watcher: ProcessWatcher) -> None:
+        with self._process_watchers_lock:
+            self._process_watchers.discard(process_watcher)
+
     def is_process_running(self) -> bool:
-        return bool(self._process_watchers or (self.process is not None and self.process.poll() is None))
+        with self._process_watchers_lock:
+            return bool(self._process_watchers or (self.process is not None and self.process.poll() is None))
 
 
 class AutoRestartTrick(Trick):
