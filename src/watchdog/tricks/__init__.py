@@ -103,14 +103,19 @@ class ShellCommandTrick(Trick):
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
 
+        import shlex
         from string import Template
 
         if self.drop_during_process and self.is_process_running():
             return
 
         object_type = "directory" if event.is_directory else "file"
+        # Paths are shell-quoted to prevent injection via filenames containing
+        # shell metacharacters (e.g. $(cmd), `cmd`).  os.fsdecode() normalises
+        # bytes paths to str first, which shlex.quote() requires.
+        src_path = shlex.quote(os.fsdecode(event.src_path))
         context = {
-            "watch_src_path": event.src_path,
+            "watch_src_path": src_path,
             "watch_dest_path": "",
             "watch_event_type": event.event_type,
             "watch_object": object_type,
@@ -118,13 +123,15 @@ class ShellCommandTrick(Trick):
 
         if self.shell_command is None:
             if hasattr(event, "dest_path"):
-                context["dest_path"] = event.dest_path
-                command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
+                context["watch_dest_path"] = shlex.quote(os.fsdecode(event.dest_path))
+                # No surrounding double-quotes: single-quoted values from shlex.quote
+                # are not protected inside double-quoted shell strings.
+                command = "echo ${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"
             else:
-                command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
+                command = "echo ${watch_event_type} ${watch_object} ${watch_src_path}"
         else:
             if hasattr(event, "dest_path"):
-                context["watch_dest_path"] = event.dest_path
+                context["watch_dest_path"] = shlex.quote(os.fsdecode(event.dest_path))
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
