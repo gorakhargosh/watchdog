@@ -26,6 +26,7 @@ Changelog
 - [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
 - Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide
 - [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
+- [tricks] Fixed shell injection vulnerability in ``ShellCommandTrick`` by shell-quoting file paths; also fixed a race condition by protecting ``_process_watchers`` with a lock. (`#1164 <https://github.com/gorakhargosh/watchdog/pull/1164>`__)
 
 6.0.0
 ~~~~~
