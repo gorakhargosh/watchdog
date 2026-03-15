@@ -465,4 +465,6 @@ class DirectoryChangeReader:
             except queue.Empty:
                 break
             events.extend(_parse_event_buffer(buf))
+            if self._buf_queue.empty():
+                break
         return [WinAPINativeEvent(action, src_path) for action, src_path in events]
