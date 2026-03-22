@@ -17,6 +17,7 @@ from io import StringIO
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
+from watchdog.config import load_config, parse_patterns, schedule_tricks
 from watchdog.utils import WatchdogShutdownError, load_class, platform
 from watchdog.version import VERSION_STRING
 
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
     from typing import Callable
 
     from watchdog.events import FileSystemEventHandler
-    from watchdog.observers import ObserverType
     from watchdog.observers.api import BaseObserver
 
 
@@ -54,9 +54,7 @@ def _resolve_observer_class(args: Namespace) -> type[BaseObserver]:
 
         return KqueueObserver
 
-    if (not TYPE_CHECKING and getattr(args, "debug_force_winapi", False)) or (
-        TYPE_CHECKING and platform.is_windows()
-    ):
+    if (not TYPE_CHECKING and getattr(args, "debug_force_winapi", False)) or (TYPE_CHECKING and platform.is_windows()):
         from watchdog.observers.read_directory_changes import WindowsApiObserver
 
         return WindowsApiObserver
@@ -179,33 +177,6 @@ def add_to_sys_path(pathnames: list[str], *, index: int = 0) -> None:
         sys.path.insert(index, pathname)
 
 
-def load_config(tricks_file_pathname: str) -> dict:
-    """Loads the YAML configuration from the specified file.
-
-    :param tricks_file_path:
-        The path to the tricks configuration file.
-    :returns:
-        A dictionary of configuration information.
-    """
-    import yaml
-
-    with open(tricks_file_pathname, "rb") as f:
-        return yaml.safe_load(f.read())
-
-
-def parse_patterns(
-    patterns_spec: str, ignore_patterns_spec: str, *, separator: str = ";"
-) -> tuple[list[str], list[str]]:
-    """Parses pattern argument specs and returns a two-tuple of
-    (patterns, ignore_patterns).
-    """
-    patterns = patterns_spec.split(separator)
-    ignore_patterns = ignore_patterns_spec.split(separator)
-    if ignore_patterns == [""]:
-        ignore_patterns = []
-    return patterns, ignore_patterns
-
-
 def observe_with(
     observer: BaseObserver,
     event_handler: FileSystemEventHandler,
@@ -233,27 +204,6 @@ def observe_with(
     except WatchdogShutdownError:
         observer.stop()
     observer.join()
-
-
-def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *, recursive: bool) -> None:
-    """Schedules tricks with the specified observer and for the given watch
-    path.
-
-    :param observer:
-        The observer thread into which to schedule the trick and watch.
-    :param tricks:
-        A list of tricks.
-    :param pathname:
-        A path name which should be watched.
-    :param recursive:
-        ``True`` if recursive; ``False`` otherwise.
-    """
-    for trick in tricks:
-        for name, value in trick.items():
-            trick_cls = load_class(name)
-            handler = trick_cls(**value)
-            trick_pathname = getattr(handler, "source_directory", None) or pathname
-            observer.schedule(handler, trick_pathname, recursive=recursive)
 
 
 @command(
