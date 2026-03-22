@@ -35,6 +35,48 @@ CONFIG_KEY_TRICKS = "tricks"
 CONFIG_KEY_PYTHON_PATH = "python-path"
 
 
+def _resolve_observer_class(args: Namespace) -> type[BaseObserver]:
+    """Select the appropriate observer class based on debug flags in *args*.
+
+    This centralises the observer-selection logic that was previously
+    duplicated across ``tricks_from``, ``log``, ``shell_command`` and
+    ``auto_restart``.  Flags that are not present on *args* (e.g.
+    ``shell_command`` only exposes ``--debug-force-polling``) are
+    silently treated as ``False``.
+    """
+    if getattr(args, "debug_force_polling", False):
+        from watchdog.observers.polling import PollingObserver
+
+        return PollingObserver
+
+    if getattr(args, "debug_force_kqueue", False):
+        from watchdog.observers.kqueue import KqueueObserver
+
+        return KqueueObserver
+
+    if (not TYPE_CHECKING and getattr(args, "debug_force_winapi", False)) or (
+        TYPE_CHECKING and platform.is_windows()
+    ):
+        from watchdog.observers.read_directory_changes import WindowsApiObserver
+
+        return WindowsApiObserver
+
+    if getattr(args, "debug_force_inotify", False):
+        from watchdog.observers.inotify import InotifyObserver
+
+        return InotifyObserver
+
+    if getattr(args, "debug_force_fsevents", False):
+        from watchdog.observers.fsevents import FSEventsObserver
+
+        return FSEventsObserver
+
+    # Automatically picks the most appropriate observer for the platform.
+    from watchdog.observers import Observer
+
+    return Observer
+
+
 class HelpFormatter(RawDescriptionHelpFormatter):
     """A nicer help formatter.
 
@@ -262,33 +304,7 @@ def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *
 )
 def tricks_from(args: Namespace) -> None:
     """Command to execute tricks from a tricks configuration file."""
-    observer_cls: ObserverType
-    if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver
-
-        observer_cls = PollingObserver
-    elif args.debug_force_kqueue:
-        from watchdog.observers.kqueue import KqueueObserver
-
-        observer_cls = KqueueObserver
-    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and platform.is_windows()):
-        from watchdog.observers.read_directory_changes import WindowsApiObserver
-
-        observer_cls = WindowsApiObserver
-    elif args.debug_force_inotify:
-        from watchdog.observers.inotify import InotifyObserver
-
-        observer_cls = InotifyObserver
-    elif args.debug_force_fsevents:
-        from watchdog.observers.fsevents import FSEventsObserver
-
-        observer_cls = FSEventsObserver
-    else:
-        # Automatically picks the most appropriate observer for the platform
-        # on which it is running.
-        from watchdog.observers import Observer
-
-        observer_cls = Observer
+    observer_cls = _resolve_observer_class(args)
 
     add_to_sys_path(path_split(args.python_path))
     observers = []
@@ -465,33 +481,7 @@ def log(args: Namespace) -> None:
         ignore_directories=args.ignore_directories,
     )
 
-    observer_cls: ObserverType
-    if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver
-
-        observer_cls = PollingObserver
-    elif args.debug_force_kqueue:
-        from watchdog.observers.kqueue import KqueueObserver
-
-        observer_cls = KqueueObserver
-    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and platform.is_windows()):
-        from watchdog.observers.read_directory_changes import WindowsApiObserver
-
-        observer_cls = WindowsApiObserver
-    elif args.debug_force_inotify:
-        from watchdog.observers.inotify import InotifyObserver
-
-        observer_cls = InotifyObserver
-    elif args.debug_force_fsevents:
-        from watchdog.observers.fsevents import FSEventsObserver
-
-        observer_cls = FSEventsObserver
-    else:
-        # Automatically picks the most appropriate observer for the platform
-        # on which it is running.
-        from watchdog.observers import Observer
-
-        observer_cls = Observer
+    observer_cls = _resolve_observer_class(args)
 
     observer = observer_cls(timeout=args.timeout)
     observe_with(observer, handler, args.directories, recursive=args.recursive)
@@ -589,15 +579,7 @@ def shell_command(args: Namespace) -> None:
     if not args.command:
         args.command = None
 
-    observer_cls: ObserverType
-    if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver
-
-        observer_cls = PollingObserver
-    else:
-        from watchdog.observers import Observer
-
-        observer_cls = Observer
+    observer_cls = _resolve_observer_class(args)
 
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     handler = ShellCommandTrick(
@@ -706,15 +688,7 @@ def shell_command(args: Namespace) -> None:
 )
 def auto_restart(args: Namespace) -> None:
     """Command to start a long-running subprocess and restart it on matched events."""
-    observer_cls: ObserverType
-    if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver
-
-        observer_cls = PollingObserver
-    else:
-        from watchdog.observers import Observer
-
-        observer_cls = Observer
+    observer_cls = _resolve_observer_class(args)
 
     import signal
 
