@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from watchdog.events import FileModifiedEvent, FileSystemEventHandler
+from watchdog.events import FileModifiedEvent, FileSystemEventHandler, noop_event_handler
 from watchdog.observers.api import BaseObserver, EventEmitter
 
 if TYPE_CHECKING:
@@ -61,6 +61,35 @@ def test_stop_should_stop_emitter(observer):
     observer.join()
     assert not observer.is_alive()
     assert not emitter.is_alive()
+
+
+def test_schedule_none_then_add_handler_dispatches(observer):
+    dispatch_finished = threading.Event()
+
+    class EventHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            dispatch_finished.set()
+
+    watch = observer.schedule(None, "")
+    observer.add_handler_for_watch(EventHandler(), watch)
+    observer.start()
+
+    (emitter,) = observer.emitters
+    emitter.queue_event(FileModifiedEvent(""))
+
+    assert dispatch_finished.wait(timeout=2.0)
+
+
+def test_unschedule_without_handlers(observer):
+    watch = observer.schedule(None, "")
+    observer.unschedule(watch)
+    assert len(observer.emitters) == 0
+
+
+def test_schedule_noop_event_handler(observer):
+    watch = observer.schedule(noop_event_handler, "")
+    observer.add_handler_for_watch(FileSystemEventHandler(), watch)
+    assert len(observer.emitters) == 1
 
 
 def test_unschedule_self(observer):

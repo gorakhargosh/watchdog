@@ -20,6 +20,8 @@ from watchdog.events import (
     FileMovedEvent,
     FileOpenedEvent,
     FileSystemEventHandler,
+    NoOpEventHandler,
+    noop_event_handler,
 )
 
 path_1 = "/path/xyz"
@@ -218,3 +220,9 @@ def test_event_comparison():
     assert move2 != move3
     assert move2 != move4
     assert move3 != move4
+
+
+def test_noop_event_handler_dispatch_is_silent():
+    ev = FileModifiedEvent(path_1)
+    NoOpEventHandler().dispatch(ev)
+    noop_event_handler.dispatch(ev)
