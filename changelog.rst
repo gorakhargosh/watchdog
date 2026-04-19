@@ -20,6 +20,7 @@ Changelog
 - [windows] Event file names are decoded as UTF-16LE, so a name starting with U+FEFF or U+FFFE no longer reports the wrong path. (`#1228 <https://github.com/gorakhargosh/watchdog/pull/1228>`__)
 - [windows] Changing only the case of a name no longer emits a deletion event on top of the move event. (`#752 <https://github.com/gorakhargosh/watchdog/issues/752>`__)
 - [bsd] Do not let a ``PermissionError`` raised while registering a kevent kill the emitter thread. (`#1115 <https://github.com/gorakhargosh/watchdog/issues/1115>`__)
+- [core] Allow ``Observer.schedule(None, path)`` to register a watch without an initial handler; use :meth:`watchdog.observers.api.BaseObserver.add_handler_for_watch` to attach handlers afterward.
 - [core] Add context manager support to ``Observer`` class. The observer can now be used with a ``with`` statement for automatic start/stop management. (`#1090 <https://github.com/gorakhargosh/watchdog/pull/1149>`__)
 - [freebsd] Supports ``inotify`` on FreeBSD 15+. (`#1147 <https://github.com/gorakhargosh/watchdog/pull/1147>`__)
 - [core] Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
