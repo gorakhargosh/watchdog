@@ -4,8 +4,8 @@ import dataclasses
 import os
 import subprocess
 import sys
-from queue import Queue
-from typing import Protocol
+from queue import Empty, Queue
+from typing import Any, Protocol
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
@@ -81,6 +81,16 @@ class Helper:
 
         return emitter
 
+    def events_checker(self, *, verbose: bool = False) -> _EventsChecker:
+        """Utility function to create a new event checker instance.  Use as a context
+        manager and call add() to add events to check for.  The events in the queue
+        will automatically be checked when the "with" block is exited.
+
+        If `verbose` is true, print details of expected and found events to stdout (to assist with
+        developing or debugging tests).
+        """
+        return _EventsChecker(self, verbose=verbose)
+
     def expect_event(self, expected_event: FileSystemEvent, timeout: float = 2) -> None:
         """Utility function to wait up to `timeout` seconds for an `event_type` for `path` to show up in the queue.
 
@@ -125,3 +135,155 @@ def run_isolated_test(path):
         raise
 
     assert p.returncode == 0
+
+
+class EventsChecker(Protocol):
+    def __call__(self) -> _EventsChecker: ...
+
+
+@dataclasses.dataclass()
+class _ExpectedEvent:
+    """Specifies what kind of event we are expecting.  The `expected_class` is required,
+    everything else is optional (not checked if it is None).
+    """
+
+    expected_class: type
+    src_path: str | None = None
+    dest_path: str | None = None
+
+
+class _EventsChecker:
+
+    expected_events: list[_ExpectedEvent]
+
+    def __init__(self, helper: Helper, *, verbose: bool = False):
+        self.tmp = helper.tmp
+        self.event_queue = helper.event_queue
+        self.expected_events = []
+        self._verbose = verbose
+        # If true, check that we receive exactly the expected events in the
+        # specified order.
+        self._validate_order = True
+        # If true, allow extra events in addition to expected ones
+        self._allow_extra = False
+        if platform.is_darwin():
+            # The fsevents API gives back events in a non-specific order.
+            self._validate_order = False
+            # Sometimes there are addtional DirModifiedEvents returned as well.
+            self._allow_extra = True
+
+    def allow_extra_events(self) -> None:
+        """Allow events not specified by add()."""
+        self._allow_extra = True
+
+    def _debug(self, *args: Any) -> None:
+        if self._verbose:
+            print(" == events checker == ", *args)  # noqa: T201
+
+    def _make_path(self, path: str | None) -> str | None:
+        if path is None:
+            return None
+        if path == "":
+            # an empty path is kept as-is
+            return ""
+        # convert to platform specific path and normalize
+        parts = path.split("/")
+        path = os.path.join(self.tmp, *parts)
+        return os.path.normpath(path)
+
+    def add(self, expected_class: type, src_path: str | None = None, dest_path: str | None = None) -> None:
+        """Add details for an expected event.  The `expected_class` argument
+        is required, everything else is optional.  The order that events are
+        received does not matter but adding the same kind of event more than
+        once will require that it appears more than once.
+
+        Note that paths are provided as relative to `tmp` and using the forward
+        slash separator. They will be converted to absolute paths using `tmp`
+        and normalized.  An empty path, i.e. "", is kept as-is.
+        """
+        self.expected_events.append(_ExpectedEvent(expected_class, src_path, dest_path))
+
+    def _match_event(self, event: FileSystemEvent, expected_event: _ExpectedEvent) -> bool:
+        if not isinstance(event, expected_event.expected_class):
+            return False  # wrong class
+        src_path = self._make_path(expected_event.src_path)
+        if src_path is not None and src_path != event.src_path:
+            return False  # wrong src_path
+        dest_path = self._make_path(expected_event.dest_path)
+        if dest_path is not None and dest_path != event.dest_path:
+            return False  # wrong dest_path
+        self._debug("matched:", expected_event)
+        return True
+
+    def _check_events_without_order( self, found_events: list[FileSystemEvent]) -> None:
+        # Check that events received contain the expected events.  This is
+        # an inefficient way to do it, O(n*m) but since the list of expected
+        # events should be fairly short, this is okay.  Using a list allows
+        # the expected events to contain the same kind of event more than
+        # once.
+        expected_events = list(self.expected_events)
+        matched_events = []
+        for event in found_events:
+            for i, expected_event in enumerate(expected_events):
+                if self._match_event(event, expected_event):
+                    del expected_events[i]
+                    matched_events.append(event)
+                    break
+        if expected_events:
+            # Fail, we did not find some of the expected events.
+            if self._verbose:
+                self._debug("missing:")
+                for e in expected_events:
+                    self._debug("  ", e.expected_class.__name__, e.src_path)
+            assert not expected_events, "some expected events not found"
+        if not self._allow_extra:  # noqa: SIM102
+            # Check that we did not receive extra events
+            if len(matched_events) < len(found_events):
+                for event in found_events:
+                    if event not in matched_events:
+                        self._debug("unexpected", event)
+                msg = "received unexpected events"
+                raise AssertionError(msg)
+
+    def _check_events_with_order( self, found_events: list[FileSystemEvent]) -> None:
+        if not self._allow_extra:
+            # we need exactly the number of expected events
+            assert len(found_events) == len(self.expected_events), "wrong number of events"
+        for event, expected_event in zip(found_events, self.expected_events):
+            assert self._match_event(event, expected_event), "did not find expected event"
+
+    def check_events(self, timeout: float = 2) -> None:
+        """Read events from the events queue (waiting for up to `timeout` for
+        new events to appear).  Confirm that expected events, as specified by
+        calling add(), appear in the sequence of events receieved.
+        """
+        if self._verbose:
+            self._debug("expecting:")
+            for e in self.expected_events:
+                self._debug("  ", e.expected_class.__name__, repr(e.src_path))
+
+        found_events = []
+        while True:
+            # Read all the available events until we timeout.
+            try:
+                event = self.event_queue.get(timeout=timeout)[0]
+            except Empty:
+                self._debug("event queue timeout")
+                break
+            self._debug("got:", event.__class__.__name__, repr(event.src_path))
+            found_events.append(event)
+
+        if self._validate_order:
+            self._check_events_with_order(found_events)
+        else:
+            self._check_events_without_order(found_events)
+
+    def __enter__(self) -> _EventsChecker:  # noqa: PYI034
+        # This could be annotated to return `Self` but that type is available
+        # only in Python 3.11+.
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        if exc_value is None:
+            # do check only if there is no error
+            self.check_events()

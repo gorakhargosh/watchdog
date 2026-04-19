@@ -256,6 +256,16 @@ Dependencies
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
 
+
+Applications Using Watchdog
+----------------------------
+
+* `Watchdog.app`_ — A macOS application for monitoring file changes in
+  selected directories. Built with the OMC engine, it provides a graphical
+  interface for observing directories.
+  The Apple-notarized app is read to use and does not require additional installations.
+
+
 Licensing
 ---------
 
@@ -299,6 +309,8 @@ to do:
 
 .. _PyYAML: https://www.pyyaml.org/
 .. _XCode: https://developer.apple.com/technologies/tools/xcode.html
+
+.. _Watchdog.app: https://github.com/abra-code/WatchdogApp
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471

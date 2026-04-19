@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import tempfile
+
 from watchdog.events import (
     EVENT_TYPE_CLOSED,
     EVENT_TYPE_CLOSED_NO_WRITE,
@@ -22,6 +25,7 @@ from watchdog.events import (
     FileSystemEventHandler,
     NoOpEventHandler,
     noop_event_handler,
+    generate_sub_moved_events,
 )
 
 path_1 = "/path/xyz"
@@ -226,3 +230,36 @@ def test_noop_event_handler_dispatch_is_silent():
     ev = FileModifiedEvent(path_1)
     NoOpEventHandler().dispatch(ev)
     noop_event_handler.dispatch(ev)
+
+
+def test_generate_sub_moved_events_repeated_dirname():
+    """Paths with repeated directory names should not have all occurrences replaced.
+
+    Regression test: str.replace() was used to swap src_dir_path for
+    dest_dir_path, which replaces every occurrence of the substring.
+    When a directory name appears more than once in the full path,
+    the extra occurrences get corrupted.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Build a structure like: <tmp>/data/data/file.txt
+        # where "data" appears twice in the path.
+        dest = os.path.join(tmpdir, "data", "data")
+        os.makedirs(dest)
+        with open(os.path.join(dest, "file.txt"), "w") as f:
+            f.write("")
+
+        dest_root = os.path.join(tmpdir, "data")
+        src_root = os.path.join(tmpdir, "src_data")
+
+        events = list(generate_sub_moved_events(src_root, dest_root))
+
+        # The inner "data" subdir should remain untouched.
+        dir_events = [e for e in events if isinstance(e, DirMovedEvent)]
+        file_events = [e for e in events if isinstance(e, FileMovedEvent)]
+
+        assert len(dir_events) == 1
+        assert dir_events[0].src_path == os.path.join(src_root, "data")
+
+        assert len(file_events) == 1
+        assert file_events[0].src_path == os.path.join(src_root, "data", "file.txt")
+

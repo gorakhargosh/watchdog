@@ -412,6 +412,7 @@ class DirectoryChangeReader:
         # missed, we re-use these for each call to _run_inner().
         event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
         nbytes = DWORD()
+        self._buf_queue.put(b'')  # indicates that this thread has started
         try:
             while not self._should_stop:
                 self._run_inner(handle, event_buffer, nbytes)
@@ -430,6 +431,11 @@ class DirectoryChangeReader:
                 return  # stop already called, do not start
             self._reader_thread = threading.Thread(target=self._run)
         self._reader_thread.start()
+        # Wait for empty bytes object, indicating reader thread has started.
+        # This reduces the time window between this method returning and the
+        # actual ReadDirectoryChangesW() call, which reduces the time that
+        # events could be missed.
+        _ = self._buf_queue.get(timeout=2)
 
     def stop(self) -> None:
         with self._lock:

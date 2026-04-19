@@ -77,6 +77,10 @@ def test___init__(event_queue, emitter):
         except Empty:
             break
         else:
+            if event.event_type == "modified":
+                # On Windows can get one or two modified events.  Ignore
+                # them to make test more deterministic.
+                continue
             got.add(event)
 
     assert expected == got
