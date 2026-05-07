@@ -1,5 +1,7 @@
 """Allow running watchmedo as ``python -m watchdog``."""
 
-from watchdog.watchmedo import main
+if __name__ == "__main__":
+    import sys
+    from watchdog.watchmedo import main
 
-raise SystemExit(main())
+    sys.exit(main())
