@@ -7,7 +7,6 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.cibuildwheel]
-enable = ["cpython-freethreading"]
 skip = "*t*_i686"
 
 [tool.coverage.report]
