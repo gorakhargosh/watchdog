@@ -37,6 +37,14 @@ def _get_sep(path: PurePath) -> str:
 
 
 def _full_match(path: PurePath, pattern: str) -> bool:
+    # Escape square brackets in the pattern so they match file/directory names
+    # containing literal brackets rather than being interpreted as character
+    # classes.  For example, the pattern "[test].txt" should match a file
+    # literally named "[test].txt", not a file like "t.txt" (where [test] is a
+    # character class matching t, e, s).  Replacing "[" with "[[[]" makes the
+    # opening bracket literal in fnmatch/glob syntax.
+    # See: https://github.com/gorakhargosh/watchdog/issues/991
+    pattern = pattern.replace("[", "[[[]")
     try:
         return path.full_match(pattern)
     except AttributeError:
