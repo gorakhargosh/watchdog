@@ -358,7 +358,7 @@ class WinAPINativeEvent:
 class DirectoryChangeReader:
     """Uses ReadDirectoryChangesW() to detect file system changes.  A separate
     thread is used to make that call in order to reduce the time window
-    in that events may be lost.  The processing of data receieved from
+    in that events may be lost.  The processing of data received from
     ReadDirectoryChangesW() is queued and processed by another thread.
     """
 

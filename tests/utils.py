@@ -169,7 +169,7 @@ class _EventsChecker:
         if platform.is_darwin():
             # The fsevents API gives back events in a non-specific order.
             self._validate_order = False
-            # Sometimes there are addtional DirModifiedEvents returned as well.
+            # Sometimes there are additional DirModifiedEvents returned as well.
             self._allow_extra = True
 
     def allow_extra_events(self) -> None:
@@ -255,7 +255,7 @@ class _EventsChecker:
     def check_events(self, timeout: float = 2) -> None:
         """Read events from the events queue (waiting for up to `timeout` for
         new events to appear).  Confirm that expected events, as specified by
-        calling add(), appear in the sequence of events receieved.
+        calling add(), appear in the sequence of events received.
         """
         if self._verbose:
             self._debug("expecting:")
