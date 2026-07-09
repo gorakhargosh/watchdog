@@ -65,6 +65,12 @@ Event Handler Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: NoOpEventHandler
+   :members:
+   :show-inheritance:
+
+.. autodata:: noop_event_handler
+
 .. autoclass:: PatternMatchingEventHandler
    :members:
    :show-inheritance:
@@ -287,6 +293,25 @@ class FileSystemEventHandler:
         :type event:
             :class:`FileOpenedEvent`
         """
+
+
+class NoOpEventHandler(FileSystemEventHandler):
+    """Handler that ignores all events.
+
+    Use with :meth:`watchdog.observers.BaseObserver.schedule` when you need a
+    concrete :class:`FileSystemEventHandler` (for example for static typing)
+    but intend to attach real handlers later via
+    :meth:`watchdog.observers.BaseObserver.add_handler_for_watch`.
+    Passing ``None`` as the handler to :meth:`~watchdog.observers.BaseObserver.schedule`
+    is equivalent and does not register this instance.
+    """
+
+    def dispatch(self, event: FileSystemEvent) -> None:
+        """Ignore the event."""
+        return
+
+
+noop_event_handler = NoOpEventHandler()
 
 
 class PatternMatchingEventHandler(FileSystemEventHandler):

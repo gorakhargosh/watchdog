@@ -5,7 +5,7 @@ import queue
 import threading
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
@@ -301,9 +301,31 @@ class BaseObserver(EventDispatcher):
             self.stop()
             self.join()
 
+    @overload
+    def schedule(
+        self,
+        event_handler: None,
+        path: str | Path,
+        *,
+        recursive: bool = False,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
+    ) -> ObservedWatch: ...
+
+    @overload
     def schedule(
         self,
         event_handler: FileSystemEventHandler,
+        path: str | Path,
+        *,
+        recursive: bool = False,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
+    ) -> ObservedWatch: ...
+
+    def schedule(
+        self,
+        event_handler: FileSystemEventHandler | None,
         path: str | Path,
         *,
         recursive: bool = False,
@@ -316,9 +338,13 @@ class BaseObserver(EventDispatcher):
         :param event_handler:
             An event handler instance that has appropriate event handling
             methods which will be called by the observer in response to
-            file system events.
+            file system events. Pass ``None`` or use
+            :data:`watchdog.events.noop_event_handler` to register the path
+            without an initial handler; add handlers later with
+            :meth:`add_handler_for_watch`.
         :type event_handler:
-            :class:`watchdog.events.FileSystemEventHandler` or a subclass
+            :class:`watchdog.events.FileSystemEventHandler` or a subclass,
+            or ``None``
         :param path:
             Directory path that will be monitored.
         :type path:
@@ -338,7 +364,8 @@ class BaseObserver(EventDispatcher):
         """
         with self._lock:
             watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
-            self._add_handler_for_watch(event_handler, watch)
+            if event_handler is not None:
+                self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
             if watch not in self._emitter_for_watch:
@@ -396,7 +423,7 @@ class BaseObserver(EventDispatcher):
         """
         with self._lock:
             emitter = self._emitter_for_watch[watch]
-            del self._handlers[watch]
+            self._handlers.pop(watch, None)
             self._remove_emitter(emitter)
             self._watches.remove(watch)
 
