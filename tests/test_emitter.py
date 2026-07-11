@@ -450,12 +450,22 @@ def test_renaming_top_level_directory(
     mkdir(p("a", "b"))
     with events_checker() as ec:
         ec.add(DirCreatedEvent, "a/b")
-        if not platform.is_windows():
+        if platform.is_windows():
+            # NTFS updates the last write time of "a" lazily, so the
+            # notification may be delivered now, only when a later operation
+            # flushes it (see below), or not at all (#1128).
+            ec.add(DirModifiedEvent, "a", optional=True)
+        else:
             ec.add(DirModifiedEvent, "a")
 
     mv(p("a"), p("a2"))
     with events_checker() as ec:
         if platform.is_windows():
+            # The rename may flush the pending last-write-time change of "a"
+            # caused by mkdir(p("a", "b")) above.  By the time the emitter
+            # handles the notification, "a" no longer exists on disk, so the
+            # event may be classified as a file event (#1128).
+            ec.add((DirModifiedEvent, FileModifiedEvent), "a", optional=True)
             ec.add(DirMovedEvent, "a", dest_path="a2")
             ec.add(DirMovedEvent, "a/b", dest_path="a2/b")
             ec.add(DirModifiedEvent, "a2")
