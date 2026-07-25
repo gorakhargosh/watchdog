@@ -452,6 +452,12 @@ class KqueueEmitter(EventEmitter):
                 # access to it (e.g. NFS). On BSD systems look at
                 # EOPNOTSUPP in man 2 open.
                 pass
+            elif e.errno in {errno.EACCES, errno.EPERM}:
+                # The path is not readable by the current user, e.g. a file
+                # created by another user in a world-writable directory such
+                # as /tmp. We cannot watch it, but that must not kill the
+                # emitter thread: the event itself was already queued.
+                pass
             else:
                 # All other errors are propagated.
                 raise
