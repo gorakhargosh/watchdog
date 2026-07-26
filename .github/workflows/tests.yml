@@ -11,6 +11,10 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
   cancel-in-progress: true
 
+# No job requires write access to the GITHUB_TOKEN; checkout only needs contents: read.
+permissions:
+  contents: read
+
 jobs:
   quality:
     name: 🧑‍🏭 Quality & Docs
