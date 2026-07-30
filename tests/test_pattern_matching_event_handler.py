@@ -197,26 +197,24 @@ def test_rename_to_ignored_pattern():
     )
 
 
-def test_single_path_ignored():
+def test_moved_to_ignored_hidden_path():
     """
-    Regression test for #412: a simple FileCreatedEvent for a path matching
-    ignore_patterns should be suppressed.
+    Regression test for #423: moved events whose destination path matches
+    *any* ignore pattern should be suppressed, even when the source path
+    alone matches the included patterns.  This mimics the original #423
+    scenario where hidden-file patterns were not checked before dispatch.
     """
     events_collected: list[FileSystemEvent] = []
 
     handler = PatternMatchingEventHandler(
         patterns=["**"],
-        ignore_patterns=["**/*.cfg"],
+        ignore_patterns=["**/.*/**", "**/.*"],
     )
     handler.on_any_event = lambda e: events_collected.append(e)
 
-    handler.dispatch(FileCreatedEvent("/path/config.cfg"))
+    # Move a visible file into a hidden directory -> should be suppressed
+    handler.dispatch(FileMovedEvent("/path/visible.txt", "/path/.hidden/config.txt"))
     assert len(events_collected) == 0, (
-        "Event for ignored path should be suppressed"
-    )
-
-    handler.dispatch(FileCreatedEvent("/path/config.txt"))
-    assert len(events_collected) == 1, (
-        "Event for non-ignored path should fire"
+        "Event should be suppressed when dest_path matches an ignore pattern"
     )
 
