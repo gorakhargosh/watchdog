@@ -13,6 +13,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    FileSystemEvent,
     PatternMatchingEventHandler,
 )
 from watchdog.utils.patterns import filter_paths
@@ -173,3 +174,49 @@ def test_patterns():
         ignore_directories=True,
     )
     assert handler1.patterns == g_allowed_patterns
+
+
+def test_rename_to_ignored_pattern():
+    """
+    Regression test for #412.
+    Renaming a file to an extension in ignore_patterns should suppress the event,
+    even though the source path matches patterns.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**/*.txt"],
+        ignore_patterns=["**/*.tmp"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    # Rename test.txt -> test.tmp: dest_path is .tmp (ignored) -> should be suppressed
+    handler.dispatch(FileMovedEvent("/path/test.txt", "/path/test.tmp"))
+    assert len(events_collected) == 0, (
+        "Event should be suppressed when dest_path matches ignore_patterns"
+    )
+
+
+def test_single_path_ignored():
+    """
+    Regression test for #412: a simple FileCreatedEvent for a path matching
+    ignore_patterns should be suppressed.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**"],
+        ignore_patterns=["**/*.cfg"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    handler.dispatch(FileCreatedEvent("/path/config.cfg"))
+    assert len(events_collected) == 0, (
+        "Event for ignored path should be suppressed"
+    )
+
+    handler.dispatch(FileCreatedEvent("/path/config.txt"))
+    assert len(events_collected) == 1, (
+        "Event for non-ignored path should fire"
+    )
+
