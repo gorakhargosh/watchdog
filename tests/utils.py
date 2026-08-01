@@ -147,9 +147,17 @@ class _ExpectedEvent:
     everything else is optional (not checked if it is None).
     """
 
-    expected_class: type
+    expected_class: type | tuple[type, ...]
     src_path: str | None = None
     dest_path: str | None = None
+    # If true, the event may be absent from the received events.
+    optional: bool = False
+
+    @property
+    def class_name(self) -> str:
+        if isinstance(self.expected_class, tuple):
+            return "(" + ", ".join(cls.__name__ for cls in self.expected_class) + ")"
+        return self.expected_class.__name__
 
 
 class _EventsChecker:
@@ -191,17 +199,29 @@ class _EventsChecker:
         path = os.path.join(self.tmp, *parts)
         return os.path.normpath(path)
 
-    def add(self, expected_class: type, src_path: str | None = None, dest_path: str | None = None) -> None:
+    def add(
+        self,
+        expected_class: type | tuple[type, ...],
+        src_path: str | None = None,
+        dest_path: str | None = None,
+        *,
+        optional: bool = False,
+    ) -> None:
         """Add details for an expected event.  The `expected_class` argument
-        is required, everything else is optional.  The order that events are
-        received does not matter but adding the same kind of event more than
-        once will require that it appears more than once.
+        is required, everything else is optional.  It can be a single class or
+        a tuple of classes, in which case an event of any of those classes is
+        accepted.  Adding the same kind of event more than once will require
+        that it appears more than once.
+
+        If `optional` is true, the event is allowed to be absent from the
+        received events.  Use it for events whose delivery timing is not
+        deterministic on the platform.
 
         Note that paths are provided as relative to `tmp` and using the forward
         slash separator. They will be converted to absolute paths using `tmp`
         and normalized.  An empty path, i.e. "", is kept as-is.
         """
-        self.expected_events.append(_ExpectedEvent(expected_class, src_path, dest_path))
+        self.expected_events.append(_ExpectedEvent(expected_class, src_path, dest_path, optional))
 
     def _match_event(self, event: FileSystemEvent, expected_event: _ExpectedEvent) -> bool:
         if not isinstance(event, expected_event.expected_class):
@@ -229,13 +249,14 @@ class _EventsChecker:
                     del expected_events[i]
                     matched_events.append(event)
                     break
-        if expected_events:
+        missing_events = [e for e in expected_events if not e.optional]
+        if missing_events:
             # Fail, we did not find some of the expected events.
             if self._verbose:
                 self._debug("missing:")
-                for e in expected_events:
-                    self._debug("  ", e.expected_class.__name__, e.src_path)
-            assert not expected_events, "some expected events not found"
+                for e in missing_events:
+                    self._debug("  ", e.class_name, e.src_path)
+            assert not missing_events, "some expected events not found"
         if not self._allow_extra:  # noqa: SIM102
             # Check that we did not receive extra events
             if len(matched_events) < len(found_events):
@@ -245,12 +266,36 @@ class _EventsChecker:
                 msg = "received unexpected events"
                 raise AssertionError(msg)
 
-    def _check_events_with_order( self, found_events: list[FileSystemEvent]) -> None:
-        if not self._allow_extra:
-            # we need exactly the number of expected events
-            assert len(found_events) == len(self.expected_events), "wrong number of events"
-        for event, expected_event in zip(found_events, self.expected_events):
-            assert self._match_event(event, expected_event), "did not find expected event"
+    def _check_events_with_order(self, found_events: list[FileSystemEvent]) -> None:
+        # Check that the received events match the expected events, in order.
+        # Optional expected events are skipped when they did not occur.
+        expected_events = self.expected_events
+        index = 0
+        for event in found_events:
+            matched = False
+            while index < len(expected_events):
+                expected_event = expected_events[index]
+                if self._match_event(event, expected_event):
+                    index += 1
+                    matched = True
+                    break
+                if expected_event.optional:
+                    # The optional event did not occur, skip it.
+                    self._debug("skipping optional:", expected_event)
+                    index += 1
+                    continue
+                break
+            if not matched and not self._allow_extra:
+                self._debug("unexpected:", event)
+                msg = "received unexpected events"
+                raise AssertionError(msg)
+        missing_events = [e for e in expected_events[index:] if not e.optional]
+        if missing_events:
+            if self._verbose:
+                self._debug("missing:")
+                for e in missing_events:
+                    self._debug("  ", e.class_name, e.src_path)
+            assert not missing_events, "some expected events not found"
 
     def check_events(self, timeout: float = 2) -> None:
         """Read events from the events queue (waiting for up to `timeout` for
@@ -260,7 +305,7 @@ class _EventsChecker:
         if self._verbose:
             self._debug("expecting:")
             for e in self.expected_events:
-                self._debug("  ", e.expected_class.__name__, repr(e.src_path))
+                self._debug("  ", e.class_name, repr(e.src_path))
 
         found_events = []
         while True:
