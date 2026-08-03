@@ -74,6 +74,14 @@ pygments_style = "sphinx"
 # a list of builtin themes.
 html_theme = "pyramid"
 
+html_theme_options = {
+    "sidebarwidth": "280",
+}
+
+# Hide the class name prefix in the Table of Contents/sidebar for methods and attributes.
+# This prevents long names (like FileSystemEventHandler.on_closed_no_write()) from overflowing the sidebar.
+toc_object_entries_show_parents = "hide"
+
 # Output file base name for HTML help builder.
 htmlhelp_basename = "%sdoc" % PROJECT_NAME
 
