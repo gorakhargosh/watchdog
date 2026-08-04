@@ -21,3 +21,11 @@ Watchdog also includes built-in "tricks" (pre-implemented event handlers). For i
 .. literalinclude:: examples/logger.py
    :language: python
    :linenos:
+
+Debouncing Events
+-----------------
+Text editors and build tools can emit several events for a single logical change. Use :class:`watchdog.utils.event_debouncer.EventDebouncer` to collect a burst of events and run an expensive action once the watched directory has been quiet for a short interval:
+
+.. literalinclude:: examples/debounced.py
+   :language: python
+   :linenos:
