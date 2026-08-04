@@ -39,6 +39,7 @@ User's Guide
 
    installation
    quickstart
+   examples
    api
    hacking
 
