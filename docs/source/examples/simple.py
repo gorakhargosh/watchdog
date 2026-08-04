@@ -32,6 +32,9 @@ class MyEventHandler(events.FileSystemEventHandler):
     def on_closed(self, event: events.FileClosedEvent) -> None:
         logging.info("Closed: %s", event)
 
+    def on_closed_no_write(self, event: events.FileClosedNoWriteEvent) -> None:
+        logging.info("Closed no write: %s", event)
+
 
 path = sys.argv[1] if len(sys.argv) > 1 else "."
 
