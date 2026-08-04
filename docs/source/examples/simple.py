@@ -12,7 +12,25 @@ logging.basicConfig(level=logging.DEBUG)
 
 class MyEventHandler(events.FileSystemEventHandler):
     def on_any_event(self, event: events.FileSystemEvent) -> None:
-        logging.debug(event)
+        logging.info("Any event: %s", event)
+
+    def on_created(self, event: events.DirCreatedEvent | events.FileCreatedEvent) -> None:
+        logging.info("Created: %s", event)
+
+    def on_deleted(self, event: events.DirDeletedEvent | events.FileDeletedEvent) -> None:
+        logging.info("Deleted: %s", event)
+
+    def on_modified(self, event: events.DirModifiedEvent | events.FileModifiedEvent) -> None:
+        logging.info("Modified: %s", event)
+
+    def on_moved(self, event: events.DirMovedEvent | events.FileMovedEvent) -> None:
+        logging.info("Moved: %s", event)
+
+    def on_opened(self, event: events.FileOpenedEvent) -> None:
+        logging.info("Opened: %s", event)
+
+    def on_closed(self, event: events.FileClosedEvent) -> None:
+        logging.info("Closed: %s", event)
 
 
 path = sys.argv[1] if len(sys.argv) > 1 else "."
