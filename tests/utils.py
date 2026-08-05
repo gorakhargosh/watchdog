@@ -153,7 +153,6 @@ class _ExpectedEvent:
 
 
 class _EventsChecker:
-
     expected_events: list[_ExpectedEvent]
 
     def __init__(self, helper: Helper, *, verbose: bool = False):
@@ -215,7 +214,7 @@ class _EventsChecker:
         self._debug("matched:", expected_event)
         return True
 
-    def _check_events_without_order( self, found_events: list[FileSystemEvent]) -> None:
+    def _check_events_without_order(self, found_events: list[FileSystemEvent]) -> None:
         # Check that events received contain the expected events.  This is
         # an inefficient way to do it, O(n*m) but since the list of expected
         # events should be fairly short, this is okay.  Using a list allows
@@ -245,7 +244,7 @@ class _EventsChecker:
                 msg = "received unexpected events"
                 raise AssertionError(msg)
 
-    def _check_events_with_order( self, found_events: list[FileSystemEvent]) -> None:
+    def _check_events_with_order(self, found_events: list[FileSystemEvent]) -> None:
         if not self._allow_extra:
             # we need exactly the number of expected events
             assert len(found_events) == len(self.expected_events), "wrong number of events"
