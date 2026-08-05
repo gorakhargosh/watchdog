@@ -40,9 +40,18 @@ User's Guide
    installation
    quickstart
    examples
+   watchmedo_cli
    api
    hacking
+
+.. toctree::
+   :maxdepth: 1
+
    changelog
+
+.. toctree::
+   :maxdepth: 2
+
    third_party_licenses
    authors
 
