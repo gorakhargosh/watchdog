@@ -42,6 +42,8 @@ User's Guide
    examples
    api
    hacking
+   changelog
+   third_party_licenses
 
 Contribute
 ==========
