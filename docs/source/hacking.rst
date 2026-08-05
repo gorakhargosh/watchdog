@@ -45,14 +45,14 @@ Steps to setting up a clean environment:
    .. code:: bash
 
        $ . venv/bin/activate
-       (venv)$ python -m pip install -e '.'
+       (venv)$ python -m pip install -e '.[watchmedo]'
 
    *Windows*
 
    .. code:: batch
 
        > venv\Scripts\activate
-       (venv)> python -m pip install -e '.'
+       (venv)> python -m pip install -e '.[watchmedo]'
 
 That's it with the setup. Now you're ready to hack on |project_name|.
 
