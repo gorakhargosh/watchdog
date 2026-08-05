@@ -27,6 +27,11 @@ class EventQueue(SkipRepeatsQueue):
     Thus avoiding dispatching multiple event handling
     calls when multiple identical events are produced quicker than an observer
     can consume them.
+
+    :param maxsize:
+        Maximum number of items allowed in the queue. If <= 0, the queue size is infinite.
+    :type maxsize:
+        ``int``
     """
 
 
@@ -35,10 +40,20 @@ class ObservedWatch:
 
     :param path:
         Path string.
+    :type path:
+        ``str`` or :class:`pathlib.Path`
     :param recursive:
         ``True`` if watch is recursive; ``False`` otherwise.
+    :type recursive:
+        ``bool``
     :param event_filter:
-        Optional collection of :class:`watchdog.events.FileSystemEvent` to watch
+        Optional collection of :class:`watchdog.events.FileSystemEvent` to watch.
+    :type event_filter:
+        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
+    :param follow_symlink:
+        ``True`` if symlinks are followed; ``False`` otherwise.
+    :type follow_symlink:
+        ``bool``
     """
 
     def __init__(
@@ -76,6 +91,7 @@ class ObservedWatch:
 
     @property
     def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None]:
+        """A tuple key identifying the watch (path, recursive, event_filter)."""
         return self.path, self.is_recursive, self.event_filter
 
     def __eq__(self, watch: object) -> bool:
@@ -233,7 +249,17 @@ class EventDispatcher(BaseThread):
 
 
 class BaseObserver(EventDispatcher):
-    """Base observer."""
+    """Base observer.
+
+    :param emitter_class:
+        The class of the emitter to use (e.g., a subclass of :class:`EventEmitter`).
+    :type emitter_class:
+        ``type[EventEmitter]``
+    :param timeout:
+        The timeout (in seconds) for the observer to wait on events.
+    :type timeout:
+        ``float``
+    """
 
     def __init__(self, emitter_class: type[EventEmitter], *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(timeout=timeout)
@@ -332,6 +358,10 @@ class BaseObserver(EventDispatcher):
             Collection of event types to emit, or None for no filtering (default).
         :type event_filter:
             Iterable[:class:`watchdog.events.FileSystemEvent`] | None
+        :param follow_symlink:
+            ``True`` if symlinks should be followed; ``False`` otherwise.
+        :type follow_symlink:
+            ``bool``
         :return:
             An :class:`ObservedWatch` object instance representing
             a watch.

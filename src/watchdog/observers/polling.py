@@ -5,6 +5,10 @@
 
 Classes
 -------
+.. autoclass:: PollingEmitter
+   :members:
+   :show-inheritance:
+
 .. autoclass:: PollingObserver
    :members:
    :show-inheritance:
