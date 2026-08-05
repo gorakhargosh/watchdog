@@ -412,7 +412,7 @@ class DirectoryChangeReader:
         # missed, we re-use these for each call to _run_inner().
         event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
         nbytes = DWORD()
-        self._buf_queue.put(b'')  # indicates that this thread has started
+        self._buf_queue.put(b"")  # indicates that this thread has started
         try:
             while not self._should_stop:
                 self._run_inner(handle, event_buffer, nbytes)

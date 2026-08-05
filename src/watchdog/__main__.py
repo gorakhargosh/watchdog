@@ -2,6 +2,7 @@
 
 if __name__ == "__main__":
     import sys
+
     from watchdog.watchmedo import main
 
     sys.exit(main())
