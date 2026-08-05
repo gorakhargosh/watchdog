@@ -1,4 +1,4 @@
-eventlet==0.37.0; python_version < "3.13"
+eventlet==0.40.3; python_version < "3.13"
 flaky==3.8.1
 pytest==8.3.3
 pytest-cov==6.0.0
