@@ -44,6 +44,7 @@ User's Guide
    hacking
    changelog
    third_party_licenses
+   authors
 
 Contribute
 ==========

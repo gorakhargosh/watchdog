@@ -1,0 +1,16 @@
+{
+  "files": [
+    "docs/source/contributors.md"
+  ],
+  "imageSize": 70,
+  "commit": true,
+  "contributors": [],
+  "contributorsPerLine": 7,
+  "projectName": "watchdog",
+  "projectOwner": "gorakhargosh",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true,
+  "commitType": "docs",
+  "commitConvention": "angular"
+}
