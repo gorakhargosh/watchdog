@@ -68,8 +68,8 @@ Licensed under the terms of the Apache license, version 2.0. Please see
 LICENSE in the source code for more information."""
 
 cli = ArgumentParser(epilog=epilog, formatter_class=HelpFormatter)
-cli.add_argument("--version", action="version", version=VERSION_STRING)
-subparsers = cli.add_subparsers(dest="top_command")
+cli.add_argument("-V", "--version", action="version", version=VERSION_STRING)
+subparsers = cli.add_subparsers(dest="top_command", title="subcommands")
 command_parsers = {}
 
 Argument = tuple[list[str], Any]
@@ -100,7 +100,13 @@ def command(
     def decorator(func: Callable) -> Callable:
         name = func.__name__.replace("_", "-")
         desc = dedent(func.__doc__ or "")
-        parser = parent.add_parser(name, aliases=cmd_aliases or [], description=desc, formatter_class=HelpFormatter)
+        parser = parent.add_parser(
+            name,
+            aliases=cmd_aliases or [],
+            description=desc,
+            help=desc.splitlines()[0].strip() if desc else None,
+            formatter_class=HelpFormatter,
+        )
         command_parsers[name] = parser
         verbosity_group = parser.add_mutually_exclusive_group()
         verbosity_group.add_argument("-q", "--quiet", dest="verbosity", action="append_const", const=-1)

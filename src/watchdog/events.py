@@ -114,13 +114,13 @@ class FileSystemEvent:
     dest_path: bytes | str = ""
     event_type: str = field(default="", init=False)
     is_directory: bool = field(default=False, init=False)
+    """True if event was triggered for a directory; False otherwise."""
 
-    """
-    True if event was synthesized; False otherwise.
+    is_synthetic: bool = field(default=False)
+    """True if event was synthesized; False otherwise.
     These are events that weren't actually broadcast by the OS, but
     are presumed to have happened based on other, actual events.
     """
-    is_synthetic: bool = field(default=False)
 
 
 class FileSystemMovedEvent(FileSystemEvent):

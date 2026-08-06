@@ -74,7 +74,22 @@ class LoggerTrick(Trick):
 
 
 class ShellCommandTrick(Trick):
-    """Executes shell commands in response to matched events."""
+    """Executes shell commands in response to matched events.
+
+    :param shell_command:
+        The shell command to execute.
+    :param patterns:
+        Matches event paths with these patterns.
+    :param ignore_patterns:
+        Ignores event paths with these patterns.
+    :param ignore_directories:
+        Ignores events for directories (default: False).
+    :param wait_for_process:
+        Wait for process to finish to avoid multiple simultaneous instances.
+    :param drop_during_process:
+        Ignore events that occur while command is still being executed
+        to avoid multiple simultaneous instances.
+    """
 
     def __init__(
         self,
@@ -152,6 +167,25 @@ class AutoRestartTrick(Trick):
 
     Call `start()` after creating the Trick. Call `stop()` when stopping
     the process.
+
+    :param command:
+        The long-running command to run and restart.
+    :param patterns:
+        Matches event paths with these patterns.
+    :param ignore_patterns:
+        Ignores event paths with these patterns.
+    :param ignore_directories:
+        Ignores events for directories (default: False).
+    :param stop_signal:
+        Stop the subprocess with this signal (default SIGINT).
+    :param kill_after:
+        When stopping, kill the subprocess after the specified timeout in
+        seconds (default 10.0).
+    :param debounce_interval_seconds:
+        After a file change, wait until the specified interval (in seconds)
+        passes with no file changes, and only then restart (default: 0.0).
+    :param restart_on_command_exit:
+        Auto-restart the command after it exits (default: True).
     """
 
     def __init__(
