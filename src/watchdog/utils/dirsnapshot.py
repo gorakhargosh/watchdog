@@ -359,12 +359,15 @@ class DirectorySnapshot:
         return (st.st_ino, st.st_dev)
 
     def isdir(self, path: bytes | str) -> bool:
+        """Returns ``True`` if the path is a directory."""
         return S_ISDIR(self._stat_info[path].st_mode)
 
     def mtime(self, path: bytes | str) -> float:
+        """Returns the last modification time for path."""
         return self._stat_info[path].st_mtime
 
     def size(self, path: bytes | str) -> int:
+        """Returns the size of the file identified by path."""
         return self._stat_info[path].st_size
 
     def stat_info(self, path: bytes | str) -> os.stat_result:
@@ -372,8 +375,8 @@ class DirectorySnapshot:
         the snapshot.
 
         Attached information is subject to change. Do not use unless
-        you specify `stat` in constructor. Use :func:`inode`, :func:`mtime`,
-        :func:`isdir` instead.
+        you specify `stat` in constructor. Use :meth:`inode`, :meth:`mtime`,
+        :meth:`isdir` instead.
 
         :param path:
             The path for which stat information should be obtained

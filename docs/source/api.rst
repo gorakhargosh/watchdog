@@ -15,4 +15,5 @@ API Reference
    api/observers_polling
    api/utils
    api/utils_dirsnapshot
+   api/utils_event_debouncer
    api/tricks
