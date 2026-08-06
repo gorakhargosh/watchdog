@@ -35,9 +35,9 @@ import threading
 import time
 
 from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
-from watchdog.utils import echo, platform
+from watchdog.utils import echo
 from watchdog.utils.event_debouncer import EventDebouncer
-from watchdog.utils.process_watcher import ProcessWatcher
+from watchdog.utils.process_watcher import ProcessWatcher, kill_process
 
 logger = logging.getLogger(__name__)
 echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
@@ -98,6 +98,28 @@ class ShellCommandTrick(Trick):
         self.process: subprocess.Popen[bytes] | None = None
         self._process_watchers: set[ProcessWatcher] = set()
 
+    def _build_command(
+        self,
+        event: FileSystemEvent,
+        context: dict[str, object],
+    ) -> str:
+        """Determine the shell command string for the given *event*.
+
+        When no explicit :attr:`shell_command` has been configured, a
+        default ``echo`` command is constructed.  In both cases the
+        *context* dict is updated with any destination-path information
+        carried by the event.
+        """
+        if self.shell_command is None:
+            if hasattr(event, "dest_path"):
+                context["dest_path"] = event.dest_path
+                return 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
+            return 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
+
+        if hasattr(event, "dest_path"):
+            context["watch_dest_path"] = event.dest_path
+        return self.shell_command
+
     def on_any_event(self, event: FileSystemEvent) -> None:
         if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
             # FIXME: see issue #949, and find a way to better handle that scenario
@@ -109,24 +131,14 @@ class ShellCommandTrick(Trick):
             return
 
         object_type = "directory" if event.is_directory else "file"
-        context = {
+        context: dict[str, object] = {
             "watch_src_path": event.src_path,
             "watch_dest_path": "",
             "watch_event_type": event.event_type,
             "watch_object": object_type,
         }
 
-        if self.shell_command is None:
-            if hasattr(event, "dest_path"):
-                context["dest_path"] = event.dest_path
-                command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
-            else:
-                command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
-        else:
-            if hasattr(event, "dest_path"):
-                context["watch_dest_path"] = event.dest_path
-            command = self.shell_command
-
+        command = self._build_command(event, context)
         command = Template(command).safe_substitute(**context)
         self.process = subprocess.Popen(command, shell=True)
         if self.wait_for_process:
@@ -280,14 +292,3 @@ class AutoRestartTrick(Trick):
         self._stop_process()
         self._start_process()
         self.restart_count += 1
-
-
-if platform.is_windows():
-
-    def kill_process(pid: int, stop_signal: int) -> None:
-        os.kill(pid, stop_signal)
-
-else:
-
-    def kill_process(pid: int, stop_signal: int) -> None:
-        os.killpg(os.getpgid(pid), stop_signal)
