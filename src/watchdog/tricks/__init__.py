@@ -97,20 +97,26 @@ class ShellCommandTrick(Trick):
 
         self.process: subprocess.Popen[bytes] | None = None
         self._process_watchers: set[ProcessWatcher] = set()
+        self._process_watchers_lock = threading.Lock()
 
     def on_any_event(self, event: FileSystemEvent) -> None:
         if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
 
+        import shlex
         from string import Template
 
         if self.drop_during_process and self.is_process_running():
             return
 
         object_type = "directory" if event.is_directory else "file"
+        # Paths are shell-quoted to prevent injection via filenames containing
+        # shell metacharacters (e.g. $(cmd), `cmd`).  os.fsdecode() normalises
+        # bytes paths to str first, which shlex.quote() requires.
+        src_path = shlex.quote(os.fsdecode(event.src_path))
         context = {
-            "watch_src_path": event.src_path,
+            "watch_src_path": src_path,
             "watch_dest_path": "",
             "watch_event_type": event.event_type,
             "watch_object": object_type,
@@ -118,13 +124,15 @@ class ShellCommandTrick(Trick):
 
         if self.shell_command is None:
             if hasattr(event, "dest_path"):
-                context["dest_path"] = event.dest_path
-                command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
+                context["watch_dest_path"] = shlex.quote(os.fsdecode(event.dest_path))
+                # No surrounding double-quotes: single-quoted values from shlex.quote
+                # are not protected inside double-quoted shell strings.
+                command = "echo ${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"
             else:
-                command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
+                command = "echo ${watch_event_type} ${watch_object} ${watch_src_path}"
         else:
             if hasattr(event, "dest_path"):
-                context["watch_dest_path"] = event.dest_path
+                context["watch_dest_path"] = shlex.quote(os.fsdecode(event.dest_path))
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
@@ -133,15 +141,21 @@ class ShellCommandTrick(Trick):
             self.process.wait()
         else:
             process_watcher = ProcessWatcher(self.process, None)
-            self._process_watchers.add(process_watcher)
+            with self._process_watchers_lock:
+                self._process_watchers.add(process_watcher)
             process_watcher.process_termination_callback = functools.partial(
-                self._process_watchers.discard,
+                self._discard_process_watcher,
                 process_watcher,
             )
             process_watcher.start()
 
+    def _discard_process_watcher(self, process_watcher: ProcessWatcher) -> None:
+        with self._process_watchers_lock:
+            self._process_watchers.discard(process_watcher)
+
     def is_process_running(self) -> bool:
-        return bool(self._process_watchers or (self.process is not None and self.process.poll() is None))
+        with self._process_watchers_lock:
+            return bool(self._process_watchers or (self.process is not None and self.process.poll() is None))
 
 
 class AutoRestartTrick(Trick):
