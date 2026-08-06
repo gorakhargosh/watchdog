@@ -40,9 +40,17 @@ User's Guide
    installation
    quickstart
    examples
-   watchmedo_cli
    api
    hacking
+
+
+Command-Line Tool
+=================
+.. toctree::
+   :maxdepth: 2
+   
+   watchmedo_cli
+   tricks
 
 .. toctree::
    :maxdepth: 1

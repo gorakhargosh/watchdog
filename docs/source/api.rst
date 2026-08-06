@@ -1,6 +1,6 @@
 .. include:: global.rst.inc
 
-.. api_reference:
+.. _api_reference:
 
 =============
 API Reference
