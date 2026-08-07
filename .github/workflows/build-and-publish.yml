@@ -34,6 +34,11 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
   cancel-in-progress: true
 
+# Publishing authenticates to PyPI with its own token, not the GITHUB_TOKEN, so
+# read-only is sufficient for every job here. Elevate per-job if that ever changes.
+permissions:
+  contents: read
+
 jobs:
   macos-built-distributions:
     name: Build macOS wheels
