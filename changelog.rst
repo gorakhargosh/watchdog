@@ -27,6 +27,7 @@ Changelog
 - [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
 - Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide
 - [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
+- [windows] Read ``_reader`` under the lock in ``WindowsApiEmitter.queue_events()`` so the access is synchronized with ``on_thread_stop()``. (`#1170 <https://github.com/gorakhargosh/watchdog/issues/1170>`__)
 
 6.0.0
 ~~~~~

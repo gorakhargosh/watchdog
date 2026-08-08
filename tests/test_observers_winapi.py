@@ -127,3 +127,32 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_queue_events_reads_reader_under_lock(emitter):
+    """queue_events() must read ``_reader`` while holding ``_lock``, mirroring
+    on_thread_stop(), so the two accesses are synchronized (issue #1170)."""
+    acquired = []
+    real_lock = emitter._lock  # noqa: SLF001
+
+    class LockSpy:
+        def __enter__(self):
+            acquired.append(True)
+            return real_lock.__enter__()
+
+        def __exit__(self, *args):
+            return real_lock.__exit__(*args)
+
+    emitter._lock = LockSpy()  # noqa: SLF001
+
+    class FakeReader:
+        def get_events(self, timeout):
+            return []
+
+        def stop(self):
+            pass
+
+    emitter._reader = FakeReader()  # noqa: SLF001
+    emitter.queue_events(0)
+
+    assert acquired, "queue_events() did not acquire the lock to read _reader"

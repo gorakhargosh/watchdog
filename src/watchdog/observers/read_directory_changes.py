@@ -65,7 +65,10 @@ class WindowsApiEmitter(EventEmitter):
             reader.stop()
 
     def queue_events(self, timeout: float) -> None:
-        reader = self._reader
+        # Read the reader under the lock, mirroring on_thread_stop(), so this
+        # access is synchronized with on_thread_stop() clearing it.
+        with self._lock:
+            reader = self._reader
         if reader is None:
             return  # reader has been stopped
         last_renamed_src_path = ""
