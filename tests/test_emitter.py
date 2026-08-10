@@ -198,6 +198,32 @@ def test_case_change(
             ec.add(DirModifiedEvent, "dir2")
 
 
+@pytest.mark.skipif(
+    not platform.is_windows(),
+    reason="Only Windows reports a deletion on top of a case-only rename",
+)
+def test_case_only_rename_on_windows(
+    p: P,
+    event_queue: TestEventQueue,
+    start_watching: StartWatching,
+    events_checker: EventsChecker,
+) -> None:
+    """Changing only the case of a name yields the move alone, without a deletion."""
+    mkfile(p("file"))
+    mkdir(p("dir"))
+    start_watching()
+
+    mv(p("file"), p("FILE"))
+
+    with events_checker() as ec:
+        ec.add(FileMovedEvent, "file", dest_path="FILE")
+
+    mv(p("dir"), p("DIR"))
+
+    with events_checker() as ec:
+        ec.add(DirMovedEvent, "dir", dest_path="DIR")
+
+
 def test_move_to(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
