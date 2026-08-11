@@ -33,7 +33,14 @@ class WatchdogShutdownError(Exception):
 
 
 class BaseThread(threading.Thread):
-    """Convenience class for creating stoppable threads."""
+    """Convenience class for creating stoppable threads.
+
+    Instances always run as daemon threads: :meth:`__init__` sets
+    :attr:`~threading.Thread.daemon` to ``True`` unconditionally. The value is
+    therefore *not* inherited from the creating thread, unlike a plain
+    :class:`threading.Thread`, and setting it before :meth:`~threading.Thread.start`
+    is the caller's only opportunity to override it.
+    """
 
     def __init__(self) -> None:
         threading.Thread.__init__(self)
