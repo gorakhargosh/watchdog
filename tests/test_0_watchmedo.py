@@ -98,6 +98,28 @@ def test_shell_command_subprocess_termination_nowait(tmpdir):
     assert not trick.is_process_running()
 
 
+@pytest.mark.skipif(platform.is_windows(), reason="shell injection test is POSIX-only")
+def test_shell_command_no_filename_injection(tmp_path):
+    """Filenames containing shell metacharacters must not execute injected commands."""
+    marker = tmp_path / "injected"
+    # A filename like $(touch /path/to/injected) would execute if not quoted.
+    malicious_src = f"$(touch {marker})"
+    trick = ShellCommandTrick("echo ${watch_src_path}", wait_for_process=True)
+    trick.on_any_event(FileModifiedEvent(malicious_src))
+    assert not marker.exists(), "Shell injection via src_path succeeded — path was not quoted"
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="shell injection test is POSIX-only")
+def test_shell_command_no_filename_injection_default_command(tmp_path):
+    """Default echo command must not execute injected commands in filenames."""
+    marker = tmp_path / "injected"
+    malicious_src = f"$(touch {marker})"
+    # shell_command=None uses the built-in echo template
+    trick = ShellCommandTrick(shell_command=None, wait_for_process=True)
+    trick.on_any_event(FileModifiedEvent(malicious_src))
+    assert not marker.exists(), "Shell injection via default command succeeded — path was not quoted"
+
+
 def test_shell_command_subprocess_termination_not_happening_on_file_opened_event(
     tmpdir,
 ):
