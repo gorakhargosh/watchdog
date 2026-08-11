@@ -182,9 +182,15 @@ def test_case_change(
 ) -> None:
     mkdir(p("dir1"))
     mkdir(p("dir2"))
+    mkdir(p("dir1", "sub"))
+    mkdir(p("subdir"))
     mkfile(p("dir1", "file"))
+    mkfile(p("other"))
     start_watching()
 
+    # Across directories. Windows reports this as a deletion and a creation
+    # carrying no rename records at all, whether or not the case differs, so
+    # there is nothing to coalesce here.
     mv(p("dir1", "file"), p("dir2", "FILE"))
 
     with events_checker() as ec:
@@ -197,31 +203,36 @@ def test_case_change(
             ec.add(FileCreatedEvent, "dir2/FILE")
             ec.add(DirModifiedEvent, "dir2")
 
-
-@pytest.mark.skipif(
-    not platform.is_windows(),
-    reason="Only Windows reports a deletion on top of a case-only rename",
-)
-def test_case_only_rename_on_windows(
-    p: P,
-    event_queue: TestEventQueue,
-    start_watching: StartWatching,
-    events_checker: EventsChecker,
-) -> None:
-    """Changing only the case of a name yields the move alone, without a deletion."""
-    mkfile(p("file"))
-    mkdir(p("dir"))
-    start_watching()
-
-    mv(p("file"), p("FILE"))
+    # In place, a file. Windows prepends a deletion of the old name here, which
+    # is the case being coalesced away.
+    mv(p("other"), p("OTHER"))
 
     with events_checker() as ec:
-        ec.add(FileMovedEvent, "file", dest_path="FILE")
+        ec.add(FileMovedEvent, "other", dest_path="OTHER")
+        if platform.is_linux():
+            ec.add(DirModifiedEvent, ".")
+            ec.add(DirModifiedEvent, ".")
 
-    mv(p("dir"), p("DIR"))
+    # In place, a directory.
+    mv(p("subdir"), p("SUBDIR"))
 
     with events_checker() as ec:
-        ec.add(DirMovedEvent, "dir", dest_path="DIR")
+        ec.add(DirMovedEvent, "subdir", dest_path="SUBDIR")
+        if platform.is_linux():
+            ec.add(DirModifiedEvent, ".")
+            ec.add(DirModifiedEvent, ".")
+
+    # In place, a subfolder one level down.
+    mv(p("dir1", "sub"), p("dir1", "SUB"))
+
+    with events_checker() as ec:
+        if platform.is_windows():
+            ec.add(DirModifiedEvent, "dir1")
+        ec.add(DirMovedEvent, "dir1/sub", dest_path="dir1/SUB")
+        if platform.is_windows() or platform.is_linux():
+            ec.add(DirModifiedEvent, "dir1")
+        if platform.is_linux():
+            ec.add(DirModifiedEvent, "dir1")
 
 
 def test_move_to(
