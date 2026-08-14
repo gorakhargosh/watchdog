@@ -157,14 +157,30 @@ def load_config(tricks_file_pathname: str) -> dict:
         return yaml.safe_load(f.read())
 
 
+def _adapt_cli_pattern(pattern: str) -> str:
+    """Translate a bare watchmedo glob so it matches under full_match() semantics.
+
+    After #1101, matching uses ``path.full_match()`` (whole path) instead of
+    ``path.match()`` (right-anchored). A pattern such as ``*.py`` therefore
+    matches only a single path segment, while event paths are multi-segment.
+    Prepend ``**/`` to bare relative patterns so the documented CLI style
+    (``*``, ``*.py;*.txt``) keeps working.
+    """
+    if not pattern or pattern.startswith("**"):
+        return pattern
+    if "/" in pattern or "\\" in pattern:
+        return pattern
+    return f"**/{pattern}"
+
+
 def parse_patterns(
     patterns_spec: str, ignore_patterns_spec: str, *, separator: str = ";"
 ) -> tuple[list[str], list[str]]:
     """Parses pattern argument specs and returns a two-tuple of
     (patterns, ignore_patterns).
     """
-    patterns = patterns_spec.split(separator)
-    ignore_patterns = ignore_patterns_spec.split(separator)
+    patterns = [_adapt_cli_pattern(p) for p in patterns_spec.split(separator)]
+    ignore_patterns = [_adapt_cli_pattern(p) for p in ignore_patterns_spec.split(separator)]
     if ignore_patterns == [""]:
         ignore_patterns = []
     return patterns, ignore_patterns
