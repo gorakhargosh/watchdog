@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import os.path
+import shutil
 from queue import Empty, Queue
 from time import sleep
 
@@ -25,6 +26,7 @@ from watchdog.observers.winapi import (
     FILE_ACTION_RENAMED_OLD_NAME,
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
+    _is_observed_path_deleted,
 )
 
 SLEEP_TIME = 2
@@ -135,6 +137,12 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_is_observed_path_deleted(tmp_path):
+    assert not _is_observed_path_deleted(str(tmp_path))
+    shutil.rmtree(str(tmp_path))
+    assert _is_observed_path_deleted(str(tmp_path))
 
 
 def test_drop_case_only_rename_deletions():
