@@ -130,6 +130,46 @@ def test___init__(event_queue, emitter):
     assert expected == got
 
 
+def test_symlink_to_file_reported_as_created_not_moved(event_queue):
+    """Regression test for #1110.
+
+    Creating a symlink to an existing file inside a watched directory must be
+    reported as a ``FileCreatedEvent`` and not as a phantom ``FileMovedEvent``
+    where the target file is reported as the source of the move.
+    """
+    watched = os.path.join(mkdtemp(), "watched")
+    os.makedirs(watched)
+
+    watch = ObservedWatch(watched, recursive=True)
+    em = Emitter(event_queue, watch, timeout=0.2)
+    em.start()
+    try:
+        sleep(SLEEP_TIME)
+        touch(os.path.join(watched, "source"))
+        sleep(SLEEP_TIME)
+
+        try:
+            os.symlink(os.path.join(watched, "source"), os.path.join(watched, "link"))
+        except OSError:
+            pytest.skip("Creating symlinks is not supported in this environment.")
+
+        sleep(SLEEP_TIME)
+    finally:
+        em.stop()
+        em.join(5)
+
+    got = set()
+    while True:
+        try:
+            event, _ = event_queue.get_nowait()
+            got.add(event)
+        except Empty:
+            break
+
+    assert FileCreatedEvent(os.path.join(watched, "link")) in got
+    assert FileMovedEvent(os.path.join(watched, "source"), os.path.join(watched, "link")) not in got
+
+
 def test_delete_watched_dir(event_queue, emitter):
     rm(p(""), recursive=True)
 

@@ -59,7 +59,7 @@ class PollingEmitter(EventEmitter):
         *,
         timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
-        stat: Callable[[str], os.stat_result] = os.stat,
+        stat: Callable[[str], os.stat_result] = os.lstat,
         listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
