@@ -49,7 +49,7 @@ Logs file system events directly to the console.
 **Options:**
 
 *   ``directories``: Directories to watch (default: '.').
-*   ``--patterns="<patterns>"``:  Matches event paths with these patterns (separated by ;) (e.g., ``--patterns="*.py;*.txt"``).
+*   ``--patterns="<patterns>"``:  Matches event paths with these glob patterns (separated by ;) (e.g., ``--patterns="**/*.py;**/*.txt"``).
 *   ``--ignore-patterns="<patterns>"``: Ignores event paths with these patterns (separated by ;).
 *   ``--ignore-directories``: Ignores events for directories.
 *   ``--recursive``: Monitors the directories recursively.
@@ -61,7 +61,7 @@ Logs file system events directly to the console.
 
 .. code-block:: bash
 
-    $ watchmedo log --patterns="*.py;*.txt" --recursive .
+    $ watchmedo log --patterns="**/*.py;**/*.txt" --recursive .
 
 ---
 
@@ -79,7 +79,7 @@ Executes shell commands in response to file system events.
 
 *   ``directories``: Directories to watch (default: '.').
 *   ``-c``, ``--command="<command>"``: Shell command executed in response to matching events.
-*   ``--patterns="<patterns>"``: Matches event paths with these patterns (separated by ;).
+*   ``--patterns="<patterns>"``: Matches event paths with these glob patterns (separated by ;), e.g. ``**/*.py``.
 *   ``--ignore-patterns="<patterns>"``: Ignores event paths with these patterns (separated by ;).
 *   ``--ignore-directories``: Ignores events for directories (default: False).
 *   ``--recursive``: Monitors the directories recursively.
@@ -113,7 +113,7 @@ Within the command string, you can use the following environment variables which
 .. code-block:: bash
 
     $ watchmedo shell-command \
-        --patterns="*.py" \
+        --patterns="**/*.py" \
         --recursive \
         --command="echo 'File ${watch_src_path} was ${watch_event_type}'" \
         .
@@ -136,7 +136,7 @@ Starts a long-running subprocess (like a development server, worker, or test sui
 *   ``directories``: Directories to watch (default: '.').
 *   ``-c``, ``--command="<command>"``: The process command to run.
 *   ``-d``, ``--directory=DIRECTORY``: Directory to watch. Use another ``-d`` or ``--directory`` option for each directory.
-*   ``--patterns="<patterns>"``: Matches event paths with these patterns (separated by ;).
+*   ``--patterns="<patterns>"``: Matches event paths with these glob patterns (separated by ;), e.g. ``**/*.py``.
 *   ``--ignore-patterns="<patterns>"``: Ignores event paths with these patterns (separated by ;).
 *   ``--ignore-directories``: Ignores events for directories.
 *   ``--recursive``: Monitors the directories recursively.
@@ -152,7 +152,7 @@ Starts a long-running subprocess (like a development server, worker, or test sui
 
 .. code-block:: bash
 
-    $ watchmedo auto-restart --patterns="*.py" \
+    $ watchmedo auto-restart --patterns="**/*.py" \
         --recursive --command="python my_web_app.py" .
 
 Common Use Cases
@@ -164,7 +164,7 @@ Run your pytest test suite immediately when any Python file changes:
 
 .. code-block:: bash
 
-    $ watchmedo shell-command --patterns="*.py" \
+    $ watchmedo shell-command --patterns="**/*.py" \
         --recursive --command="pytest tests/" .
 
 
@@ -174,7 +174,7 @@ Compile Sass files to CSS automatically on edit:
 
 .. code-block:: bash
 
-    $ watchmedo shell-command --patterns="*.scss" \
+    $ watchmedo shell-command --patterns="**/*.scss" \
         --command="sass src/styles:dist/styles" .
 
 Platform Behavior & Limitations

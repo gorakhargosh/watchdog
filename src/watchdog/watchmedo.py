@@ -404,8 +404,8 @@ def tricks_generate_yaml(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -536,8 +536,8 @@ def log(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -645,8 +645,8 @@ def shell_command(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",

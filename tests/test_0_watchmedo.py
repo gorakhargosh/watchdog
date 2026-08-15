@@ -55,6 +55,21 @@ def test_load_config_invalid(tmpdir):
     assert not os.path.exists(critical_dir)
 
 
+def test_watchmedo_default_patterns_match_absolute_paths(tmpdir):
+    """Regression test for #1212: the default --patterns value must match absolute
+    paths at any depth under the full_match() semantics."""
+
+    from watchdog.utils.patterns import match_any_paths
+
+    watched = os.path.join(tmpdir, "nested", "file.txt")
+    for argv in (["auto-restart", "echo", "hi"], ["shell-command"], ["log"]):
+        args = watchmedo.cli.parse_args(argv)
+        patterns, ignore_patterns = watchmedo.parse_patterns(args.patterns, args.ignore_patterns)
+        assert patterns == ["**"]
+        assert ignore_patterns == []
+        assert match_any_paths([watched], included_patterns=patterns, case_sensitive=False)
+
+
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
