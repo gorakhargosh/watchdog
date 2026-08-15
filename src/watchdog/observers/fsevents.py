@@ -40,6 +40,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("fsevents")
 
+#: Default seconds the FSEvents API waits after an event before delivering it,
+#: coalescing any further events in that window into the same batch. This has
+#: been the value baked into the stream since it was first created.
+DEFAULT_FSEVENTS_LATENCY = 0.01
+
 
 class FSEventsEmitter(EventEmitter):
     """macOS FSEvents Emitter class.
@@ -60,6 +65,14 @@ class FSEventsEmitter(EventEmitter):
         by creating a directory snapshot of the watched path before starting the stream
         as a reference to suppress old events. Warning: This may result in significant
         memory usage in case of a large number of items in the watched path.
+    :param latency:
+        Seconds the FSEvents API waits after an event before delivering it,
+        coalescing any further events in that window into the same batch.
+        Defaults to :data:`DEFAULT_FSEVENTS_LATENCY`. Raising it trades
+        notification delay for fewer duplicate events: a single logical write
+        that arrives as several ``modified`` events at the default latency (an
+        editor saving a file, for instance) is more likely to coalesce into
+        one. Must not be negative.
     :type timeout:
         ``float``
     """
@@ -72,10 +85,15 @@ class FSEventsEmitter(EventEmitter):
         timeout: float = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         suppress_history: bool = False,
+        latency: float = DEFAULT_FSEVENTS_LATENCY,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
+        if latency < 0:
+            msg = f"latency must not be negative, got {latency!r}"
+            raise ValueError(msg)
         self._fs_view: set[int] = set()
         self.suppress_history = suppress_history
+        self.latency = latency
         self._start_time = 0.0
         self._starting_state: DirectorySnapshot | None = None
         self._lock = threading.Lock()
@@ -306,7 +324,7 @@ class FSEventsEmitter(EventEmitter):
         self.pathnames = [self.watch.path]
         self._start_time = time.monotonic()
         try:
-            _fsevents.add_watch(self, self.watch, self.events_callback, self.pathnames)
+            _fsevents.add_watch(self, self.watch, self.events_callback, self.pathnames, self.latency)
             _fsevents.read_events(self)
         except Exception:
             logger.exception("Unhandled exception in FSEventsEmitter")

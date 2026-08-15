@@ -39,6 +39,12 @@
 /* Other information. */
 #define MODULE_NAME  "_watchdog_fsevents"
 
+/* Seconds the FSEvents API waits after an event before delivering it,
+ * coalescing further events in that window into the same batch. This has
+ * been the hard-coded value since the stream was first created; it stays the
+ * default so behaviour is unchanged unless a caller asks for something else. */
+#define DEFAULT_STREAM_LATENCY 0.01
+
 /**
  * Event stream callback contextual information passed to
  * our ``watchdog_FSEventStreamCallback`` function by the
@@ -556,6 +562,10 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
  *      to monitor.
  * :param callback:
  *      A function pointer of type ``FSEventStreamCallback``.
+ * :param stream_latency:
+ *      The time in seconds the FSEvents API waits after an event before
+ *      delivering it, coalescing further events in that window into the
+ *      same batch.
  * :returns:
  *      A pointer to an ``FSEventStream`` instance (that is, it returns
  *      an ``FSEventStreamRef``).
@@ -563,9 +573,9 @@ watchdog_CFMutableArrayRef_from_PyStringList(PyObject *py_string_list)
 static FSEventStreamRef
 watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
                              PyObject *py_paths,
-                             FSEventStreamCallback callback)
+                             FSEventStreamCallback callback,
+                             CFAbsoluteTime stream_latency)
 {
-    CFAbsoluteTime stream_latency = 0.01;
     CFMutableArrayRef paths = NULL;
     FSEventStreamRef stream_ref = NULL;
 
@@ -598,7 +608,7 @@ watchdog_FSEventStreamCreate(StreamCallbackInfo *stream_callback_info_ref,
 
 
 PyDoc_STRVAR(watchdog_add_watch__doc__,
-        MODULE_NAME ".add_watch(emitter_thread, watch, callback, paths) -> None\
+        MODULE_NAME ".add_watch(emitter_thread, watch, callback, paths, latency=0.01) -> None\
 \nAdds a watch into the event loop for the given emitter thread.\n\n\
 :param emitter_thread:\n\
     The emitter thread.\n\
@@ -611,7 +621,12 @@ PyDoc_STRVAR(watchdog_add_watch__doc__,
             for path, flag, event_id in zip(paths, flags, ids):\n\
                 print(\"%d: %s=%ul\" % (event_id, path, flag))\n\
 :param paths:\n\
-    A list of paths to monitor.\n");
+    A list of paths to monitor.\n\
+:param latency:\n\
+    Optional. Seconds the FSEvents API waits after an event before\n\
+    delivering it, coalescing further events in that window into the same\n\
+    batch. Defaults to 0.01. A larger value trades notification delay for\n\
+    fewer duplicate events; it must not be negative.\n");
 static PyObject *
 watchdog_add_watch(PyObject *self, PyObject *args)
 {
@@ -624,11 +639,19 @@ watchdog_add_watch(PyObject *self, PyObject *args)
     PyObject *paths_to_watch = NULL;
     PyObject *python_callback = NULL;
     PyObject *value = NULL;
+    /* Kept optional so existing four-argument calls keep working. */
+    double stream_latency = DEFAULT_STREAM_LATENCY;
 
     /* Ensure all arguments are received. */
-    G_RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "OOOO:schedule",
+    G_RETURN_NULL_IF_NOT(PyArg_ParseTuple(args, "OOOO|d:schedule",
                                           &emitter_thread, &watch,
-                                          &python_callback, &paths_to_watch));
+                                          &python_callback, &paths_to_watch,
+                                          &stream_latency));
+
+    if (!(stream_latency >= 0)) {  /* also rejects NaN */
+        PyErr_SetString(PyExc_ValueError, "latency must be a non-negative number");
+        return NULL;
+    }
 
     /* Watch must not already be scheduled. */
     if(PyDict_Contains(watch_to_stream, watch) == 1) {
@@ -647,7 +670,8 @@ watchdog_add_watch(PyObject *self, PyObject *args)
      * Save the stream reference to the global watch-to-stream dictionary. */
     stream_ref = watchdog_FSEventStreamCreate(stream_callback_info_ref,
                                               paths_to_watch,
-                                              (FSEventStreamCallback) &watchdog_FSEventStreamCallback);
+                                              (FSEventStreamCallback) &watchdog_FSEventStreamCallback,
+                                              (CFAbsoluteTime) stream_latency);
     if (!stream_ref) {
         PyMem_Del(stream_callback_info_ref);
         PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream");

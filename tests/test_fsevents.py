@@ -14,6 +14,7 @@ import logging
 import os
 import time
 from os import mkdir, rmdir
+from queue import Queue
 from random import random
 from threading import Thread
 from time import sleep
@@ -25,7 +26,7 @@ import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver, ObservedWatch
-from watchdog.observers.fsevents import FSEventsEmitter
+from watchdog.observers.fsevents import DEFAULT_FSEVENTS_LATENCY, FSEventsEmitter
 
 from .shell import touch
 
@@ -331,3 +332,34 @@ def test_watchdog_recursive(p: P) -> None:
             observer.unschedule(watch)
         observer.stop()
         observer.join(1)
+
+
+def test_fsevents_latency_defaults_to_the_documented_value(p):
+    """The default stays what the stream has always been created with."""
+    emitter = FSEventsEmitter(Queue(), ObservedWatch(p(""), recursive=True))
+    assert emitter.latency == DEFAULT_FSEVENTS_LATENCY
+    assert DEFAULT_FSEVENTS_LATENCY == 0.01
+
+
+def test_fsevents_latency_is_passed_to_the_stream(p):
+    """A custom latency reaches ``_fsevents.add_watch`` rather than being dropped."""
+    emitter = FSEventsEmitter(Queue(), ObservedWatch(p(""), recursive=True), latency=0.25)
+    assert emitter.latency == 0.25
+
+    with patch(f"{_fsevents.__name__}.add_watch") as mock_add_watch, patch(f"{_fsevents.__name__}.read_events"):
+        emitter.run()
+
+    assert mock_add_watch.call_args[0][-1] == 0.25
+
+
+@pytest.mark.parametrize("latency", [-0.01, -1])
+def test_fsevents_negative_latency_is_rejected(p, latency):
+    with pytest.raises(ValueError, match="latency must not be negative"):
+        FSEventsEmitter(Queue(), ObservedWatch(p(""), recursive=True), latency=latency)
+
+
+def test_fsevents_add_watch_rejects_negative_latency(p):
+    """The C layer guards independently of the Python wrapper."""
+    watch = ObservedWatch(p(""), recursive=True)
+    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+        _fsevents.add_watch(Thread(), watch, lambda *_: None, [p("")], -1.0)
