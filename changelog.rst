@@ -32,6 +32,7 @@ Changelog
 - [windows] Fixed an unsynchronized access to ``WindowsApiEmitter._reader``: ``queue_events()`` now
   reads it under the same lock used by ``on_thread_stop()``. (`#1170 <https://github.com/gorakhargosh/watchdog/issues/1170>`__)
 - [core] Add ``win_arm64`` to the list of platform-specific wheels published to PyPI. (`#1137 <https://github.com/gorakhargosh/watchdog/issues/1137>`__)
+
 6.0.0
 ~~~~~
 
