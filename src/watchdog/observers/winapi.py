@@ -19,7 +19,7 @@ import threading
 from ctypes.wintypes import BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPWSTR
 from dataclasses import dataclass
 from functools import reduce
-from time import sleep
+from time import monotonic, sleep
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -285,10 +285,18 @@ def _is_observed_path_deleted(path: str) -> bool:
     # an error that is indistinguishable from other failures at the WinAPI
     # level. Wait briefly for the filesystem to settle before checking whether
     # the path still exists, as Windows may report a just-deleted directory as
-    # still present. `sleep` is bound locally so that tests that patch
-    # `time.sleep` do not interfere with the error path.
-    sleep(0.1)
-    return not os.path.isdir(path)
+    # still present. A bounded poll is used instead of a single fixed sleep so
+    # that a slow filesystem is not misread as a deletion: the path is only
+    # considered deleted once it has been consistently absent for the whole
+    # window. `sleep` and `monotonic` are bound locally so tests that control
+    # the delay should patch `watchdog.observers.winapi.sleep` (and
+    # `watchdog.observers.winapi.monotonic`) rather than `time.sleep`.
+    deadline = monotonic() + 0.5
+    while monotonic() < deadline:
+        if os.path.isdir(path):
+            return False
+        sleep(0.05)
+    return True
 
 
 def _generate_observed_path_deleted_event() -> bytes:
