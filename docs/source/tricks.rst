@@ -19,13 +19,13 @@ Without tricks, running multiple tasks requires starting several terminal proces
 .. code-block:: bash
 
     # Terminal 1
-    watchmedo log --patterns="*.py" .
+    watchmedo log --patterns="**/*.py" .
 
     # Terminal 2
-    watchmedo shell-command --patterns="*.py" --command="ruff check ." .
+    watchmedo shell-command --patterns="**/*.py" --command="ruff check ." .
 
     # Terminal 3
-    watchmedo auto-restart --patterns="*.py" --command="python app.py" .
+    watchmedo auto-restart --patterns="**/*.py" --command="python app.py" .
 
 Using tricks simplifies configuration by allowing multiple event handlers to run under a single observer:
 
