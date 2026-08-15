@@ -16,10 +16,10 @@ import ctypes
 import os
 import queue
 import threading
-import time
 from ctypes.wintypes import BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPWSTR
 from dataclasses import dataclass
 from functools import reduce
+from time import sleep
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -285,8 +285,9 @@ def _is_observed_path_deleted(path: str) -> bool:
     # an error that is indistinguishable from other failures at the WinAPI
     # level. Wait briefly for the filesystem to settle before checking whether
     # the path still exists, as Windows may report a just-deleted directory as
-    # still present.
-    time.sleep(0.1)
+    # still present. `sleep` is bound locally so that tests that patch
+    # `time.sleep` do not interfere with the error path.
+    sleep(0.1)
     return not os.path.isdir(path)
 
 
@@ -417,6 +418,10 @@ class DirectoryChangeReader:
             buf = event_buffer.raw[: nbytes.value]
         except OSError as e:
             if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
+                return
+            if e.winerror == 0:  # type: ignore[attr-defined]
+                # ReadDirectoryChangesW failed with no error set (e.g. a
+                # CancelIoEx race while stopping). There is nothing to surface.
                 return
             if _is_observed_path_deleted(self._path):
                 # Handle the case when the root path is deleted

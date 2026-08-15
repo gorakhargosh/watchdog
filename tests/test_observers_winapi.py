@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ctypes
 import os
 import os.path
 import shutil
 from queue import Empty, Queue
 from time import sleep
+from unittest import mock
 
 import pytest
 
@@ -24,6 +26,7 @@ from watchdog.observers.winapi import (
     FILE_ACTION_DELETED,
     FILE_ACTION_RENAMED_NEW_NAME,
     FILE_ACTION_RENAMED_OLD_NAME,
+    DirectoryChangeReader,
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
     _is_observed_path_deleted,
@@ -143,6 +146,32 @@ def test_is_observed_path_deleted(tmp_path):
     assert not _is_observed_path_deleted(str(tmp_path))
     shutil.rmtree(str(tmp_path))
     assert _is_observed_path_deleted(str(tmp_path))
+
+
+def test_run_inner_treats_no_error_code_as_benign(tmp_path):
+    # ReadDirectoryChangesW can fail with GetLastError()==0 (e.g. a CancelIoEx
+    # race while stopping). Such a "no error" failure must not crash the reader
+    # thread, which previously re-raised it as OSError: [WinError 0].
+    reader = DirectoryChangeReader(str(tmp_path), recursive=True)
+    event_buffer = ctypes.create_string_buffer(1024)
+    nbytes = ctypes.c_ulong()
+    with mock.patch("watchdog.observers.winapi.ReadDirectoryChangesW", side_effect=ctypes.WinError(0)):
+        reader._run_inner(object(), event_buffer, nbytes)  # noqa: SLF001
+
+
+def test_run_inner_still_raises_real_errors(tmp_path):
+    # A genuine failure is re-raised when the observed path still exists.
+    reader = DirectoryChangeReader(str(tmp_path), recursive=True)
+    event_buffer = ctypes.create_string_buffer(1024)
+    nbytes = ctypes.c_ulong()
+    with (
+        mock.patch(
+            "watchdog.observers.winapi.ReadDirectoryChangesW",
+            side_effect=ctypes.WinError(5),
+        ),
+        pytest.raises(OSError, match="WinError 5"),
+    ):
+        reader._run_inner(object(), event_buffer, nbytes)  # noqa: SLF001
 
 
 def test_drop_case_only_rename_deletions():
