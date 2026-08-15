@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 import os.path
+import threading
 from queue import Empty, Queue
 from time import sleep
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -16,6 +18,9 @@ from .shell import mkdir, mkdtemp, mv, rm
 # make pytest aware this is windows only
 if not platform.is_windows():
     pytest.skip("Windows only.", allow_module_level=True)
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
 from watchdog.observers.winapi import (
@@ -135,6 +140,46 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_queue_events_locks_reader_access():
+    """Regression test for #1170.
+
+    on_thread_stop() clears _reader while holding self._lock, so queue_events()
+    must read _reader under the same lock. Otherwise a concurrent stop could
+    leave queue_events() processing events from a reader that is being stopped.
+    """
+
+    emitter = WindowsApiEmitter(Queue(), ObservedWatch(temp_dir, recursive=True), timeout=0.05)
+
+    class DummyReader:
+        def get_events(self, timeout: float) -> list:
+            return []
+
+        def stop(self) -> None:
+            pass
+
+    emitter._reader = DummyReader()  # noqa: SLF001
+
+    locked = threading.Event()
+
+    class TrackingLock:
+        def __init__(self) -> None:
+            self._lock = threading.RLock()
+
+        def __enter__(self) -> Self:
+            locked.set()
+            self._lock.acquire()
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            self._lock.release()
+
+    emitter._lock = TrackingLock()  # noqa: SLF001
+
+    emitter.queue_events(0)
+
+    assert locked.is_set()
 
 
 def test_drop_case_only_rename_deletions():

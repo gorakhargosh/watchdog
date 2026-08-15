@@ -65,7 +65,8 @@ class WindowsApiEmitter(EventEmitter):
             reader.stop()
 
     def queue_events(self, timeout: float) -> None:
-        reader = self._reader
+        with self._lock:
+            reader = self._reader
         if reader is None:
             return  # reader has been stopped
         last_renamed_src_path = ""
