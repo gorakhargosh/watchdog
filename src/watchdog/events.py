@@ -289,6 +289,22 @@ class FileSystemEventHandler:
         """
 
 
+def _collect_event_paths(event: FileSystemEvent) -> list[str]:
+    """Return the decoded file-system paths associated with *event*.
+
+    This helper consolidates the path-collection logic shared by
+    :class:`PatternMatchingEventHandler` and
+    :class:`RegexMatchingEventHandler`, avoiding duplication across both
+    dispatch methods.
+    """
+    paths: list[str] = []
+    if hasattr(event, "dest_path"):
+        paths.append(os.fsdecode(event.dest_path))
+    if event.src_path:
+        paths.append(os.fsdecode(event.src_path))
+    return paths
+
+
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """Matches given patterns with file paths associated with occurring events.
     Uses pathlib's `PurePath.match()` method. `patterns` and `ignore_patterns`
@@ -347,21 +363,19 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`FileSystemEvent`
         """
-        if self.ignore_directories and event.is_directory:
+        is_ignored_directory = self.ignore_directories and event.is_directory
+        if is_ignored_directory:
             return
 
-        paths = []
-        if hasattr(event, "dest_path"):
-            paths.append(os.fsdecode(event.dest_path))
-        if event.src_path:
-            paths.append(os.fsdecode(event.src_path))
+        event_paths = _collect_event_paths(event)
 
-        if match_any_paths(
-            paths,
+        matches_pattern = match_any_paths(
+            event_paths,
             included_patterns=self.patterns,
             excluded_patterns=self.ignore_patterns,
             case_sensitive=self.case_sensitive,
-        ):
+        )
+        if matches_pattern:
             super().dispatch(event)
 
 
@@ -432,19 +446,18 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`FileSystemEvent`
         """
-        if self.ignore_directories and event.is_directory:
+        is_ignored_directory = self.ignore_directories and event.is_directory
+        if is_ignored_directory:
             return
 
-        paths = []
-        if hasattr(event, "dest_path"):
-            paths.append(os.fsdecode(event.dest_path))
-        if event.src_path:
-            paths.append(os.fsdecode(event.src_path))
+        event_paths = _collect_event_paths(event)
 
-        if any(r.match(p) for r in self.ignore_regexes for p in paths):
+        is_excluded = any(r.match(p) for r in self.ignore_regexes for p in event_paths)
+        if is_excluded:
             return
 
-        if any(r.match(p) for r in self.regexes for p in paths):
+        matches_regex = any(r.match(p) for r in self.regexes for p in event_paths)
+        if matches_regex:
             super().dispatch(event)
 
 

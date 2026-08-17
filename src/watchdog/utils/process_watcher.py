@@ -1,15 +1,29 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING
 
-from watchdog.utils import BaseThread
+from watchdog.utils import BaseThread, platform
 
 if TYPE_CHECKING:
     import subprocess
     from typing import Callable
 
 logger = logging.getLogger(__name__)
+
+
+if platform.is_windows():
+
+    def kill_process(pid: int, stop_signal: int) -> None:
+        """Send *stop_signal* to the process identified by *pid*."""
+        os.kill(pid, stop_signal)
+
+else:
+
+    def kill_process(pid: int, stop_signal: int) -> None:
+        """Send *stop_signal* to the process group of *pid*."""
+        os.killpg(os.getpgid(pid), stop_signal)
 
 
 class ProcessWatcher(BaseThread):
