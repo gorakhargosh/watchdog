@@ -14,7 +14,7 @@ Changelog
 
 **Other Changes**
 
-- [fsevents] Added the ``latency`` keyword argument to ``FSEventsEmitter``, exposing the FSEvents stream latency previously hard-coded at 10 ms. Raising it coalesces duplicate events. (`#835 <https://github.com/gorakhargosh/watchdog/issues/835>`__)
+- [fsevents] Added the ``latency`` keyword argument to ``FSEventsEmitter`` and ``FSEventsObserver``, exposing the FSEvents stream latency previously hard-coded at 10 ms. Raising it coalesces duplicate events. (`#835 <https://github.com/gorakhargosh/watchdog/issues/835>`__)
 - [windows] Changing only the case of a name no longer emits a deletion event on top of the move event. (`#752 <https://github.com/gorakhargosh/watchdog/issues/752>`__)
 - [bsd] Do not let a ``PermissionError`` raised while registering a kevent kill the emitter thread. (`#1115 <https://github.com/gorakhargosh/watchdog/issues/1115>`__)
 - [core] Add context manager support to ``Observer`` class. The observer can now be used with a ``with`` statement for automatic start/stop management. (`#1090 <https://github.com/gorakhargosh/watchdog/pull/1149>`__)

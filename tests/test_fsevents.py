@@ -26,7 +26,7 @@ import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver, ObservedWatch
-from watchdog.observers.fsevents import DEFAULT_FSEVENTS_LATENCY, FSEventsEmitter
+from watchdog.observers.fsevents import DEFAULT_FSEVENTS_LATENCY, FSEventsEmitter, FSEventsObserver
 
 from .shell import touch
 
@@ -363,3 +363,26 @@ def test_fsevents_add_watch_rejects_negative_latency(p):
     watch = ObservedWatch(p(""), recursive=True)
     with pytest.raises(ValueError, match="latency must be a non-negative number"):
         _fsevents.add_watch(Thread(), watch, lambda *_: None, [p("")], -1.0)
+
+
+def test_observer_latency_reaches_the_emitters_it_creates(p):
+    """``FSEventsObserver(latency=...)`` applies to every emitter it schedules."""
+    observer = FSEventsObserver(latency=0.25)
+    assert observer.latency == 0.25
+
+    observer.schedule(FileSystemEventHandler(), p(""), recursive=True)
+    assert [emitter.latency for emitter in observer.emitters] == [0.25]
+
+
+def test_observer_latency_defaults_to_the_documented_value(p):
+    observer = FSEventsObserver()
+    assert observer.latency == DEFAULT_FSEVENTS_LATENCY
+
+    observer.schedule(FileSystemEventHandler(), p(""), recursive=True)
+    assert [emitter.latency for emitter in observer.emitters] == [DEFAULT_FSEVENTS_LATENCY]
+
+
+@pytest.mark.parametrize("latency", [-0.01, -1])
+def test_observer_negative_latency_is_rejected(latency):
+    with pytest.raises(ValueError, match="latency must not be negative"):
+        FSEventsObserver(latency=latency)

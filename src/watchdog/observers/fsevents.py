@@ -12,6 +12,7 @@ import os
 import threading
 import time
 import unicodedata
+from functools import partial
 from typing import TYPE_CHECKING
 
 import _watchdog_fsevents as _fsevents
@@ -340,8 +341,28 @@ class FSEventsEmitter(EventEmitter):
 
 
 class FSEventsObserver(BaseObserver):
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
-        super().__init__(FSEventsEmitter, timeout=timeout)
+    """macOS FSEvents observer.
+
+    :param timeout:
+        The timeout (in seconds) for the observer to wait on events.
+    :param latency:
+        Seconds the FSEvents API waits after an event before delivering it,
+        applied to every stream this observer creates. See
+        :class:`FSEventsEmitter` for what raising it buys.
+    """
+
+    def __init__(
+        self,
+        *,
+        timeout: float = DEFAULT_OBSERVER_TIMEOUT,
+        latency: float = DEFAULT_FSEVENTS_LATENCY,
+    ) -> None:
+        if latency < 0:
+            msg = f"latency must not be negative, got {latency!r}"
+            raise ValueError(msg)
+        self.latency = latency
+        emitter_cls = partial(FSEventsEmitter, latency=latency)
+        super().__init__(emitter_cls, timeout=timeout)  # type: ignore[arg-type]
 
     def schedule(
         self,
