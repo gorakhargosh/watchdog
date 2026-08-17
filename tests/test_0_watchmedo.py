@@ -129,6 +129,23 @@ def test_shell_command_subprocess_injection_not_executed(tmpdir):
 
 
 @pytest.mark.skipif(
+    not platform.is_windows(),
+    reason="Windows-specific: verifies spaced paths survive shlex.split(posix=False)",
+)
+def test_shell_command_windows_path_with_spaces_is_single_argument(tmpdir, capfd):
+    # Regression test: on Windows the substituted path must be quoted before
+    # ``shlex.split(posix=False)``, which splits on spaces but preserves
+    # backslashes. Without the quotes, ``C:\Users\me\My Documents\a.txt`` is
+    # torn into two argv tokens.
+    src_path = str(tmpdir.join("My Documents\\a.txt"))
+    command = f'{sys.executable} -c "import sys; print(sys.argv[1])" ${{watch_src_path}}'
+    trick = ShellCommandTrick(command, wait_for_process=True)
+    trick.on_any_event(FileModifiedEvent(src_path))
+    captured = capfd.readouterr()
+    assert captured.out.strip() == src_path
+
+
+@pytest.mark.skipif(
     platform.is_windows(),
     reason="POSIX-specific: tests single-argument path handling",
 )

@@ -157,8 +157,10 @@ class ShellCommandTrick(Trick):
         # file names are kept as-is; the command is run without a shell.
         if platform.is_windows():
             # ``shlex.split(posix=False)`` preserves backslashes in Windows
-            # paths, so no quoting is needed here.
-            src_path = event.src_path
+            # paths, but it still splits on spaces. Wrap the path in double
+            # quotes (the ``_strip_quoting_marks`` pass below removes them) so
+            # paths containing spaces arrive as a single argument.
+            src_path = '"' + event.src_path.replace('"', "") + '"'
         else:
             src_path = shlex.quote(event.src_path)
             dest_path = shlex.quote(dest_path)
