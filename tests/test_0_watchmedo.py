@@ -75,6 +75,36 @@ def test_kill_auto_restart(tmpdir, capfd):
     # assert 'KeyboardInterrupt' in cap.err
 
 
+def test_auto_restart_stop_signal_is_delivered(tmpdir, capfd):
+    """The documented stop_signal must actually reach the subprocess.
+
+    On Windows `os.kill()` maps everything but the console control events to
+    `TerminateProcess()`, so the child used to be hard killed and no cleanup
+    handler could ever run. See #1221.
+    """
+    script = os.path.join(tmpdir, "auto-test-stop-signal.py")
+    with open(script, "w") as f:
+        f.write(
+            "import signal, sys, time\n"
+            # Windows delivers CTRL_BREAK_EVENT as SIGBREAK, not as SIGINT.
+            "if hasattr(signal, 'SIGBREAK'):\n"
+            "\tsignal.signal(signal.SIGBREAK, signal.default_int_handler)\n"
+            "try:\n"
+            "\twhile True:\n"
+            "\t\ttime.sleep(0.1)\n"
+            "except KeyboardInterrupt:\n"
+            "\tprint('+++++ stopped cleanly', flush=True)\n"
+        )
+
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
+    time.sleep(2)
+    trick.stop()
+
+    cap = capfd.readouterr()
+    assert "+++++ stopped cleanly" in cap.out
+
+
 def test_shell_command_wait_for_completion(tmpdir, capfd):
     script = make_dummy_script(tmpdir, n=1)
     command = f"{sys.executable} {script}"

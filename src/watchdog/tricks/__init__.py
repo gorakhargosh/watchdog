@@ -259,8 +259,15 @@ class AutoRestartTrick(Trick):
         if self._is_trick_stopping:
             return
 
-        # windows doesn't have setsid
-        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, "setsid", None))
+        # Put the child in its own process group so `kill_process()` can reach
+        # the whole tree. POSIX uses `setsid()`, which Windows does not have;
+        # Windows uses the `CREATE_NEW_PROCESS_GROUP` creation flag, which is
+        # `0` (i.e. no-op) elsewhere.
+        self.process = subprocess.Popen(
+            self.command,
+            preexec_fn=getattr(os, "setsid", None),
+            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+        )
         if self.restart_on_command_exit:
             self.process_watcher = ProcessWatcher(self.process, self._restart_process)
             self.process_watcher.start()
@@ -319,7 +326,20 @@ class AutoRestartTrick(Trick):
 if platform.is_windows():
 
     def kill_process(pid: int, stop_signal: int) -> None:
-        os.kill(pid, stop_signal)
+        if stop_signal == signal.SIGINT:
+            # `os.kill()` maps every signal but the console control events to
+            # `TerminateProcess()`, which delivers nothing: the child is hard
+            # killed, so its `atexit`/`finally` cleanup never runs and anything
+            # it spawned is orphaned. `CTRL_BREAK_EVENT` is delivered to the
+            # child's whole process group (see `_start_process()`), making it
+            # the closest equivalent of `killpg()` on POSIX.
+            try:
+                os.kill(pid, getattr(signal, "CTRL_BREAK_EVENT", 1))
+            except OSError:
+                # No console to route the event through; hard kill as before.
+                os.kill(pid, stop_signal)
+        else:
+            os.kill(pid, stop_signal)
 
 else:
 
