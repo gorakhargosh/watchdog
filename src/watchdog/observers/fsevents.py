@@ -12,7 +12,6 @@ import os
 import threading
 import time
 import unicodedata
-from functools import partial
 from typing import TYPE_CHECKING
 
 import _watchdog_fsevents as _fsevents
@@ -361,8 +360,7 @@ class FSEventsObserver(BaseObserver):
             msg = f"latency must not be negative, got {latency!r}"
             raise ValueError(msg)
         self.latency = latency
-        emitter_cls = partial(FSEventsEmitter, latency=latency)
-        super().__init__(emitter_cls, timeout=timeout)  # type: ignore[arg-type]
+        super().__init__(FSEventsEmitter, timeout=timeout, latency=latency)
 
     def schedule(
         self,
