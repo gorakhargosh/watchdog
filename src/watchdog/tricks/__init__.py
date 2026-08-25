@@ -161,6 +161,7 @@ class ShellCommandTrick(Trick):
             # quotes (the ``_strip_quoting_marks`` pass below removes them) so
             # paths containing spaces arrive as a single argument.
             src_path = '"' + event.src_path.replace('"', "") + '"'
+            dest_path = '"' + dest_path.replace('"', "") + '"' if dest_path else dest_path
         else:
             src_path = shlex.quote(event.src_path)
             dest_path = shlex.quote(dest_path)
