@@ -146,6 +146,25 @@ def test_shell_command_windows_path_with_spaces_is_single_argument(tmpdir, capfd
 
 
 @pytest.mark.skipif(
+    not platform.is_windows(),
+    reason="Windows-specific: verifies watch_dest_path survives shlex.split(posix=False) for moved events",
+)
+def test_shell_command_windows_dest_path_with_spaces_is_single_argument(tmpdir):
+    # Regression test for moved events: ${watch_dest_path} must also be quoted
+    # on Windows so paths with spaces arrive as a single argv token.
+    src_dir = tmpdir.mkdir("My Documents")
+    src_path = str(src_dir.join("source.txt"))
+    dest_path = str(src_dir.join("dest.txt"))
+    output = tmpdir.join("output.txt")
+    # Write both args to a file to avoid shlex.split(posix=False) metacharacter issues
+    command = f"{sys.executable} -c \"import sys; open(r'{output}', 'w').write(sys.argv[1] + '|' + sys.argv[2])\" ${{watch_src_path}} ${{watch_dest_path}}"
+    trick = ShellCommandTrick(command, wait_for_process=True)
+    trick.on_any_event(FileMovedEvent(src_path, dest_path))
+    parts = output.read().split("|")
+    assert parts == [src_path, dest_path]
+
+
+@pytest.mark.skipif(
     platform.is_windows(),
     reason="POSIX-specific: tests single-argument path handling",
 )
