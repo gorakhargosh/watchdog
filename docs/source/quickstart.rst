@@ -27,33 +27,18 @@ entire directory trees is ensured.
 A Simple Example
 ----------------
 The following example program will monitor the current directory recursively for
-file system changes and simply print them to the console::
+file system changes and simply print them to the console:
 
-    import time
-
-    from watchdog.events import FileSystemEvent, FileSystemEventHandler
-    from watchdog.observers import Observer
-
-
-    class MyEventHandler(FileSystemEventHandler):
-        def on_any_event(self, event: FileSystemEvent) -> None:
-            print(event)
-
-
-    event_handler = MyEventHandler()
-    observer = Observer()
-    observer.schedule(event_handler, ".", recursive=True)
-    observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    finally:
-        observer.stop()
-        observer.join()
+.. literalinclude:: examples/simple.py
+   :language: python
+   :linenos:
 
 To stop the program, press Control-C.
 
-Alternatively, you can use the observer as a context manager for cleaner code::
+Alternatively, you can use the observer as a context manager for cleaner code:
+
+.. code-block:: python
+   :linenos:
 
     import time
 
@@ -85,7 +70,10 @@ If you are using type annotations it is important to note that
 hold the "best" observer class available on your platform.
 
 In order to correctly type your own code your should use
-:class:`watchdog.observers.api.BaseObserver`. For example::
+:class:`watchdog.observers.api.BaseObserver`. For example:
+
+.. code-block:: python
+   :linenos:
 
     from watchdog.observers import Observer
     from watchdog.observers.api import BaseObserver

@@ -18,6 +18,14 @@ if not platform.is_windows():
     pytest.skip("Windows only.", allow_module_level=True)
 
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
+from watchdog.observers.winapi import (
+    FILE_ACTION_CREATED,
+    FILE_ACTION_DELETED,
+    FILE_ACTION_RENAMED_NEW_NAME,
+    FILE_ACTION_RENAMED_OLD_NAME,
+    WinAPINativeEvent,
+    _drop_case_only_rename_deletions,
+)
 
 SLEEP_TIME = 2
 
@@ -127,3 +135,39 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_drop_case_only_rename_deletions():
+    """A case-only rename is reported with an extra deletion of the old name."""
+    events = [
+        WinAPINativeEvent(FILE_ACTION_DELETED, "file"),
+        WinAPINativeEvent(FILE_ACTION_RENAMED_OLD_NAME, "file"),
+        WinAPINativeEvent(FILE_ACTION_RENAMED_NEW_NAME, "FILE"),
+    ]
+
+    assert _drop_case_only_rename_deletions(events) == events[1:]
+
+
+@pytest.mark.parametrize(
+    "events",
+    [
+        # A deletion is only spurious when the very next record renames that same
+        # path, so a path deleted, recreated and only then renamed is left alone.
+        [
+            WinAPINativeEvent(FILE_ACTION_DELETED, "file"),
+            WinAPINativeEvent(FILE_ACTION_CREATED, "file"),
+            WinAPINativeEvent(FILE_ACTION_RENAMED_OLD_NAME, "file"),
+            WinAPINativeEvent(FILE_ACTION_RENAMED_NEW_NAME, "other"),
+        ],
+        # A deletion followed by the rename of a different path.
+        [
+            WinAPINativeEvent(FILE_ACTION_DELETED, "file"),
+            WinAPINativeEvent(FILE_ACTION_RENAMED_OLD_NAME, "other"),
+            WinAPINativeEvent(FILE_ACTION_RENAMED_NEW_NAME, "OTHER"),
+        ],
+        # A deletion closing the batch, which is how a plain deletion is reported.
+        [WinAPINativeEvent(FILE_ACTION_DELETED, "file")],
+    ],
+)
+def test_drop_case_only_rename_deletions_keeps_real_deletions(events):
+    assert _drop_case_only_rename_deletions(events) == events

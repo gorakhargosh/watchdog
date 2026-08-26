@@ -355,10 +355,32 @@ class WinAPINativeEvent:
         return self.action == FILE_ACTION_REMOVED_SELF
 
 
+def _drop_case_only_rename_deletions(events: list[WinAPINativeEvent]) -> list[WinAPINativeEvent]:
+    """Drop the spurious deletion reported ahead of a case-only rename.
+
+    Renaming ``file`` to ``FILE`` makes ReadDirectoryChangesW report a
+    ``FILE_ACTION_REMOVED`` for the old name on top of the usual
+    ``FILE_ACTION_RENAMED_OLD_NAME``/``FILE_ACTION_RENAMED_NEW_NAME`` pair, so such a
+    rename would surface as a deletion followed by a move. A rename that also changes
+    the name reports the pair alone, hence the deletion is dropped only when the very
+    next record renames that same path: nothing can rename a genuinely deleted path.
+    """
+    return [
+        event
+        for index, event in enumerate(events)
+        if not (
+            event.is_removed
+            and index + 1 < len(events)
+            and events[index + 1].is_renamed_old
+            and events[index + 1].src_path == event.src_path
+        )
+    ]
+
+
 class DirectoryChangeReader:
     """Uses ReadDirectoryChangesW() to detect file system changes.  A separate
     thread is used to make that call in order to reduce the time window
-    in that events may be lost.  The processing of data receieved from
+    in that events may be lost.  The processing of data received from
     ReadDirectoryChangesW() is queued and processed by another thread.
     """
 
@@ -412,7 +434,7 @@ class DirectoryChangeReader:
         # missed, we re-use these for each call to _run_inner().
         event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
         nbytes = DWORD()
-        self._buf_queue.put(b'')  # indicates that this thread has started
+        self._buf_queue.put(b"")  # indicates that this thread has started
         try:
             while not self._should_stop:
                 self._run_inner(handle, event_buffer, nbytes)
@@ -465,4 +487,4 @@ class DirectoryChangeReader:
             except queue.Empty:
                 break
             events.extend(_parse_event_buffer(buf))
-        return [WinAPINativeEvent(action, src_path) for action, src_path in events]
+        return _drop_case_only_rename_deletions([WinAPINativeEvent(action, src_path) for action, src_path in events])

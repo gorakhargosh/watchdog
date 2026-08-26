@@ -11,32 +11,32 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class MyEventHandler(events.FileSystemEventHandler):
-    def catch_all_handler(self, event: events.FileSystemEvent) -> None:
-        logging.debug(event)
-
-    def on_moved(self, event: events.DirMovedEvent | events.FileMovedEvent) -> None:
-        self.catch_all_handler(event)
+    def on_any_event(self, event: events.FileSystemEvent) -> None:
+        logging.info("Any event: %s", event)
 
     def on_created(self, event: events.DirCreatedEvent | events.FileCreatedEvent) -> None:
-        self.catch_all_handler(event)
+        logging.info("Created: %s", event)
 
     def on_deleted(self, event: events.DirDeletedEvent | events.FileDeletedEvent) -> None:
-        self.catch_all_handler(event)
+        logging.info("Deleted: %s", event)
 
     def on_modified(self, event: events.DirModifiedEvent | events.FileModifiedEvent) -> None:
-        self.catch_all_handler(event)
+        logging.info("Modified: %s", event)
 
-    def on_closed(self, event: events.FileClosedEvent) -> None:
-        self.catch_all_handler(event)
-
-    def on_closed_no_write(self, event: events.FileClosedNoWriteEvent) -> None:
-        self.catch_all_handler(event)
+    def on_moved(self, event: events.DirMovedEvent | events.FileMovedEvent) -> None:
+        logging.info("Moved: %s", event)
 
     def on_opened(self, event: events.FileOpenedEvent) -> None:
-        self.catch_all_handler(event)
+        logging.info("Opened: %s", event)
+
+    def on_closed(self, event: events.FileClosedEvent) -> None:
+        logging.info("Closed: %s", event)
+
+    def on_closed_no_write(self, event: events.FileClosedNoWriteEvent) -> None:
+        logging.info("Closed no write: %s", event)
 
 
-path = sys.argv[1]
+path = sys.argv[1] if len(sys.argv) > 1 else "."
 
 event_handler = MyEventHandler()
 observer = Observer()

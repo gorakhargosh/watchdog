@@ -14,6 +14,8 @@ Changelog
 
 **Other Changes**
 
+- [windows] Changing only the case of a name no longer emits a deletion event on top of the move event. (`#752 <https://github.com/gorakhargosh/watchdog/issues/752>`__)
+- [bsd] Do not let a ``PermissionError`` raised while registering a kevent kill the emitter thread. (`#1115 <https://github.com/gorakhargosh/watchdog/issues/1115>`__)
 - [core] Add context manager support to ``Observer`` class. The observer can now be used with a ``with`` statement for automatic start/stop management. (`#1090 <https://github.com/gorakhargosh/watchdog/pull/1149>`__)
 - [freebsd] Supports ``inotify`` on FreeBSD 15+. (`#1147 <https://github.com/gorakhargosh/watchdog/pull/1147>`__)
 - [core] Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
@@ -24,9 +26,12 @@ Changelog
 - [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
 - [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
 - [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
-- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide
+- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate
 - [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
 - [utils] Fixed ``DirectorySnapshotDiff`` reporting a newly created symlink as a move of its target (and a removed symlink as a move onto its target), so ``PollingObserver`` now emits a create/delete event to match the native observers. (`#1176 <https://github.com/gorakhargosh/watchdog/pull/1176>`__)
+- [docs] Document that ``BaseThread`` always runs as a daemon thread, instead of inheriting ``daemon`` from the creating thread as the inherited ``threading.Thread`` documentation states. (`#1117 <https://github.com/gorakhargosh/watchdog/issues/1117>`__)
+- [core] Add ``win_arm64`` to the list of platform-specific wheels published to PyPI. (`#1137 <https://github.com/gorakhargosh/watchdog/issues/1137>`__)
+- [watchmedo] The ``AutoRestartTrick`` stop signal is now actually delivered on Windows. The subprocess is started in its own process group and signalled with ``CTRL_BREAK_EVENT``, so it can run cleanup handlers and its descendants are no longer orphaned on every restart. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
 
 6.0.0
 ~~~~~

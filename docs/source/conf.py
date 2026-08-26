@@ -36,6 +36,7 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
+    "sphinx_copybutton",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -72,7 +73,18 @@ pygments_style = "sphinx"
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "pyramid"
+html_theme = "sphinx_book_theme"
+
+html_theme_options = {
+    "repository_url": "https://github.com/gorakhargosh/watchdog",
+    "use_repository_button": True,
+    "show_toc_level": 3,
+    "collapse_navigation": True,
+}
+
+# Hide the class name prefix in the Table of Contents/sidebar for methods and attributes.
+# This prevents long names (like FileSystemEventHandler.on_closed_no_write()) from overflowing the sidebar.
+toc_object_entries_show_parents = "hide"
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "%sdoc" % PROJECT_NAME

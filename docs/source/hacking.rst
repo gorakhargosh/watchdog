@@ -4,14 +4,15 @@
 
 Contributing
 ============
-Welcome hacker! So you have got something you would like to see in
-|project_name|? Whee. This document will help you get started.
+👋 **Welcome hacker!** So you have got something you would like to see in
+|project_name|? Whee! This document will help you get started.
 
 Important URLs
 --------------
-|project_name| uses git_ to track code history and hosts its `code repository`_
-at github_. The `issue tracker`_ is where you can file bug reports and request
-features or enhancements to |project_name|.
+
+* 🐙 **Code Repository**: `code repository`_ (GitHub)
+* 🐛 **Issue Tracker**: `issue tracker`_ (GitHub Issues)
+* 📖 **Documentation**: `Official Documentation <https://python-watchdog.readthedocs.io/>`_
 
 Before you start
 ----------------
@@ -31,26 +32,79 @@ Steps to setting up a clean environment:
 
 2. Clone fork and create virtual environment:
 
-.. code:: bash
+   .. code:: bash
 
-    $ git clone https://github.com/gorakhargosh/watchdog.git
-    $ cd watchdog
-    $ python -m venv venv
+     $ git clone https://github.com/gorakhargosh/watchdog.git
+     $ cd watchdog
+     $ python -m venv venv
 
-3. Linux
+3. Activate the virtual environment and install the package in editable mode:
 
-.. code:: bash
+   *macOS & Linux*
 
-    $ . venv/bin/activate
-    (venv)$ python -m pip install -e '.'
+   .. code:: bash
 
-4. Windows
+       $ . venv/bin/activate
+       (venv)$ python -m pip install -e '.[watchmedo]'
 
-.. code:: batch
+   *Windows*
 
-    > venv\Scripts\activate
-    (venv)> python -m pip install -e '.'
+   .. code:: batch
+
+       > venv\Scripts\activate
+       (venv)> python -m pip install -e '.[watchmedo]'
 
 That's it with the setup. Now you're ready to hack on |project_name|.
 
-Happy hacking!
+Running Tests and Checks
+------------------------
+
+Before submitting a Pull Request, please verify your changes pass the test suite and style checks. If you are adding a new feature or fixing a bug, please include new test cases covering the changes.
+
+Make sure your virtual environment is active, then install the testing and development dependencies:
+
+.. code:: bash
+
+    (venv)$ python -m pip install -r requirements-tests.txt
+
+To run style and formatting checks:
+
+.. code:: bash
+
+    # Run Ruff to check and format code
+    (venv)$ python -m ruff format src tests docs/source/examples
+    (venv)$ python -m ruff check --fix src tests docs/source/examples
+
+To run type checking:
+
+.. code:: bash
+
+    (venv)$ python -m mypy src docs/source/examples
+
+To run the test suite:
+
+.. code:: bash
+
+    # Run pytest
+    (venv)$ python -m pytest
+
+    # Or run the entire suite using tox (if installed in your venv)
+    (venv)$ tox
+
+    # Or run using uv without installing tox locally
+    (venv)$ uvx tox
+
+To build the documentation locally:
+
+.. code:: bash
+
+    # Build using sphinx-build directly
+    (venv)$ sphinx-build -b html docs/source docs/build/html
+
+    # Or build using tox via uv without installing tox locally
+    (venv)$ uvx tox -e docs
+
+.. note::
+   If you are using `uv` to manage your environment, you can use `uv pip install -r requirements-tests.txt` instead of standard `pip` to avoid externally-managed environment errors. Additionally, `tox` is not included in `requirements-tests.txt` to keep the testing dependency lightweight; running via `uvx tox` is the recommended way if `tox` is not installed globally.
+
+🚀 **Happy hacking!** We are excited to see what you build.

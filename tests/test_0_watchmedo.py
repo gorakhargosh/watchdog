@@ -55,6 +55,30 @@ def test_load_config_invalid(tmpdir):
     assert not os.path.exists(critical_dir)
 
 
+def wait_for_marker_count(capfd, captured, marker, count, timeout=10):
+    """Block until ``marker`` has been printed ``count`` times, or ``timeout`` elapses.
+
+    The subprocesses under test are freshly spawned interpreters, and the time one
+    needs to reach its first ``print()`` is not bounded by anything the test
+    controls: under ``pytest-cov`` the child imports ``coverage`` during startup,
+    and a free-threaded build starts slower again. Waiting for the output rather
+    than sleeping a fixed interval keeps the assertion about what actually matters
+    -- that the restart happened -- instead of about how fast the machine is.
+    See #973.
+
+    ``capfd.readouterr()`` clears the buffer, so everything read here is appended
+    to ``captured`` for the caller to assert against afterwards.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        captured.append(capfd.readouterr().out)
+        if "".join(captured).splitlines().count(marker) >= count:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
@@ -73,6 +97,36 @@ def test_kill_auto_restart(tmpdir, capfd):
     assert "+++++ 9" not in cap.out  # we killed the subprocess before the end
     # in windows we seem to lose the subprocess stderr
     # assert 'KeyboardInterrupt' in cap.err
+
+
+def test_auto_restart_stop_signal_is_delivered(tmpdir, capfd):
+    """The documented stop_signal must actually reach the subprocess.
+
+    On Windows `os.kill()` maps everything but the console control events to
+    `TerminateProcess()`, so the child used to be hard killed and no cleanup
+    handler could ever run. See #1221.
+    """
+    script = os.path.join(tmpdir, "auto-test-stop-signal.py")
+    with open(script, "w") as f:
+        f.write(
+            "import signal, sys, time\n"
+            # Windows delivers CTRL_BREAK_EVENT as SIGBREAK, not as SIGINT.
+            "if hasattr(signal, 'SIGBREAK'):\n"
+            "\tsignal.signal(signal.SIGBREAK, signal.default_int_handler)\n"
+            "try:\n"
+            "\twhile True:\n"
+            "\t\ttime.sleep(0.1)\n"
+            "except KeyboardInterrupt:\n"
+            "\tprint('+++++ stopped cleanly', flush=True)\n"
+        )
+
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
+    time.sleep(2)
+    trick.stop()
+
+    cap = capfd.readouterr()
+    assert "+++++ stopped cleanly" in cap.out
 
 
 def test_shell_command_wait_for_completion(tmpdir, capfd):
@@ -147,29 +201,36 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     assert trick.restart_count == 3
 
 
-@pytest.mark.xfail(
-    condition=platform.is_darwin() or platform.is_windows() or sys.implementation.name == "pypy",
-    reason="known to be problematic, see #973",
-)
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     """Simulate changing 3 files quickly and then another change later.
 
     Expect 2 restarts due to debouncing.
     """
-    script = make_dummy_script(tmpdir, n=2)
+    # The script must outlive the test. `AutoRestartTrick` defaults to
+    # `restart_on_command_exit=True`, so a child that reaches the end of its own
+    # loop is restarted by `ProcessWatcher` and inflates `restart_count` -- a
+    # restart the test never asked for. With `n=2` the child exits after ~2s,
+    # which is inside the window this test runs in. See #973.
+    script = make_dummy_script(tmpdir, n=10)
     trick = AutoRestartTrick([sys.executable, script], debounce_interval_seconds=0.5)
+    captured = []
     trick.start()
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
+    # These three events must land inside a single debounce interval, so they
+    # are dispatched without waiting on anything in between.
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     trick.on_any_event(FileModifiedEvent("foo/bar2.baz"))
     time.sleep(0.1)
     trick.on_any_event(FileModifiedEvent("foo/bar3.baz"))
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 2), "debounced restart never happened"
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 3), "second restart never happened"
     trick.stop()
-    cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count("+++++ 0") == 3
+    captured.append(capfd.readouterr().out)
+    # Exactly 3 starts: the initial one, one for the debounced burst of three
+    # events, and one for the single event after it. A fourth would mean the
+    # burst was not debounced.
+    assert "".join(captured).splitlines(keepends=False).count("+++++ 0") == 3
     assert trick.restart_count == 2
 
 

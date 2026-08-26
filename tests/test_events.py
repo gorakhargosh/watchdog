@@ -254,4 +254,3 @@ def test_generate_sub_moved_events_repeated_dirname():
 
         assert len(file_events) == 1
         assert file_events[0].src_path == os.path.join(src_root, "data", "file.txt")
-

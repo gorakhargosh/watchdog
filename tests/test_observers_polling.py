@@ -47,6 +47,7 @@ def emitter(event_queue):
     em.stop()
     em.join(5)
 
+
 def test___init__(event_queue, emitter):
     sleep(SLEEP_TIME)
     mkdir(p("project"))
