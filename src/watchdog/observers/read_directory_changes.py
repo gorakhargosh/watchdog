@@ -45,8 +45,9 @@ class WindowsApiEmitter(EventEmitter):
     def on_thread_start(self) -> None:
         with self._lock:
             assert self._reader is None
-            self._reader = DirectoryChangeReader(self.watch.path, recursive=self.watch.is_recursive)
-        self._reader.start()
+            reader = DirectoryChangeReader(self.watch.path, recursive=self.watch.is_recursive)
+            self._reader = reader
+        reader.start()
 
     if platform.python_implementation() == "PyPy":
 
@@ -65,7 +66,8 @@ class WindowsApiEmitter(EventEmitter):
             reader.stop()
 
     def queue_events(self, timeout: float) -> None:
-        reader = self._reader
+        with self._lock:
+            reader = self._reader
         if reader is None:
             return  # reader has been stopped
         last_renamed_src_path = ""
