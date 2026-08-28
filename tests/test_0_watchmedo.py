@@ -20,6 +20,7 @@ from watchdog import watchmedo  # noqa: E402
 from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
+from watchdog.utils.patterns import match_any_paths  # noqa: E402
 
 
 def test_load_config_valid(tmpdir):
@@ -400,3 +401,45 @@ tricks:
     with patch("time.sleep", mocked_sleep):
         watchmedo.tricks_from(args)
     assert checkpoint
+
+
+@pytest.mark.parametrize(
+    ("patterns_spec", "ignore_spec", "expected_patterns", "expected_ignore"),
+    [
+        ("*", "", ["**/*"], []),
+        ("*.py", "", ["**/*.py"], []),
+        ("*.py;*.txt", "", ["**/*.py", "**/*.txt"], []),
+        ("**/*.py", "", ["**/*.py"], []),
+        ("**", "", ["**"], []),
+        ("src/*.py", "", ["src/*.py"], []),
+        ("*.py", "*.pyc", ["**/*.py"], ["**/*.pyc"]),
+        ("**/*.py;**/*.txt", "**/*.pyc", ["**/*.py", "**/*.txt"], ["**/*.pyc"]),
+    ],
+)
+def test_parse_patterns_adapts_bare_globs(patterns_spec, ignore_spec, expected_patterns, expected_ignore):
+    patterns, ignore_patterns = watchmedo.parse_patterns(patterns_spec, ignore_spec)
+    assert patterns == expected_patterns
+    assert ignore_patterns == expected_ignore
+
+
+@pytest.mark.parametrize(
+    ("patterns_spec", "path", "expected"),
+    [
+        ("*", "/tmp/w/a.txt", True),
+        ("*.txt", "/tmp/w/a.txt", True),
+        ("*.py;*.txt", "/tmp/w/sub/a.py", True),
+        ("*.py;*.txt", "/tmp/w/a.md", False),
+        ("**/*.py", "/tmp/w/a.py", True),
+    ],
+)
+def test_parse_patterns_matches_absolute_event_paths(patterns_spec, path, expected):
+    patterns, ignore_patterns = watchmedo.parse_patterns(patterns_spec, "")
+    assert (
+        match_any_paths(
+            [path],
+            included_patterns=patterns,
+            excluded_patterns=ignore_patterns,
+            case_sensitive=True,
+        )
+        is expected
+    )
