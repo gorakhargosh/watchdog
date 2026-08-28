@@ -92,3 +92,27 @@ def test_observer_basic():
     observer.unschedule_all()
     observer.stop()
     observer.join()
+
+
+def test_observer_marks_every_queued_item_done():
+    """The observer must mark both the dispatched event and the stop sentinel done.
+
+    ``BaseObserver.dispatch_events()`` calls ``event_queue.task_done()`` on the
+    stop-sentinel path as well as after dispatching. Without the sentinel call a
+    caller's ``event_queue.join()`` never returns, and nothing else here notices:
+    the other tests only join the *thread*, which stops either way.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch = observer.schedule(handler, "/foobar", recursive=True)
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+    observer.start()
+    time.sleep(1)
+    observer.unschedule_all()
+    observer.stop()
+    observer.join()
+
+    # Asserted rather than calling event_queue.join(), which would hang the run
+    # instead of failing if either task_done() goes missing.
+    assert observer.event_queue.unfinished_tasks == 0
