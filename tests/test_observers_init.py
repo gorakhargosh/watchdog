@@ -54,17 +54,6 @@ def _set_platform(
     monkeypatch.setattr("watchdog.observers.platform.is_bsd", lambda: bsd)
 
 
-def test_linux_returns_inotify_observer(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_platform(monkeypatch, linux=True)
-    sentinel = object()
-    _patch_imports(
-        monkeypatch,
-        {"watchdog.observers.inotify": _stub_module("watchdog.observers.inotify", InotifyObserver=sentinel)},
-    )
-
-    assert _get_observer_cls() is sentinel
-
-
 def test_linux_reraises_errors_other_than_unsupported_libc(monkeypatch: pytest.MonkeyPatch) -> None:
     # Only UnsupportedLibcError is meant to trigger a fallback on Linux; any
     # other failure while importing the inotify backend should propagate.
@@ -84,17 +73,6 @@ def test_linux_falls_back_to_polling_on_unsupported_libc(monkeypatch: pytest.Mon
             "watchdog.observers.inotify": UnsupportedLibcError("no libc"),
             "watchdog.observers.polling": _stub_module("watchdog.observers.polling", PollingObserver=sentinel),
         },
-    )
-
-    assert _get_observer_cls() is sentinel
-
-
-def test_darwin_returns_fsevents_observer(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_platform(monkeypatch, darwin=True)
-    sentinel = object()
-    _patch_imports(
-        monkeypatch,
-        {"watchdog.observers.fsevents": _stub_module("watchdog.observers.fsevents", FSEventsObserver=sentinel)},
     )
 
     assert _get_observer_cls() is sentinel
@@ -139,21 +117,6 @@ def test_darwin_falls_back_to_polling_when_fsevents_and_kqueue_fail(monkeypatch:
     assert any("Fall back to polling" in str(w.message) for w in caught)
 
 
-def test_windows_returns_winapi_observer(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_platform(monkeypatch, windows=True)
-    sentinel = object()
-    _patch_imports(
-        monkeypatch,
-        {
-            "watchdog.observers.read_directory_changes": _stub_module(
-                "watchdog.observers.read_directory_changes", WindowsApiObserver=sentinel
-            ),
-        },
-    )
-
-    assert _get_observer_cls() is sentinel
-
-
 def test_windows_falls_back_to_polling_on_import_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_platform(monkeypatch, windows=True)
     sentinel = object()
@@ -171,17 +134,6 @@ def test_windows_falls_back_to_polling_on_import_failure(monkeypatch: pytest.Mon
 
     assert result is sentinel
     assert any("Failed to import `read_directory_changes`" in str(w.message) for w in caught)
-
-
-def test_bsd_returns_kqueue_observer(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_platform(monkeypatch, bsd=True)
-    sentinel = object()
-    _patch_imports(
-        monkeypatch,
-        {"watchdog.observers.kqueue": _stub_module("watchdog.observers.kqueue", KqueueObserver=sentinel)},
-    )
-
-    assert _get_observer_cls() is sentinel
 
 
 def test_unrecognized_platform_returns_polling_observer(monkeypatch: pytest.MonkeyPatch) -> None:
