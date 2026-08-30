@@ -269,7 +269,10 @@ def _parse_event_buffer(read_buffer: bytes) -> list[tuple[int, str]]:
         fni = ctypes.cast(read_buffer, LPFNI)[0]  # type: ignore[arg-type]
         ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
         filename = ctypes.string_at(ptr, fni.FileNameLength)
-        results.append((fni.Action, filename.decode("utf-16")))
+        # ReadDirectoryChangesW writes UTF-16LE without a byte-order mark, so the
+        # "utf-16" codec would eat a leading U+FEFF and let a leading U+FFFE flip
+        # the byte order of the rest of the name.
+        results.append((fni.Action, filename.decode("utf-16-le")))
         num_to_skip = fni.NextEntryOffset
         if num_to_skip <= 0:
             break

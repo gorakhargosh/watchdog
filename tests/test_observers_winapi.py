@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import os.path
+import struct
 from queue import Empty, Queue
 from time import sleep
 
@@ -25,6 +26,7 @@ from watchdog.observers.winapi import (
     FILE_ACTION_RENAMED_OLD_NAME,
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
+    _parse_event_buffer,
 )
 
 SLEEP_TIME = 2
@@ -171,3 +173,22 @@ def test_drop_case_only_rename_deletions():
 )
 def test_drop_case_only_rename_deletions_keeps_real_deletions(events):
     assert _drop_case_only_rename_deletions(events) == events
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "plain.txt",
+        # U+FEFF is a legal file name character that "utf-16" eats as a byte-order
+        # mark, silently reporting the event against a different, possibly existing,
+        # file. U+FFFE flips the byte order the rest of the name is decoded with.
+        "\ufeffhello.txt",
+        "\ufffehello.txt",
+    ],
+)
+def test_parse_event_buffer_reads_the_whole_file_name(file_name):
+    """ReadDirectoryChangesW writes UTF-16LE without a byte-order mark."""
+    name = file_name.encode("utf-16-le")
+    buffer = struct.pack("<III", 0, FILE_ACTION_CREATED, len(name)) + name
+
+    assert _parse_event_buffer(buffer) == [(FILE_ACTION_CREATED, file_name)]
