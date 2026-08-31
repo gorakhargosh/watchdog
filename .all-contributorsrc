@@ -4,7 +4,20 @@
   ],
   "imageSize": 70,
   "commit": true,
-  "contributors": [],
+  "contributors": [
+    {
+      "login": "BoboTiG",
+      "name": "Mickaël Schoentgen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2033598?v=4",
+      "profile": "https://www.tiger-222.fr/",
+      "contributions": [
+        "bug",
+        "doc",
+        "code",
+        "projectManagement"
+      ]
+    }
+  ],
   "contributorsPerLine": 7,
   "projectName": "watchdog",
   "projectOwner": "gorakhargosh",
