@@ -26,6 +26,15 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "MohammedAlkindi",
+      "name": "Mohammed Alkindi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/175210364?v=4",
+      "profile": "https://www.alkindix.com/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
