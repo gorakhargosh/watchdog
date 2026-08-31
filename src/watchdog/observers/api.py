@@ -23,8 +23,8 @@ DEFAULT_OBSERVER_TIMEOUT = 1.0  # in seconds
 
 class EventQueue(SkipRepeatsQueue):
     """Thread-safe event queue based on a special queue that skips adding
-    the same event (:class:`FileSystemEvent`) multiple times consecutively.
-    Thus avoiding dispatching multiple event handling
+    the same event (:class:`watchdog.events.FileSystemEvent`) multiple times
+    consecutively. Thus avoiding dispatching multiple event handling
     calls when multiple identical events are produced quicker than an observer
     can consume them.
 
@@ -124,7 +124,7 @@ class EventEmitter(BaseThread):
     :param event_queue:
         The event queue to populate with generated events.
     :type event_queue:
-        :class:`watchdog.events.EventQueue`
+        :class:`EventQueue`
     :param watch:
         The watch to observe and produce events for.
     :type watch:

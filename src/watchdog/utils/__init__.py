@@ -59,8 +59,8 @@ class BaseThread(threading.Thread):
         return not self._stopped_event.is_set()
 
     def on_thread_stop(self) -> None:
-        """Override this method instead of :meth:`stop()`.
-        :meth:`stop()` calls this method.
+        """Override this method instead of :meth:`~watchdog.utils.BaseThread.stop`.
+        :meth:`~watchdog.utils.BaseThread.stop` calls this method.
 
         This method is called immediately after the thread is signaled to stop.
         """
@@ -71,8 +71,8 @@ class BaseThread(threading.Thread):
         self.on_thread_stop()
 
     def on_thread_start(self) -> None:
-        """Override this method instead of :meth:`start()`. :meth:`start()`
-        calls this method.
+        """Override this method instead of :meth:`~watchdog.utils.BaseThread.start`.
+        :meth:`~watchdog.utils.BaseThread.start` calls this method.
 
         This method is called right before this thread is started and this
         object's run() method is invoked.
