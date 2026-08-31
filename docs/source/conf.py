@@ -63,6 +63,7 @@ intersphinx_mapping = {
 #   documentation on a single machine.
 nitpick_ignore = [
     ("py:class", "Path"),
+    ("py:meth", "__init__"),
     ("py:class", "watchdog.utils.bricks.SkipRepeatsQueue"),
     ("py:class", "inotify.InotifyObserver"),
     ("py:class", "fsevents.FSEventsObserver"),

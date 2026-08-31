@@ -1,0 +1,59 @@
+name: 👥 Watchdog Contributors Bot (PR Generator)
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  contributor_pr:
+    name: Add Contributor via PR
+    if: contains(github.event.comment.body, '@watchdog-bot please add')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Parse comment and run all-contributors CLI
+        id: parse_comment
+        run: |
+          COMMENT="${{ github.event.comment.body }}"
+          # Extract target username and contributions from "@watchdog-bot please add @username for code,doc"
+          TARGET_USER=$(echo "$COMMENT" | grep -oE '@[a-zA-Z0-9_-]+' | sed -n '2p' | tr -d '@')
+          TYPES=$(echo "$COMMENT" | grep -oE 'for [a-zA-Z0-9_,-]+' | cut -d' ' -f2)
+
+          if [ -z "$TARGET_USER" ]; then
+            echo "Could not parse target username from comment."
+            exit 1
+          fi
+
+          if [ -z "$TYPES" ]; then
+            TYPES="doc"
+          fi
+
+          echo "Adding $TARGET_USER for $TYPES"
+          npx all-contributors-cli add "$TARGET_USER" "$TYPES" || true
+          npx all-contributors-cli generate
+
+          echo "username=$TARGET_USER" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: add @${{ steps.parse_comment.outputs.username }} to contributors"
+          title: "docs: add @${{ steps.parse_comment.outputs.username }} to contributors"
+          body: "Automated PR created in response to comment: ${{ github.event.comment.html_url }}"
+          branch: "all-contributors/add-${{ steps.parse_comment.outputs.username }}"
+          delete-branch: true
