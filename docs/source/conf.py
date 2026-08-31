@@ -23,7 +23,7 @@ import watchdog.version  # noqa: E402
 
 PROJECT_NAME = "watchdog"
 AUTHOR_NAME = "Mickaël Schoentgen & contributors"
-COPYRIGHT = f"2010-2025, {AUTHOR_NAME}"
+COPYRIGHT = f"2010-2026, {AUTHOR_NAME}"
 
 
 # -- General configuration -----------------------------------------------------
