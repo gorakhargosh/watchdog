@@ -155,19 +155,28 @@ class FileMovedEvent(FileSystemMovedEvent):
 
 
 class FileClosedEvent(FileSystemEvent):
-    """File system event representing file close on the file system."""
+    """File system event representing file close on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_CLOSED
 
 
 class FileClosedNoWriteEvent(FileSystemEvent):
-    """File system event representing an unmodified file close on the file system."""
+    """File system event representing an unmodified file close on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_CLOSED_NO_WRITE
 
 
 class FileOpenedEvent(FileSystemEvent):
-    """File system event representing file close on the file system."""
+    """File system event representing file open on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_OPENED
 
@@ -264,6 +273,8 @@ class FileSystemEventHandler:
     def on_closed(self, event: FileClosedEvent) -> None:
         """Called when a file opened for writing is closed.
 
+        Emitted only by ``InotifyObserver`` on Linux.
+
         :param event:
             Event representing file closing.
         :type event:
@@ -273,6 +284,8 @@ class FileSystemEventHandler:
     def on_closed_no_write(self, event: FileClosedNoWriteEvent) -> None:
         """Called when a file opened for reading is closed.
 
+        Emitted only by ``InotifyObserver`` on Linux.
+
         :param event:
             Event representing file closing.
         :type event:
@@ -281,6 +294,8 @@ class FileSystemEventHandler:
 
     def on_opened(self, event: FileOpenedEvent) -> None:
         """Called when a file is opened.
+
+        Emitted only by ``InotifyObserver`` on Linux.
 
         :param event:
             Event representing file opening.
