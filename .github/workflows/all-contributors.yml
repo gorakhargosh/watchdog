@@ -49,7 +49,7 @@ jobs:
           echo "username=$TARGET_USER" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: add @${{ steps.parse_comment.outputs.username }} to contributors"
