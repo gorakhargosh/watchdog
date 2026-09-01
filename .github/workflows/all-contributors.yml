@@ -7,7 +7,9 @@ on:
 jobs:
   contributor_pr:
     name: Add Contributor via PR
-    if: contains(github.event.comment.body, '@watchdog-bot please add')
+    if: |
+      contains(github.event.comment.body, '@watchdog-bot please add') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -52,7 +54,7 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "docs: add @${{ steps.parse_comment.outputs.username }} to contributors"
+          commit-message: "docs: add @${{ steps.parse_comment.outputs.username }} to contributors [skip ci]"
           title: "docs: add @${{ steps.parse_comment.outputs.username }} to contributors"
           body: "Automated PR created in response to comment: ${{ github.event.comment.html_url }}"
           branch: "all-contributors/add-${{ steps.parse_comment.outputs.username }}"
