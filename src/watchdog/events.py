@@ -101,7 +101,7 @@ EVENT_TYPE_CLOSED_NO_WRITE = "closed_no_write"
 EVENT_TYPE_OPENED = "opened"
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(frozen=True)
 class FileSystemEvent:
     """Immutable type that represents a file system event that is triggered
     when a change occurs on the monitored file system.

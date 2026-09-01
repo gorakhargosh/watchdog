@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import dataclasses
 import os
 import tempfile
+
+import pytest
 
 from watchdog.events import (
     EVENT_TYPE_CLOSED,
@@ -222,6 +225,45 @@ def test_event_comparison():
     assert move2 != move3
     assert move2 != move4
     assert move3 != move4
+
+
+def test_immutable_event_keeps_set_membership_consistent():
+    """Regression test for #1240.
+
+    ``FileSystemEvent``'s docstring promises the class is immutable and that
+    instances are safe as dict keys or set members. Before the fix, nothing
+    stopped a field from being reassigned after construction, which silently
+    broke that promise: a mutated event no longer matched itself in the set
+    it was added to, while a separately constructed, equal, same-hash event
+    was then treated as a distinct member of that same set.
+    """
+    event = FileCreatedEvent(path_1)
+    events = {event}
+    assert event in events
+
+    try:
+        event.src_path = path_2  # type: ignore[misc]
+    except dataclasses.FrozenInstanceError:
+        pass
+    else:
+        pytest.fail(
+            "FileSystemEvent fields must be immutable, but src_path was "
+            "reassigned after construction, which silently broke set "
+            f"membership: event in events == {event in events} (expected "
+            f"True), event.src_path == {event.src_path!r} (expected "
+            f"{path_1!r})"
+        )
+
+    # The mutation must be rejected outright, so the event never leaves the
+    # state under which it was hashed and inserted.
+    assert event.src_path == path_1
+    assert event in events
+
+    other = FileCreatedEvent(path_1)
+    assert other == event
+    assert hash(other) == hash(event)
+    events.add(other)
+    assert len(events) == 1
 
 
 def test_generate_sub_moved_events_repeated_dirname():
