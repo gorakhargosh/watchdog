@@ -4,7 +4,40 @@
   ],
   "imageSize": 70,
   "commit": true,
-  "contributors": [],
+  "contributors": [
+    {
+      "login": "BoboTiG",
+      "name": "Mickaël Schoentgen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2033598?v=4",
+      "profile": "https://www.tiger-222.fr/",
+      "contributions": [
+        "bug",
+        "doc",
+        "code",
+        "projectManagement"
+      ]
+    },
+    {
+      "login": "prateek-dagar",
+      "name": "Prateek Dagar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/107306613?v=4",
+      "profile": "https://github.com/prateek-dagar",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    },
+    {
+      "login": "MohammedAlkindi",
+      "name": "Mohammed Alkindi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/175210364?v=4",
+      "profile": "https://www.alkindix.com/",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    }
+  ],
   "contributorsPerLine": 7,
   "projectName": "watchdog",
   "projectOwner": "gorakhargosh",

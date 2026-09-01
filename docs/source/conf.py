@@ -23,7 +23,7 @@ import watchdog.version  # noqa: E402
 
 PROJECT_NAME = "watchdog"
 AUTHOR_NAME = "Mickaël Schoentgen & contributors"
-COPYRIGHT = f"2010-2025, {AUTHOR_NAME}"
+COPYRIGHT = f"2010-2026, {AUTHOR_NAME}"
 
 
 # -- General configuration -----------------------------------------------------
@@ -63,6 +63,7 @@ intersphinx_mapping = {
 #   documentation on a single machine.
 nitpick_ignore = [
     ("py:class", "Path"),
+    ("py:meth", "__init__"),
     ("py:class", "watchdog.utils.bricks.SkipRepeatsQueue"),
     ("py:class", "inotify.InotifyObserver"),
     ("py:class", "fsevents.FSEventsObserver"),
