@@ -111,6 +111,7 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = "sphinx_book_theme"
+author = ""  # Prevent unset author name in the footer (specific to the use of sphinx_book_theme)
 
 html_theme_options = {
     "repository_url": "https://github.com/gorakhargosh/watchdog",

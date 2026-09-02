@@ -1,7 +1,9 @@
 # Ignore temporary files.
 *.bak
 *.bkp
+*.doctree
 *.log
+*.pickle
 *.py[co]
 *.swp
 *~

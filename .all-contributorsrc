@@ -36,6 +36,168 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "Sanjays2402",
+      "name": "Sanjay Santhanam",
+      "avatar_url": "https://avatars.githubusercontent.com/u/51058514?v=4",
+      "profile": "https://github.com/Sanjays2402",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "maxtaran2010",
+      "name": "max",
+      "avatar_url": "https://avatars.githubusercontent.com/u/87073104?v=4",
+      "profile": "https://github.com/maxtaran2010",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "toroleapinc",
+      "name": "edvatar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/88481784?v=4",
+      "profile": "https://github.com/toroleapinc",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "bysiber",
+      "name": "Kadir Can Ozden",
+      "avatar_url": "https://avatars.githubusercontent.com/u/101993364?v=4",
+      "profile": "https://github.com/bysiber",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "nascheme",
+      "name": "Neil Schemenauer",
+      "avatar_url": "https://avatars.githubusercontent.com/u/690853?v=4",
+      "profile": "https://github.com/nascheme",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Prosperibe12",
+      "name": "Prosper .I.",
+      "avatar_url": "https://avatars.githubusercontent.com/u/91068872?v=4",
+      "profile": "https://prosperibe.hashnode.dev/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "blitztide",
+      "name": "blitztide",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5940525?v=4",
+      "profile": "https://github.com/blitztide",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "cclauss",
+      "name": "Christian Clauss",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3709715?v=4",
+      "profile": "https://github.com/cclauss",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "ngoldbaum",
+      "name": "Nathan Goldbaum",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3126246?v=4",
+      "profile": "https://github.com/ngoldbaum",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "adicohen1005",
+      "name": "Adi Cohen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/49276888?v=4",
+      "profile": "https://github.com/adicohen1005",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "HaoZeke",
+      "name": "Rohit Goswami",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4336207?v=4",
+      "profile": "https://rgoswami.me/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "apoirier",
+      "name": "apoirier",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1702180?v=4",
+      "profile": "https://github.com/apoirier",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "g-pichler",
+      "name": "Georg Pichler",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1562581?v=4",
+      "profile": "https://github.com/g-pichler",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ethan-vanderheijden",
+      "name": "Ethan Van Der Heijden",
+      "avatar_url": "https://avatars.githubusercontent.com/u/84098504?v=4",
+      "profile": "https://github.com/ethan-vanderheijden",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Corentin-pro",
+      "name": "Corentin",
+      "avatar_url": "https://avatars.githubusercontent.com/u/19952490?v=4",
+      "profile": "https://github.com/Corentin-pro",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Liam-DeVoe",
+      "name": "Liam DeVoe",
+      "avatar_url": "https://avatars.githubusercontent.com/u/31628143?v=4",
+      "profile": "https://tybug.dev/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "JoachimCoenen",
+      "name": "Joachim Coenen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/29330338?v=4",
+      "profile": "https://github.com/JoachimCoenen",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "kirkhansen",
+      "name": "Kirk Hansen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3529086?v=4",
+      "profile": "https://github.com/kirkhansen",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
