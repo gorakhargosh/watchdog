@@ -26,6 +26,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/apoirier"><img src="https://avatars.githubusercontent.com/u/1702180?v=4?s=70" width="70px;" alt="apoirier"/><br /><sub><b>apoirier</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=apoirier" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/g-pichler"><img src="https://avatars.githubusercontent.com/u/1562581?v=4?s=70" width="70px;" alt="Georg Pichler"/><br /><sub><b>Georg Pichler</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=g-pichler" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ethan-vanderheijden"><img src="https://avatars.githubusercontent.com/u/84098504?v=4?s=70" width="70px;" alt="Ethan Van Der Heijden"/><br /><sub><b>Ethan Van Der Heijden</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=ethan-vanderheijden" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Corentin-pro"><img src="https://avatars.githubusercontent.com/u/19952490?v=4?s=70" width="70px;" alt="Corentin"/><br /><sub><b>Corentin</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Corentin-pro" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
