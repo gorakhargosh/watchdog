@@ -103,11 +103,12 @@ EVENT_TYPE_OPENED = "opened"
 
 @dataclass(unsafe_hash=True)
 class FileSystemEvent:
-    """Immutable type that represents a file system event that is triggered
-    when a change occurs on the monitored file system.
+    """Represents a file system event that is triggered when a change
+    occurs on the monitored file system.
 
-    All FileSystemEvent objects are required to be immutable and hence
-    can be used as keys in dictionaries or be added to sets.
+    FileSystemEvent instances are mutable, so avoid using them as
+    dictionary keys or set members: mutating an instance after
+    insertion can silently break lookups.
     """
 
     src_path: bytes | str
