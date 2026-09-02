@@ -116,3 +116,24 @@ def test_observer_marks_every_queued_item_done():
     # Asserted rather than calling event_queue.join(), which would hang the run
     # instead of failing if either task_done() goes missing.
     assert observer.event_queue.unfinished_tasks == 0
+
+
+def test_stale_event_does_not_resurrect_an_unscheduled_watch():
+    """A watch removed by unschedule() must stay removed when a queued event lands.
+
+    ``BaseObserver._handlers`` is a ``defaultdict(set)``, so indexing it in
+    ``dispatch_events()`` recreates whatever key it is given. An event queued
+    before ``unschedule()`` is still dispatched afterwards, which put the removed
+    watch back as an empty set that nothing ever cleans up.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch = observer.schedule(handler, "/foobar", recursive=True)
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+    observer.unschedule(watch)
+    assert watch not in observer._handlers  # noqa: SLF001
+
+    observer.dispatch_events(observer.event_queue)
+
+    assert watch not in observer._handlers  # noqa: SLF001
