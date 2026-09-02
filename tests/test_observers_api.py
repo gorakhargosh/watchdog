@@ -36,6 +36,48 @@ def test_observer__ne__():
     assert watch1.__ne__(watch_ne2)
 
 
+def test_observer__eq__ignores_follow_symlink():
+    """Two watches that differ only in ``follow_symlink`` must not compare equal.
+
+    ``ObservedWatch.key`` builds its tuple from ``path``, ``is_recursive`` and
+    ``event_filter`` only, omitting ``follow_symlink`` even though the latter is a
+    real constructor parameter stored on the instance. ``event_filter`` was
+    deliberately added to the key so that two watches on the same path with
+    different filters stay independent; ``follow_symlink`` should get the same
+    treatment, otherwise scheduling the same path twice with different
+    ``follow_symlink`` values collapses onto a single watch (see
+    ``test_observer_schedule_respects_second_follow_symlink`` below for the
+    resulting observer-level bug).
+    """
+    watch_no_follow = ObservedWatch("/foobar", recursive=True, follow_symlink=False)
+    watch_follow = ObservedWatch("/foobar", recursive=True, follow_symlink=True)
+
+    assert watch_no_follow != watch_follow
+    assert hash(watch_no_follow) != hash(watch_follow)
+
+
+def test_observer_schedule_respects_second_follow_symlink():
+    """A second ``schedule()`` call for the same path must honor its own follow_symlink.
+
+    Because ``ObservedWatch`` equality ignores ``follow_symlink``, scheduling
+    "/foobar" with ``follow_symlink=False`` and then again with
+    ``follow_symlink=True`` makes the second watch compare equal to the first.
+    ``BaseObserver.schedule()`` then treats an emitter as already existing for it
+    and never creates one for the ``follow_symlink=True`` request: the emitter
+    actually reachable from the returned watch still reports
+    ``follow_symlink=False``, silently dropping the caller's request.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch_no_follow = observer.schedule(handler, "/foobar", recursive=True, follow_symlink=False)
+    watch_follow = observer.schedule(handler, "/foobar", recursive=True, follow_symlink=True)
+
+    assert len(observer.emitters) == 2
+    assert observer._emitter_for_watch[watch_no_follow].watch.follow_symlink is False  # noqa: SLF001
+    assert observer._emitter_for_watch[watch_follow].watch.follow_symlink is True  # noqa: SLF001
+
+
 def test_observer__repr__():
     observed_watch = ObservedWatch("/foobar", recursive=True)
     repr_str = "<ObservedWatch: path='/foobar', is_recursive=True>"
