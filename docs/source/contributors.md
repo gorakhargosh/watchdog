@@ -17,6 +17,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/nascheme"><img src="https://avatars.githubusercontent.com/u/690853?v=4?s=70" width="70px;" alt="Neil Schemenauer"/><br /><sub><b>Neil Schemenauer</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=nascheme" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://prosperibe.hashnode.dev/"><img src="https://avatars.githubusercontent.com/u/91068872?v=4?s=70" width="70px;" alt="Prosper .I."/><br /><sub><b>Prosper .I.</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Prosperibe12" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/blitztide"><img src="https://avatars.githubusercontent.com/u/5940525?v=4?s=70" width="70px;" alt="blitztide"/><br /><sub><b>blitztide</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=blitztide" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/cclauss"><img src="https://avatars.githubusercontent.com/u/3709715?v=4?s=70" width="70px;" alt="Christian Clauss"/><br /><sub><b>Christian Clauss</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=cclauss" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>
