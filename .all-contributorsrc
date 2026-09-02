@@ -45,6 +45,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "maxtaran2010",
+      "name": "max",
+      "avatar_url": "https://avatars.githubusercontent.com/u/87073104?v=4",
+      "profile": "https://github.com/maxtaran2010",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
