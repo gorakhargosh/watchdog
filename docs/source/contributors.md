@@ -22,6 +22,9 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/adicohen1005"><img src="https://avatars.githubusercontent.com/u/49276888?v=4?s=70" width="70px;" alt="Adi Cohen"/><br /><sub><b>Adi Cohen</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=adicohen1005" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://rgoswami.me/"><img src="https://avatars.githubusercontent.com/u/4336207?v=4?s=70" width="70px;" alt="Rohit Goswami"/><br /><sub><b>Rohit Goswami</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=HaoZeke" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/apoirier"><img src="https://avatars.githubusercontent.com/u/1702180?v=4?s=70" width="70px;" alt="apoirier"/><br /><sub><b>apoirier</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=apoirier" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
