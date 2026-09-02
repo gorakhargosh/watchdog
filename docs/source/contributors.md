@@ -11,6 +11,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Sanjays2402"><img src="https://avatars.githubusercontent.com/u/51058514?v=4?s=70" width="70px;" alt="Sanjay Santhanam"/><br /><sub><b>Sanjay Santhanam</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Sanjays2402" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/maxtaran2010"><img src="https://avatars.githubusercontent.com/u/87073104?v=4?s=70" width="70px;" alt="max"/><br /><sub><b>max</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=maxtaran2010" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/toroleapinc"><img src="https://avatars.githubusercontent.com/u/88481784?v=4?s=70" width="70px;" alt="edvatar"/><br /><sub><b>edvatar</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=toroleapinc" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/bysiber"><img src="https://avatars.githubusercontent.com/u/101993364?v=4?s=70" width="70px;" alt="Kadir Can Ozden"/><br /><sub><b>Kadir Can Ozden</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=bysiber" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
