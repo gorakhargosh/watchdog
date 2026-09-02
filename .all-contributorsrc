@@ -171,6 +171,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Liam-DeVoe",
+      "name": "Liam DeVoe",
+      "avatar_url": "https://avatars.githubusercontent.com/u/31628143?v=4",
+      "profile": "https://tybug.dev/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
