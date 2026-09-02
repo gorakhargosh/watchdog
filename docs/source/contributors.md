@@ -19,6 +19,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/blitztide"><img src="https://avatars.githubusercontent.com/u/5940525?v=4?s=70" width="70px;" alt="blitztide"/><br /><sub><b>blitztide</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=blitztide" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/cclauss"><img src="https://avatars.githubusercontent.com/u/3709715?v=4?s=70" width="70px;" alt="Christian Clauss"/><br /><sub><b>Christian Clauss</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=cclauss" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ngoldbaum"><img src="https://avatars.githubusercontent.com/u/3126246?v=4?s=70" width="70px;" alt="Nathan Goldbaum"/><br /><sub><b>Nathan Goldbaum</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=ngoldbaum" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/adicohen1005"><img src="https://avatars.githubusercontent.com/u/49276888?v=4?s=70" width="70px;" alt="Adi Cohen"/><br /><sub><b>Adi Cohen</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=adicohen1005" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
