@@ -108,6 +108,15 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "ngoldbaum",
+      "name": "Nathan Goldbaum",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3126246?v=4",
+      "profile": "https://github.com/ngoldbaum",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
