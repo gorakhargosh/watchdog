@@ -54,6 +54,15 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "toroleapinc",
+      "name": "edvatar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/88481784?v=4",
+      "profile": "https://github.com/toroleapinc",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
