@@ -72,6 +72,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "nascheme",
+      "name": "Neil Schemenauer",
+      "avatar_url": "https://avatars.githubusercontent.com/u/690853?v=4",
+      "profile": "https://github.com/nascheme",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

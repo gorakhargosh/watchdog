@@ -13,6 +13,9 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/toroleapinc"><img src="https://avatars.githubusercontent.com/u/88481784?v=4?s=70" width="70px;" alt="edvatar"/><br /><sub><b>edvatar</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=toroleapinc" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/bysiber"><img src="https://avatars.githubusercontent.com/u/101993364?v=4?s=70" width="70px;" alt="Kadir Can Ozden"/><br /><sub><b>Kadir Can Ozden</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=bysiber" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/nascheme"><img src="https://avatars.githubusercontent.com/u/690853?v=4?s=70" width="70px;" alt="Neil Schemenauer"/><br /><sub><b>Neil Schemenauer</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=nascheme" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
