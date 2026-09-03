@@ -39,7 +39,7 @@ def test_observer__ne__():
 def test_observer__eq__ignores_follow_symlink():
     """Two watches that differ only in ``follow_symlink`` must not compare equal.
 
-    ``ObservedWatch.key`` builds its tuple from ``path``, ``is_recursive`` and
+    ``ObservedWatch.key`` used to build its tuple from ``path``, ``is_recursive`` and
     ``event_filter`` only, omitting ``follow_symlink`` even though the latter is a
     real constructor parameter stored on the instance. ``event_filter`` was
     deliberately added to the key so that two watches on the same path with
@@ -59,7 +59,7 @@ def test_observer__eq__ignores_follow_symlink():
 def test_observer_schedule_respects_second_follow_symlink():
     """A second ``schedule()`` call for the same path must honor its own follow_symlink.
 
-    Because ``ObservedWatch`` equality ignores ``follow_symlink``, scheduling
+    Because ``ObservedWatch`` equality used to ignore ``follow_symlink``, scheduling
     "/foobar" with ``follow_symlink=False`` and then again with
     ``follow_symlink=True`` makes the second watch compare equal to the first.
     ``BaseObserver.schedule()`` then treats an emitter as already existing for it
@@ -74,8 +74,8 @@ def test_observer_schedule_respects_second_follow_symlink():
     watch_follow = observer.schedule(handler, "/foobar", recursive=True, follow_symlink=True)
 
     assert len(observer.emitters) == 2
-    assert observer._emitter_for_watch[watch_no_follow].watch.follow_symlink is False  # noqa: SLF001
-    assert observer._emitter_for_watch[watch_follow].watch.follow_symlink is True  # noqa: SLF001
+    assert not observer._emitter_for_watch[watch_no_follow].watch.follow_symlink  # noqa: SLF001
+    assert observer._emitter_for_watch[watch_follow].watch.follow_symlink  # noqa: SLF001
 
 
 def test_observer__repr__():
