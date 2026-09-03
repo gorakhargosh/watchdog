@@ -15,6 +15,7 @@ Changelog
 **Other Changes**
 
 - [core] ``case_sensitive=False`` matching now really ignores case on Python < 3.13. The ``PurePath.full_match()`` fallback compiled its regex without ``re.IGNORECASE``, so only the patterns were lower-cased and a path such as ``FOO.PY`` never matched ``**/*.py``.
+- [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
 - [core] ``dispatch_events()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one ``_handlers`` entry per watch that had an event in flight. (`#1261 <https://github.com/gorakhargosh/watchdog/pull/1261>`__)
 - [docs] ``FileSystemEvent`` no longer claims to be immutable; its fields stay writable and the hash is derived from them, so mutating an event held in a dict or set strands it there. (`#1240 <https://github.com/gorakhargosh/watchdog/issues/1240>`__)
 - [docs] Note that ``FileClosedEvent``, ``FileClosedNoWriteEvent`` and ``FileOpenedEvent``, and their ``on_closed()``, ``on_closed_no_write()`` and ``on_opened()`` handlers, are emitted only by ``InotifyObserver`` on Linux. (`#1235 <https://github.com/gorakhargosh/watchdog/pull/1235>`__)
