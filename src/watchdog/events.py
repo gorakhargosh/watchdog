@@ -372,10 +372,16 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
 
+        if self.ignore_patterns and match_any_paths(
+            paths,
+            included_patterns=self.ignore_patterns,
+            case_sensitive=self.case_sensitive,
+        ):
+            return
+
         if match_any_paths(
             paths,
             included_patterns=self.patterns,
-            excluded_patterns=self.ignore_patterns,
             case_sensitive=self.case_sensitive,
         ):
             super().dispatch(event)
