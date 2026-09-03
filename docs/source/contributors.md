@@ -31,6 +31,9 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/JoachimCoenen"><img src="https://avatars.githubusercontent.com/u/29330338?v=4?s=70" width="70px;" alt="Joachim Coenen"/><br /><sub><b>Joachim Coenen</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=JoachimCoenen" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/kirkhansen"><img src="https://avatars.githubusercontent.com/u/3529086?v=4?s=70" width="70px;" alt="Kirk Hansen"/><br /><sub><b>Kirk Hansen</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=kirkhansen" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/zain-asif-dev"><img src="https://avatars.githubusercontent.com/u/87968213?v=4?s=70" width="70px;" alt="Zain Asif"/><br /><sub><b>Zain Asif</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=zain-asif-dev" title="Documentation">📖</a> <a href="https://github.com/gorakhargosh/watchdog/commits?author=zain-asif-dev" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
