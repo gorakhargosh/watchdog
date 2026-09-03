@@ -90,9 +90,9 @@ class ObservedWatch:
         return self._event_filter
 
     @property
-    def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None]:
-        """A tuple key identifying the watch (path, recursive, event_filter)."""
-        return self.path, self.is_recursive, self.event_filter
+    def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None, bool]:
+        """A tuple key identifying the watch (path, recursive, event_filter, follow_symlink)."""
+        return self.path, self.is_recursive, self.event_filter, self.follow_symlink
 
     def __eq__(self, watch: object) -> bool:
         if not isinstance(watch, ObservedWatch):
