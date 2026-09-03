@@ -62,6 +62,27 @@ Alternatively, you can use the observer as a context manager for cleaner code:
 The context manager automatically handles starting and stopping the observer,
 ensuring proper cleanup even if an exception occurs.
 
+You can also schedule a path first and attach handlers later, by passing ``None``
+as the handler::
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.observers import Observer
+
+
+    class MyEventHandler(FileSystemEventHandler):
+        def on_any_event(self, event: FileSystemEvent) -> None:
+            print(event)
+
+    observer = Observer()
+    watch = observer.schedule(None, ".", recursive=True)
+    observer.add_handler_for_watch(MyEventHandler(), watch)
+
+    with observer:
+        while True:
+            time.sleep(1)
+
+
+
 Typing
 ------
 

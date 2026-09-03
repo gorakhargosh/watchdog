@@ -63,6 +63,29 @@ def test_stop_should_stop_emitter(observer):
     assert not emitter.is_alive()
 
 
+def test_schedule_none_then_add_handler_dispatches(observer):
+    dispatch_finished = threading.Event()
+
+    class EventHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            dispatch_finished.set()
+
+    watch = observer.schedule(None, "")
+    observer.add_handler_for_watch(EventHandler(), watch)
+    observer.start()
+
+    (emitter,) = observer.emitters
+    emitter.queue_event(FileModifiedEvent(""))
+
+    assert dispatch_finished.wait(timeout=2.0)
+
+
+def test_unschedule_without_handlers(observer):
+    watch = observer.schedule(None, "")
+    observer.unschedule(watch)
+    assert len(observer.emitters) == 0
+
+
 def test_unschedule_self(observer):
     """
     Tests that unscheduling a watch from within an event handler correctly
