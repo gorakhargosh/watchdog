@@ -198,6 +198,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "zain-asif-dev",
+      "name": "Zain Asif",
+      "avatar_url": "https://avatars.githubusercontent.com/u/87968213?v=4",
+      "profile": "https://github.com/zain-asif-dev",
+      "contributions": [
+        "doc",
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
