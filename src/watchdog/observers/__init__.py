@@ -85,7 +85,23 @@ def _get_observer_cls() -> ObserverType:
 
     return PollingObserver
 
+class ObserverContextManager:
+    def __init__(self, *args, **kwargs):
+        self._observer_cls = _get_observer_cls()
+        self._observer = self._observer_cls(*args, **kwargs)
 
-Observer = _get_observer_cls()
+    def __getattr__(self, name):
+        return getattr(self._observer, name)
+
+    def __enter__(self):
+        self._observer.start()
+        return self._observer
+
+    def __exit__(self):
+        self._observer.stop()
+        self._observer.join()
+
+
+Observer = ObserverContextManager
 
 __all__ = ["Observer"]
