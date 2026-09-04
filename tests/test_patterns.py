@@ -84,10 +84,8 @@ def test_match_any_paths(included_patterns, excluded_patterns, case_sensitive, e
 @pytest.mark.parametrize(
     ("raw_path", "pattern", "case_sensitive", "expected"),
     [
-        # `case_sensitive=False` must ignore case in both directions.
         ("/users/gorakhargosh/FOOBAR.PY", "**/*.py", False, True),
         ("/users/gorakhargosh/foobar.py", "**/*.PY", False, True),
-        # ... and `case_sensitive=True` must keep honouring it.
         ("/users/gorakhargosh/FOOBAR.PY", "**/*.py", True, False),
         ("/users/gorakhargosh/foobar.py", "**/*.PY", True, False),
     ],
