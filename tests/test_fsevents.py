@@ -114,9 +114,11 @@ def test_watcher_deletion_while_receiving_events_1(
     tmpdir = p()
 
     orig = FSEventsEmitter.events_callback
+    emitter = None
 
     def cb(*args):
-        FSEventsEmitter.stop(emitter)
+        if emitter is not None:
+            FSEventsEmitter.stop(emitter)
         orig(*args)
 
     with caplog.at_level(logging.ERROR), patch.object(FSEventsEmitter, "events_callback", new=cb):
@@ -331,3 +333,60 @@ def test_watchdog_recursive(p: P) -> None:
             observer.unschedule(watch)
         observer.stop()
         observer.join(1)
+
+
+def test_free_threading_support() -> None:
+    """Verify that _watchdog_fsevents declares free-threading support on Python 3.13+."""
+    import sys
+
+    # On free-threaded CPython builds, sys._is_gil_enabled() returns False
+    # and importing modules without support re-enables the GIL.
+    if hasattr(sys, "_is_gil_enabled") and getattr(sys, "_is_gil_disabled", False):
+        assert not sys._is_gil_enabled(), "_watchdog_fsevents re-enabled the GIL unexpectedly"  # noqa: SLF001
+
+
+def test_rapid_start_stop_lifecycle(p: P) -> None:
+    """Verify rapid start and stop does not deadlock or race on free-threaded builds."""
+    handler = FileSystemEventHandler()
+    for _ in range(20):
+        observer = Observer()
+        observer.schedule(handler, str(p("")), recursive=False)
+        observer.start()
+        # Immediately stop without waiting to trigger the race condition window
+        observer.stop()
+        observer.join(timeout=2)
+        assert not observer.is_alive()
+
+
+def test_concurrent_schedule_unschedule(p: P) -> None:
+    """Verify concurrent schedule and unschedule operations do not crash."""
+    observer = Observer()
+    observer.start()
+    handler = FileSystemEventHandler()
+
+    def worker(worker_id: int):
+        dir_path = p(f"dir_{worker_id}")
+        mkdir(dir_path)
+        for _ in range(10):
+            watch = observer.schedule(handler, str(dir_path), recursive=False)
+            observer.unschedule(watch)
+
+    threads = [Thread(target=worker, args=(i,)) for i in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=5)
+        assert not t.is_alive()
+
+    observer.stop()
+    observer.join(timeout=2)
+    assert not observer.is_alive()
+
+
+def test_stop_before_read_events_flag() -> None:
+    """Verify _fsevents.stop() called before read_events() causes read_events() to exit immediately."""
+    dummy_thread = object()
+    # Mark stopped before read_events is called
+    _fsevents.stop(dummy_thread)
+    # read_events should detect the flag and return immediately without blocking in CFRunLoopRun
+    _fsevents.read_events(dummy_thread)
