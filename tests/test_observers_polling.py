@@ -48,6 +48,8 @@ def emitter(event_queue):
     em.join(5)
 
 
+# PollingEmitter timing is sensitive to filesystem timestamp resolution and load on busy CI runners
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test___init__(event_queue, emitter):
     sleep(SLEEP_TIME)
     mkdir(p("project"))

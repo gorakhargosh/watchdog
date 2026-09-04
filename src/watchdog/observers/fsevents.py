@@ -79,6 +79,7 @@ class FSEventsEmitter(EventEmitter):
         self._start_time = 0.0
         self._starting_state: DirectorySnapshot | None = None
         self._lock = threading.Lock()
+        self._ready_event = threading.Event()
         self._absolute_watch_path = os.path.realpath(os.path.abspath(os.path.expanduser(self.watch.path)))
 
     def on_thread_stop(self) -> None:
@@ -302,13 +303,19 @@ class FSEventsEmitter(EventEmitter):
         except Exception:
             logger.exception("Unhandled exception in fsevents callback")
 
+    def start(self) -> None:
+        super().start()
+        self._ready_event.wait(timeout=2.0)
+
     def run(self) -> None:
         self.pathnames = [self.watch.path]
         self._start_time = time.monotonic()
         try:
             _fsevents.add_watch(self, self.watch, self.events_callback, self.pathnames)
+            self._ready_event.set()
             _fsevents.read_events(self)
         except Exception:
+            self._ready_event.set()
             logger.exception("Unhandled exception in FSEventsEmitter")
 
     def on_thread_start(self) -> None:

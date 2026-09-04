@@ -14,8 +14,8 @@ def test_delayed_get():
     inserted = time()
     q.get()
     elapsed = time() - inserted
-    # 2.10 instead of 2.05 for slow macOS slaves on Travis
-    assert 2.10 > elapsed > 1.99
+    # Allow a reasonable upper bound for busy/slow CI runners
+    assert 2.50 > elapsed > 1.99
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)

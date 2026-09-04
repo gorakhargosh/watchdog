@@ -441,7 +441,7 @@ class BaseObserver(EventDispatcher):
         self.unschedule_all()
 
     def dispatch_events(self, event_queue: EventQueue) -> None:
-        entry = event_queue.get(block=True)
+        entry = event_queue.get(block=True, timeout=self.timeout)
         if entry is EventDispatcher.stop_event:
             event_queue.task_done()
             return
