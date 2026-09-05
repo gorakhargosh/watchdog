@@ -22,6 +22,14 @@ Watchdog also includes built-in "tricks" (pre-implemented event handlers). For i
    :language: python
    :linenos:
 
+Running Shell Commands
+----------------------
+Use :class:`watchdog.tricks.ShellCommandTrick` to execute shell commands automatically when files are created, modified, or deleted. The command string can include template variables such as ``$watch_src_path``, ``$watch_event_type``, and ``$watch_object``:
+
+.. literalinclude:: examples/shell_command_trick.py
+   :language: python
+   :linenos:
+
 Debouncing Events
 -----------------
 Text editors and build tools can emit several events for a single logical change. Use :class:`watchdog.utils.event_debouncer.EventDebouncer` to collect a burst of events and run an expensive action once the watched directory has been quiet for a short interval:
