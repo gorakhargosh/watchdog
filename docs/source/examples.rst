@@ -6,6 +6,26 @@ Examples
 ========
 This page showcases various complete, runnable examples demonstrating different features of the watchdog API.
 
+Monitoring Multiple Directories
+-------------------------------
+One :class:`watchdog.observers.Observer` can monitor several directories. Schedule
+a separate handler for each root and give it a label so events can be attributed
+to the correct watch, even when different roots contain files with the same name.
+The example logs the complete event, including the destination of a move.
+
+Pass existing directories as separate arguments, quoting paths that contain spaces.
+For example, from a checkout on Windows, macOS, or Linux::
+
+    python docs/source/examples/multiple_directories.py "input one" "input two"
+
+With no arguments, the example watches the current directory. Each watch includes
+subdirectories. Press :kbd:`Ctrl+C` to stop the observer and wait for its threads
+to finish. The example only logs events; it does not change the watched files.
+
+.. literalinclude:: examples/multiple_directories.py
+   :language: python
+   :linenos:
+
 Pattern Matching Filter
 -----------------------
 To filter file system events using glob patterns (for example, only observing changes to ``.py`` or ``.pyc`` files), you can use the :class:`watchdog.events.PatternMatchingEventHandler`:
