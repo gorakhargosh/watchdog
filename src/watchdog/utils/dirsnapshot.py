@@ -98,7 +98,11 @@ class DirectorySnapshotDiff:
         for path in set(deleted):
             inode = ref.inode(path)
             new_path = snapshot.path(inode)
-            if new_path:
+            # Only treat this as a move if the inode is now reachable through a
+            # genuinely new path. A symlink (or hard link) shares its target's
+            # inode, so ``new_path`` may still point at the unchanged target,
+            # which is not a move.
+            if new_path and (new_path not in ref.paths or ref.inode(new_path) != inode):
                 # file is not deleted but moved
                 deleted.remove(path)
                 moved.add((path, new_path))
@@ -106,7 +110,11 @@ class DirectorySnapshotDiff:
         for path in set(created):
             inode = snapshot.inode(path)
             old_path = ref.path(inode)
-            if old_path:
+            # Only treat this as a move if the inode's previous path is really
+            # gone. A symlink (or hard link) shares its target's inode, so
+            # ``old_path`` may still exist with that inode, which means this is a
+            # creation, not a move.
+            if old_path and (old_path not in snapshot.paths or snapshot.inode(old_path) != inode):
                 created.remove(path)
                 moved.add((old_path, path))
 
