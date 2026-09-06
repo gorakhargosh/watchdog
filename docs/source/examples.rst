@@ -45,3 +45,22 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Auto-renaming Files
+-------------------
+Watch a directory and automatically rename newly created files that match a pattern.
+For example, add a timestamp prefix to new screenshots or log files as they appear:
+
+.. literalinclude:: examples/renaming.py
+   :language: python
+   :linenos:
+
+Watching Multiple Directories
+-----------------------------
+Use a single :class:`~watchdog.observers.Observer` to watch several directories at once,
+each with its own event handler:
+
+.. literalinclude:: examples/multi_watch.py
+   :language: python
+   :linenos:
+
