@@ -37,3 +37,11 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Asyncio Integration
+-------------------
+Event handlers are called on the observer thread, so an asynchronous application cannot use them to drive its event loop directly. Passing each event to :meth:`asyncio.loop.call_soon_threadsafe` moves it onto the loop thread, where an :class:`asyncio.Queue` makes it available to coroutines:
+
+.. literalinclude:: examples/asyncio_integration.py
+   :language: python
+   :linenos:
