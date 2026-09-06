@@ -25,6 +25,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    FileSystemEventHandler,
     generate_sub_created_events,
     generate_sub_moved_events,
 )
@@ -34,7 +35,7 @@ from watchdog.utils.dirsnapshot import DirectorySnapshot
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch
 
 
@@ -327,7 +328,7 @@ class FSEventsObserver(BaseObserver):
 
     def schedule(
         self,
-        event_handler: FileSystemEventHandler,
+        event_handler: FileSystemEventHandler | None,
         path: str | Path,
         *,
         recursive: bool = False,
