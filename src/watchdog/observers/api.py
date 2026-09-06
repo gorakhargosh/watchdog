@@ -311,7 +311,10 @@ class BaseObserver(EventDispatcher):
         super().start()
 
     def __enter__(self) -> Self:
-        """Context manager entry. Starts the observer if not already running."""
+        """Context manager entry. Starts the observer if not already running.
+
+        See :ref:`examples` for a complete context manager example.
+        """
         if not self.is_alive():
             self.start()
         return self
