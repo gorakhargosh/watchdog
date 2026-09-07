@@ -543,6 +543,33 @@ def test_move_nested_subdirectories(
             ec.add(DirModifiedEvent, "dir2/dir3")
 
 
+@pytest.mark.skipif(not platform.is_linux(), reason="Other platforms create another set of events for this test")
+def test_move_subdirectory_into_watched_directory(
+    p: P,
+    start_watching: StartWatching,
+    events_checker: EventsChecker,
+) -> None:
+    mkdir(p("watched"))
+    mkdir(p("outside/dir1/dir2"), parents=True)
+    start_watching(path=p("watched"))
+    mv(p("outside/dir1"), p("watched/dir1"))
+
+    # Drain the events reporting the arrival of the subtree.
+    with events_checker() as ec:
+        ec.allow_extra_events()
+
+    # The subtree came from outside the watched tree, but it is inside it now,
+    # so what happens in it must still be reported.
+    mkfile(p("watched/dir1/dir2", "a"))
+
+    with events_checker() as ec:
+        ec.add(FileCreatedEvent, "watched/dir1/dir2/a")
+        ec.add(DirModifiedEvent, "watched/dir1/dir2")
+        ec.add(FileOpenedEvent, "watched/dir1/dir2/a")
+        ec.add(FileClosedEvent, "watched/dir1/dir2/a")
+        ec.add(DirModifiedEvent, "watched/dir1/dir2")
+
+
 @pytest.mark.skipif(
     not platform.is_windows(),
     reason="Non-Windows create another set of events for this test",

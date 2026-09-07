@@ -236,6 +236,11 @@ class InotifyWatchGroup(WatchCallback):
                 move_dst_path = src_path
                 if move_src_path is not None:
                     self._move_watches(move_src_path, move_dst_path)
+                elif event.is_directory and self.is_recursive:
+                    # The source is outside the watched tree, so there are no
+                    # watches to move.  The emitter reports the arrival as a
+                    # creation, so watch the new subtree like a creation would.
+                    self._add_all_callbacks(src_path)
                 # TODO: When a directory from another part of the
                 #  filesystem is moved into a watched directory, this
                 #  will not generate events for the directory tree.
