@@ -47,7 +47,9 @@ def _full_match(path: PurePath, pattern: str) -> bool:
         # same pattern path separator when constructing the regex
         normalized_pattern = str(type(path)(pattern))
         regex = translate(normalized_pattern, recursive=True, include_hidden=True, seps=_get_sep(path))
-        reobj = re.compile(regex)
+        # `PureWindowsPath.full_match()` is case-insensitive, `re` is not, so ask for it explicitly.
+        flags = re.IGNORECASE if isinstance(path, PureWindowsPath) else 0
+        reobj = re.compile(regex, flags)
         return bool(reobj.match(str(path)))
 
 
