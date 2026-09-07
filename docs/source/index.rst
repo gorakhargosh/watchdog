@@ -5,13 +5,15 @@
 
 .. include:: global.rst.inc
 
+.. image:: watchdog_logo.svg
 
 Watchdog
 ========
 
 Python API library and shell utilities to monitor file system events.
 
-Works on 3.9+.
+Works on Python 3.9+.
+
 
 Directory monitoring made easy with
 -----------------------------------
