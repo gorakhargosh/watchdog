@@ -37,3 +37,11 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Re-running a Command on Changes
+-------------------------------
+While developing, it is often convenient to re-run a command (for example a test suite or a linter) every time a file in the watched directory changes. If you do not need custom logic, the ``watchmedo shell-command`` command covers this out of the box (it is built on the :class:`watchdog.tricks.ShellCommandTrick`):
+
+.. code-block:: console
+
+   $ watchmedo shell-command --recursive --command='python -m pytest' .
