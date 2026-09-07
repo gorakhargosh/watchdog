@@ -34,8 +34,9 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
   cancel-in-progress: true
 
-# Publishing authenticates to PyPI with its own token, not the GITHUB_TOKEN, so
-# read-only is sufficient for every job here. Elevate per-job if that ever changes.
+# Publishing authenticates to PyPI through the "pypi" environment's OIDC
+# Trusted Publishing (id-token), not the GITHUB_TOKEN, so read-only is
+# sufficient for every job here. Elevate per-job if that ever changes.
 permissions:
   contents: read
 
@@ -124,6 +125,10 @@ jobs:
       - source-distribution
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -137,6 +142,4 @@ jobs:
         if: github.event.inputs.branch != ''
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
