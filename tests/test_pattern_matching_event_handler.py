@@ -13,6 +13,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    FileSystemEvent,
     PatternMatchingEventHandler,
 )
 from watchdog.utils.patterns import filter_paths
@@ -173,3 +174,47 @@ def test_patterns():
         ignore_directories=True,
     )
     assert handler1.patterns == g_allowed_patterns
+
+
+def test_rename_to_ignored_pattern():
+    """
+    Regression test for #412.
+    Renaming a file to an extension in ignore_patterns should suppress the event,
+    even though the source path matches patterns.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**/*.txt"],
+        ignore_patterns=["**/*.tmp"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    # Rename test.txt -> test.tmp: dest_path is .tmp (ignored) -> should be suppressed
+    handler.dispatch(FileMovedEvent("/path/test.txt", "/path/test.tmp"))
+    assert len(events_collected) == 0, (
+        "Event should be suppressed when dest_path matches ignore_patterns"
+    )
+
+
+def test_moved_to_ignored_hidden_path():
+    """
+    Regression test for #423: moved events whose destination path matches
+    *any* ignore pattern should be suppressed, even when the source path
+    alone matches the included patterns.  This mimics the original #423
+    scenario where hidden-file patterns were not checked before dispatch.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**"],
+        ignore_patterns=["**/.*/**", "**/.*"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    # Move a visible file into a hidden directory -> should be suppressed
+    handler.dispatch(FileMovedEvent("/path/visible.txt", "/path/.hidden/config.txt"))
+    assert len(events_collected) == 0, (
+        "Event should be suppressed when dest_path matches an ignore pattern"
+    )
+
