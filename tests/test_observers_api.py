@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from watchdog.events import FileModifiedEvent, FileOpenedEvent, LoggingEventHandler
+from watchdog.events import FileModifiedEvent, FileMovedEvent, FileOpenedEvent, LoggingEventHandler
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 
 
@@ -179,3 +179,82 @@ def test_stale_event_does_not_resurrect_an_unscheduled_watch():
     observer.dispatch_events(observer.event_queue)
 
     assert watch not in observer._handlers  # noqa: SLF001
+
+
+def test_observed_watch_single_file(tmp_path: Path):
+    """When an ObservedWatch is created on a single file, its watch path is set to the parent directory."""
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("content")
+
+    watch = ObservedWatch(file_path, recursive=True)
+    assert watch.is_file is True
+    assert watch.raw_path == str(file_path)
+    assert watch.path == str(tmp_path.resolve())
+    assert watch.is_recursive is False
+
+
+def test_single_file_symlink_follow(tmp_path: Path):
+    """When follow_symlink=True, a symlink to a file watches the target's parent directory."""
+    target_dir = tmp_path / "target_dir"
+    target_dir.mkdir()
+    target_file = target_dir / "target.txt"
+    target_file.write_text("hello")
+
+    link_dir = tmp_path / "link_dir"
+    link_dir.mkdir()
+    symlink_file = link_dir / "link.txt"
+    symlink_file.symlink_to(target_file)
+
+    watch = ObservedWatch(symlink_file, recursive=False, follow_symlink=True)
+    assert watch.is_file is True
+    assert watch.path == str(target_dir.resolve())
+
+
+def test_single_file_symlink_no_follow(tmp_path: Path):
+    """When follow_symlink=False, a symlink to a file watches the symlink's own parent directory."""
+    target_dir = tmp_path / "target_dir"
+    target_dir.mkdir()
+    target_file = target_dir / "target.txt"
+    target_file.write_text("hello")
+
+    link_dir = tmp_path / "link_dir"
+    link_dir.mkdir()
+    symlink_file = link_dir / "link.txt"
+    symlink_file.symlink_to(target_file)
+
+    watch = ObservedWatch(symlink_file, recursive=False, follow_symlink=False)
+    assert watch.is_file is True
+    assert watch.path == str(link_dir.resolve())
+
+
+def test_single_file_dispatch_events(tmp_path: Path):
+    """Dispatches events for watched single file and moves, filtering out unrelated events."""
+    file_a = tmp_path / "a.txt"
+    file_a.write_text("a")
+    file_b = tmp_path / "b.txt"
+    other = tmp_path / "other.txt"
+    other.write_text("o")
+
+    events = []
+
+    class Handler(LoggingEventHandler):
+        def dispatch(self, event):
+            events.append(event)
+
+    observer = BaseObserver(EventEmitter)
+    watch_a = observer.schedule(Handler(), file_a)
+
+    # Watched file modified -> dispatched
+    mod_event = FileModifiedEvent(str(file_a))
+    observer.event_queue.put((mod_event, watch_a))
+    # Unrelated file modified -> filtered out
+    observer.event_queue.put((FileModifiedEvent(str(other)), watch_a))
+    # Watched file moved -> dispatched
+    move_event = FileMovedEvent(str(file_a), str(file_b))
+    observer.event_queue.put((move_event, watch_a))
+
+    observer.dispatch_events(observer.event_queue)
+    observer.dispatch_events(observer.event_queue)
+    observer.dispatch_events(observer.event_queue)
+
+    assert events == [mod_event, move_event]
