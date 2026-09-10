@@ -37,3 +37,13 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Event Batching
+--------------
+When a large number of filesystem events occur in a short period, processing
+each event individually can be inefficient. A background worker can collect
+events into batches and process them together:
+
+.. literalinclude:: examples/event_batching.py
+   :language: python
+   :linenos:
