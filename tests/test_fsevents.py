@@ -206,8 +206,11 @@ def test_observer_propagates_stream_startup_failure(p: P, *, already_running: bo
 
 def test_stream_stop_before_run(p: P) -> None:
     stream = _fsevents.Stream([p("")])
+    # Verify stop() is idempotent and safe to call repeatedly
+    stream.stop()
     stream.stop()
     stream.run(lambda *args: None)
+    stream.stop()
 
 
 def test_stream_can_retry_after_startup_callback_failure(p: P) -> None:
@@ -291,6 +294,21 @@ def test_two_streams_same_path(p: P) -> None:
     for thread in threads:
         thread.join(5)
         assert not thread.is_alive()
+
+
+def test_stream_concurrent_run_raises_runtime_error(p: P) -> None:
+    stream = _fsevents.Stream([p()])
+    started = threading.Event()
+    thread = Thread(target=stream.run, args=(lambda *args: None, started.set))
+    thread.start()
+    try:
+        assert started.wait(5)
+        with pytest.raises(RuntimeError, match="Stream is already running"):
+            stream.run(lambda *args: None)
+    finally:
+        stream.stop()
+        thread.join(5)
+    assert not thread.is_alive()
 
 
 def test_observer_stop_racing_start(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
