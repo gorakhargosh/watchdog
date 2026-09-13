@@ -206,11 +206,38 @@ def test_observer_propagates_stream_startup_failure(p: P, *, already_running: bo
 
 def test_stream_stop_before_run(p: P) -> None:
     stream = _fsevents.Stream([p("")])
-    # Verify stop() is idempotent and safe to call repeatedly
+
+    # Verify stop() is idempotent and safe to call repeatedly.
     stream.stop()
     stream.stop()
-    stream.run(lambda *args: None)
-    stream.stop()
+
+    thread = Thread(
+        target=stream.run,
+        args=(lambda *args: None, lambda: None),
+    )
+    thread.start()
+    try:
+        thread.join(5)
+        assert not thread.is_alive()
+    finally:
+        stream.stop()
+        thread.join(5)
+        assert not thread.is_alive()
+
+
+def test_stream_stop_after_start(p: P) -> None:
+    stream = _fsevents.Stream([p("")])
+    started = threading.Event()
+    thread = Thread(target=stream.run, args=(lambda *args: None, started.set))
+    thread.start()
+    try:
+        assert started.wait(5)
+        stream.stop()
+        thread.join(5)
+        assert not thread.is_alive()
+    finally:
+        stream.stop()
+        thread.join(5)
 
 
 def test_stream_can_retry_after_startup_callback_failure(p: P) -> None:
@@ -296,19 +323,125 @@ def test_two_streams_same_path(p: P) -> None:
         assert not thread.is_alive()
 
 
-def test_stream_concurrent_run_raises_runtime_error(p: P) -> None:
+def test_stream_concurrent_run_race(p: P) -> None:
+    stream = _fsevents.Stream([p()])
+    barrier = threading.Barrier(2)
+    second_attempted = threading.Event()
+    results = []
+    lock = threading.Lock()
+
+    def on_started() -> None:
+        # Ensure the stream remains active while the competing thread attempts run().
+        second_attempted.wait(5)
+
+    def worker() -> None:
+        barrier.wait()
+        try:
+            stream.run(lambda *a: None, on_started)
+            with lock:
+                results.append("success")
+        except RuntimeError as e:
+            with lock:
+                results.append(str(e))
+            second_attempted.set()
+
+    t1 = Thread(target=worker)
+    t2 = Thread(target=worker)
+    t1.start()
+    t2.start()
+
+    try:
+        assert second_attempted.wait(5)
+    finally:
+        second_attempted.set()
+        stream.stop()
+        t1.join(5)
+        t2.join(5)
+
+    assert not t1.is_alive()
+    assert not t2.is_alive()
+    assert "Stream is already running" in results
+    assert "success" in results
+
+
+def test_stream_concurrent_stop_calls(p: P) -> None:
     stream = _fsevents.Stream([p()])
     started = threading.Event()
     thread = Thread(target=stream.run, args=(lambda *args: None, started.set))
     thread.start()
     try:
         assert started.wait(5)
-        with pytest.raises(RuntimeError, match="Stream is already running"):
-            stream.run(lambda *args: None)
+        stop_threads = [Thread(target=stream.stop) for _ in range(20)]
+        for t in stop_threads:
+            t.start()
+        for t in stop_threads:
+            t.join(5)
+            assert not t.is_alive()
+        thread.join(5)
+        assert not thread.is_alive()
+    finally:
+        stream.stop()
+        thread.join(5)
+
+
+def test_stream_stop_from_inside_callback(p: P) -> None:
+    path = p("file_stop_cb")
+    touch(path)
+    stream = _fsevents.Stream([p("")])
+    started = threading.Event()
+    stopped = threading.Event()
+
+    def cb(*args) -> None:
+        stream.stop()
+        stopped.set()
+
+    thread = Thread(target=stream.run, args=(cb, started.set))
+    thread.start()
+    try:
+        assert started.wait(5)
+        touch(path)
+        assert stopped.wait(5)
+        thread.join(5)
     finally:
         stream.stop()
         thread.join(5)
     assert not thread.is_alive()
+
+
+def test_stream_callback_failure_terminates_stream(p: P) -> None:
+    path = p("file_err_cb")
+    touch(path)
+    stream = _fsevents.Stream([p("")])
+    started = threading.Event()
+    caught = []
+    caught_lock = threading.Lock()
+
+    orig_hook = sys.unraisablehook
+
+    def hook(unraisable: sys.UnraisableHookArgs) -> None:
+        with caught_lock:
+            caught.append(unraisable.exc_value)
+
+    sys.unraisablehook = hook
+    try:
+        def faulty_cb(*args) -> None:
+            message = "callback failure test"
+            raise RuntimeError(message)
+
+        thread = Thread(target=stream.run, args=(faulty_cb, started.set))
+        thread.start()
+        try:
+            assert started.wait(5)
+            touch(path)
+            thread.join(5)
+            assert not thread.is_alive()
+            with caught_lock:
+                assert any(isinstance(err, RuntimeError) and "callback failure test" in str(err) for err in caught)
+        finally:
+            stream.stop()
+            thread.join(5)
+    finally:
+        sys.unraisablehook = orig_hook
 
 
 def test_observer_stop_racing_start(p: P, start_watching: StartWatching, expect_event: ExpectEvent) -> None:
