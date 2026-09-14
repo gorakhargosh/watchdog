@@ -179,3 +179,25 @@ def test_stale_event_does_not_resurrect_an_unscheduled_watch():
     observer.dispatch_events(observer.event_queue)
 
     assert watch not in observer._handlers  # noqa: SLF001
+
+
+def test_remove_handler_for_watch_does_not_resurrect_unscheduled_watch():
+    """remove_handler_for_watch() must not resurrect a watch removed by unschedule().
+
+    ``BaseObserver._handlers`` is a ``defaultdict(set)``, so indexing it in
+    ``remove_handler_for_watch()`` recreates whatever key it is given. Calling it
+    for a watch that ``unschedule()`` already removed re-creates that watch as an
+    empty set that nothing will ever clean up, the same leak ``dispatch_events()``
+    had before it switched to ``.get()``.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch = observer.schedule(handler, "/foobar", recursive=True)
+    observer.unschedule(watch)
+    assert watch not in observer._handlers  # noqa: SLF001
+
+    with pytest.raises(KeyError):
+        observer.remove_handler_for_watch(handler, watch)
+
+    assert watch not in observer._handlers  # noqa: SLF001
