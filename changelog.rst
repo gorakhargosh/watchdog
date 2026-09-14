@@ -14,6 +14,7 @@ Changelog
 
 **Other Changes**
 
+- [core] Allow scheduling watches on individual files in ``Observer.schedule()``. (`#1034 <https://github.com/gorakhargosh/watchdog/issues/1034>`__)
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
 - [core] ``dispatch_events()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one ``_handlers`` entry per watch that had an event in flight. (`#1261 <https://github.com/gorakhargosh/watchdog/pull/1261>`__)
@@ -32,11 +33,12 @@ Changelog
 - [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
 - [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
 - [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
-- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate
 - [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
 - [docs] Document that ``BaseThread`` always runs as a daemon thread, instead of inheriting ``daemon`` from the creating thread as the inherited ``threading.Thread`` documentation states. (`#1117 <https://github.com/gorakhargosh/watchdog/issues/1117>`__)
 - [core] Add ``win_arm64`` to the list of platform-specific wheels published to PyPI. (`#1137 <https://github.com/gorakhargosh/watchdog/issues/1137>`__)
 - [watchmedo] The ``AutoRestartTrick`` stop signal is now actually delivered on Windows. The subprocess is started in its own process group and signalled with ``CTRL_BREAK_EVENT``, so it can run cleanup handlers and its descendants are no longer orphaned on every restart. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
+
+- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate, @prateek-dagar
 
 6.0.0
 ~~~~~

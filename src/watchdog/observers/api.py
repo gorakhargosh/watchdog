@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import queue
 import threading
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from watchdog.events import FileSystemMovedEvent
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
@@ -41,9 +43,9 @@ class ObservedWatch:
     :param path:
         Path string.
     :type path:
-        ``str`` or :class:`pathlib.Path`
+        ``str`` or :class:`pathlib.Path` or ``bytes``
     :param recursive:
-        ``True`` if watch is recursive; ``False`` otherwise.
+        ``True`` if watch should include subdirectories; ``False`` otherwise.
     :type recursive:
         ``bool``
     :param event_filter:
@@ -58,21 +60,51 @@ class ObservedWatch:
 
     def __init__(
         self,
-        path: str | Path,
+        path: str | Path | bytes,
         *,
         recursive: bool,
         event_filter: list[type[FileSystemEvent]] | None = None,
         follow_symlink: bool = False,
     ):
-        self._path = str(path) if isinstance(path, Path) else path
-        self._is_recursive = recursive
+        raw_path = str(path) if isinstance(path, Path) else path
+        self._raw_path = raw_path
         self._follow_symlink = follow_symlink
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
+
+        if follow_symlink:
+            self._is_file = os.path.isfile(raw_path)
+            self._resolved_path = os.path.realpath(os.path.abspath(raw_path))
+        else:
+            self._is_file = os.path.isfile(raw_path) or (os.path.islink(raw_path) and not os.path.isdir(raw_path))
+            self._resolved_path = os.path.abspath(raw_path)
+
+        if self._is_file:
+            dirname = os.path.dirname(self._resolved_path)
+            self._path = os.fsencode(dirname) if isinstance(raw_path, bytes) else os.fsdecode(dirname)
+            self._is_recursive = False
+        else:
+            self._path = raw_path
+            self._is_recursive = recursive
 
     @property
     def path(self) -> str:
         """The path that this watch monitors."""
-        return self._path
+        return self._path  # type: ignore[return-value]
+
+    @property
+    def raw_path(self) -> str:
+        """The original path specified when the watch was created."""
+        return self._raw_path  # type: ignore[return-value]
+
+    @property
+    def is_file(self) -> bool:
+        """Determines whether a single file is watched."""
+        return self._is_file
+
+    @property
+    def resolved_path(self) -> str | bytes:
+        """The absolute or canonical path used for event filtering."""
+        return self._resolved_path
 
     @property
     def is_recursive(self) -> bool:
@@ -91,8 +123,8 @@ class ObservedWatch:
 
     @property
     def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None, bool]:
-        """A tuple key identifying the watch (path, recursive, event_filter, follow_symlink)."""
-        return self.path, self.is_recursive, self.event_filter, self.follow_symlink
+        """A tuple key identifying the watch (raw_path, recursive, event_filter, follow_symlink)."""
+        return self.raw_path, self.is_recursive, self.event_filter, self.follow_symlink
 
     def __eq__(self, watch: object) -> bool:
         if not isinstance(watch, ObservedWatch):
@@ -346,7 +378,7 @@ class BaseObserver(EventDispatcher):
         :type event_handler:
             :class:`watchdog.events.FileSystemEventHandler` or a subclass
         :param path:
-            Directory path that will be monitored.
+            Directory or file path that will be monitored.
         :type path:
             ``str`` or :class:`pathlib.Path`
         :param recursive:
@@ -447,6 +479,20 @@ class BaseObserver(EventDispatcher):
             return
 
         event, watch = entry
+
+        if watch.is_file:
+            target = os.fsdecode(watch.resolved_path)
+            src_raw = os.fsdecode(event.src_path)
+            src_path = os.path.realpath(os.path.abspath(src_raw)) if watch.follow_symlink else os.path.abspath(src_raw)
+            dest_path = None
+            if isinstance(event, FileSystemMovedEvent) and event.dest_path:
+                dest_raw = os.fsdecode(event.dest_path)
+                dest_path = (
+                    os.path.realpath(os.path.abspath(dest_raw)) if watch.follow_symlink else os.path.abspath(dest_raw)
+                )
+            if src_path != target and dest_path != target:
+                event_queue.task_done()
+                return
 
         with self._lock:
             # To allow unschedule/stop and safe removal of event handlers
