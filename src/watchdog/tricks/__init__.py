@@ -29,8 +29,10 @@ import contextlib
 import functools
 import logging
 import os
+import shlex
 import signal
 import subprocess
+import sys
 import threading
 import time
 
@@ -41,6 +43,17 @@ from watchdog.utils.process_watcher import ProcessWatcher
 
 logger = logging.getLogger(__name__)
 echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
+
+
+def _strip_quoting_marks(token: str) -> str:
+    """Remove surrounding quotes from a token.
+
+    ``shlex.split(posix=False)`` keeps the quotes around tokens on Windows,
+    which would otherwise be passed to the subprocess verbatim.
+    """
+    if len(token) >= 2 and token[0] == token[-1] and token[0] in "'\"":
+        return token[1:-1]
+    return token
 
 
 class Trick(PatternMatchingEventHandler):
@@ -75,6 +88,11 @@ class LoggerTrick(Trick):
 
 class ShellCommandTrick(Trick):
     """Executes shell commands in response to matched events.
+
+    The command is parsed with :func:`shlex.split` and executed without a
+    shell, so shell metacharacters (``;``, ``&&``, ``|``, ``>``, ``$(...)``)
+    in file names cannot be interpreted. Note that, for the same reason, shell
+    operators used in the command itself are no longer supported.
 
     :param shell_command:
         The shell command to execute.
@@ -124,26 +142,38 @@ class ShellCommandTrick(Trick):
             return
 
         object_type = "directory" if event.is_directory else "file"
+        dest_path = getattr(event, "dest_path", "")
+
+        if self.shell_command is None:
+            # No shell command configured: print the event directly instead of
+            # spawning an ``echo`` subprocess (there is no portable ``echo`` binary).
+            if dest_path:
+                sys.stdout.write(f"{event.event_type} {object_type} from {event.src_path} to {dest_path}\n")
+            else:
+                sys.stdout.write(f"{event.event_type} {object_type} {event.src_path}\n")
+            return
+
+        # Quote substituted paths so that spaces and shell metacharacters in
+        # file names are kept as-is; the command is run without a shell.
+        if platform.is_windows():
+            # ``shlex.split(posix=False)`` preserves backslashes in Windows
+            # paths, so no quoting is needed here.
+            src_path = event.src_path
+        else:
+            src_path = shlex.quote(event.src_path)
+            dest_path = shlex.quote(dest_path)
+
         context = {
-            "watch_src_path": event.src_path,
-            "watch_dest_path": "",
+            "watch_src_path": src_path,
+            "watch_dest_path": dest_path,
             "watch_event_type": event.event_type,
             "watch_object": object_type,
         }
-
-        if self.shell_command is None:
-            if hasattr(event, "dest_path"):
-                context["dest_path"] = event.dest_path
-                command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
-            else:
-                command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
-        else:
-            if hasattr(event, "dest_path"):
-                context["watch_dest_path"] = event.dest_path
-            command = self.shell_command
-
-        command = Template(command).safe_substitute(**context)
-        self.process = subprocess.Popen(command, shell=True)
+        command = Template(self.shell_command).safe_substitute(**context)
+        argv = shlex.split(command, posix=not platform.is_windows())
+        if platform.is_windows():
+            argv = [_strip_quoting_marks(token) for token in argv]
+        self.process = subprocess.Popen(argv, shell=False)
         if self.wait_for_process:
             self.process.wait()
         else:
