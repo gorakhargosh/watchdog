@@ -160,7 +160,14 @@ class ShellCommandTrick(Trick):
             # paths, but it still splits on spaces. Wrap the path in double
             # quotes (the ``_strip_quoting_marks`` pass below removes them) so
             # paths containing spaces arrive as a single argument.
-            src_path = '"' + event.src_path.replace('"', "") + '"'
+            # Paths from Windows API may be bytes; decode to str first.
+            src_path = event.src_path
+            if isinstance(src_path, bytes):
+                src_path = src_path.decode(sys.getfilesystemencoding(), errors="replace")
+            dest_path = dest_path
+            if isinstance(dest_path, bytes):
+                dest_path = dest_path.decode(sys.getfilesystemencoding(), errors="replace")
+            src_path = '"' + src_path.replace('"', "") + '"'
             dest_path = '"' + dest_path.replace('"', "") + '"' if dest_path else dest_path
         else:
             src_path = shlex.quote(event.src_path)
