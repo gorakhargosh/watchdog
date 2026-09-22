@@ -12,8 +12,11 @@ EXAMPLES = [str(p) for p in sorted(EXAMPLES_DIR.glob("*.py")) if p.name != "__in
 
 @pytest.mark.parametrize("script_path", EXAMPLES)
 def test_example(script_path: str) -> None:
-    # Mock sys.argv to supply the path parameter, and time.sleep to exit the loop
-    with patch("sys.argv", [script_path, "."]), patch("time.sleep", side_effect=KeyboardInterrupt):
+    # Mock sys.argv to supply the path parameter, and the call each example blocks
+    # on to exit the loop: time.sleep, or asyncio.Queue.get for asynchronous ones
+    argv = [script_path, "."]
+    stop = KeyboardInterrupt
+    with patch("sys.argv", argv), patch("time.sleep", side_effect=stop), patch("asyncio.Queue.get", side_effect=stop):
         # Load and execute the module dynamically
         spec = importlib.util.spec_from_file_location("example_module", script_path)
         assert spec is not None
