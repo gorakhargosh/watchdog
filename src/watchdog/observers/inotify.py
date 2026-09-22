@@ -506,6 +506,9 @@ class InotifyEmitter(EventEmitter):
 
         # Always listen to delete self
         event_mask = InotifyConstants.IN_DELETE_SELF
+        if self.watch.is_recursive:
+            # New directories need watches even when creation events are filtered.
+            event_mask = Mask(event_mask | InotifyConstants.IN_CREATE)
 
         for cls in self._event_filter:
             if cls in {DirMovedEvent, FileMovedEvent}:
