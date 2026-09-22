@@ -301,7 +301,7 @@ to do:
 .. _source code: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
 .. _Apache License, version 2.0: https://www.apache.org/licenses/LICENSE-2.0
-.. _documentation: https://python-watchdog.readthedocs.io/
+.. _documentation: https://python-watchdog.readthedocs.io/en/latest/
 .. _stackoverflow: https://stackoverflow.com/questions/tagged/python-watchdog
 .. _repository: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
