@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import signal
 import sys
 import time
 from unittest.mock import patch
@@ -18,7 +19,7 @@ from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
 from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
-from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
 
 
@@ -127,6 +128,23 @@ def test_auto_restart_stop_signal_is_delivered(tmpdir, capfd):
 
     cap = capfd.readouterr()
     assert "+++++ stopped cleanly" in cap.out
+
+
+@pytest.mark.skipif(not platform.is_windows(), reason="CTRL_BREAK_EVENT routing is Windows-only")
+def test_kill_process_routes_sigbreak_through_ctrl_break_event():
+    """``--signal SIGBREAK`` must be routed like SIGINT, not hard-killed.
+
+    ``watchmedo.py`` turns ``--signal SIGBREAK`` into ``signal.SIGBREAK`` and
+    passes it straight to ``kill_process()``. Before this fix it fell into the
+    ``else`` branch and reached the child through a plain ``os.kill()``, which
+    Windows maps to ``TerminateProcess()`` for anything but the two console
+    control events -- the exact hard kill #1221 asked to avoid. Companion to
+    test_auto_restart_stop_signal_is_delivered above, which covers SIGINT.
+    """
+    with patch("os.kill") as mocked_kill:
+        kill_process(1234, signal.SIGBREAK)
+
+    mocked_kill.assert_called_once_with(1234, signal.CTRL_BREAK_EVENT)
 
 
 def test_shell_command_wait_for_completion(tmpdir, capfd):
