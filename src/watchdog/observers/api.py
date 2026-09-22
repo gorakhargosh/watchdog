@@ -413,7 +413,10 @@ class BaseObserver(EventDispatcher):
             :class:`ObservedWatch`
         """
         with self._lock:
-            self._handlers[watch].remove(event_handler)
+            # Use .get() rather than indexing: _handlers is a defaultdict, so
+            # indexing it here would resurrect a watch that unschedule() already
+            # removed, leaving a permanent empty-set entry behind.
+            self._handlers.get(watch, set()).remove(event_handler)
 
     def unschedule(self, watch: ObservedWatch) -> None:
         """Unschedules a watch.
