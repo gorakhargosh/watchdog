@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import ctypes
 import os
 import os.path
 import struct
+from ctypes.wintypes import DWORD
 from queue import Empty, Queue
 from time import sleep
 
@@ -18,12 +20,14 @@ from .shell import mkdir, mkdtemp, mv, rm
 if not platform.is_windows():
     pytest.skip("Windows only.", allow_module_level=True)
 
+from watchdog.observers import winapi
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
 from watchdog.observers.winapi import (
     FILE_ACTION_CREATED,
     FILE_ACTION_DELETED,
     FILE_ACTION_RENAMED_NEW_NAME,
     FILE_ACTION_RENAMED_OLD_NAME,
+    DirectoryChangeReader,
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
     _parse_event_buffer,
@@ -137,6 +141,34 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_read_directory_changes_overflow(monkeypatch):
+    """ReadDirectoryChangesW() signals a buffer overflow by succeeding while
+    leaving the bytes-returned out-param at zero (see #1019). Left unhandled,
+    that reads as "zero events", so file system changes get lost silently.
+    _run_inner() must recognize this and synthesize an overflow event instead.
+    """
+
+    def fake_read_directory_changes(*args, **kwargs):
+        # Simulate a successful call that reports zero bytes returned: the
+        # real signature writes into nbytes via an out-param, so simply not
+        # touching it (it starts at zero) reproduces the overflow condition.
+        return True
+
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesW", fake_read_directory_changes)
+
+    reader = DirectoryChangeReader(temp_dir, recursive=False)
+    event_buffer = ctypes.create_string_buffer(1024)
+    nbytes = DWORD()
+
+    reader._run_inner(1, event_buffer, nbytes)  # noqa: SLF001
+
+    buf = reader._buf_queue.get_nowait()  # noqa: SLF001
+    events = _parse_event_buffer(buf)
+    assert len(events) == 1
+    native_event = WinAPINativeEvent(*events[0])
+    assert native_event.is_overflow
 
 
 def test_drop_case_only_rename_deletions():
