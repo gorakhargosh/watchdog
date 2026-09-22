@@ -8,7 +8,7 @@ from time import sleep
 
 import pytest
 
-from watchdog.events import DirCreatedEvent, DirMovedEvent
+from watchdog.events import DirCreatedEvent, DirMovedEvent, FileMovedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
@@ -192,3 +192,38 @@ def test_parse_event_buffer_reads_the_whole_file_name(file_name):
     buffer = struct.pack("<III", 0, FILE_ACTION_CREATED, len(name)) + name
 
     assert _parse_event_buffer(buffer) == [(FILE_ACTION_CREATED, file_name)]
+
+
+def test_rename_split_across_two_batches_keeps_the_source_path(event_queue, emitter):
+    """A rename keeps its source path when its two halves arrive in different batches.
+
+    ``DirectoryChangeReader`` queues one buffer per ``ReadDirectoryChangesW()``
+    completion and ``get_events()`` returns whatever has arrived, so the
+    ``FILE_ACTION_RENAMED_OLD_NAME`` and ``FILE_ACTION_RENAMED_NEW_NAME`` records for
+    one rename are not guaranteed to reach a single ``queue_events()`` call. Pairing
+    state scoped to the call turned the second half into a move event whose
+    ``src_path`` was the empty string.
+    """
+
+    class SplitReader:
+        def __init__(self):
+            self.batches = [
+                [WinAPINativeEvent(FILE_ACTION_RENAMED_OLD_NAME, "old_name")],
+                [WinAPINativeEvent(FILE_ACTION_RENAMED_NEW_NAME, "new_name")],
+            ]
+
+        def get_events(self, timeout):
+            return self.batches.pop(0) if self.batches else []
+
+        def stop(self):
+            pass
+
+    emitter._reader = SplitReader()  # noqa: SLF001
+
+    emitter.queue_events(emitter.timeout)
+    assert event_queue.empty()
+
+    emitter.queue_events(emitter.timeout)
+    event, _ = event_queue.get_nowait()
+
+    assert event == FileMovedEvent(p("old_name"), p("new_name"))
