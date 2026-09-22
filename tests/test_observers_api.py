@@ -179,3 +179,27 @@ def test_stale_event_does_not_resurrect_an_unscheduled_watch():
     observer.dispatch_events(observer.event_queue)
 
     assert watch not in observer._handlers  # noqa: SLF001
+
+
+def test_event_dispatcher_timeout_rejects_bool():
+    """bool subclasses int; timeout=True must not silently become 1.0s."""
+    with pytest.raises(TypeError, match="timeout.*bool"):
+        EventDispatcher(timeout=True)
+    with pytest.raises(TypeError, match="timeout.*bool"):
+        EventDispatcher(timeout=False)
+
+
+def test_base_observer_timeout_rejects_bool():
+    """BaseObserver forwards timeout to EventDispatcher."""
+    with pytest.raises(TypeError, match="timeout.*bool"):
+        BaseObserver(EventEmitter, timeout=True)
+    with pytest.raises(TypeError, match="timeout.*bool"):
+        BaseObserver(EventEmitter, timeout=False)
+
+
+def test_event_emitter_timeout_rejects_bool():
+    watch = ObservedWatch("/foobar", recursive=False)
+    with pytest.raises(TypeError, match="timeout.*bool"):
+        EventEmitter(EventQueue(), watch, timeout=True)
+    with pytest.raises(TypeError, match="timeout.*bool"):
+        EventEmitter(EventQueue(), watch, timeout=False)
