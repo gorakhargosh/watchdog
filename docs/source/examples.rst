@@ -37,3 +37,13 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Custom Trick Subclass
+----------------------
+
+You can build your own long-running handler by subclassing :class:`watchdog.tricks.Trick` (rather than :class:`watchdog.events.FileSystemEventHandler` directly). Since ``Trick`` already extends ``PatternMatchingEventHandler`` and exposes ``generate_yaml()`` for scaffolding, this approach also allows the handler to be declared in a ``watchmedo`` tricks YAML file. Here is an example that tallies filesystem events by type:
+
+.. literalinclude:: examples/custom_trick.py
+    :language: python
+    :linenos:
+
