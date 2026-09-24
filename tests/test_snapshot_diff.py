@@ -6,10 +6,12 @@ import pickle
 import time
 from unittest.mock import patch
 
+import pytest
+
 from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
-from .shell import mkdir, mv, rm, touch
+from .shell import mkdir, mv, rm, symlink, touch
 
 
 def wait():
@@ -87,6 +89,35 @@ def test_move_replace(p):
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
     assert diff.files_moved == [(p("dir1", "a"), p("dir2", "b"))]
     assert diff.files_deleted == [p("dir2", "b")]
+    assert diff.files_created == []
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_create_symlink_to_existing_file(p):
+    # A new symlink shares its target's inode (the default stat follows symlinks),
+    # so it must not be mistaken for a move of the still-present target. See #1110.
+    mkdir(p("dir"))
+    touch(p("dir", "a"))
+    ref = DirectorySnapshot(p(""))
+    symlink("a", p("dir", "a.link"))
+    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
+    assert diff.files_created == [p("dir", "a.link")]
+    assert diff.files_moved == []
+    assert diff.files_deleted == []
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_delete_symlink_to_existing_file(p):
+    # Removing a symlink whose target remains must be reported as a deletion, not
+    # a move onto the target that keeps the shared inode. See #1110.
+    mkdir(p("dir"))
+    touch(p("dir", "a"))
+    symlink("a", p("dir", "a.link"))
+    ref = DirectorySnapshot(p(""))
+    rm(p("dir", "a.link"))
+    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
+    assert diff.files_deleted == [p("dir", "a.link")]
+    assert diff.files_moved == []
     assert diff.files_created == []
 
 
