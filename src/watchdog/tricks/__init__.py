@@ -256,21 +256,26 @@ class AutoRestartTrick(Trick):
             process_watcher.join()
 
     def _start_process(self) -> None:
-        if self._is_trick_stopping:
-            return
+        # Hold `_stopping_lock` (the lock `stop()` sets the flag under) across
+        # the flag check, the spawn and the `process_watcher` assignment, so
+        # `stop()` either sees the flag first and nothing is started, or
+        # captures the new `ProcessWatcher` and joins it. See #1291.
+        with self._stopping_lock:
+            if self._is_trick_stopping:
+                return
 
-        # Put the child in its own process group so `kill_process()` can reach
-        # the whole tree. POSIX uses `setsid()`, which Windows does not have;
-        # Windows uses the `CREATE_NEW_PROCESS_GROUP` creation flag, which is
-        # `0` (i.e. no-op) elsewhere.
-        self.process = subprocess.Popen(
-            self.command,
-            preexec_fn=getattr(os, "setsid", None),
-            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
-        )
-        if self.restart_on_command_exit:
-            self.process_watcher = ProcessWatcher(self.process, self._restart_process)
-            self.process_watcher.start()
+            # Put the child in its own process group so `kill_process()` can reach
+            # the whole tree. POSIX uses `setsid()`, which Windows does not have;
+            # Windows uses the `CREATE_NEW_PROCESS_GROUP` creation flag, which is
+            # `0` (i.e. no-op) elsewhere.
+            self.process = subprocess.Popen(
+                self.command,
+                preexec_fn=getattr(os, "setsid", None),
+                creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+            )
+            if self.restart_on_command_exit:
+                self.process_watcher = ProcessWatcher(self.process, self._restart_process)
+                self.process_watcher.start()
 
     def _stop_process(self) -> None:
         # Ensure the body of the function is not run in parallel in different threads.
