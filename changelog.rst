@@ -36,6 +36,7 @@ Changelog
 - [inotify] Stop watching directories moved out of a watched tree and emit synthetic deletion/moved events for their subdirectories. (`#354 <https://github.com/gorakhargosh/watchdog/issues/354>`__, thanks to @prateek-dagar)
 - [inotify] Events read before a kernel queue overflow are delivered instead of discarded, ahead of the ``EventsLostEvent``. (`#1440 <https://github.com/gorakhargosh/watchdog/issues/1440>`__, thanks to @KurathSec and @fstrasz)
 - [windows] Report lost events: when the ``ReadDirectoryChangesW`` buffer of a watch overflows, the watch gets an ``EventsLostEvent``, dispatched to ``FileSystemEventHandler.on_events_lost()``, as on inotify. (`#1440 <https://github.com/gorakhargosh/watchdog/issues/1440>`__, thanks to @fstrasz)
+- [watchmedo] ``AutoRestartTrick._start_process()`` now holds ``_stopping_lock`` across the ``_is_trick_stopping`` check, the spawn and the ``ProcessWatcher`` start, so a concurrent ``stop()`` can no longer miss a freshly started ``ProcessWatcher`` and leak its thread. (`#1291 <https://github.com/gorakhargosh/watchdog/issues/1291>`__, thanks to @akashchamp)
 
 7.1.0
 ~~~~~
