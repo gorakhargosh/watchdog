@@ -16,6 +16,7 @@ Changelog
 
 - [inotify] Reconcile recursive watches after the kernel reports an inotify queue overflow so subsequent filesystem changes are observed. (`#654 <https://github.com/gorakhargosh/watchdog/pull/654>`__)
 - [inotify] Watch directories moved into a recursively watched directory from outside of it, so that changes inside them are reported. (`#1094 <https://github.com/gorakhargosh/watchdog/issues/1094>`__)
+- [watchmedo] ``AutoRestartTrick._start_process()`` now holds ``_stopping_lock`` across the ``_is_trick_stopping`` check, the spawn and the ``ProcessWatcher`` start, so a concurrent ``stop()`` can no longer miss a freshly started ``ProcessWatcher`` and leak its thread. (`#1291 <https://github.com/gorakhargosh/watchdog/issues/1291>`__)
 
 - Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @
 
