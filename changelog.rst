@@ -35,8 +35,16 @@ Changelog
 - Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate
 - [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
 - [docs] Document that ``BaseThread`` always runs as a daemon thread, instead of inheriting ``daemon`` from the creating thread as the inherited ``threading.Thread`` documentation states. (`#1117 <https://github.com/gorakhargosh/watchdog/issues/1117>`__)
+<<<<<<< HEAD
+<<<<<<< HEAD
 - [core] Add ``win_arm64`` to the list of platform-specific wheels published to PyPI. (`#1137 <https://github.com/gorakhargosh/watchdog/issues/1137>`__)
 - [watchmedo] The ``AutoRestartTrick`` stop signal is now actually delivered on Windows. The subprocess is started in its own process group and signalled with ``CTRL_BREAK_EVENT``, so it can run cleanup handlers and its descendants are no longer orphaned on every restart. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
+=======
+- [core] The ``ShellCommandTrick`` command is now parsed with ``shlex`` and executed without a shell (``shell=False``), preventing shell injection through file names. As a consequence, shell operators (``;``, ``&&``, ``|``, ``>``, ``$(...)``) used in the command are no longer interpreted. When no command is set, events are printed directly instead of spawning an ``echo`` subprocess. (`#1181 <https://github.com/gorakhargosh/watchdog/issues/1181>`__, `#1163 <https://github.com/gorakhargosh/watchdog/issues/1163>`__)
+>>>>>>> 3278d1f (fix: prevent shell injection in ShellCommandTrick)
+=======
+- [core] The ``ShellCommandTrick`` command is now parsed with ``shlex`` and executed without a shell (``shell=False``), preventing shell injection through file names. As a consequence, shell operators (``;``, ``&&``, ``|``, ``>``, ``$(...)``) used in the command are no longer interpreted. On Windows, paths substituted into the command are quoted so that file names containing spaces arrive as a single argument. When no command is set, events are printed directly instead of spawning an ``echo`` subprocess. (`#1181 <https://github.com/gorakhargosh/watchdog/issues/1181>`__, `#1163 <https://github.com/gorakhargosh/watchdog/issues/1163>`__)
+>>>>>>> ad3d4a0 (fix: keep Windows paths with spaces as a single argument)
 
 6.0.0
 ~~~~~
