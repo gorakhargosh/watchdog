@@ -155,22 +155,23 @@ class ShellCommandTrick(Trick):
 
         # Quote substituted paths so that spaces and shell metacharacters in
         # file names are kept as-is; the command is run without a shell.
+        # Paths from OS APIs may be bytes; decode to str first.
+        src_path = event.src_path
+        if isinstance(src_path, bytes):
+            src_path = src_path.decode(sys.getfilesystemencoding(), errors="replace")
+        dest_path = dest_path
+        if isinstance(dest_path, bytes):
+            dest_path = dest_path.decode(sys.getfilesystemencoding(), errors="replace")
+
         if platform.is_windows():
             # ``shlex.split(posix=False)`` preserves backslashes in Windows
             # paths, but it still splits on spaces. Wrap the path in double
             # quotes (the ``_strip_quoting_marks`` pass below removes them) so
             # paths containing spaces arrive as a single argument.
-            # Paths from Windows API may be bytes; decode to str first.
-            src_path = event.src_path
-            if isinstance(src_path, bytes):
-                src_path = src_path.decode(sys.getfilesystemencoding(), errors="replace")
-            dest_path = dest_path
-            if isinstance(dest_path, bytes):
-                dest_path = dest_path.decode(sys.getfilesystemencoding(), errors="replace")
             src_path = '"' + src_path.replace('"', "") + '"'
             dest_path = '"' + dest_path.replace('"', "") + '"' if dest_path else dest_path
         else:
-            src_path = shlex.quote(event.src_path)
+            src_path = shlex.quote(src_path)
             dest_path = shlex.quote(dest_path)
 
         context = {
