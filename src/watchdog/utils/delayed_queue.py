@@ -14,6 +14,15 @@ T = TypeVar("T")
 
 
 class DelayedQueue(Generic[T]):
+    """A thread-safe first-in, first-out queue that can hold items back.
+
+    Items added with ``delay=True`` are not returned by :meth:`get` until
+    ``delay`` seconds have passed since they were added.
+
+    :param delay:
+        Number of seconds a delayed item must wait before it can be retrieved.
+    """
+
     def __init__(self, delay: float) -> None:
         self.delay_sec = delay
         self._lock = threading.Lock()
