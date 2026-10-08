@@ -380,7 +380,6 @@ class BaseObserver(EventDispatcher):
         """
         with self._lock:
             watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
-            self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
             if watch not in self._emitter_for_watch:
@@ -394,6 +393,7 @@ class BaseObserver(EventDispatcher):
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
+            self._add_handler_for_watch(event_handler, watch)
             self._watches.add(watch)
         return watch
 
