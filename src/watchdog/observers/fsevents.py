@@ -79,11 +79,14 @@ class FSEventsEmitter(EventEmitter):
         self._start_time = 0.0
         self._starting_state: DirectorySnapshot | None = None
         self._lock = threading.Lock()
+        self._stream = _fsevents.Stream([self.watch.path])
+        # Thread._started is set before run(), so native readiness needs its own event.
+        self._stream_started = threading.Event()
+        self._startup_error: BaseException | None = None
         self._absolute_watch_path = os.path.realpath(os.path.abspath(os.path.expanduser(self.watch.path)))
 
     def on_thread_stop(self) -> None:
-        _fsevents.remove_watch(self.watch)
-        _fsevents.stop(self)
+        self._stream.stop()
 
     def queue_event(self, event: FileSystemEvent) -> None:
         # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
@@ -302,14 +305,28 @@ class FSEventsEmitter(EventEmitter):
         except Exception:
             logger.exception("Unhandled exception in fsevents callback")
 
+    def start(self) -> None:
+        super().start()
+        self._stream_started.wait()
+        error = self._startup_error
+        self._startup_error = None
+        if error is not None:
+            self.join()
+            raise error
+
     def run(self) -> None:
-        self.pathnames = [self.watch.path]
         self._start_time = time.monotonic()
         try:
-            _fsevents.add_watch(self, self.watch, self.events_callback, self.pathnames)
-            _fsevents.read_events(self)
-        except Exception:
-            logger.exception("Unhandled exception in FSEventsEmitter")
+            self._stream.run(self.events_callback, self._stream_started.set)
+        except BaseException as error:
+            if not self._stream_started.is_set():
+                self._startup_error = error
+            elif isinstance(error, Exception):
+                logger.exception("Unhandled exception in FSEventsEmitter")
+            else:
+                raise
+        finally:
+            self._stream_started.set()
 
     def on_thread_start(self) -> None:
         if self.suppress_history:
