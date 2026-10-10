@@ -93,11 +93,26 @@ class DirectorySnapshotDiff:
                 created.add(path)
                 deleted.add(path)
 
+        if ignore_device:
+            # Retain each snapshot's canonical path when hard links share an inode.
+            ref_paths = {ref.inode(path)[0]: ref.path(ref.inode(path)) for path in ref.paths}
+            snapshot_paths = {snapshot.inode(path)[0]: snapshot.path(snapshot.inode(path)) for path in snapshot.paths}
+
+            def get_ref_path(uid: tuple[int, int]) -> bytes | str | None:
+                return ref.path(uid) or ref_paths.get(uid[0])
+
+            def get_snapshot_path(uid: tuple[int, int]) -> bytes | str | None:
+                return snapshot.path(uid) or snapshot_paths.get(uid[0])
+
+        else:
+            get_ref_path = ref.path
+            get_snapshot_path = snapshot.path
+
         # find moved paths
         moved: set[tuple[bytes | str, bytes | str]] = set()
         for path in set(deleted):
             inode = ref.inode(path)
-            new_path = snapshot.path(inode)
+            new_path = get_snapshot_path(inode)
             if new_path:
                 # file is not deleted but moved
                 deleted.remove(path)
@@ -105,7 +120,7 @@ class DirectorySnapshotDiff:
 
         for path in set(created):
             inode = snapshot.inode(path)
-            old_path = ref.path(inode)
+            old_path = get_ref_path(inode)
             if old_path:
                 created.remove(path)
                 moved.add((old_path, path))
