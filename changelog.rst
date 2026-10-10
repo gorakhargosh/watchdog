@@ -14,6 +14,7 @@ Changelog
 
 **Other Changes**
 
+- [core] Do not retain an event handler when ``Observer.schedule()`` fails to create or start its emitter.
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
 - [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
