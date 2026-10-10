@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
 import time
 from unittest.mock import patch
 
@@ -265,6 +266,58 @@ def test_auto_restart_subprocess_termination(tmpdir, capfd, restart_on_command_e
     else:
         assert cap.out.splitlines(keepends=False).count("+++++ 0") == 1
         assert trick.restart_count == 0
+
+
+def test_auto_restart_start_process_guards_stopping_flag_with_lock(tmpdir):
+    """`_start_process()` must check `_is_trick_stopping` under `_stopping_lock`.
+
+    Regression test for #1291. With `restart_on_command_exit=True`,
+    `_restart_process` runs on the `ProcessWatcher` thread and calls
+    `_start_process()`, whose guard used to read `_is_trick_stopping`
+    without `_stopping_lock` -- while `stop()` sets that flag under the
+    lock. A `_start_process()` call squeezed into the tiny window between
+    `stop()` acquiring the lock and setting the flag could see a stale
+    `False`, spawn a fresh `ProcessWatcher` that `stop()` never captures,
+    and leak that thread.
+
+    This reproduces that window deterministically with two `threading.Event`s
+    instead of racing real timing: a helper thread holds `_stopping_lock`
+    (mirroring `stop()`'s own critical section) while `_start_process()` runs
+    concurrently on another thread. If the guard is unguarded, it spawns a
+    real subprocess while the lock is still held; if it is guarded, it
+    blocks on the lock and, once the flag is visible, starts nothing.
+    """
+    script = make_dummy_script(tmpdir, n=1)
+    trick = AutoRestartTrick([sys.executable, script], restart_on_command_exit=False)
+
+    lock_acquired = threading.Event()
+    release_lock = threading.Event()
+
+    def hold_lock_then_set_flag() -> None:
+        with trick._stopping_lock:  # noqa: SLF001
+            lock_acquired.set()
+            release_lock.wait(timeout=5)
+            trick._is_trick_stopping = True  # noqa: SLF001
+
+    holder = threading.Thread(target=hold_lock_then_set_flag)
+    starter = threading.Thread(target=trick._start_process)  # noqa: SLF001
+    try:
+        holder.start()
+        assert lock_acquired.wait(timeout=5), "helper thread never acquired _stopping_lock"
+
+        starter.start()
+        # Give `_start_process()` a real chance to race ahead. A guarded
+        # read blocks here, waiting on `_stopping_lock`.
+        time.sleep(0.3)
+        assert starter.is_alive(), "_start_process() did not block on _stopping_lock"
+        assert trick.process is None, "a process was started while stop()'s lock window was still open"
+    finally:
+        release_lock.set()
+        holder.join(timeout=5)
+        starter.join(timeout=5)
+
+    assert trick.process is None, "_start_process() must not start a process once _is_trick_stopping is set"
+    assert trick.process_watcher is None
 
 
 def test_auto_restart_arg_parsing_basic():

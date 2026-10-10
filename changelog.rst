@@ -14,6 +14,7 @@ Changelog
 
 **Other Changes**
 
+- [watchmedo] ``AutoRestartTrick._start_process()`` now checks ``_is_trick_stopping`` under ``_stopping_lock``, matching ``stop()``'s own guard. The unguarded read let a ``_start_process()`` call racing a concurrent ``stop()`` start a fresh ``ProcessWatcher`` that ``stop()`` never captured and so never joined, leaking that thread. (`#1291 <https://github.com/gorakhargosh/watchdog/issues/1291>`__)
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
 - [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)

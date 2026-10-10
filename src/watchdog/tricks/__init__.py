@@ -256,8 +256,14 @@ class AutoRestartTrick(Trick):
             process_watcher.join()
 
     def _start_process(self) -> None:
-        if self._is_trick_stopping:
-            return
+        # Guard the check with the same lock `stop()` sets the flag under
+        # (see `stop()` and `_stop_process()` above). Without it, this read
+        # can observe a stale `False` while `stop()` is concurrently
+        # flipping the flag, so a `ProcessWatcher` started right after is
+        # never captured by `stop()` and so never joined. See #1291.
+        with self._stopping_lock:
+            if self._is_trick_stopping:
+                return
 
         # Put the child in its own process group so `kill_process()` can reach
         # the whole tree. POSIX uses `setsid()`, which Windows does not have;
