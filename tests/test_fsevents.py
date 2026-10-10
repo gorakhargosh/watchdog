@@ -677,7 +677,7 @@ def test_recursive_check_accepts_relative_paths(p: P) -> None:
     using ".". Since the watch path wasn't normalized then that failed.
     This test emulates the scenario.
     """
-    from watchdog.events import FileCreatedEvent, FileModifiedEvent, PatternMatchingEventHandler
+    from watchdog.events import FileAttribEvent, FileCreatedEvent, PatternMatchingEventHandler
 
     class TestEventHandler(PatternMatchingEventHandler):
         def __init__(self, *args, **kwargs):
@@ -686,7 +686,7 @@ def test_recursive_check_accepts_relative_paths(p: P) -> None:
             # as such we won't get a DirModifiedEvent(p()) here.
             self.expected_events = [
                 FileCreatedEvent(p("foo.json")),
-                FileModifiedEvent(p("foo.json")),
+                FileAttribEvent(p("foo.json")),
             ]
             self.observed_events = set()
 

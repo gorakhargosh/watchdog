@@ -10,10 +10,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
     FileCreatedEvent,
@@ -24,7 +26,7 @@ from watchdog.events import (
 )
 from watchdog.utils import platform
 
-from .shell import mkdir, mkfile, mv, rm, touch
+from .shell import chmod, mkdir, mkfile, mv, rm, touch
 
 if TYPE_CHECKING:
     from .utils import EventsChecker, P, StartWatching, TestEventQueue
@@ -127,11 +129,13 @@ def test_modify(
 
     with events_checker() as ec:
         if platform.is_darwin():
+            ec.add(FileAttribEvent, "a")
+        elif platform.is_windows():
             ec.add(FileModifiedEvent, "a")
         else:
             if platform.is_linux():
                 ec.add(FileOpenedEvent, "a")
-            ec.add(FileModifiedEvent, "a")
+            ec.add(FileAttribEvent, "a")
             if platform.is_linux():
                 ec.add(FileClosedEvent, "a")
             if not platform.is_windows():
@@ -147,7 +151,10 @@ def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching,
     os.chmod(p("a"), stat.S_IREAD)
 
     with events_checker() as ec:
-        ec.add(FileModifiedEvent, "a")
+        if platform.is_windows():
+            ec.add(FileModifiedEvent, "a")
+        else:
+            ec.add(FileAttribEvent, "a")
 
     # Reset permissions to allow cleanup.
     os.chmod(p("a"), stat.S_IWRITE)
@@ -391,7 +398,7 @@ def test_recursive_on(
         if platform.is_darwin():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
-            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+            ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
         elif platform.is_windows():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
@@ -403,7 +410,7 @@ def test_recursive_on(
                 ec.add(FileOpenedEvent, "dir1/dir2/dir3/a")
 
             if not platform.is_bsd():
-                ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+                ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
 
             if platform.is_linux():
                 ec.add(FileClosedEvent, "dir1/dir2/dir3/a")
@@ -537,7 +544,10 @@ def test_move_nested_subdirectories(
     with events_checker() as ec:
         if platform.is_linux():
             ec.add(FileOpenedEvent, "dir2/dir3/a")
-        ec.add(FileModifiedEvent, "dir2/dir3/a")
+        if platform.is_windows():
+            ec.add(FileModifiedEvent, "dir2/dir3/a")
+        else:
+            ec.add(FileAttribEvent, "dir2/dir3/a")
         if platform.is_linux():
             ec.add(FileClosedEvent, "dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir2/dir3")
@@ -598,7 +608,7 @@ def test_file_lifecyle(
             ec.add(DirModifiedEvent, ".")
 
             ec.add(FileOpenedEvent, "a")
-            ec.add(FileModifiedEvent, "a")
+            ec.add(FileAttribEvent, "a")
             ec.add(FileClosedEvent, "a")
             ec.add(DirModifiedEvent, ".")
 
@@ -610,6 +620,33 @@ def test_file_lifecyle(
             ec.add(DirModifiedEvent, ".")
         else:
             ec.add(FileCreatedEvent, "a")
-            ec.add(FileModifiedEvent, "a")
+            if platform.is_windows():
+                ec.add(FileModifiedEvent, "a")
+            else:
+                ec.add(FileAttribEvent, "a")
             ec.add(FileMovedEvent, "a", dest_path="b")
             ec.add(FileDeletedEvent, "b")
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="FileAttribEvent isn't supported in Windows")
+def test_chmod_file(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    mkfile(p("newfile"))
+    start_watching()
+
+    chmod(p("newfile"), 0o777)
+    with events_checker() as ec:
+        ec.add(FileAttribEvent, "newfile")
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="DirAttribEvent isn't supported in Windows")
+def test_chmod_dir(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    mkdir(p("dir1"))
+    start_watching()
+
+    chmod(p("dir1"), 0o777)
+    with events_checker() as ec:
+        ec.add(DirAttribEvent, "dir1")
