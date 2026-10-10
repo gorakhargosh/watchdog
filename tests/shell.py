@@ -101,6 +101,11 @@ def msize(path):
     os.utime(path, (0, 0))
 
 
+def chmod(path, mode):
+    """Change file mode bits."""
+    os.chmod(path, mode)
+
+
 def mount_tmpfs(path):
     os.system(f"sudo mount -t tmpfs none {path}")
 
