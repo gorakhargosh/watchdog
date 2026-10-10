@@ -14,6 +14,7 @@ Changelog
 
 **Other Changes**
 
+- [core] ``case_sensitive=False`` matching now really ignores case on Python < 3.13. The ``PurePath.full_match()`` fallback compiled its regex without ``re.IGNORECASE``, so only the patterns were lower-cased and a path such as ``FOO.PY`` never matched ``**/*.py``. (`#1263 <https://github.com/gorakhargosh/watchdog/pull/1263>`__)
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
 - [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
