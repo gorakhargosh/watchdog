@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import tempfile
+import warnings
+
+import pytest
 
 from watchdog.events import (
     EVENT_TYPE_ATTRIB,
@@ -282,3 +285,82 @@ def test_generate_sub_moved_events_repeated_dirname():
 
         assert len(file_events) == 1
         assert file_events[0].src_path == os.path.join(src_root, "data", "file.txt")
+
+
+def test_attrib_event_fallback_warning():
+    """When on_attrib is not implemented but on_modified is,
+    a FutureWarning is raised and on_modified is called as fallback.
+    """
+    called_with = None
+
+    class LegacyHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            nonlocal called_with
+            called_with = event
+
+    handler = LegacyHandler()
+    attrib_event = FileAttribEvent("/path/to/file")
+
+    with pytest.warns(
+        FutureWarning,
+        match=r"^Received FileAttribEvent for .*\. In watchdog 8\.0\.0",
+    ):
+        handler.dispatch(attrib_event)
+
+    assert called_with is not None
+    assert isinstance(called_with, FileModifiedEvent)
+    assert called_with.src_path == "/path/to/file"
+
+
+def test_attrib_event_no_fallback_when_overridden():
+    """When on_attrib is implemented, on_attrib is called directly,
+    no warning is raised, and on_modified is NOT called.
+    """
+    attrib_called = None
+    modified_called = False
+
+    class ModernHandler(FileSystemEventHandler):
+        def on_attrib(self, event):
+            nonlocal attrib_called
+            attrib_called = event
+
+        def on_modified(self, event):
+            nonlocal modified_called
+            modified_called = True
+
+    handler = ModernHandler()
+    attrib_event = FileAttribEvent("/path/to/file")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        handler.dispatch(attrib_event)
+
+    assert attrib_called == attrib_event
+    assert not modified_called
+
+
+def test_dir_attrib_event_fallback_warning():
+    """When on_attrib is not implemented but on_modified is,
+    a DirAttribEvent triggers a FutureWarning and on_modified is called
+    with a DirModifiedEvent.
+    """
+    called_with = None
+
+    class LegacyHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            nonlocal called_with
+            called_with = event
+
+    handler = LegacyHandler()
+    attrib_event = DirAttribEvent("/path/to/dir")
+
+    with pytest.warns(
+        FutureWarning,
+        match=r"^Received DirAttribEvent for .*\. In watchdog 8\.0\.0",
+    ):
+        handler.dispatch(attrib_event)
+
+    assert called_with is not None
+    assert isinstance(called_with, DirModifiedEvent)
+    assert called_with.src_path == "/path/to/dir"
+    assert called_with.is_directory is True
