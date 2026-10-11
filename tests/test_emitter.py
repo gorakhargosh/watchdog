@@ -125,7 +125,7 @@ def test_modify(
     mkfile(p("a"))
     start_watching()
 
-    with open(p("a"), "wb") as f:
+    with open(p("a"), "rb+") as f:
         f.write(b"data")
 
     with events_checker() as ec:
@@ -151,7 +151,10 @@ def test_touch(p: P, event_queue: TestEventQueue, start_watching: StartWatching,
         if platform.is_linux():
             ec.add(FileOpenedEvent, "a")
 
-        ec.add(FileAttribEvent, "a")
+        if platform.is_windows():
+            ec.add(FileModifiedEvent, "a")
+        else:
+            ec.add(FileAttribEvent, "a")
 
         if platform.is_linux():
             ec.add(FileClosedEvent, "a")
@@ -162,6 +165,7 @@ def test_touch(p: P, event_queue: TestEventQueue, start_watching: StartWatching,
 
 def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     mkfile(p("a"))
+    os.utime(p("a"), (1000, 1000))
     start_watching()
 
     # Note: We use S_IREAD here because chmod on Windows only
@@ -416,7 +420,7 @@ def test_recursive_on(
             ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
         elif platform.is_windows():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
-            ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
+            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
         else:
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
@@ -517,7 +521,7 @@ def test_renaming_top_level_directory(
         if platform.is_windows():
             ec.add(DirMovedEvent, "a", dest_path="a2")
             ec.add(DirMovedEvent, "a/b", dest_path="a2/b")
-            ec.add(DirModifiedEvent, "a2")
+            ec.add(DirAttribEvent, "a2")
         else:
             ec.add(DirMovedEvent, "a", dest_path="a2")
             ec.add(DirModifiedEvent, ".")
@@ -585,7 +589,7 @@ def test_move_nested_subdirectories_on_windows(
         ec.add(DirCreatedEvent, "dir2")
         ec.add(DirCreatedEvent, "dir2/dir3")
         ec.add(FileCreatedEvent, "dir2/dir3/a")
-        ec.add(DirModifiedEvent, "dir2")
+        ec.add(DirAttribEvent, "dir2")
         if False:
             # The following event is not consistently generated.
             ec.add(DirModifiedEvent, "dir2/dir3")
@@ -632,7 +636,10 @@ def test_file_lifecyle(
             ec.add(DirModifiedEvent, ".")
         else:
             ec.add(FileCreatedEvent, "a")
-            ec.add(FileAttribEvent, "a")
+            if platform.is_windows():
+                ec.add(FileModifiedEvent, "a")
+            else:
+                ec.add(FileAttribEvent, "a")
             ec.add(FileMovedEvent, "a", dest_path="b")
             ec.add(FileDeletedEvent, "b")
 
@@ -641,6 +648,7 @@ def test_chmod_file(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
     mkfile(p("newfile"))
+    os.utime(p("newfile"), (1000, 1000))
     start_watching()
 
     chmod(p("newfile"), stat.S_IREAD if platform.is_windows() else 0o777)
@@ -660,6 +668,8 @@ def test_chmod_dir(
     chmod(p("dir1"), stat.S_IREAD if platform.is_windows() else 0o777)
     with events_checker() as ec:
         ec.add(DirAttribEvent, "dir1")
+        if platform.is_linux():
+            ec.add(DirAttribEvent, "dir1")
 
     if platform.is_windows():
         chmod(p("dir1"), stat.S_IWRITE)
