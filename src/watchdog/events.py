@@ -92,6 +92,7 @@ from __future__ import annotations
 import logging
 import os.path
 import re
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -155,7 +156,12 @@ class FileModifiedEvent(FileSystemEvent):
 
 
 class FileAttribEvent(FileSystemEvent):
-    """File system event representing file metadata modification on the file system."""
+    """File system event representing file metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), and BSD.
+    On Windows, the standard ``ReadDirectoryChangesW`` API reports attribute and timestamp
+    modifications as ``FILE_ACTION_MODIFIED``, so ``FileModifiedEvent`` is emitted instead.
+    """
 
     event_type = EVENT_TYPE_ATTRIB
 
@@ -215,7 +221,12 @@ class DirModifiedEvent(FileSystemEvent):
 
 
 class DirAttribEvent(FileSystemEvent):
-    """File system event representing directory metadata modification on the file system."""
+    """File system event representing directory metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), and BSD.
+    On Windows, the standard ``ReadDirectoryChangesW`` API reports attribute and timestamp
+    modifications as ``FILE_ACTION_MODIFIED``, so ``DirModifiedEvent`` is emitted instead.
+    """
 
     event_type = EVENT_TYPE_ATTRIB
     is_directory = True
@@ -301,6 +312,21 @@ class FileSystemEventHandler:
         :type event:
             :class:`watchdog.events.DirAttribEvent` or :class:`watchdog.events.FileAttribEvent`
         """
+        if (
+            type(self).on_attrib is FileSystemEventHandler.on_attrib
+            and type(self).on_modified is not FileSystemEventHandler.on_modified
+        ):
+            warnings.warn(
+                f"Received {type(event).__name__} for {event.src_path!r}. "
+                "In watchdog 8.0.0, metadata attribute changes will no longer trigger on_modified(). "
+                "Implement on_attrib() to handle attribute events.",
+                category=FutureWarning,
+                stacklevel=2,
+            )
+            if event.is_directory:
+                self.on_modified(DirModifiedEvent(event.src_path))
+            else:
+                self.on_modified(FileModifiedEvent(event.src_path))
 
     def on_closed(self, event: FileClosedEvent) -> None:
         """Called when a file opened for writing is closed.

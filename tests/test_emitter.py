@@ -125,21 +125,39 @@ def test_modify(
     mkfile(p("a"))
     start_watching()
 
+    with open(p("a"), "wb") as f:
+        f.write(b"data")
+
+    with events_checker() as ec:
+        if platform.is_linux():
+            ec.add(FileOpenedEvent, "a")
+
+        ec.add(FileModifiedEvent, "a")
+
+        if platform.is_linux():
+            ec.add(FileClosedEvent, "a")
+
+        if not platform.is_windows() and not platform.is_darwin():
+            ec.add(DirModifiedEvent, ".")
+
+
+def test_touch(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
+    mkfile(p("a"))
+    start_watching()
+
     touch(p("a"))
 
     with events_checker() as ec:
-        if platform.is_darwin():
-            ec.add(FileAttribEvent, "a")
-        elif platform.is_windows():
-            ec.add(FileModifiedEvent, "a")
-        else:
-            if platform.is_linux():
-                ec.add(FileOpenedEvent, "a")
-            ec.add(FileAttribEvent, "a")
-            if platform.is_linux():
-                ec.add(FileClosedEvent, "a")
-            if not platform.is_windows():
-                ec.add(DirModifiedEvent, ".")
+        if platform.is_linux():
+            ec.add(FileOpenedEvent, "a")
+
+        ec.add(FileAttribEvent, "a")
+
+        if platform.is_linux():
+            ec.add(FileClosedEvent, "a")
+
+        if not platform.is_windows() and not platform.is_darwin():
+            ec.add(DirModifiedEvent, ".")
 
 
 def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
@@ -151,10 +169,7 @@ def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching,
     os.chmod(p("a"), stat.S_IREAD)
 
     with events_checker() as ec:
-        if platform.is_windows():
-            ec.add(FileModifiedEvent, "a")
-        else:
-            ec.add(FileAttribEvent, "a")
+        ec.add(FileAttribEvent, "a")
 
     # Reset permissions to allow cleanup.
     os.chmod(p("a"), stat.S_IWRITE)
@@ -401,7 +416,7 @@ def test_recursive_on(
             ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
         elif platform.is_windows():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
-            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+            ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
         else:
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
@@ -544,10 +559,7 @@ def test_move_nested_subdirectories(
     with events_checker() as ec:
         if platform.is_linux():
             ec.add(FileOpenedEvent, "dir2/dir3/a")
-        if platform.is_windows():
-            ec.add(FileModifiedEvent, "dir2/dir3/a")
-        else:
-            ec.add(FileAttribEvent, "dir2/dir3/a")
+        ec.add(FileAttribEvent, "dir2/dir3/a")
         if platform.is_linux():
             ec.add(FileClosedEvent, "dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir2/dir3")
@@ -620,33 +632,34 @@ def test_file_lifecyle(
             ec.add(DirModifiedEvent, ".")
         else:
             ec.add(FileCreatedEvent, "a")
-            if platform.is_windows():
-                ec.add(FileModifiedEvent, "a")
-            else:
-                ec.add(FileAttribEvent, "a")
+            ec.add(FileAttribEvent, "a")
             ec.add(FileMovedEvent, "a", dest_path="b")
             ec.add(FileDeletedEvent, "b")
 
 
-@pytest.mark.skipif(platform.is_windows(), reason="FileAttribEvent isn't supported in Windows")
 def test_chmod_file(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
     mkfile(p("newfile"))
     start_watching()
 
-    chmod(p("newfile"), 0o777)
+    chmod(p("newfile"), stat.S_IREAD if platform.is_windows() else 0o777)
     with events_checker() as ec:
         ec.add(FileAttribEvent, "newfile")
 
+    if platform.is_windows():
+        chmod(p("newfile"), stat.S_IWRITE)
 
-@pytest.mark.skipif(platform.is_windows(), reason="DirAttribEvent isn't supported in Windows")
+
 def test_chmod_dir(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
     mkdir(p("dir1"))
     start_watching()
 
-    chmod(p("dir1"), 0o777)
+    chmod(p("dir1"), stat.S_IREAD if platform.is_windows() else 0o777)
     with events_checker() as ec:
         ec.add(DirAttribEvent, "dir1")
+
+    if platform.is_windows():
+        chmod(p("dir1"), stat.S_IWRITE)
