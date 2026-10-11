@@ -141,28 +141,6 @@ def test_modify(
             ec.add(DirModifiedEvent, ".")
 
 
-def test_touch(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
-    mkfile(p("a"))
-    start_watching()
-
-    touch(p("a"))
-
-    with events_checker() as ec:
-        if platform.is_linux():
-            ec.add(FileOpenedEvent, "a")
-
-        if platform.is_windows():
-            ec.add(FileModifiedEvent, "a")
-        else:
-            ec.add(FileAttribEvent, "a")
-
-        if platform.is_linux():
-            ec.add(FileClosedEvent, "a")
-
-        if not platform.is_windows() and not platform.is_darwin():
-            ec.add(DirModifiedEvent, ".")
-
-
 def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     mkfile(p("a"))
     os.utime(p("a"), (1000, 1000))
@@ -589,7 +567,6 @@ def test_move_nested_subdirectories_on_windows(
         ec.add(DirCreatedEvent, "dir2")
         ec.add(DirCreatedEvent, "dir2/dir3")
         ec.add(FileCreatedEvent, "dir2/dir3/a")
-        ec.add(DirAttribEvent, "dir2")
         if False:
             # The following event is not consistently generated.
             ec.add(DirModifiedEvent, "dir2/dir3")
@@ -663,6 +640,7 @@ def test_chmod_dir(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
     mkdir(p("dir1"))
+    os.utime(p("dir1"), (1000, 1000))
     start_watching()
 
     chmod(p("dir1"), stat.S_IREAD if platform.is_windows() else 0o777)

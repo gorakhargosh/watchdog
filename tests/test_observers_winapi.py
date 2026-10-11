@@ -23,6 +23,7 @@ from watchdog.observers.read_directory_changes import WindowsApiEmitter
 from watchdog.observers.winapi import (
     FILE_ACTION_CREATED,
     FILE_ACTION_DELETED,
+    FILE_ACTION_DELETED_SELF,
     FILE_ACTION_MODIFIED,
     FILE_ACTION_RENAMED_NEW_NAME,
     FILE_ACTION_RENAMED_OLD_NAME,
@@ -272,10 +273,8 @@ def test_winapi_native_event_is_attrib():
 def test_generate_observed_path_deleted_event():
     buf_extended = _generate_observed_path_deleted_event(extended=True)
     events_extended = _parse_extended_event_buffer(buf_extended)
-    assert len(events_extended) == 1
-    assert events_extended[0][1] == "."
+    assert events_extended == [(FILE_ACTION_DELETED_SELF, ".", False)]
 
     buf_standard = _generate_observed_path_deleted_event(extended=False)
     events_standard = _parse_event_buffer(buf_standard)
-    assert len(events_standard) == 1
-    assert events_standard[0][1] == "."
+    assert events_standard == [(FILE_ACTION_DELETED_SELF, ".")]
