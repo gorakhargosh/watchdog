@@ -76,10 +76,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, cast
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
     FileCreatedEvent,
@@ -467,7 +469,10 @@ class InotifyEmitter(EventEmitter):
                 if event.ev.is_directory and self.watch.is_recursive:
                     for sub_created_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_created_event)
-            elif event.ev.is_attrib or event.ev.is_modify:
+            elif event.ev.is_attrib:
+                cls = _select_event_type(DirAttribEvent, FileAttribEvent, is_directory=event.ev.is_directory)
+                self.queue_event(cls(src_path))
+            elif event.ev.is_modify:
                 cls = _select_event_type(DirModifiedEvent, FileModifiedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
             elif event.ev.is_delete or (event.ev.is_moved_from and not full_events):
