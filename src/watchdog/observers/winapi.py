@@ -389,10 +389,12 @@ def _generate_observed_path_deleted_event(*, extended: bool = False) -> bytes:
     :returns:
         A byte buffer containing the synthetic deleted-self event record.
     """
-    path = ctypes.create_unicode_buffer(".")
-    event: FileNotifyExtendedInformation | FileNotifyInformation
+    path_bytes = ".".encode("utf-16-le")
+    byte_len = len(path_bytes)
+    buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
+    offset: int
     if extended:
-        event = FileNotifyExtendedInformation(
+        header = FileNotifyExtendedInformation(
             0,
             FILE_ACTION_DELETED_SELF,
             0,
@@ -405,15 +407,18 @@ def _generate_observed_path_deleted_event(*, extended: bool = False) -> bytes:
             0,
             0,
             0,
-            len(path),
-            path.value.encode("utf-8"),
+            byte_len,
+            b"",
         )
+        offset = FileNotifyExtendedInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header), offset)
     else:
-        event = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
-    event_size = ctypes.sizeof(event)
-    buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
-    ctypes.memmove(buff, ctypes.addressof(event), event_size)
-    return buff.raw[:event_size]
+        header_fni = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, byte_len, b"")
+        offset = FileNotifyInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header_fni), offset)
+    ctypes.memmove(ctypes.addressof(buff) + offset, path_bytes, byte_len)
+    total_size = offset + byte_len
+    return buff.raw[:total_size]
 
 
 def _get_directory_handle(path: str) -> HANDLE:

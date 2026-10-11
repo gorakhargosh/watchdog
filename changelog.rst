@@ -14,7 +14,7 @@ Changelog
 
 **Other Changes**
 
-- [core] Added ``FileAttribEvent`` and ``DirAttribEvent`` for file and directory metadata modifications (such as permissions or timestamps), separate from content modifications. Legacy handlers falling back to ``on_modified()`` emit a ``FutureWarning`` until watchdog 8.0.0. On Windows 10 (1709+) and Windows Server 2016+, ``ReadDirectoryChangesExW`` is used to differentiate attribute modifications, with graceful fallback to ``ReadDirectoryChangesW`` on older versions or unsupported file shares. (`#800 <https://github.com/gorakhargosh/watchdog/pull/800>`__)
+- [core] Added ``FileAttribEvent`` and ``DirAttribEvent`` for file and directory metadata modifications (such as permissions or timestamps), separate from content modifications. Legacy handlers falling back to ``on_modified()`` emit a ``FutureWarning`` until watchdog 8.0.0. On Windows 10 (1709+) and Windows Server 2016+, ``ReadDirectoryChangesExW`` is used to differentiate attribute modifications, with graceful fallback to ``ReadDirectoryChangesW`` on older versions or unsupported file shares. (`#260 <https://github.com/gorakhargosh/watchdog/issues/260>`__)
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
 - [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
