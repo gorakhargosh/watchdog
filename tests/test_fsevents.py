@@ -424,6 +424,7 @@ def test_stream_callback_failure_terminates_stream(p: P) -> None:
 
     sys.unraisablehook = hook
     try:
+
         def faulty_cb(*args) -> None:
             message = "callback failure test"
             raise RuntimeError(message)
