@@ -302,13 +302,20 @@ class BaseObserver(EventDispatcher):
         return self._emitters
 
     def start(self) -> None:
-        for emitter in self._emitters.copy():
-            try:
+        """Start the observer and its emitters.
+
+        If startup fails, all watches are unscheduled and their emitters stopped.
+        Corrected watches can be scheduled before retrying startup.
+        """
+        try:
+            for emitter in self._emitters.copy():
                 emitter.start()
-            except Exception:
-                self._remove_emitter(emitter)
-                raise
-        super().start()
+            super().start()
+        except Exception:
+            # Threads cannot be restarted. Release all watches if startup fails,
+            # including emitters that started before the failing one.
+            self.unschedule_all()
+            raise
 
     def __enter__(self) -> Self:
         """Context manager entry. Starts the observer if not already running."""

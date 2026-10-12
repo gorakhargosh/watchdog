@@ -236,3 +236,49 @@ def test_context_manager_with_scheduled_watches():
 
     assert not obs.is_alive()
     assert not emitter.is_alive()
+
+
+@pytest.mark.parametrize("failure_at", [1, 2, 3])
+def test_start_failure_stops_all_emitters(observer, failure_at):
+    """A failed startup releases every watch, including emitters already running."""
+    for path in ("first", "second", "third"):
+        observer.schedule(FileSystemEventHandler(), path)
+    emitters = observer.emitters.copy()
+    original_start = EventEmitter.start
+    started = []
+
+    def failing_start(emitter):
+        if len(started) + 1 == failure_at:
+            message = "emitter startup failed"
+            raise OSError(message)
+        original_start(emitter)
+        started.append(emitter)
+
+    with patch.object(EventEmitter, "start", new=failing_start), pytest.raises(OSError, match="emitter startup failed"):
+        observer.start()
+
+    assert len(started) == failure_at - 1
+    assert not any(emitter.is_alive() for emitter in emitters)
+    assert not observer.emitters
+
+    # The dispatcher has not started; retrying with a corrected watch is safe.
+    observer.schedule(FileSystemEventHandler(), "corrected")
+    observer.start()
+    assert observer.is_alive()
+    assert len(observer.emitters) == 1
+
+
+def test_context_manager_start_failure_stops_emitters(observer):
+    """__exit__ is not called when entering the context fails."""
+    observer.schedule(FileSystemEventHandler(), "first")
+    (emitter,) = observer.emitters
+
+    with (
+        patch("watchdog.observers.api.EventDispatcher.start", side_effect=OSError("dispatcher startup failed")),
+        pytest.raises(OSError, match="dispatcher startup failed"),
+        observer,
+    ):
+        pytest.fail("failed startup must not enter the context")
+
+    assert not emitter.is_alive()
+    assert not observer.emitters

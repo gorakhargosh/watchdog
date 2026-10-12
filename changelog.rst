@@ -14,6 +14,8 @@ Changelog
 
 **Other Changes**
 
+- [core] Stop and release all emitters when observer startup fails, including emitters started before the failure. Watches can be rescheduled before retrying startup.
+
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
 - [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
