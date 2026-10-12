@@ -148,6 +148,9 @@ class EventEmitter(BaseThread):
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__()
+        # bool subclasses int; timeout=True would silently become 1.0s
+        if isinstance(timeout, bool):
+            raise TypeError(f"timeout must be a float, not bool (got {timeout!r})")
         self._event_queue = event_queue
         self._watch = watch
         self._timeout = timeout
@@ -207,6 +210,9 @@ class EventDispatcher(BaseThread):
 
     def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__()
+        # bool subclasses int; timeout=True would silently become 1.0s
+        if isinstance(timeout, bool):
+            raise TypeError(f"timeout must be a float, not bool (got {timeout!r})")
         self._event_queue = EventQueue()
         self._timeout = timeout
 
