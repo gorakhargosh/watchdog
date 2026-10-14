@@ -354,7 +354,7 @@ def test_fsevents_latency_is_passed_to_the_stream(p):
 
 @pytest.mark.parametrize("latency", [-0.01, -1])
 def test_fsevents_negative_latency_is_rejected(p, latency):
-    with pytest.raises(ValueError, match="latency must not be negative"):
+    with pytest.raises(ValueError, match="latency must be a non-negative number"):
         FSEventsEmitter(Queue(), ObservedWatch(p(""), recursive=True), latency=latency)
 
 
@@ -368,21 +368,19 @@ def test_fsevents_add_watch_rejects_negative_latency(p):
 def test_observer_latency_reaches_the_emitters_it_creates(p):
     """``FSEventsObserver(latency=...)`` applies to every emitter it schedules."""
     observer = FSEventsObserver(latency=0.25)
-    assert observer.latency == 0.25
-
     observer.schedule(FileSystemEventHandler(), p(""), recursive=True)
     assert [emitter.latency for emitter in observer.emitters] == [0.25]
 
 
 def test_observer_latency_defaults_to_the_documented_value(p):
     observer = FSEventsObserver()
-    assert observer.latency == DEFAULT_FSEVENTS_LATENCY
-
     observer.schedule(FileSystemEventHandler(), p(""), recursive=True)
     assert [emitter.latency for emitter in observer.emitters] == [DEFAULT_FSEVENTS_LATENCY]
 
 
 @pytest.mark.parametrize("latency", [-0.01, -1])
-def test_observer_negative_latency_is_rejected(latency):
-    with pytest.raises(ValueError, match="latency must not be negative"):
-        FSEventsObserver(latency=latency)
+def test_observer_negative_latency_is_rejected(p, latency):
+    """Checked where the emitter is built, not again on the observer."""
+    observer = FSEventsObserver(latency=latency)
+    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+        observer.schedule(FileSystemEventHandler(), p(""), recursive=True)

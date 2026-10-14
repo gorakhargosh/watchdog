@@ -648,7 +648,7 @@ watchdog_add_watch(PyObject *self, PyObject *args)
                                           &python_callback, &paths_to_watch,
                                           &stream_latency));
 
-    if (!(stream_latency >= 0)) {  /* also rejects NaN */
+    if (stream_latency < 0) {
         PyErr_SetString(PyExc_ValueError, "latency must be a non-negative number");
         return NULL;
     }

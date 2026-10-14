@@ -89,7 +89,7 @@ class FSEventsEmitter(EventEmitter):
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         if latency < 0:
-            msg = f"latency must not be negative, got {latency!r}"
+            msg = "latency must be a non-negative number"
             raise ValueError(msg)
         self._fs_view: set[int] = set()
         self.suppress_history = suppress_history
@@ -356,10 +356,6 @@ class FSEventsObserver(BaseObserver):
         timeout: float = DEFAULT_OBSERVER_TIMEOUT,
         latency: float = DEFAULT_FSEVENTS_LATENCY,
     ) -> None:
-        if latency < 0:
-            msg = f"latency must not be negative, got {latency!r}"
-            raise ValueError(msg)
-        self.latency = latency
         super().__init__(FSEventsEmitter, timeout=timeout, latency=latency)
 
     def schedule(
