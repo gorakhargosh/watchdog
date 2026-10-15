@@ -217,6 +217,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "FanWu-ai",
+      "name": "fan wu",
+      "avatar_url": "https://avatars.githubusercontent.com/u/336798967?v=4",
+      "profile": "https://github.com/FanWu-ai",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
