@@ -36,6 +36,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/subikshajegadish"><img src="https://avatars.githubusercontent.com/u/87119985?v=4?s=70" width="70px;" alt="Subiksha Jegadish"/><br /><sub><b>Subiksha Jegadish</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=subikshajegadish" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/FanWu-ai"><img src="https://avatars.githubusercontent.com/u/336798967?v=4?s=70" width="70px;" alt="fan wu"/><br /><sub><b>fan wu</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=FanWu-ai" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ryanchou1994"><img src="https://avatars.githubusercontent.com/u/88779759?v=4?s=70" width="70px;" alt="周耕毅（Ryan Chou）"/><br /><sub><b>周耕毅（Ryan Chou）</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=ryanchou1994" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Skeletor-Pirate"><img src="https://avatars.githubusercontent.com/u/213958014?v=4?s=70" width="70px;" alt="Skeletor-Pirate"/><br /><sub><b>Skeletor-Pirate</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Skeletor-Pirate" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
