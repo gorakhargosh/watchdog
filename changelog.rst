@@ -11,6 +11,7 @@ Changelog
 **Breaking Changes**
 
 - [core] Changed pattern matching mechanism from using ``path.match()`` to ``path.full_match()``. Users must update patterns to glob-like syntax: e.g., `*.py` to `**/*.py`. (`#1101 <https://github.com/gorakhargosh/watchdog/pull/1101>`__)
+- [watchmedo] Changed the default ``--patterns`` value from ``"*"`` to ``"**"``, so the default matches absolute paths at any depth under the ``full_match()`` semantics introduced by #1101, and updated the CLI help text and docs to the ``**/`` glob syntax. (`#1212 <https://github.com/gorakhargosh/watchdog/issues/1212>`__)
 
 **Other Changes**
 
