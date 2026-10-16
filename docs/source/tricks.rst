@@ -68,10 +68,10 @@ Here is a typical ``tricks.yaml`` configuration file demonstrating how to combin
 
     tricks:
     - watchdog.tricks.LoggerTrick:
-        patterns: ["*.py", "*.txt"]
+        patterns: ["**/*.py", "**/*.txt"]
         ignore_directories: true
     - watchdog.tricks.ShellCommandTrick:
-        patterns: ["*.py"]
+        patterns: ["**/*.py"]
         shell_command: "echo 'file changed: ${watch_src_path}'"
         wait_for_process: true
 
@@ -98,7 +98,7 @@ In addition to the built-in tricks, you can create your own by subclassing :clas
 
        tricks:
        - mypackage.tricks.NotifyTeamTrick:
-           patterns: ["*.yaml"]
+           patterns: ["**/*.yaml"]
 
 Tricks Module Reference
 -----------------------
