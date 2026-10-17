@@ -79,3 +79,19 @@ def test_match_any_paths(included_patterns, excluded_patterns, case_sensitive, e
         )
         == expected
     )
+
+
+@pytest.mark.parametrize(
+    ("raw_path", "included_patterns", "expected"),
+    [
+        # Regression tests for https://github.com/gorakhargosh/watchdog/issues/991:
+        # square brackets in patterns must match literal bracket characters
+        # instead of being interpreted as fnmatch character classes.
+        ("/users/gorakhargosh/[test].txt", {"**/[test].txt"}, True),
+        ("/users/gorakhargosh/t.txt", {"**/[test].txt"}, False),
+        ("/users/gorakhargosh/file[1].py", {"**/file[1].py"}, True),
+        ("/users/gorakhargosh/file1.py", {"**/file[1].py"}, False),
+    ],
+)
+def test_match_path_literal_brackets(raw_path, included_patterns, expected):
+    assert _match_path(raw_path, included_patterns, set(), case_sensitive=True) is expected
