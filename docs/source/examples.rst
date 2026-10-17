@@ -37,3 +37,11 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Directory Snapshot Comparison
+-----------------------------
+For applications that need to periodically inspect a directory, you can compare two directory snapshots and report files that were created, deleted, modified, or moved:
+
+.. literalinclude:: examples/dirsnapshot.py
+   :language: python
+   :linenos:
