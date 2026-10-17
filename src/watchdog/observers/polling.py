@@ -73,9 +73,26 @@ class PollingEmitter(EventEmitter):
         )
 
     def on_thread_start(self) -> None:
+        """Take the first snapshot of the watched directory.
+
+        Later snapshots are compared against this one to detect changes.
+        """
         self._snapshot = self._take_snapshot()
 
     def queue_events(self, timeout: float) -> None:
+        """Wait ``timeout`` seconds, then queue events for any changes.
+
+        Takes a new snapshot of the watched directory and compares it with the
+        previous one. An event is queued for each file or directory that was
+        created, deleted, modified or moved. If the watched directory can no
+        longer be read, a :class:`~watchdog.events.DirDeletedEvent` is queued
+        and the emitter stops. Returns early if the emitter is stopped while
+        waiting.
+
+        :param timeout:
+            Seconds to wait between successive snapshots. Polling emitters use
+            this as the polling interval.
+        """
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
         if self.stopped_event.wait(timeout):
