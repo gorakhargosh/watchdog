@@ -53,3 +53,19 @@ def test_delay_ignores_wall_clock_adjustments(monkeypatch, clock_adjustment):
 
     assert queue.get() == "event"
     assert sleeps == [0.75]
+
+
+def test_close_during_delay_does_not_return_event(monkeypatch):
+    elapsed = 0.0
+    queue = DelayedQueue[str](1)
+
+    def sleep(seconds):
+        nonlocal elapsed
+        queue.close()
+        elapsed += seconds
+
+    monkeypatch.setattr(delayed_queue, "time", SimpleNamespace(monotonic=lambda: elapsed, sleep=sleep))
+    queue.put("event", delay=True)
+
+    assert queue.get() is None
+    assert queue.get() is None
