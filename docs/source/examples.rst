@@ -37,3 +37,15 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+
+Event Batching / Coalescing
+---------------------------
+
+Collect rapid bursts of filesystem events into a single batch using a
+debounce worker thread. Useful for triggering builds or tests only once
+after a flurry of file saves.
+
+.. literalinclude:: examples/event_batching.py
+   :language: python
+   :linenos:
