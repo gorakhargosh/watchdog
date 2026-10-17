@@ -22,6 +22,14 @@ Watchdog also includes built-in "tricks" (pre-implemented event handlers). For i
    :language: python
    :linenos:
 
+Shell Command Trick
+-------------------
+The :class:`watchdog.tricks.ShellCommandTrick` can execute a shell command when matching file system events occur. The command supports template variables such as the event type, object type, and source path:
+
+.. literalinclude:: examples/shell_command.py
+   :language: python
+   :linenos:
+
 Debouncing Events
 -----------------
 Text editors and build tools can emit several events for a single logical change. Use :class:`watchdog.utils.event_debouncer.EventDebouncer` to collect a burst of events and run an expensive action once the watched directory has been quiet for a short interval:
