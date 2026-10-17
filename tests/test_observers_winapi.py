@@ -5,6 +5,7 @@ import os.path
 import struct
 from queue import Empty, Queue
 from time import sleep
+from unittest.mock import patch
 
 import pytest
 
@@ -24,6 +25,7 @@ from watchdog.observers.winapi import (
     FILE_ACTION_DELETED,
     FILE_ACTION_RENAMED_NEW_NAME,
     FILE_ACTION_RENAMED_OLD_NAME,
+    DirectoryChangeReader,
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
     _parse_event_buffer,
@@ -192,3 +194,40 @@ def test_parse_event_buffer_reads_the_whole_file_name(file_name):
     buffer = struct.pack("<III", 0, FILE_ACTION_CREATED, len(name)) + name
 
     assert _parse_event_buffer(buffer) == [(FILE_ACTION_CREATED, file_name)]
+
+
+def test_on_thread_stop_is_idempotent():
+    """A second ``on_thread_stop()`` must not stop the reader again.
+
+    ``BaseThread.stop()`` calls ``on_thread_stop()`` unconditionally, and an
+    emitter is routinely stopped more than once: ``unschedule_all()`` stops
+    every emitter, and the caller may still hold a reference of its own.
+    See #1132.
+
+    This builds its own directory instead of using the ``emitter`` fixture,
+    because ``test_root_deleted`` removes ``temp_dir``.
+    """
+    watched = os.path.join(mkdtemp(), "idempotent")
+    os.makedirs(watched)
+    emitter = WindowsApiEmitter(Queue(), ObservedWatch(watched, recursive=True), timeout=0.2)
+    emitter.start()
+    sleep(SLEEP_TIME)
+
+    calls = []
+    real_stop = DirectoryChangeReader.stop
+
+    def counting_stop(self, *args, **kwargs):
+        calls.append(self)
+        return real_stop(self, *args, **kwargs)
+
+    try:
+        with patch.object(DirectoryChangeReader, "stop", counting_stop):
+            emitter.on_thread_stop()
+            assert emitter._reader is None  # noqa: SLF001
+            assert len(calls) == 1
+
+            emitter.on_thread_stop()
+            assert len(calls) == 1
+    finally:
+        emitter.stop()
+        sleep(SLEEP_TIME)  # time for background thread to exit
