@@ -15,6 +15,7 @@ import logging
 import os
 import select
 import struct
+import threading
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -68,6 +69,7 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
         return select_bkp(read_list, *args, **kwargs)
 
     poll_bkp = select.poll
+    buf_lock = threading.Lock()
 
     class Fakepoll:
         def __init__(self):
@@ -82,15 +84,25 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
         def poll(self, *args, **kwargs):
             if self._fake:
-                return [(inotify_fd, select.POLLIN)]
+                # Only claim readability when synthetic events are queued.
+                # An empty-buffer POLLIN makes InotifyFD spin in os.read and
+                # race with the test thread assigning ``inotify_fd.buf``.
+                with buf_lock:
+                    if inotify_fd.buf:
+                        return [(inotify_fd, select.POLLIN)]
+                return []
             return self._orig.poll(*args, **kwargs)
 
     os_read_bkp = os.read
 
     def fakeread(fd, length):
         if fd is inotify_fd:
-            result, fd.buf = fd.buf[:length], fd.buf[length:]
-            return result
+            # Keep buffer injection and consumption atomic so
+            # ``result, fd.buf = fd.buf[:n], fd.buf[n:]`` on an empty buf
+            # cannot overwrite events the test just injected.
+            with buf_lock:
+                result, fd.buf = fd.buf[:length], fd.buf[length:]
+                return result
         return os_read_bkp(fd, length)
 
     os_close_bkp = os.close
@@ -129,7 +141,8 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
         try:
             try:
                 start_watching(path=p(""))
-                inotify_fd.buf = inotify_fd_buf
+                with buf_lock:
+                    inotify_fd.buf = inotify_fd_buf
                 # Watchdog Events
                 for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:
                     event = event_queue.get(timeout=5)[0]

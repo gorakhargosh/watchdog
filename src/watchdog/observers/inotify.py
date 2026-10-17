@@ -420,22 +420,33 @@ class InotifyEmitter(EventEmitter):
         )
 
     def on_thread_stop(self) -> None:
-        if self._inotify is not None:
-            self._inotify.deactivate()
-            self._inotify = None
+        # Drop the published reference first so concurrent queue_events() calls
+        # see a stopped emitter. deactivate() must not run under self._lock:
+        # queue_events() may be blocked in read_event(), and deactivate() is
+        # what unblocks that wait.
+        inotify = self._inotify
+        self._inotify = None
+        if inotify is not None:
+            inotify.deactivate()
 
     def queue_events(self, timeout: float, *, full_events: bool = False) -> None:
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
-        if self._inotify is None:
+        #
+        # Snapshot the watch group before the blocking read. Holding only a
+        # local reference means on_thread_stop() can null self._inotify and
+        # close the queue without this method raising AttributeError.
+        with self._lock:
+            inotify = self._inotify
+        if inotify is None:
             logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+            return
+        event = inotify.read_event()
+        if event is None:
             return
         with self._lock:
             if self._inotify is None:
                 logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
-                return
-            event = self._inotify.read_event()
-            if event is None:
                 return
             self.build_and_queue_event(event)
 
