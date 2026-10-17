@@ -326,7 +326,10 @@ class AutoRestartTrick(Trick):
 if platform.is_windows():
 
     def kill_process(pid: int, stop_signal: int) -> None:
-        if stop_signal == signal.SIGINT:
+        # SIGBREAK is SIGINT's Windows sibling: `--signal SIGBREAK` (see
+        # watchmedo.py) reaches this function with it, so it must be routed
+        # through the same CTRL_BREAK_EVENT path rather than hard-killed below.
+        if stop_signal in (signal.SIGINT, getattr(signal, "SIGBREAK", None)):
             # `os.kill()` maps every signal but the console control events to
             # `TerminateProcess()`, which delivers nothing: the child is hard
             # killed, so its `atexit`/`finally` cleanup never runs and anything
