@@ -37,9 +37,7 @@ class DelayedQueue(Generic[T]):
         self._not_empty.release()
 
     def get(self) -> T | None:
-        """Remove and return an element from the queue, or this queue has been
-        closed raise the Closed exception.
-        """
+        """Remove and return an element, or return ``None`` if the queue is closed."""
         while True:
             # wait for element to be added to queue
             self._not_empty.acquire()
@@ -61,6 +59,8 @@ class DelayedQueue(Generic[T]):
 
             # return element if it's still in the queue
             with self._lock:
+                if self._closed:
+                    return None
                 if len(self._queue) > 0 and self._queue[0][0] is head:
                     self._queue.popleft()
                     return head
