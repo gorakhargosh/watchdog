@@ -38,6 +38,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ryanchou1994"><img src="https://avatars.githubusercontent.com/u/88779759?v=4?s=70" width="70px;" alt="周耕毅（Ryan Chou）"/><br /><sub><b>周耕毅（Ryan Chou）</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=ryanchou1994" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Skeletor-Pirate"><img src="https://avatars.githubusercontent.com/u/213958014?v=4?s=70" width="70px;" alt="Skeletor-Pirate"/><br /><sub><b>Skeletor-Pirate</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Skeletor-Pirate" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://greatbahram.github.io/"><img src="https://avatars.githubusercontent.com/u/14103831?v=4?s=70" width="70px;" alt="Bahram Aghaei"/><br /><sub><b>Bahram Aghaei</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=GreatBahram" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/arindamsikder"><img src="https://avatars.githubusercontent.com/u/88596876?v=4?s=70" width="70px;" alt="Arindam Sikder"/><br /><sub><b>Arindam Sikder</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=arindamsikder" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
