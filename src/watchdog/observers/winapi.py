@@ -535,7 +535,7 @@ class DirectoryChangeReader:
         # (double-buffering technique) and queue it for another thread to process.
         # This reduces the time window in which we could miss events.
         try:
-            if self._extended:
+            if self._extended and ReadDirectoryChangesExW is not None:
                 try:
                     ReadDirectoryChangesExW(
                         handle,

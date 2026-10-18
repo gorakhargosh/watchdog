@@ -141,6 +141,25 @@ def test_modify(
             ec.add(DirModifiedEvent, ".")
 
 
+def test_touch(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    mkfile(p("a"))
+    start_watching()
+
+    touch(p("a"))
+
+    with events_checker() as ec:
+        if platform.is_linux():
+            ec.add(FileOpenedEvent, "a")
+
+        ec.add(FileModifiedEvent if platform.is_windows() else FileAttribEvent, "a")
+
+        if platform.is_linux():
+            ec.add(FileClosedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
+
+
 def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     mkfile(p("a"))
     # Set initial mtime in the past so Windows NTFS ChangeTime > LastWriteTime
@@ -635,7 +654,7 @@ def test_chmod_file(
         ec.add(FileAttribEvent, "newfile")
 
     if platform.is_windows():
-        # Reset permissions to allow cleanup.
+        # Reset write permissions to allow pytest fixture cleanup on Windows.
         chmod(p("newfile"), stat.S_IWRITE)
 
 
@@ -653,5 +672,5 @@ def test_chmod_dir(
             ec.add(DirAttribEvent, "dir1")
 
     if platform.is_windows():
-        # Reset permissions to allow cleanup.
+        # Reset write permissions to allow pytest fixture cleanup on Windows.
         chmod(p("dir1"), stat.S_IWRITE)
