@@ -30,6 +30,14 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileAttribEvent
+   :members:
+   :show-inheritance:
+
+.. autoclass:: DirAttribEvent
+   :members:
+   :show-inheritance:
+
 .. autoclass:: FileCreatedEvent
    :members:
    :show-inheritance:
@@ -99,15 +107,17 @@ EVENT_TYPE_MODIFIED = "modified"
 EVENT_TYPE_CLOSED = "closed"
 EVENT_TYPE_CLOSED_NO_WRITE = "closed_no_write"
 EVENT_TYPE_OPENED = "opened"
+EVENT_TYPE_ATTRIB = "attrib"
 
 
 @dataclass(unsafe_hash=True)
 class FileSystemEvent:
-    """Immutable type that represents a file system event that is triggered
-    when a change occurs on the monitored file system.
+    """Represents a file system event that is triggered when a change
+    occurs on the monitored file system.
 
-    All FileSystemEvent objects are required to be immutable and hence
-    can be used as keys in dictionaries or be added to sets.
+    FileSystemEvent instances are mutable, so avoid using them as
+    dictionary keys or set members: mutating an instance after
+    insertion can silently break lookups.
     """
 
     src_path: bytes | str
@@ -144,6 +154,18 @@ class FileModifiedEvent(FileSystemEvent):
     event_type = EVENT_TYPE_MODIFIED
 
 
+class FileAttribEvent(FileSystemEvent):
+    """File system event representing file metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), BSD, and Windows (via
+    ``ReadDirectoryChangesExW`` on Windows 10 1709+ / Server 2016+; older versions
+    or unsupported network shares fall back to ``ReadDirectoryChangesW`` where
+    ``FileModifiedEvent`` is emitted instead).
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
+
+
 class FileCreatedEvent(FileSystemEvent):
     """File system event representing file creation on the file system."""
 
@@ -155,19 +177,28 @@ class FileMovedEvent(FileSystemMovedEvent):
 
 
 class FileClosedEvent(FileSystemEvent):
-    """File system event representing file close on the file system."""
+    """File system event representing file close on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_CLOSED
 
 
 class FileClosedNoWriteEvent(FileSystemEvent):
-    """File system event representing an unmodified file close on the file system."""
+    """File system event representing an unmodified file close on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_CLOSED_NO_WRITE
 
 
 class FileOpenedEvent(FileSystemEvent):
-    """File system event representing file close on the file system."""
+    """File system event representing file open on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_OPENED
 
@@ -186,6 +217,19 @@ class DirModifiedEvent(FileSystemEvent):
     """File system event representing directory modification on the file system."""
 
     event_type = EVENT_TYPE_MODIFIED
+    is_directory = True
+
+
+class DirAttribEvent(FileSystemEvent):
+    """File system event representing directory metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), BSD, and Windows (via
+    ``ReadDirectoryChangesExW`` on Windows 10 1709+ / Server 2016+; older versions
+    or unsupported network shares fall back to ``ReadDirectoryChangesW`` where
+    ``DirModifiedEvent`` is emitted instead).
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
     is_directory = True
 
 
@@ -211,7 +255,7 @@ class FileSystemEventHandler:
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
         self.on_any_event(event)
         getattr(self, f"on_{event.event_type}")(event)
@@ -222,7 +266,7 @@ class FileSystemEventHandler:
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
 
     def on_moved(self, event: DirMovedEvent | FileMovedEvent) -> None:
@@ -231,7 +275,7 @@ class FileSystemEventHandler:
         :param event:
             Event representing file/directory movement.
         :type event:
-            :class:`DirMovedEvent` or :class:`FileMovedEvent`
+            :class:`watchdog.events.DirMovedEvent` or :class:`watchdog.events.FileMovedEvent`
         """
 
     def on_created(self, event: DirCreatedEvent | FileCreatedEvent) -> None:
@@ -240,7 +284,7 @@ class FileSystemEventHandler:
         :param event:
             Event representing file/directory creation.
         :type event:
-            :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
+            :class:`watchdog.events.DirCreatedEvent` or :class:`watchdog.events.FileCreatedEvent`
         """
 
     def on_deleted(self, event: DirDeletedEvent | FileDeletedEvent) -> None:
@@ -249,7 +293,7 @@ class FileSystemEventHandler:
         :param event:
             Event representing file/directory deletion.
         :type event:
-            :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
+            :class:`watchdog.events.DirDeletedEvent` or :class:`watchdog.events.FileDeletedEvent`
         """
 
     def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
@@ -258,40 +302,55 @@ class FileSystemEventHandler:
         :param event:
             Event representing file/directory modification.
         :type event:
-            :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
+            :class:`watchdog.events.DirModifiedEvent` or :class:`watchdog.events.FileModifiedEvent`
+        """
+
+    def on_attrib(self, event: DirAttribEvent | FileAttribEvent) -> None:
+        """Called when a file or directory metadata is modified.
+
+        :param event:
+            Event representing file/directory metadata modification.
+        :type event:
+            :class:`watchdog.events.DirAttribEvent` or :class:`watchdog.events.FileAttribEvent`
         """
 
     def on_closed(self, event: FileClosedEvent) -> None:
         """Called when a file opened for writing is closed.
 
+        Emitted only by ``InotifyObserver`` on Linux.
+
         :param event:
             Event representing file closing.
         :type event:
-            :class:`FileClosedEvent`
+            :class:`watchdog.events.FileClosedEvent`
         """
 
     def on_closed_no_write(self, event: FileClosedNoWriteEvent) -> None:
         """Called when a file opened for reading is closed.
 
+        Emitted only by ``InotifyObserver`` on Linux.
+
         :param event:
             Event representing file closing.
         :type event:
-            :class:`FileClosedNoWriteEvent`
+            :class:`watchdog.events.FileClosedNoWriteEvent`
         """
 
     def on_opened(self, event: FileOpenedEvent) -> None:
         """Called when a file is opened.
 
+        Emitted only by ``InotifyObserver`` on Linux.
+
         :param event:
             Event representing file opening.
         :type event:
-            :class:`FileOpenedEvent`
+            :class:`watchdog.events.FileOpenedEvent`
         """
 
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """Matches given patterns with file paths associated with occurring events.
-    Uses pathlib's `PurePath.match()` method. `patterns` and `ignore_patterns`
+    Uses pathlib's `PurePath.full_match()` method. `patterns` and `ignore_patterns`
     are expected to be a list of strings.
     """
 
@@ -345,7 +404,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
         if self.ignore_directories and event.is_directory:
             return
@@ -430,7 +489,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
         if self.ignore_directories and event.is_directory:
             return
@@ -478,6 +537,12 @@ class LoggingEventHandler(FileSystemEventHandler):
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Modified %s: %s", what, event.src_path)
+
+    def on_attrib(self, event: DirAttribEvent | FileAttribEvent) -> None:
+        super().on_attrib(event)
+
+        what = "directory" if event.is_directory else "file"
+        self.logger.info("Attrib %s: %s", what, event.src_path)
 
     def on_closed(self, event: FileClosedEvent) -> None:
         super().on_closed(event)

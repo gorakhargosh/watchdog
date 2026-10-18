@@ -6,10 +6,12 @@ import threading
 from typing import TYPE_CHECKING
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -26,8 +28,8 @@ if TYPE_CHECKING:
 
 
 class WindowsApiEmitter(EventEmitter):
-    """Windows API-based emitter that uses ReadDirectoryChangesW
-    to detect file system changes for a watch.
+    """Windows API-based emitter that uses ``ReadDirectoryChangesW`` or
+    ``ReadDirectoryChangesExW`` to detect file system changes for a watch.
     """
 
     def __init__(
@@ -87,6 +89,8 @@ class WindowsApiEmitter(EventEmitter):
                             self.queue_event(sub_moved_event)
                 else:
                     self.queue_event(FileMovedEvent(src_path, dest_path))
+            elif winapi_event.is_attrib:
+                self.queue_event((DirAttribEvent if os.path.isdir(src_path) else FileAttribEvent)(src_path))
             elif winapi_event.is_modified:
                 self.queue_event((DirModifiedEvent if os.path.isdir(src_path) else FileModifiedEvent)(src_path))
             elif winapi_event.is_added:

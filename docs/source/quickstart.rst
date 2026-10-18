@@ -20,7 +20,7 @@ to detect changes. Here is what we will do with the API:
 
 By default, an :class:`watchdog.observers.Observer` instance will not monitor
 sub-directories. By passing ``recursive=True`` in the call to
-:meth:`watchdog.observers.Observer.schedule` monitoring
+:meth:`~watchdog.observers.api.BaseObserver.schedule` monitoring
 entire directory trees is ensured.
 
 

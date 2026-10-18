@@ -59,7 +59,7 @@ class HelpFormatter(RawDescriptionHelpFormatter):
 
 
 epilog = """\
-Copyright 2018-2025 Mickaël Schoentgen & contributors
+Copyright 2018-2026 Mickaël Schoentgen & contributors
 Copyright 2014-2018 Thomas Amland & contributors
 Copyright 2012-2014 Google, Inc.
 Copyright 2011-2012 Yesudeep Mangalapilly
@@ -404,8 +404,8 @@ def tricks_generate_yaml(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -536,8 +536,8 @@ def log(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -645,8 +645,8 @@ def shell_command(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",

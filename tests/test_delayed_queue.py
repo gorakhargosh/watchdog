@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from time import time
+from types import SimpleNamespace
 
 import pytest
 
+from watchdog.utils import delayed_queue
 from watchdog.utils.delayed_queue import DelayedQueue
 
 
@@ -27,3 +29,27 @@ def test_nondelayed_get():
     elapsed = time() - inserted
     # Far less than 1 second
     assert elapsed < 1
+
+
+@pytest.mark.parametrize("clock_adjustment", [-3600, 0, 3600])
+def test_delay_ignores_wall_clock_adjustments(monkeypatch, clock_adjustment):
+    elapsed = 0.0
+    wall_time = 10000.0
+    sleeps = []
+
+    def sleep(seconds):
+        nonlocal elapsed, wall_time
+        sleeps.append(seconds)
+        elapsed += seconds
+        wall_time += seconds
+
+    clock = SimpleNamespace(monotonic=lambda: elapsed, time=lambda: wall_time, sleep=sleep)
+    monkeypatch.setattr(delayed_queue, "time", clock)
+
+    queue = DelayedQueue[str](1)
+    queue.put("event", delay=True)
+    elapsed += 0.25
+    wall_time += 0.25 + clock_adjustment
+
+    assert queue.get() == "event"
+    assert sleeps == [0.75]
