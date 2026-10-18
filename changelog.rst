@@ -11,11 +11,18 @@ Changelog
 **Breaking Changes**
 
 - [core] Changed pattern matching mechanism from using ``path.match()`` to ``path.full_match()``. Users must update patterns to glob-like syntax: e.g., `*.py` to `**/*.py`. (`#1101 <https://github.com/gorakhargosh/watchdog/pull/1101>`__)
+- [watchmedo] Changed the default ``--patterns`` value from ``"*"`` to ``"**"``, so the default matches absolute paths at any depth under the ``full_match()`` semantics introduced by #1101, and updated the CLI help text and docs to the ``**/`` glob syntax. (`#1212 <https://github.com/gorakhargosh/watchdog/issues/1212>`__)
+- [core] Added ``FileAttribEvent`` and ``DirAttribEvent`` for file and directory metadata modifications (such as permissions or timestamps), separate from content modifications. These events no longer trigger ``on_modified()``; implement ``on_attrib()`` to handle them. On Windows 10 (1709+) and Windows Server 2016+, ``ReadDirectoryChangesExW`` is used to differentiate attribute modifications, with fallback to ``ReadDirectoryChangesW`` on older versions or unsupported file shares. (`#260 <https://github.com/gorakhargosh/watchdog/issues/260>`__)
 
 **Other Changes**
 
+- [inotify] Keep watching newly created subdirectories when recursive watches filter out creation events. (`#990 <https://github.com/gorakhargosh/watchdog/issues/990>`__)
+- [utils] Use a monotonic clock for ``DelayedQueue`` delays so system clock adjustments do not stall or prematurely release events. (`#1296 <https://github.com/gorakhargosh/watchdog/pull/1296>`__)
+- [core] Allow scheduling watches on individual files in ``Observer.schedule()``. (`#1034 <https://github.com/gorakhargosh/watchdog/issues/1034>`__)
+- [utils] ``DirectorySnapshotDiff(ignore_device=True)`` now detects moved files and directories when the device ID changes between snapshots.
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [core] ``remove_handler_for_watch()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one empty ``_handlers`` entry per call. (`#1285 <https://github.com/gorakhargosh/watchdog/pull/1285>`__)
+- [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
 - [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
 - [core] ``dispatch_events()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one ``_handlers`` entry per watch that had an event in flight. (`#1261 <https://github.com/gorakhargosh/watchdog/pull/1261>`__)
 - [docs] ``FileSystemEvent`` no longer claims to be immutable; its fields stay writable and the hash is derived from them, so mutating an event held in a dict or set strands it there. (`#1240 <https://github.com/gorakhargosh/watchdog/issues/1240>`__)
@@ -33,11 +40,12 @@ Changelog
 - [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
 - [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
 - [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
-- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate
 - [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
 - [docs] Document that ``BaseThread`` always runs as a daemon thread, instead of inheriting ``daemon`` from the creating thread as the inherited ``threading.Thread`` documentation states. (`#1117 <https://github.com/gorakhargosh/watchdog/issues/1117>`__)
 - [core] Add ``win_arm64`` to the list of platform-specific wheels published to PyPI. (`#1137 <https://github.com/gorakhargosh/watchdog/issues/1137>`__)
 - [watchmedo] The ``AutoRestartTrick`` stop signal is now actually delivered on Windows. The subprocess is started in its own process group and signalled with ``CTRL_BREAK_EVENT``, so it can run cleanup handlers and its descendants are no longer orphaned on every restart. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
+
+- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate, @prateek-dagar
 
 6.0.0
 ~~~~~

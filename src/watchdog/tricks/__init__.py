@@ -57,10 +57,10 @@ class Trick(PatternMatchingEventHandler):
   - argument2
   kwargs:
     patterns:
-    - "*.py"
-    - "*.js"
+    - "**/*.py"
+    - "**/*.js"
     ignore_patterns:
-    - "version.py"
+    - "**/version.py"
     ignore_directories: false
 """
 

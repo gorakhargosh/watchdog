@@ -34,6 +34,14 @@
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/zain-asif-dev"><img src="https://avatars.githubusercontent.com/u/87968213?v=4?s=70" width="70px;" alt="Zain Asif"/><br /><sub><b>Zain Asif</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=zain-asif-dev" title="Documentation">📖</a> <a href="https://github.com/gorakhargosh/watchdog/commits?author=zain-asif-dev" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/subikshajegadish"><img src="https://avatars.githubusercontent.com/u/87119985?v=4?s=70" width="70px;" alt="Subiksha Jegadish"/><br /><sub><b>Subiksha Jegadish</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=subikshajegadish" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/FanWu-ai"><img src="https://avatars.githubusercontent.com/u/336798967?v=4?s=70" width="70px;" alt="fan wu"/><br /><sub><b>fan wu</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=FanWu-ai" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ryanchou1994"><img src="https://avatars.githubusercontent.com/u/88779759?v=4?s=70" width="70px;" alt="周耕毅（Ryan Chou）"/><br /><sub><b>周耕毅（Ryan Chou）</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=ryanchou1994" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Skeletor-Pirate"><img src="https://avatars.githubusercontent.com/u/213958014?v=4?s=70" width="70px;" alt="Skeletor-Pirate"/><br /><sub><b>Skeletor-Pirate</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Skeletor-Pirate" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://greatbahram.github.io/"><img src="https://avatars.githubusercontent.com/u/14103831?v=4?s=70" width="70px;" alt="Bahram Aghaei"/><br /><sub><b>Bahram Aghaei</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=GreatBahram" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/arindamsikder"><img src="https://avatars.githubusercontent.com/u/88596876?v=4?s=70" width="70px;" alt="Arindam Sikder"/><br /><sub><b>Arindam Sikder</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=arindamsikder" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/kokotatan"><img src="https://avatars.githubusercontent.com/u/199421981?v=4?s=70" width="70px;" alt="kokotatan"/><br /><sub><b>kokotatan</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=kokotatan" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
