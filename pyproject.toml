@@ -1,0 +1,80 @@
+[build-system]
+requires = [
+    # Pin to an older setuptools version for PyPy only, due to pypa/distutils#283
+    "setuptools; platform_python_implementation != 'PyPy'",
+    "setuptools<72.2; platform_python_implementation == 'PyPy'",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+skip = "*t*_i686"
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "if __name__ == __main__:",
+]
+
+[tool.mypy]
+# Ensure we know what we do
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unused_configs = true
+
+# Imports management
+ignore_missing_imports = true
+follow_imports = "skip"
+
+# Ensure full coverage
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+
+# Restrict dynamic typing (a little)
+# e.g. `x: List[Any]` or x: List`
+# disallow_any_generics = true
+
+strict_equality = true
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+addopts = """
+    --showlocals
+    -vvv
+    --cov=watchdog
+    --cov-report=term-missing:skip-covered
+"""
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+extend-select = ["ALL"]
+ignore = [
+    "ARG",
+    "ANN",  # TODO
+    "B023",  # TODO
+    "BLE001",
+    "C90",
+    "COM812",
+    "D",
+    "EM101",
+    "EM102",
+    "FIX",
+    "ISC001",
+    "PERF203",
+    "PL",
+    "PTH",  # TODO?
+    "S",
+    "TD",
+]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true

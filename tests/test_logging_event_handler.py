@@ -1,22 +1,8 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import annotations
 
 from watchdog.events import (
     EVENT_TYPE_CLOSED,
+    EVENT_TYPE_CLOSED_NO_WRITE,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MODIFIED,
@@ -27,6 +13,7 @@ from watchdog.events import (
     DirModifiedEvent,
     DirMovedEvent,
     FileClosedEvent,
+    FileClosedNoWriteEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -64,13 +51,16 @@ class _TestableEventHandler(LoggingEventHandler):
         super().on_closed(event)
         assert event.event_type == EVENT_TYPE_CLOSED
 
+    def on_closed_no_write(self, event):
+        super().on_closed_no_write(event)
+        assert event.event_type == EVENT_TYPE_CLOSED_NO_WRITE
+
     def on_opened(self, event):
         super().on_opened(event)
         assert event.event_type == EVENT_TYPE_OPENED
 
 
 def test_logging_event_handler_dispatch():
-    # Utilities.
     dir_del_event = DirDeletedEvent("/path/blah.py")
     file_del_event = FileDeletedEvent("/path/blah.txt")
     dir_cre_event = DirCreatedEvent("/path/blah.py")
@@ -81,6 +71,7 @@ def test_logging_event_handler_dispatch():
     file_mov_event = FileMovedEvent("/path/blah.txt", "/path/blah")
     file_ope_event = FileOpenedEvent("/path/blah.txt")
     file_clo_event = FileClosedEvent("/path/blah.txt")
+    file_clo_nw_event = FileClosedNoWriteEvent("/path/blah.txt")
 
     all_events = [
         dir_mod_event,
@@ -93,6 +84,7 @@ def test_logging_event_handler_dispatch():
         file_mov_event,
         file_ope_event,
         file_clo_event,
+        file_clo_nw_event,
     ]
 
     handler = _TestableEventHandler()

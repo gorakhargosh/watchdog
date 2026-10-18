@@ -1,38 +1,32 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import annotations
 
+import os
+import tempfile
+
 from watchdog.events import (
+    EVENT_TYPE_ATTRIB,
     EVENT_TYPE_CLOSED,
+    EVENT_TYPE_CLOSED_NO_WRITE,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED,
     EVENT_TYPE_OPENED,
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
+    FileClosedNoWriteEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
     FileSystemEventHandler,
+    generate_sub_moved_events,
 )
 
 path_1 = "/path/xyz"
@@ -42,7 +36,7 @@ path_2 = "/path/abc"
 def test_file_deleted_event():
     event = FileDeletedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_DELETED == event.event_type
+    assert event.event_type == EVENT_TYPE_DELETED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -57,7 +51,7 @@ def test_file_delete_event_is_directory():
 def test_file_modified_event():
     event = FileModifiedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_MODIFIED == event.event_type
+    assert event.event_type == EVENT_TYPE_MODIFIED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -72,7 +66,7 @@ def test_file_modified_event_is_directory():
 def test_file_created_event():
     event = FileCreatedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_CREATED == event.event_type
+    assert event.event_type == EVENT_TYPE_CREATED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -81,7 +75,7 @@ def test_file_moved_event():
     event = FileMovedEvent(path_1, path_2)
     assert path_1 == event.src_path
     assert path_2 == event.dest_path
-    assert EVENT_TYPE_MOVED == event.event_type
+    assert event.event_type == EVENT_TYPE_MOVED
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -89,7 +83,15 @@ def test_file_moved_event():
 def test_file_closed_event():
     event = FileClosedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_CLOSED == event.event_type
+    assert event.event_type == EVENT_TYPE_CLOSED
+    assert not event.is_directory
+    assert not event.is_synthetic
+
+
+def test_file_closed_no_write_event():
+    event = FileClosedNoWriteEvent(path_1)
+    assert path_1 == event.src_path
+    assert event.event_type == EVENT_TYPE_CLOSED_NO_WRITE
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -97,7 +99,15 @@ def test_file_closed_event():
 def test_file_opened_event():
     event = FileOpenedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_OPENED == event.event_type
+    assert event.event_type == EVENT_TYPE_OPENED
+    assert not event.is_directory
+    assert not event.is_synthetic
+
+
+def test_file_attrib_event():
+    event = FileAttribEvent(path_1)
+    assert path_1 == event.src_path
+    assert event.event_type == EVENT_TYPE_ATTRIB
     assert not event.is_directory
     assert not event.is_synthetic
 
@@ -105,7 +115,15 @@ def test_file_opened_event():
 def test_dir_deleted_event():
     event = DirDeletedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_DELETED == event.event_type
+    assert event.event_type == EVENT_TYPE_DELETED
+    assert event.is_directory
+    assert not event.is_synthetic
+
+
+def test_dir_attrib_event():
+    event = DirAttribEvent(path_1)
+    assert path_1 == event.src_path
+    assert event.event_type == EVENT_TYPE_ATTRIB
     assert event.is_directory
     assert not event.is_synthetic
 
@@ -113,7 +131,7 @@ def test_dir_deleted_event():
 def test_dir_modified_event():
     event = DirModifiedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_MODIFIED == event.event_type
+    assert event.event_type == EVENT_TYPE_MODIFIED
     assert event.is_directory
     assert not event.is_synthetic
 
@@ -121,7 +139,7 @@ def test_dir_modified_event():
 def test_dir_created_event():
     event = DirCreatedEvent(path_1)
     assert path_1 == event.src_path
-    assert EVENT_TYPE_CREATED == event.event_type
+    assert event.event_type == EVENT_TYPE_CREATED
     assert event.is_directory
     assert not event.is_synthetic
 
@@ -132,11 +150,14 @@ def test_file_system_event_handler_dispatch():
     dir_cre_event = DirCreatedEvent("/path/blah.py")
     file_cre_event = FileCreatedEvent("/path/blah.txt")
     file_cls_event = FileClosedEvent("/path/blah.txt")
+    file_cls_nw_event = FileClosedNoWriteEvent("/path/blah.txt")
     file_opened_event = FileOpenedEvent("/path/blah.txt")
     dir_mod_event = DirModifiedEvent("/path/blah.py")
     file_mod_event = FileModifiedEvent("/path/blah.txt")
     dir_mov_event = DirMovedEvent("/path/blah.py", "/path/blah")
     file_mov_event = FileMovedEvent("/path/blah.txt", "/path/blah")
+    file_attr_event = FileAttribEvent("/path/blah.py")
+    dir_attr_event = DirAttribEvent("/path/dir")
 
     all_events = [
         dir_mod_event,
@@ -148,36 +169,66 @@ def test_file_system_event_handler_dispatch():
         file_cre_event,
         file_mov_event,
         file_cls_event,
+        file_cls_nw_event,
         file_opened_event,
+        file_attr_event,
+        dir_attr_event,
     ]
+
+    checkpoint = 0
 
     class TestableEventHandler(FileSystemEventHandler):
         def on_any_event(self, event):
-            pass
+            nonlocal checkpoint
+            checkpoint += 1
 
         def on_modified(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
             assert event.event_type == EVENT_TYPE_MODIFIED
 
         def on_deleted(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
             assert event.event_type == EVENT_TYPE_DELETED
 
         def on_moved(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
             assert event.event_type == EVENT_TYPE_MOVED
 
         def on_created(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
             assert event.event_type == EVENT_TYPE_CREATED
 
         def on_closed(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
             assert event.event_type == EVENT_TYPE_CLOSED
 
+        def on_closed_no_write(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
+            assert event.event_type == EVENT_TYPE_CLOSED_NO_WRITE
+
         def on_opened(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
             assert event.event_type == EVENT_TYPE_OPENED
+
+        def on_attrib(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
+            assert event.event_type == EVENT_TYPE_ATTRIB
 
     handler = TestableEventHandler()
 
     for event in all_events:
         assert not event.is_synthetic
         handler.dispatch(event)
+
+    assert checkpoint == len(all_events) * 2  # `on_any_event()` + specific `on_XXX()`
 
 
 def test_event_comparison():
@@ -199,3 +250,49 @@ def test_event_comparison():
     assert move2 != move3
     assert move2 != move4
     assert move3 != move4
+
+
+def test_generate_sub_moved_events_repeated_dirname():
+    """Paths with repeated directory names should not have all occurrences replaced.
+
+    Regression test: str.replace() was used to swap src_dir_path for
+    dest_dir_path, which replaces every occurrence of the substring.
+    When a directory name appears more than once in the full path,
+    the extra occurrences get corrupted.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Build a structure like: <tmp>/data/data/file.txt
+        # where "data" appears twice in the path.
+        dest = os.path.join(tmpdir, "data", "data")
+        os.makedirs(dest)
+        with open(os.path.join(dest, "file.txt"), "w") as f:
+            f.write("")
+
+        dest_root = os.path.join(tmpdir, "data")
+        src_root = os.path.join(tmpdir, "src_data")
+
+        events = list(generate_sub_moved_events(src_root, dest_root))
+
+        # The inner "data" subdir should remain untouched.
+        dir_events = [e for e in events if isinstance(e, DirMovedEvent)]
+        file_events = [e for e in events if isinstance(e, FileMovedEvent)]
+
+        assert len(dir_events) == 1
+        assert dir_events[0].src_path == os.path.join(src_root, "data")
+
+        assert len(file_events) == 1
+        assert file_events[0].src_path == os.path.join(src_root, "data", "file.txt")
+
+
+def test_attrib_event_dispatch():
+    attrib_called = None
+
+    class Handler(FileSystemEventHandler):
+        def on_attrib(self, event):
+            nonlocal attrib_called
+            attrib_called = event
+
+    handler = Handler()
+    attrib_event = FileAttribEvent("/path/to/file")
+    handler.dispatch(attrib_event)
+    assert attrib_called == attrib_event

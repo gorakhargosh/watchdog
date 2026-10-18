@@ -1,12 +1,21 @@
 Watchdog
 ========
 
-|Build Status|
-|CirrusCI Status|
+|PyPI Version|
+|PyPI Status|
+|PyPI Python Versions|
+|GitHub Build Status|
+|GitHub License|
+
+.. tip::
+
+    Become **my boss** to help me work on this awesome software, and make the world better:
+
+   |Patreon|
 
 Python API and shell utilities to monitor file system events.
 
-Works on 3.7+.
+Works on 3.9+.
 
 Example API Usage
 -----------------
@@ -18,26 +27,60 @@ as command-line arguments and logs events generated:
 
     import sys
     import time
-    import logging
-    from watchdog.observers import Observer
-    from watchdog.events import LoggingEventHandler
 
-    if __name__ == "__main__":
-        logging.basicConfig(level=logging.INFO,
-                            format='%(asctime)s - %(message)s',
-                            datefmt='%Y-%m-%d %H:%M:%S')
-        path = sys.argv[1] if len(sys.argv) > 1 else '.'
-        logging.info(f'start watching directory {path!r}')
-        event_handler = LoggingEventHandler()
-        observer = Observer()
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.observers import Observer
+
+
+    class MyEventHandler(FileSystemEventHandler):
+        def on_any_event(self, event: FileSystemEvent) -> None:
+            print(event)
+
+
+    event_handler = MyEventHandler()
+    observer = Observer()
+    paths = sys.argv[1:] if len(sys.argv) > 1 else ["."]
+    for path in paths:
         observer.schedule(event_handler, path, recursive=True)
-        observer.start()
-        try:
-            while True:
-                time.sleep(1)
-        finally:
-            observer.stop()
-            observer.join()
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    finally:
+        observer.stop()
+        observer.join()
+
+Alternatively, you can use the observer as a context manager for cleaner code:
+
+.. code-block:: python
+
+    import sys
+    import time
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.observers import Observer
+
+
+    class MyEventHandler(FileSystemEventHandler):
+        def on_any_event(self, event: FileSystemEvent) -> None:
+            print(event)
+
+
+    event_handler = MyEventHandler()
+    observer = Observer()
+    paths = sys.argv[1:] if len(sys.argv) > 1 else ["."]
+    for path in paths:
+        observer.schedule(event_handler, path, recursive=True)
+
+    with observer:
+        while True:
+            time.sleep(1)
+
+To run the script, pass the directories you want to monitor as command-line arguments (defaults to the current directory if omitted):
+
+.. code-block:: bash
+
+    python script.py dir1 dir2
 
 
 Shell Utilities
@@ -54,7 +97,7 @@ ignoring all directory events:
 .. code-block:: bash
 
     watchmedo log \
-        --patterns="*.py;*.txt" \
+        --patterns='**/*.py;**/*.txt' \
         --ignore-directories \
         --recursive \
         --verbose \
@@ -66,7 +109,7 @@ response to events:
 .. code-block:: bash
 
     watchmedo shell-command \
-        --patterns="*.py;*.txt" \
+        --patterns='**/*.py;**/*.txt' \
         --recursive \
         --command='echo "${watch_src_path}"' \
         .
@@ -93,9 +136,9 @@ An example ``tricks.yaml`` file:
 
     tricks:
     - watchdog.tricks.LoggerTrick:
-        patterns: ["*.py", "*.js"]
+        patterns: ["**/*.py", "**/*.js"]
     - watchmedo_webtricks.GoogleClosureTrick:
-        patterns: ['*.js']
+        patterns: ['**/*.js']
         hash_names: true
         mappings_format: json                  # json|yaml|python
         mappings_module: app/javascript_mappings
@@ -126,7 +169,7 @@ Install from PyPI using ``pip``:
     $ python -m pip install -U watchdog
 
     # or to install the watchmedo utility:
-    $ python -m pip install -U "watchdog[watchmedo]"
+    $ python -m pip install -U 'watchdog[watchmedo]'
 
 Install from source:
 
@@ -135,7 +178,7 @@ Install from source:
     $ python -m pip install -e .
 
     # or to install the watchmedo utility:
-    $ python -m pip install -e ".[watchmedo]"
+    $ python -m pip install -e '.[watchmedo]'
 
 
 Documentation
@@ -152,9 +195,8 @@ ticket at the `issue tracker`_. For general help and questions use
 
 Create and activate your virtual environment, then::
 
-    python -m pip install pytest pytest-cov
-    python -m pip install -e ".[watchmedo]"
-    python -m pytest tests
+    python -m pip install tox
+    python -m tox [-q] [-e ENV]
 
 If you are making a substantial change, add an entry to the "Unreleased" section
 of the `changelog`_.
@@ -179,6 +221,10 @@ a line similar to::
 
     ulimit -n 1024
 
+or::
+
+    ulimit -n unlimited
+
 This is an inherent problem with kqueue because it uses
 file descriptors to monitor files. That plus the enormous
 amount of bookkeeping that watchdog needs to do in order
@@ -187,6 +233,11 @@ to monitor files and directories. In essence, kqueue is
 not a very scalable way to monitor a deeply nested
 directory of files and directories with a large number of
 files.
+
+Free threaded support
+---------------------
+
+`watchdog` has support for being built and run under free-threaded CPython. However, a full thread safety audit has not been completed, in particular this affects the `macOS FSEvents` interface.
 
 About using watchdog with editors like Vim
 ------------------------------------------
@@ -213,18 +264,29 @@ appropriate observer like in the example above, do::
 Dependencies
 ------------
 
-1. Python 3.7 or above.
+1. Python 3.9 or above.
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
+
+
+Applications Using Watchdog
+----------------------------
+
+* `Watchdog.app`_ — A macOS application for monitoring file changes in
+  selected directories. Built with the OMC engine, it provides a graphical
+  interface for observing directories.
+  The Apple-notarized app is read to use and does not require additional installations.
+
 
 Licensing
 ---------
 
 Watchdog is licensed under the terms of the `Apache License, version 2.0`_.
 
-Copyright 2011 `Yesudeep Mangalapilly`_.
-
-Copyright 2012 Google, Inc & contributors.
+- Copyright 2018-2026 Mickaël Schoentgen & contributors
+- Copyright 2014-2018 Thomas Amland & contributors
+- Copyright 2012-2014 Google, Inc.
+- Copyright 2011-2012 Yesudeep Mangalapilly
 
 Project `source code`_ is available at Github. Please report bugs and file
 enhancement requests at the `issue tracker`_.
@@ -251,7 +313,7 @@ to do:
 .. _source code: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
 .. _Apache License, version 2.0: https://www.apache.org/licenses/LICENSE-2.0
-.. _documentation: https://python-watchdog.readthedocs.io/
+.. _documentation: https://python-watchdog.readthedocs.io/en/latest/
 .. _stackoverflow: https://stackoverflow.com/questions/tagged/python-watchdog
 .. _repository: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
@@ -259,6 +321,8 @@ to do:
 
 .. _PyYAML: https://www.pyyaml.org/
 .. _XCode: https://developer.apple.com/technologies/tools/xcode.html
+
+.. _Watchdog.app: https://github.com/abra-code/WatchdogApp
 
 .. _pnotify: http://mark.heily.com/pnotify
 .. _unison fsmonitor: https://webdav.seas.upenn.edu/viewvc/unison/trunk/src/fsmonitor.py?view=markup&pathrev=471
@@ -271,7 +335,15 @@ to do:
 .. _file.monitor: https://github.com/pke/file.monitor
 .. _pyfilesystem: https://github.com/PyFilesystem/pyfilesystem
 
-.. |Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/watchdog.svg
+   :target: https://pypi.python.org/pypi/watchdog/
+.. |PyPI Status| image:: https://img.shields.io/pypi/status/watchdog.svg
+   :target: https://pypi.python.org/pypi/watchdog/
+.. |PyPI Python Versions| image:: https://img.shields.io/pypi/pyversions/watchdog.svg
+   :target: https://pypi.python.org/pypi/watchdog/
+.. |Github Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
    :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
-.. |CirrusCI Status| image:: https://api.cirrus-ci.com/github/gorakhargosh/watchdog.svg
-   :target: https://cirrus-ci.com/github/gorakhargosh/watchdog/
+.. |GitHub License| image:: https://img.shields.io/github/license/gorakhargosh/watchdog.svg
+   :target: https://github.com/gorakhargosh/watchdog/blob/master/LICENSE
+.. |Patreon| image:: https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white
+   :target: https://www.patreon.com/mschoentgen

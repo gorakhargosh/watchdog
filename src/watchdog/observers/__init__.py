@@ -1,23 +1,7 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""
-:module: watchdog.observers
+""":module: watchdog.observers
 :synopsis: Observer that picks a native implementation if available.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Classes
 =======
@@ -38,7 +22,7 @@ Class          Platforms                        Note
 |Inotify|      Linux 2.6.13+                    ``inotify(7)`` based observer
 |FSEvents|     macOS                            FSEvents based observer
 |Kqueue|       macOS and BSD with kqueue(2)     ``kqueue(2)`` based observer
-|WinApi|       MS Windows                       Windows API-based observer
+|WinApi|       Microsoft Windows                Windows API-based observer
 |Polling|      Any                              fallback implementation
 ============== ================================ ==============================
 
@@ -52,47 +36,56 @@ Class          Platforms                        Note
 
 from __future__ import annotations
 
-import sys
+import contextlib
 import warnings
+from typing import TYPE_CHECKING, Protocol
 
-from watchdog.utils import UnsupportedLibc
+from watchdog.utils import UnsupportedLibcError, platform
 
-from .api import BaseObserverSubclassCallable
+if TYPE_CHECKING:
+    from watchdog.observers.api import BaseObserver
 
-Observer: BaseObserverSubclassCallable
+
+class ObserverType(Protocol):
+    def __call__(self, *, timeout: float = ...) -> BaseObserver: ...
 
 
-if sys.platform.startswith("linux"):
-    try:
-        from .inotify import InotifyObserver as Observer
-    except UnsupportedLibc:
-        from .polling import PollingObserver as Observer
+def _get_observer_cls() -> ObserverType:
+    if platform.is_linux():
+        with contextlib.suppress(UnsupportedLibcError):
+            from watchdog.observers.inotify import InotifyObserver
 
-elif sys.platform.startswith("darwin"):
-    try:
-        from .fsevents import FSEventsObserver as Observer
-    except Exception:
+            return InotifyObserver
+    elif platform.is_darwin():
         try:
-            from .kqueue import KqueueObserver as Observer
-
-            warnings.warn("Failed to import fsevents. Fall back to kqueue")
+            from watchdog.observers.fsevents import FSEventsObserver
         except Exception:
-            from .polling import PollingObserver as Observer
+            try:
+                from watchdog.observers.kqueue import KqueueObserver
+            except Exception:
+                warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.", stacklevel=1)
+            else:
+                warnings.warn("Failed to import fsevents. Fall back to kqueue", stacklevel=1)
+                return KqueueObserver
+        else:
+            return FSEventsObserver
+    elif platform.is_windows():
+        try:
+            from watchdog.observers.read_directory_changes import WindowsApiObserver
+        except Exception:
+            warnings.warn("Failed to import `read_directory_changes`. Fall back to polling.", stacklevel=1)
+        else:
+            return WindowsApiObserver
+    elif platform.is_bsd():
+        from watchdog.observers.kqueue import KqueueObserver
 
-            warnings.warn("Failed to import fsevents and kqueue. Fall back to polling.")
+        return KqueueObserver
 
-elif sys.platform in ("dragonfly", "freebsd", "netbsd", "openbsd", "bsd"):
-    from .kqueue import KqueueObserver as Observer
+    from watchdog.observers.polling import PollingObserver
 
-elif sys.platform.startswith("win"):
-    try:
-        from .read_directory_changes import WindowsApiObserver as Observer
-    except Exception:
-        from .polling import PollingObserver as Observer
+    return PollingObserver
 
-        warnings.warn("Failed to import read_directory_changes. Fall back to polling.")
 
-else:
-    from .polling import PollingObserver as Observer
+Observer = _get_observer_cls()
 
 __all__ = ["Observer"]

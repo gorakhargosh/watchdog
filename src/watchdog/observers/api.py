@@ -1,38 +1,39 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import annotations
 
+import contextlib
+import os
 import queue
 import threading
+from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from watchdog.utils import BaseThread, Protocol
+from watchdog.events import FileSystemMovedEvent
+from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
-DEFAULT_EMITTER_TIMEOUT = 1  # in seconds.
-DEFAULT_OBSERVER_TIMEOUT = 1  # in seconds.
+if TYPE_CHECKING:
+    import types
+
+    from typing_extensions import Self
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+
+DEFAULT_EMITTER_TIMEOUT = 1.0  # in seconds
+DEFAULT_OBSERVER_TIMEOUT = 1.0  # in seconds
 
 
-# Collection classes
 class EventQueue(SkipRepeatsQueue):
     """Thread-safe event queue based on a special queue that skips adding
-    the same event (:class:`FileSystemEvent`) multiple times consecutively.
-    Thus avoiding dispatching multiple event handling
+    the same event (:class:`watchdog.events.FileSystemEvent`) multiple times
+    consecutively. Thus avoiding dispatching multiple event handling
     calls when multiple identical events are produced quicker than an observer
     can consume them.
+
+    :param maxsize:
+        Maximum number of items allowed in the queue. If <= 0, the queue size is infinite.
+    :type maxsize:
+        ``int``
     """
 
 
@@ -41,49 +42,66 @@ class ObservedWatch:
 
     :param path:
         Path string.
+    :type path:
+        ``str`` or :class:`pathlib.Path`
     :param recursive:
-        ``True`` if watch is recursive; ``False`` otherwise.
+        ``True`` if watch should include subdirectories; ``False`` otherwise.
+    :type recursive:
+        ``bool``
     :param event_filter:
-        Optional collection of :class:`watchdog.events.FileSystemEvent` to watch
+        Optional collection of :class:`watchdog.events.FileSystemEvent` to watch.
+    :type event_filter:
+        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
+    :param follow_symlink:
+        ``True`` if symlinks are followed; ``False`` otherwise.
+    :type follow_symlink:
+        ``bool``
     """
 
-    def __init__(self, path, recursive, event_filter=None):
-        if isinstance(path, Path):
-            self._path = str(path)
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        recursive: bool,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
+    ):
+        raw_path = str(path) if isinstance(path, Path) else path
+        self.raw_path = raw_path
+        self.follow_symlink = follow_symlink
+        self.event_filter = frozenset(event_filter) if event_filter is not None else None
+
+        self.is_file = os.path.isfile(raw_path)
+        self.resolved_path = (
+            os.path.realpath(os.path.abspath(raw_path)) if follow_symlink else os.path.abspath(raw_path)
+        )
+
+        if self.is_file:
+            self.path = os.path.dirname(self.resolved_path)
+            self.is_recursive = False
         else:
-            self._path = path
-        self._is_recursive = recursive
-        self._event_filter = frozenset(event_filter) if event_filter is not None else None
+            self.path = raw_path
+            self.is_recursive = recursive
 
     @property
-    def path(self):
-        """The path that this watch monitors."""
-        return self._path
+    def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None, bool]:
+        """A tuple key identifying the watch (raw_path, recursive, event_filter, follow_symlink)."""
+        return self.raw_path, self.is_recursive, self.event_filter, self.follow_symlink
 
-    @property
-    def is_recursive(self):
-        """Determines whether subdirectories are watched for the path."""
-        return self._is_recursive
-
-    @property
-    def event_filter(self):
-        """Collection of event types watched for the path"""
-        return self._event_filter
-
-    @property
-    def key(self):
-        return self.path, self.is_recursive, self.event_filter
-
-    def __eq__(self, watch):
+    def __eq__(self, watch: object) -> bool:
+        if not isinstance(watch, ObservedWatch):
+            return NotImplemented
         return self.key == watch.key
 
-    def __ne__(self, watch):
+    def __ne__(self, watch: object) -> bool:
+        if not isinstance(watch, ObservedWatch):
+            return NotImplemented
         return self.key != watch.key
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.key)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.event_filter is not None:
             event_filter_str = "|".join(sorted(_cls.__name__ for _cls in self.event_filter))
             event_filter_str = f", event_filter={event_filter_str}"
@@ -94,14 +112,13 @@ class ObservedWatch:
 
 # Observer classes
 class EventEmitter(BaseThread):
-    """
-    Producer thread base class subclassed by event emitters
+    """Producer thread base class subclassed by event emitters
     that generate events and populate a queue with them.
 
     :param event_queue:
         The event queue to populate with generated events.
     :type event_queue:
-        :class:`watchdog.events.EventQueue`
+        :class:`EventQueue`
     :param watch:
         The watch to observe and produce events for.
     :type watch:
@@ -113,10 +130,17 @@ class EventEmitter(BaseThread):
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
-        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
+        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+    def __init__(
+        self,
+        event_queue: EventQueue,
+        watch: ObservedWatch,
+        *,
+        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+    ) -> None:
         super().__init__()
         self._event_queue = event_queue
         self._watch = watch
@@ -124,22 +148,17 @@ class EventEmitter(BaseThread):
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
     @property
-    def timeout(self):
-        """
-        Blocking timeout for reading events.
-        """
+    def timeout(self) -> float:
+        """Blocking timeout for reading events."""
         return self._timeout
 
     @property
-    def watch(self):
-        """
-        The watch associated with this emitter.
-        """
+    def watch(self) -> ObservedWatch:
+        """The watch associated with this emitter."""
         return self._watch
 
-    def queue_event(self, event):
-        """
-        Queues a single event.
+    def queue_event(self, event: FileSystemEvent) -> None:
+        """Queues a single event.
 
         :param event:
             Event to be queued.
@@ -150,7 +169,7 @@ class EventEmitter(BaseThread):
         if self._event_filter is None or any(isinstance(event, cls) for cls in self._event_filter):
             self._event_queue.put((event, self.watch))
 
-    def queue_events(self, timeout):
+    def queue_events(self, timeout: float) -> None:
         """Override this method to populate the event queue with events
         per interval period.
 
@@ -161,14 +180,13 @@ class EventEmitter(BaseThread):
             ``float``
         """
 
-    def run(self):
+    def run(self) -> None:
         while self.should_keep_running():
             self.queue_events(self.timeout)
 
 
 class EventDispatcher(BaseThread):
-    """
-    Consumer thread base class subclassed by event observer threads
+    """Consumer thread base class subclassed by event observer threads
     that dispatch events from an event queue to appropriate event handlers.
 
     :param timeout:
@@ -178,34 +196,33 @@ class EventDispatcher(BaseThread):
         ``float``
     """
 
-    _stop_event = object()
+    stop_event = object()
     """Event inserted into the queue to signal a requested stop."""
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__()
         self._event_queue = EventQueue()
         self._timeout = timeout
 
     @property
-    def timeout(self):
+    def timeout(self) -> float:
         """Timeout value to construct emitters with."""
         return self._timeout
 
-    def stop(self):
+    def stop(self) -> None:
         BaseThread.stop(self)
-        try:
-            self.event_queue.put_nowait(EventDispatcher._stop_event)
-        except queue.Full:
-            pass
+        with contextlib.suppress(queue.Full):
+            self.event_queue.put_nowait(EventDispatcher.stop_event)
 
     @property
-    def event_queue(self):
+    def event_queue(self) -> EventQueue:
         """The event queue which is populated with file system events
         by emitters and from which events are dispatched by a dispatcher
-        thread."""
+        thread.
+        """
         return self._event_queue
 
-    def dispatch_events(self, event_queue):
+    def dispatch_events(self, event_queue: EventQueue) -> None:
         """Override this method to consume events from an event queue, blocking
         on the queue for the specified timeout before raising :class:`queue.Empty`.
 
@@ -217,7 +234,7 @@ class EventDispatcher(BaseThread):
             :class:`queue.Empty`
         """
 
-    def run(self):
+    def run(self) -> None:
         while self.should_keep_running():
             try:
                 self.dispatch_events(self.event_queue)
@@ -226,55 +243,59 @@ class EventDispatcher(BaseThread):
 
 
 class BaseObserver(EventDispatcher):
-    """Base observer."""
+    """Base observer.
 
-    def __init__(self, emitter_class, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(timeout)
+    :param emitter_class:
+        The class of the emitter to use (e.g., a subclass of :class:`EventEmitter`).
+    :type emitter_class:
+        ``type[EventEmitter]``
+    :param timeout:
+        The timeout (in seconds) for the observer to wait on events.
+    :type timeout:
+        ``float``
+    """
+
+    def __init__(self, emitter_class: type[EventEmitter], *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+        super().__init__(timeout=timeout)
         self._emitter_class = emitter_class
         self._lock = threading.RLock()
-        self._watches = set()
-        self._handlers = dict()
-        self._emitters = set()
-        self._emitter_for_watch = dict()
+        self._watches: set[ObservedWatch] = set()
+        self._handlers: defaultdict[ObservedWatch, set[FileSystemEventHandler]] = defaultdict(set)
+        self._emitters: set[EventEmitter] = set()
+        self._emitter_for_watch: dict[ObservedWatch, EventEmitter] = {}
 
-    def _add_emitter(self, emitter):
+    def _add_emitter(self, emitter: EventEmitter) -> None:
         self._emitter_for_watch[emitter.watch] = emitter
         self._emitters.add(emitter)
 
-    def _remove_emitter(self, emitter):
+    def _remove_emitter(self, emitter: EventEmitter) -> None:
         del self._emitter_for_watch[emitter.watch]
         self._emitters.remove(emitter)
         emitter.stop()
-        try:
+        with contextlib.suppress(RuntimeError):
             emitter.join()
-        except RuntimeError:
-            pass
 
-    def _clear_emitters(self):
+    def _clear_emitters(self) -> None:
         for emitter in self._emitters:
             emitter.stop()
         for emitter in self._emitters:
-            try:
+            with contextlib.suppress(RuntimeError):
                 emitter.join()
-            except RuntimeError:
-                pass
         self._emitters.clear()
         self._emitter_for_watch.clear()
 
-    def _add_handler_for_watch(self, event_handler, watch):
-        if watch not in self._handlers:
-            self._handlers[watch] = set()
+    def _add_handler_for_watch(self, event_handler: FileSystemEventHandler, watch: ObservedWatch) -> None:
         self._handlers[watch].add(event_handler)
 
-    def _remove_handlers_for_watch(self, watch):
+    def _remove_handlers_for_watch(self, watch: ObservedWatch) -> None:
         del self._handlers[watch]
 
     @property
-    def emitters(self):
+    def emitters(self) -> set[EventEmitter]:
         """Returns event emitter created by this observer."""
         return self._emitters
 
-    def start(self):
+    def start(self) -> None:
         for emitter in self._emitters.copy():
             try:
                 emitter.start()
@@ -283,9 +304,33 @@ class BaseObserver(EventDispatcher):
                 raise
         super().start()
 
-    def schedule(self, event_handler, path, recursive=False, event_filter=None):
-        """
-        Schedules watching a path and calls appropriate methods specified
+    def __enter__(self) -> Self:
+        """Context manager entry. Starts the observer if not already running."""
+        if not self.is_alive():
+            self.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
+        """Context manager exit. Stops the observer and waits for it to finish."""
+        if self.is_alive():
+            self.stop()
+            self.join()
+
+    def schedule(
+        self,
+        event_handler: FileSystemEventHandler,
+        path: str | Path,
+        *,
+        recursive: bool = False,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
+    ) -> ObservedWatch:
+        """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
 
         :param event_handler:
@@ -295,9 +340,9 @@ class BaseObserver(EventDispatcher):
         :type event_handler:
             :class:`watchdog.events.FileSystemEventHandler` or a subclass
         :param path:
-            Directory path that will be monitored.
+            Directory or file path that will be monitored.
         :type path:
-            ``str``
+            ``str`` or :class:`pathlib.Path`
         :param recursive:
             ``True`` if events will be emitted for sub-directories
             traversed recursively; ``False`` otherwise.
@@ -306,26 +351,29 @@ class BaseObserver(EventDispatcher):
         :param event_filter:
             Collection of event types to emit, or None for no filtering (default).
         :type event_filter:
-            Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
+            Iterable[:class:`watchdog.events.FileSystemEvent`] | None
+        :param follow_symlink:
+            ``True`` if symlinks should be followed; ``False`` otherwise.
+        :type follow_symlink:
+            ``bool``
         :return:
             An :class:`ObservedWatch` object instance representing
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive, event_filter)
+            watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
             self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
-            if self._emitter_for_watch.get(watch) is None:
-                emitter = self._emitter_class(event_queue=self.event_queue, watch=watch, timeout=self.timeout,
-                                              event_filter=event_filter)
+            if watch not in self._emitter_for_watch:
+                emitter = self._emitter_class(self.event_queue, watch, timeout=self.timeout, event_filter=event_filter)
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
             self._watches.add(watch)
         return watch
 
-    def add_handler_for_watch(self, event_handler, watch):
+    def add_handler_for_watch(self, event_handler: FileSystemEventHandler, watch: ObservedWatch) -> None:
         """Adds a handler for the given watch.
 
         :param event_handler:
@@ -343,7 +391,7 @@ class BaseObserver(EventDispatcher):
         with self._lock:
             self._add_handler_for_watch(event_handler, watch)
 
-    def remove_handler_for_watch(self, event_handler, watch):
+    def remove_handler_for_watch(self, event_handler: FileSystemEventHandler, watch: ObservedWatch) -> None:
         """Removes a handler for the given watch.
 
         :param event_handler:
@@ -359,9 +407,12 @@ class BaseObserver(EventDispatcher):
             :class:`ObservedWatch`
         """
         with self._lock:
-            self._handlers[watch].remove(event_handler)
+            # Use .get() rather than indexing: _handlers is a defaultdict, so
+            # indexing it here would resurrect a watch that unschedule() already
+            # removed, leaving a permanent empty-set entry behind.
+            self._handlers.get(watch, set()).remove(event_handler)
 
-    def unschedule(self, watch):
+    def unschedule(self, watch: ObservedWatch) -> None:
         """Unschedules a watch.
 
         :param watch:
@@ -376,33 +427,50 @@ class BaseObserver(EventDispatcher):
             self._remove_emitter(emitter)
             self._watches.remove(watch)
 
-    def unschedule_all(self):
-        """Unschedules all watches and detaches all associated event
-        handlers."""
+    def unschedule_all(self) -> None:
+        """Unschedules all watches and detaches all associated event handlers."""
         with self._lock:
             self._handlers.clear()
             self._clear_emitters()
             self._watches.clear()
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         self.unschedule_all()
 
-    def dispatch_events(self, event_queue):
+    def dispatch_events(self, event_queue: EventQueue) -> None:
         entry = event_queue.get(block=True)
-        if entry is EventDispatcher._stop_event:
+        if entry is EventDispatcher.stop_event:
+            event_queue.task_done()
             return
+
         event, watch = entry
+
+        if watch.is_file:
+            target = watch.resolved_path
+            src_path = (
+                os.path.realpath(os.path.abspath(event.src_path))
+                if watch.follow_symlink
+                else os.path.abspath(event.src_path)
+            )
+            dest_path = None
+            if isinstance(event, FileSystemMovedEvent) and event.dest_path:
+                dest_path = (
+                    os.path.realpath(os.path.abspath(event.dest_path))
+                    if watch.follow_symlink
+                    else os.path.abspath(event.dest_path)
+                )
+            if src_path != target and dest_path != target:
+                event_queue.task_done()
+                return
 
         with self._lock:
             # To allow unschedule/stop and safe removal of event handlers
             # within event handlers itself, check if the handler is still
             # registered after every dispatch.
-            for handler in list(self._handlers.get(watch, [])):
-                if handler in self._handlers.get(watch, []):
+            # Use .get() rather than indexing: _handlers is a defaultdict, so
+            # indexing it here would resurrect a watch that unschedule() removed
+            # but whose events were already queued.
+            for handler in list(self._handlers.get(watch, ())):
+                if handler in self._handlers.get(watch, ()):
                     handler.dispatch(event)
         event_queue.task_done()
-
-
-class BaseObserverSubclassCallable(Protocol):
-    def __call__(self, timeout: float = ...) -> BaseObserver:
-        ...

@@ -1,7 +1,9 @@
 # Ignore temporary files.
 *.bak
 *.bkp
+*.doctree
 *.log
+*.pickle
 *.py[co]
 *.swp
 *~
@@ -24,6 +26,7 @@ develop-eggs/
 dist/
 eggs/
 parts/
+__pycache__/
 MANIFEST
 
 # Project files for VS Code, idea, eclipse, and netbeans

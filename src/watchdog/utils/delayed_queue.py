@@ -1,43 +1,34 @@
-# Copyright 2014 Thomas Amland <thomas.amland@gmail.com>
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+""":module: watchdog.utils.delayed_queue
+:author: thomas.amland@gmail.com (Thomas Amland)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
+"""
 
 from __future__ import annotations
 
 import threading
 import time
 from collections import deque
-from typing import Callable, Deque, Generic, Optional, Tuple, TypeVar
+from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
 
 class DelayedQueue(Generic[T]):
-    def __init__(self, delay):
+    def __init__(self, delay: float) -> None:
         self.delay_sec = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
-        self._queue: Deque[Tuple[T, float, bool]] = deque()
+        self._queue: deque[tuple[T, float, bool]] = deque()
         self._closed = False
 
-    def put(self, element: T, delay: bool = False) -> None:
+    def put(self, element: T, *, delay: bool = False) -> None:
         """Add element to queue."""
         self._lock.acquire()
-        self._queue.append((element, time.time(), delay))
+        self._queue.append((element, time.monotonic(), delay))
         self._not_empty.notify()
         self._lock.release()
 
-    def close(self):
+    def close(self) -> None:
         """Close queue, indicating no more items will be added."""
         self._closed = True
         # Interrupt the blocking _not_empty.wait() call in get
@@ -45,7 +36,7 @@ class DelayedQueue(Generic[T]):
         self._not_empty.notify()
         self._not_empty.release()
 
-    def get(self) -> Optional[T]:
+    def get(self) -> T | None:
         """Remove and return an element from the queue, or this queue has been
         closed raise the Closed exception.
         """
@@ -63,10 +54,10 @@ class DelayedQueue(Generic[T]):
 
             # wait for delay if required
             if delay:
-                time_left = insert_time + self.delay_sec - time.time()
+                time_left = insert_time + self.delay_sec - time.monotonic()
                 while time_left > 0:
                     time.sleep(time_left)
-                    time_left = insert_time + self.delay_sec - time.time()
+                    time_left = insert_time + self.delay_sec - time.monotonic()
 
             # return element if it's still in the queue
             with self._lock:
@@ -74,12 +65,30 @@ class DelayedQueue(Generic[T]):
                     self._queue.popleft()
                     return head
 
-    def remove(self, predicate: Callable[[T], bool]) -> Optional[T]:
-        """Remove and return the first items for which predicate is True,
-        ignoring delay."""
+    def find(self, predicate: Callable[[T], bool]) -> T | None:
+        """return the first item for which predicate is True,
+        ignoring delay.
+        """
         with self._lock:
-            for i, (elem, t, delay) in enumerate(self._queue):
-                if predicate(elem):
-                    del self._queue[i]
-                    return elem
+            i_item = self._index_and_item(predicate)
+            return i_item[1] if i_item is not None else None
+
+    def remove(self, predicate: Callable[[T], bool]) -> T | None:
+        """Remove and return the first item for which predicate is True,
+        ignoring delay.
+        """
+        with self._lock:
+            i_item = self._index_and_item(predicate)
+            if i_item is not None:
+                del self._queue[i_item[0]]
+                return i_item[1]
+        return None
+
+    def _index_and_item(self, predicate: Callable[[T], bool]) -> tuple[int, T] | None:
+        """Return the index and value of the first item for which predicate is
+        True, ignoring delay. Returns -1 if nothing is found. Requires a lock.
+        """
+        for i, (elem, *_) in enumerate(self._queue):
+            if predicate(elem):
+                return i, elem
         return None

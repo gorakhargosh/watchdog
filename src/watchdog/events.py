@@ -1,23 +1,7 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""
-:module: watchdog.events
+""":module: watchdog.events
 :synopsis: File system events and event handlers.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Event Classes
 -------------
@@ -46,11 +30,23 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileAttribEvent
+   :members:
+   :show-inheritance:
+
+.. autoclass:: DirAttribEvent
+   :members:
+   :show-inheritance:
+
 .. autoclass:: FileCreatedEvent
    :members:
    :show-inheritance:
 
 .. autoclass:: FileClosedEvent
+   :members:
+   :show-inheritance:
+
+.. autoclass:: FileClosedNoWriteEvent
    :members:
    :show-inheritance:
 
@@ -97,39 +93,44 @@ import logging
 import os.path
 import re
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from watchdog.utils.patterns import match_any_paths
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 EVENT_TYPE_MOVED = "moved"
 EVENT_TYPE_DELETED = "deleted"
 EVENT_TYPE_CREATED = "created"
 EVENT_TYPE_MODIFIED = "modified"
 EVENT_TYPE_CLOSED = "closed"
+EVENT_TYPE_CLOSED_NO_WRITE = "closed_no_write"
 EVENT_TYPE_OPENED = "opened"
+EVENT_TYPE_ATTRIB = "attrib"
 
 
 @dataclass(unsafe_hash=True)
 class FileSystemEvent:
-    """
-    Immutable type that represents a file system event that is triggered
-    when a change occurs on the monitored file system.
+    """Represents a file system event that is triggered when a change
+    occurs on the monitored file system.
 
-    All FileSystemEvent objects are required to be immutable and hence
-    can be used as keys in dictionaries or be added to sets.
+    FileSystemEvent instances are mutable, so avoid using them as
+    dictionary keys or set members: mutating an instance after
+    insertion can silently break lookups.
     """
 
-    src_path: str
-    dest_path: str = ""
+    src_path: bytes | str
+    dest_path: bytes | str = ""
     event_type: str = field(default="", init=False)
     is_directory: bool = field(default=False, init=False)
+    """True if event was triggered for a directory; False otherwise."""
 
-    """
-    True if event was synthesized; False otherwise.
+    is_synthetic: bool = field(default=False)
+    """True if event was synthesized; False otherwise.
     These are events that weren't actually broadcast by the OS, but
     are presumed to have happened based on other, actual events.
     """
-    is_synthetic: bool = field(default=False)
 
 
 class FileSystemMovedEvent(FileSystemEvent):
@@ -153,6 +154,18 @@ class FileModifiedEvent(FileSystemEvent):
     event_type = EVENT_TYPE_MODIFIED
 
 
+class FileAttribEvent(FileSystemEvent):
+    """File system event representing file metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), BSD, and Windows (via
+    ``ReadDirectoryChangesExW`` on Windows 10 1709+ / Server 2016+; older versions
+    or unsupported network shares fall back to ``ReadDirectoryChangesW`` where
+    ``FileModifiedEvent`` is emitted instead).
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
+
+
 class FileCreatedEvent(FileSystemEvent):
     """File system event representing file creation on the file system."""
 
@@ -164,13 +177,28 @@ class FileMovedEvent(FileSystemMovedEvent):
 
 
 class FileClosedEvent(FileSystemEvent):
-    """File system event representing file close on the file system."""
+    """File system event representing file close on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_CLOSED
 
 
+class FileClosedNoWriteEvent(FileSystemEvent):
+    """File system event representing an unmodified file close on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
+
+    event_type = EVENT_TYPE_CLOSED_NO_WRITE
+
+
 class FileOpenedEvent(FileSystemEvent):
-    """File system event representing file close on the file system."""
+    """File system event representing file open on the file system.
+
+    Emitted only by ``InotifyObserver`` on Linux.
+    """
 
     event_type = EVENT_TYPE_OPENED
 
@@ -186,11 +214,22 @@ class DirDeletedEvent(FileSystemEvent):
 
 
 class DirModifiedEvent(FileSystemEvent):
-    """
-    File system event representing directory modification on the file system.
-    """
+    """File system event representing directory modification on the file system."""
 
     event_type = EVENT_TYPE_MODIFIED
+    is_directory = True
+
+
+class DirAttribEvent(FileSystemEvent):
+    """File system event representing directory metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), BSD, and Windows (via
+    ``ReadDirectoryChangesExW`` on Windows 10 1709+ / Server 2016+; older versions
+    or unsupported network shares fall back to ``ReadDirectoryChangesW`` where
+    ``DirModifiedEvent`` is emitted instead).
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
     is_directory = True
 
 
@@ -208,9 +247,7 @@ class DirMovedEvent(FileSystemMovedEvent):
 
 
 class FileSystemEventHandler:
-    """
-    Base file system event handler that you can override methods from.
-    """
+    """Base file system event handler that you can override methods from."""
 
     def dispatch(self, event: FileSystemEvent) -> None:
         """Dispatches events to the appropriate methods.
@@ -218,17 +255,10 @@ class FileSystemEventHandler:
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
         self.on_any_event(event)
-        {
-            EVENT_TYPE_CREATED: self.on_created,
-            EVENT_TYPE_DELETED: self.on_deleted,
-            EVENT_TYPE_MODIFIED: self.on_modified,
-            EVENT_TYPE_MOVED: self.on_moved,
-            EVENT_TYPE_CLOSED: self.on_closed,
-            EVENT_TYPE_OPENED: self.on_opened,
-        }[event.event_type](event)
+        getattr(self, f"on_{event.event_type}")(event)
 
     def on_any_event(self, event: FileSystemEvent) -> None:
         """Catch-all event handler.
@@ -236,75 +266,101 @@ class FileSystemEventHandler:
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
 
-    def on_moved(self, event: FileSystemEvent) -> None:
+    def on_moved(self, event: DirMovedEvent | FileMovedEvent) -> None:
         """Called when a file or a directory is moved or renamed.
 
         :param event:
             Event representing file/directory movement.
         :type event:
-            :class:`DirMovedEvent` or :class:`FileMovedEvent`
+            :class:`watchdog.events.DirMovedEvent` or :class:`watchdog.events.FileMovedEvent`
         """
 
-    def on_created(self, event: FileSystemEvent) -> None:
+    def on_created(self, event: DirCreatedEvent | FileCreatedEvent) -> None:
         """Called when a file or directory is created.
 
         :param event:
             Event representing file/directory creation.
         :type event:
-            :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
+            :class:`watchdog.events.DirCreatedEvent` or :class:`watchdog.events.FileCreatedEvent`
         """
 
-    def on_deleted(self, event: FileSystemEvent) -> None:
+    def on_deleted(self, event: DirDeletedEvent | FileDeletedEvent) -> None:
         """Called when a file or directory is deleted.
 
         :param event:
             Event representing file/directory deletion.
         :type event:
-            :class:`DirDeletedEvent` or :class:`FileDeletedEvent`
+            :class:`watchdog.events.DirDeletedEvent` or :class:`watchdog.events.FileDeletedEvent`
         """
 
-    def on_modified(self, event: FileSystemEvent) -> None:
+    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         """Called when a file or directory is modified.
 
         :param event:
             Event representing file/directory modification.
         :type event:
-            :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
+            :class:`watchdog.events.DirModifiedEvent` or :class:`watchdog.events.FileModifiedEvent`
         """
 
-    def on_closed(self, event: FileSystemEvent) -> None:
+    def on_attrib(self, event: DirAttribEvent | FileAttribEvent) -> None:
+        """Called when a file or directory metadata is modified.
+
+        :param event:
+            Event representing file/directory metadata modification.
+        :type event:
+            :class:`watchdog.events.DirAttribEvent` or :class:`watchdog.events.FileAttribEvent`
+        """
+
+    def on_closed(self, event: FileClosedEvent) -> None:
         """Called when a file opened for writing is closed.
+
+        Emitted only by ``InotifyObserver`` on Linux.
 
         :param event:
             Event representing file closing.
         :type event:
-            :class:`FileClosedEvent`
+            :class:`watchdog.events.FileClosedEvent`
         """
 
-    def on_opened(self, event: FileSystemEvent) -> None:
+    def on_closed_no_write(self, event: FileClosedNoWriteEvent) -> None:
+        """Called when a file opened for reading is closed.
+
+        Emitted only by ``InotifyObserver`` on Linux.
+
+        :param event:
+            Event representing file closing.
+        :type event:
+            :class:`watchdog.events.FileClosedNoWriteEvent`
+        """
+
+    def on_opened(self, event: FileOpenedEvent) -> None:
         """Called when a file is opened.
+
+        Emitted only by ``InotifyObserver`` on Linux.
 
         :param event:
             Event representing file opening.
         :type event:
-            :class:`FileOpenedEvent`
+            :class:`watchdog.events.FileOpenedEvent`
         """
 
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
-    """
-    Matches given patterns with file paths associated with occurring events.
+    """Matches given patterns with file paths associated with occurring events.
+    Uses pathlib's `PurePath.full_match()` method. `patterns` and `ignore_patterns`
+    are expected to be a list of strings.
     """
 
     def __init__(
         self,
-        patterns=None,
-        ignore_patterns=None,
-        ignore_directories=False,
-        case_sensitive=False,
+        *,
+        patterns: list[str] | None = None,
+        ignore_patterns: list[str] | None = None,
+        ignore_directories: bool = False,
+        case_sensitive: bool = False,
     ):
         super().__init__()
 
@@ -314,33 +370,29 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         self._case_sensitive = case_sensitive
 
     @property
-    def patterns(self):
-        """
-        (Read-only)
+    def patterns(self) -> list[str] | None:
+        """(Read-only)
         Patterns to allow matching event paths.
         """
         return self._patterns
 
     @property
-    def ignore_patterns(self):
-        """
-        (Read-only)
+    def ignore_patterns(self) -> list[str] | None:
+        """(Read-only)
         Patterns to ignore matching event paths.
         """
         return self._ignore_patterns
 
     @property
-    def ignore_directories(self):
-        """
-        (Read-only)
+    def ignore_directories(self) -> bool:
+        """(Read-only)
         ``True`` if directories should be ignored; ``False`` otherwise.
         """
         return self._ignore_directories
 
     @property
-    def case_sensitive(self):
-        """
-        (Read-only)
+    def case_sensitive(self) -> bool:
+        """(Read-only)
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
         """
@@ -352,7 +404,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
         if self.ignore_directories and event.is_directory:
             return
@@ -373,16 +425,17 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
 
 
 class RegexMatchingEventHandler(FileSystemEventHandler):
-    """
-    Matches given regexes with file paths associated with occurring events.
+    """Matches given regexes with file paths associated with occurring events.
+    Uses the `re` module.
     """
 
     def __init__(
         self,
-        regexes=None,
-        ignore_regexes=None,
-        ignore_directories=False,
-        case_sensitive=False,
+        *,
+        regexes: list[str] | None = None,
+        ignore_regexes: list[str] | None = None,
+        ignore_directories: bool = False,
+        case_sensitive: bool = False,
     ):
         super().__init__()
 
@@ -396,39 +449,35 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             self._regexes = [re.compile(r) for r in regexes]
             self._ignore_regexes = [re.compile(r) for r in ignore_regexes]
         else:
-            self._regexes = [re.compile(r, re.I) for r in regexes]
-            self._ignore_regexes = [re.compile(r, re.I) for r in ignore_regexes]
+            self._regexes = [re.compile(r, re.IGNORECASE) for r in regexes]
+            self._ignore_regexes = [re.compile(r, re.IGNORECASE) for r in ignore_regexes]
         self._ignore_directories = ignore_directories
         self._case_sensitive = case_sensitive
 
     @property
-    def regexes(self):
-        """
-        (Read-only)
+    def regexes(self) -> list[re.Pattern[str]]:
+        """(Read-only)
         Regexes to allow matching event paths.
         """
         return self._regexes
 
     @property
-    def ignore_regexes(self):
-        """
-        (Read-only)
+    def ignore_regexes(self) -> list[re.Pattern[str]]:
+        """(Read-only)
         Regexes to ignore matching event paths.
         """
         return self._ignore_regexes
 
     @property
-    def ignore_directories(self):
-        """
-        (Read-only)
+    def ignore_directories(self) -> bool:
+        """(Read-only)
         ``True`` if directories should be ignored; ``False`` otherwise.
         """
         return self._ignore_directories
 
     @property
-    def case_sensitive(self):
-        """
-        (Read-only)
+    def case_sensitive(self) -> bool:
+        """(Read-only)
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
         """
@@ -440,7 +489,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         :param event:
             The event object representing the file system event.
         :type event:
-            :class:`FileSystemEvent`
+            :class:`watchdog.events.FileSystemEvent`
         """
         if self.ignore_directories and event.is_directory:
             return
@@ -461,46 +510,60 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
 class LoggingEventHandler(FileSystemEventHandler):
     """Logs all the events captured."""
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, *, logger: logging.Logger | None = None) -> None:
         super().__init__()
         self.logger = logger or logging.root
 
-    def on_moved(self, event: FileSystemEvent) -> None:
+    def on_moved(self, event: DirMovedEvent | FileMovedEvent) -> None:
         super().on_moved(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Moved %s: from %s to %s", what, event.src_path, event.dest_path)
 
-    def on_created(self, event: FileSystemEvent) -> None:
+    def on_created(self, event: DirCreatedEvent | FileCreatedEvent) -> None:
         super().on_created(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Created %s: %s", what, event.src_path)
 
-    def on_deleted(self, event: FileSystemEvent) -> None:
+    def on_deleted(self, event: DirDeletedEvent | FileDeletedEvent) -> None:
         super().on_deleted(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Deleted %s: %s", what, event.src_path)
 
-    def on_modified(self, event: FileSystemEvent) -> None:
+    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
         super().on_modified(event)
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Modified %s: %s", what, event.src_path)
 
-    def on_closed(self, event: FileSystemEvent) -> None:
+    def on_attrib(self, event: DirAttribEvent | FileAttribEvent) -> None:
+        super().on_attrib(event)
+
+        what = "directory" if event.is_directory else "file"
+        self.logger.info("Attrib %s: %s", what, event.src_path)
+
+    def on_closed(self, event: FileClosedEvent) -> None:
         super().on_closed(event)
 
-        self.logger.info("Closed file: %s", event.src_path)
+        self.logger.info("Closed modified file: %s", event.src_path)
 
-    def on_opened(self, event: FileSystemEvent) -> None:
+    def on_closed_no_write(self, event: FileClosedNoWriteEvent) -> None:
+        super().on_closed_no_write(event)
+
+        self.logger.info("Closed read file: %s", event.src_path)
+
+    def on_opened(self, event: FileOpenedEvent) -> None:
         super().on_opened(event)
 
         self.logger.info("Opened file: %s", event.src_path)
 
 
-def generate_sub_moved_events(src_dir_path, dest_dir_path):
+def generate_sub_moved_events(
+    src_dir_path: bytes | str,
+    dest_dir_path: bytes | str,
+) -> Generator[DirMovedEvent | FileMovedEvent]:
     """Generates an event list of :class:`DirMovedEvent` and
     :class:`FileMovedEvent` objects for all the files and directories within
     the given moved directory that were moved along with the directory.
@@ -513,18 +576,18 @@ def generate_sub_moved_events(src_dir_path, dest_dir_path):
         An iterable of file system events of type :class:`DirMovedEvent` and
         :class:`FileMovedEvent`.
     """
-    for root, directories, filenames in os.walk(dest_dir_path):
+    for root, directories, filenames in os.walk(dest_dir_path):  # type: ignore[type-var]
         for directory in directories:
-            full_path = os.path.join(root, directory)
-            renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else ""
+            full_path = os.path.join(root, directory)  # type: ignore[call-overload]
+            renamed_path = src_dir_path + full_path[len(dest_dir_path) :] if src_dir_path else ""
             yield DirMovedEvent(renamed_path, full_path, is_synthetic=True)
         for filename in filenames:
-            full_path = os.path.join(root, filename)
-            renamed_path = full_path.replace(dest_dir_path, src_dir_path) if src_dir_path else ""
+            full_path = os.path.join(root, filename)  # type: ignore[call-overload]
+            renamed_path = src_dir_path + full_path[len(dest_dir_path) :] if src_dir_path else ""
             yield FileMovedEvent(renamed_path, full_path, is_synthetic=True)
 
 
-def generate_sub_created_events(src_dir_path):
+def generate_sub_created_events(src_dir_path: bytes | str) -> Generator[DirCreatedEvent | FileCreatedEvent]:
     """Generates an event list of :class:`DirCreatedEvent` and
     :class:`FileCreatedEvent` objects for all the files and directories within
     the given moved directory that were moved along with the directory.
@@ -535,8 +598,10 @@ def generate_sub_created_events(src_dir_path):
         An iterable of file system events of type :class:`DirCreatedEvent` and
         :class:`FileCreatedEvent`.
     """
-    for root, directories, filenames in os.walk(src_dir_path):
+    for root, directories, filenames in os.walk(src_dir_path):  # type: ignore[type-var]
         for directory in directories:
-            yield DirCreatedEvent(os.path.join(root, directory), is_synthetic=True)
+            full_path = os.path.join(root, directory)  # type: ignore[call-overload]
+            yield DirCreatedEvent(full_path, is_synthetic=True)
         for filename in filenames:
-            yield FileCreatedEvent(os.path.join(root, filename), is_synthetic=True)
+            full_path = os.path.join(root, filename)  # type: ignore[call-overload]
+            yield FileCreatedEvent(full_path, is_synthetic=True)

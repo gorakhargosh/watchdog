@@ -1,22 +1,8 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """
-    :module: tests.shell
-    :synopsis: Common shell operations for testing.
-    :author: yesudeep@google.com (Yesudeep Mangalapilly)
+:module: tests.shell
+:synopsis: Common shell operations for testing.
+:author: yesudeep@google.com (Yesudeep Mangalapilly)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 """
 
 from __future__ import annotations
@@ -27,15 +13,10 @@ import os.path
 import shutil
 import tempfile
 import time
+from typing import TYPE_CHECKING
 
-# def tree(path='.', show_files=False):
-#    print(path)
-#    padding = ''
-#    for root, directories, filenames in os.walk(path):
-#        print(padding + os.path.basename(root) + os.path.sep)
-#        padding = padding + '   '
-#        for filename in filenames:
-#            print(padding + filename)
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def cd(path):
@@ -43,9 +24,7 @@ def cd(path):
 
 
 def pwd():
-    path = os.getcwd()
-    print(path)
-    return path
+    return os.getcwd()
 
 
 def mkfile(path):
@@ -54,26 +33,28 @@ def mkfile(path):
         pass
 
 
-def mkdir(path, parents=False):
+def mkdir(path, *, parents=False):
     """Creates a directory (optionally also creates all the parent directories
     in the path)."""
     if parents:
         try:
             os.makedirs(path)
         except OSError as e:
-            if not e.errno == errno.EEXIST:
+            if e.errno != errno.EEXIST:
                 raise
     else:
         os.mkdir(path)
 
 
-def rm(path, recursive=False):
+def symlink(source, destination, *, target_is_directory: bool = False):
+    os.symlink(source, destination, target_is_directory=target_is_directory)
+
+
+def rm(path, *, recursive=False):
     """Deletes files or directories."""
     if os.path.isdir(path):
         if recursive:
             shutil.rmtree(path)
-        # else:
-        #    os.rmdir(path)
         else:
             raise OSError(errno.EISDIR, os.strerror(errno.EISDIR), path)
     else:
@@ -122,6 +103,11 @@ def msize(path):
     with open(path, "w") as w:
         w.write("0")
     os.utime(path, (0, 0))
+
+
+def chmod(path: str | Path, mode: int) -> None:
+    """Change file mode bits."""
+    os.chmod(path, mode)
 
 
 def mount_tmpfs(path):

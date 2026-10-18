@@ -1,23 +1,7 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""
-:module: watchdog.tricks
+""":module: watchdog.tricks
 :synopsis: Utility event handlers.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Classes
 -------
@@ -41,17 +25,17 @@ Classes
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import logging
 import os
 import signal
 import subprocess
-import sys
 import threading
 import time
 
-from watchdog.events import EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
-from watchdog.utils import echo
+from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
+from watchdog.utils import echo, platform
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
 
@@ -60,27 +44,28 @@ echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
 
 
 class Trick(PatternMatchingEventHandler):
-
     """Your tricks should subclass this class."""
 
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__}>"
+
     @classmethod
-    def generate_yaml(cls):
+    def generate_yaml(cls) -> str:
         return f"""- {cls.__module__}.{cls.__name__}:
   args:
   - argument1
   - argument2
   kwargs:
     patterns:
-    - "*.py"
-    - "*.js"
+    - "**/*.py"
+    - "**/*.js"
     ignore_patterns:
-    - "version.py"
+    - "**/version.py"
     ignore_directories: false
 """
 
 
 class LoggerTrick(Trick):
-
     """A simple trick that does only logs events."""
 
     @echo_events
@@ -89,17 +74,32 @@ class LoggerTrick(Trick):
 
 
 class ShellCommandTrick(Trick):
+    """Executes shell commands in response to matched events.
 
-    """Executes shell commands in response to matched events."""
+    :param shell_command:
+        The shell command to execute.
+    :param patterns:
+        Matches event paths with these patterns.
+    :param ignore_patterns:
+        Ignores event paths with these patterns.
+    :param ignore_directories:
+        Ignores events for directories (default: False).
+    :param wait_for_process:
+        Wait for process to finish to avoid multiple simultaneous instances.
+    :param drop_during_process:
+        Ignore events that occur while command is still being executed
+        to avoid multiple simultaneous instances.
+    """
 
     def __init__(
         self,
-        shell_command=None,
-        patterns=None,
-        ignore_patterns=None,
-        ignore_directories=False,
-        wait_for_process=False,
-        drop_during_process=False,
+        shell_command: str,
+        *,
+        patterns: list[str] | None = None,
+        ignore_patterns: list[str] | None = None,
+        ignore_directories: bool = False,
+        wait_for_process: bool = False,
+        drop_during_process: bool = False,
     ):
         super().__init__(
             patterns=patterns,
@@ -110,11 +110,11 @@ class ShellCommandTrick(Trick):
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
 
-        self.process = None
-        self._process_watchers = set()
+        self.process: subprocess.Popen[bytes] | None = None
+        self._process_watchers: set[ProcessWatcher] = set()
 
-    def on_any_event(self, event):
-        if event.event_type == EVENT_TYPE_OPENED:
+    def on_any_event(self, event: FileSystemEvent) -> None:
+        if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
 
@@ -150,16 +150,16 @@ class ShellCommandTrick(Trick):
             process_watcher = ProcessWatcher(self.process, None)
             self._process_watchers.add(process_watcher)
             process_watcher.process_termination_callback = functools.partial(
-                self._process_watchers.discard, process_watcher
+                self._process_watchers.discard,
+                process_watcher,
             )
             process_watcher.start()
 
-    def is_process_running(self):
-        return self._process_watchers or (self.process is not None and self.process.poll() is None)
+    def is_process_running(self) -> bool:
+        return bool(self._process_watchers or (self.process is not None and self.process.poll() is None))
 
 
 class AutoRestartTrick(Trick):
-
     """Starts a long-running subprocess and restarts it on matched events.
 
     The command parameter is a list of command arguments, such as
@@ -167,23 +167,45 @@ class AutoRestartTrick(Trick):
 
     Call `start()` after creating the Trick. Call `stop()` when stopping
     the process.
+
+    :param command:
+        The long-running command to run and restart.
+    :param patterns:
+        Matches event paths with these patterns.
+    :param ignore_patterns:
+        Ignores event paths with these patterns.
+    :param ignore_directories:
+        Ignores events for directories (default: False).
+    :param stop_signal:
+        Stop the subprocess with this signal (default SIGINT).
+    :param kill_after:
+        When stopping, kill the subprocess after the specified timeout in
+        seconds (default 10.0).
+    :param debounce_interval_seconds:
+        After a file change, wait until the specified interval (in seconds)
+        passes with no file changes, and only then restart (default: 0.0).
+    :param restart_on_command_exit:
+        Auto-restart the command after it exits (default: True).
     """
 
     def __init__(
         self,
-        command,
-        patterns=None,
-        ignore_patterns=None,
-        ignore_directories=False,
-        stop_signal=signal.SIGINT,
-        kill_after=10,
-        debounce_interval_seconds=0,
-        restart_on_command_exit=True,
+        command: list[str],
+        *,
+        patterns: list[str] | None = None,
+        ignore_patterns: list[str] | None = None,
+        ignore_directories: bool = False,
+        stop_signal: signal.Signals | int = signal.SIGINT,
+        kill_after: int = 10,
+        debounce_interval_seconds: int = 0,
+        restart_on_command_exit: bool = True,
     ):
         if kill_after < 0:
-            raise ValueError("kill_after must be non-negative.")
+            error = "kill_after must be non-negative."
+            raise ValueError(error)
         if debounce_interval_seconds < 0:
-            raise ValueError("debounce_interval_seconds must be non-negative.")
+            error = "debounce_interval_seconds must be non-negative."
+            raise ValueError(error)
 
         super().__init__(
             patterns=patterns,
@@ -192,21 +214,21 @@ class AutoRestartTrick(Trick):
         )
 
         self.command = command
-        self.stop_signal = stop_signal
+        self.stop_signal = stop_signal.value if isinstance(stop_signal, signal.Signals) else stop_signal
         self.kill_after = kill_after
         self.debounce_interval_seconds = debounce_interval_seconds
         self.restart_on_command_exit = restart_on_command_exit
 
-        self.process = None
-        self.process_watcher = None
-        self.event_debouncer = None
+        self.process: subprocess.Popen[bytes] | None = None
+        self.process_watcher: ProcessWatcher | None = None
+        self.event_debouncer: EventDebouncer | None = None
         self.restart_count = 0
 
         self._is_process_stopping = False
         self._is_trick_stopping = False
         self._stopping_lock = threading.RLock()
 
-    def start(self):
+    def start(self) -> None:
         if self.debounce_interval_seconds:
             self.event_debouncer = EventDebouncer(
                 debounce_interval_seconds=self.debounce_interval_seconds,
@@ -215,7 +237,7 @@ class AutoRestartTrick(Trick):
             self.event_debouncer.start()
         self._start_process()
 
-    def stop(self):
+    def stop(self) -> None:
         # Ensure the body of the function is only run once.
         with self._stopping_lock:
             if self._is_trick_stopping:
@@ -233,17 +255,24 @@ class AutoRestartTrick(Trick):
         if process_watcher is not None:
             process_watcher.join()
 
-    def _start_process(self):
+    def _start_process(self) -> None:
         if self._is_trick_stopping:
             return
 
-        # windows doesn't have setsid
-        self.process = subprocess.Popen(self.command, preexec_fn=getattr(os, "setsid", None))
+        # Put the child in its own process group so `kill_process()` can reach
+        # the whole tree. POSIX uses `setsid()`, which Windows does not have;
+        # Windows uses the `CREATE_NEW_PROCESS_GROUP` creation flag, which is
+        # `0` (i.e. no-op) elsewhere.
+        self.process = subprocess.Popen(
+            self.command,
+            preexec_fn=getattr(os, "setsid", None),
+            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+        )
         if self.restart_on_command_exit:
             self.process_watcher = ProcessWatcher(self.process, self._restart_process)
             self.process_watcher.start()
 
-    def _stop_process(self):
+    def _stop_process(self) -> None:
         # Ensure the body of the function is not run in parallel in different threads.
         with self._stopping_lock:
             if self._is_process_stopping:
@@ -268,18 +297,16 @@ class AutoRestartTrick(Trick):
                             break
                         time.sleep(0.25)
                     else:
-                        try:
+                        # Process is already gone
+                        with contextlib.suppress(OSError):
                             kill_process(self.process.pid, 9)
-                        except OSError:
-                            # Process is already gone
-                            pass
                 self.process = None
         finally:
             self._is_process_stopping = False
 
     @echo_events
-    def on_any_event(self, event):
-        if event.event_type == EVENT_TYPE_OPENED:
+    def on_any_event(self, event: FileSystemEvent) -> None:
+        if event.event_type in {EVENT_TYPE_OPENED, EVENT_TYPE_CLOSED_NO_WRITE}:
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
 
@@ -288,7 +315,7 @@ class AutoRestartTrick(Trick):
         else:
             self._restart_process()
 
-    def _restart_process(self):
+    def _restart_process(self) -> None:
         if self._is_trick_stopping:
             return
         self._stop_process()
@@ -296,12 +323,28 @@ class AutoRestartTrick(Trick):
         self.restart_count += 1
 
 
-if not sys.platform.startswith("win"):
+if platform.is_windows():
 
-    def kill_process(pid, stop_signal):
-        os.killpg(os.getpgid(pid), stop_signal)
+    def kill_process(pid: int, stop_signal: int) -> None:
+        # SIGBREAK is SIGINT's Windows sibling: `--signal SIGBREAK` (see
+        # watchmedo.py) reaches this function with it, so it must be routed
+        # through the same CTRL_BREAK_EVENT path rather than hard-killed below.
+        if stop_signal in (signal.SIGINT, getattr(signal, "SIGBREAK", None)):
+            # `os.kill()` maps every signal but the console control events to
+            # `TerminateProcess()`, which delivers nothing: the child is hard
+            # killed, so its `atexit`/`finally` cleanup never runs and anything
+            # it spawned is orphaned. `CTRL_BREAK_EVENT` is delivered to the
+            # child's whole process group (see `_start_process()`), making it
+            # the closest equivalent of `killpg()` on POSIX.
+            try:
+                os.kill(pid, getattr(signal, "CTRL_BREAK_EVENT", 1))
+            except OSError:
+                # No console to route the event through; hard kill as before.
+                os.kill(pid, stop_signal)
+        else:
+            os.kill(pid, stop_signal)
 
 else:
 
-    def kill_process(pid, stop_signal):
-        os.kill(pid, stop_signal)
+    def kill_process(pid: int, stop_signal: int) -> None:
+        os.killpg(os.getpgid(pid), stop_signal)

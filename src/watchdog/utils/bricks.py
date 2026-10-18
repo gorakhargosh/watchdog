@@ -1,27 +1,10 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
-"""
-Utility collections or "bricks".
+"""Utility collections or "bricks".
 
 :module: watchdog.utils.bricks
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: lalinsky@gmail.com (Lukáš Lalinský)
 :author: python@rcn.com (Raymond Hettinger)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 
 Classes
 =======
@@ -37,10 +20,13 @@ Classes
 from __future__ import annotations
 
 import queue
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 class SkipRepeatsQueue(queue.Queue):
-
     """Thread-safe implementation of an special queue where a
     put of the last-item put'd will be dropped.
 
@@ -82,20 +68,22 @@ class SkipRepeatsQueue(queue.Queue):
     based on the OrderedSetQueue below
     """
 
-    def _init(self, maxsize):
-        super()._init(maxsize)
+    def __init__(self, maxsize: int = 0) -> None:
+        super().__init__(maxsize)
         self._last_item = None
 
-    def _put(self, item):
+    def put(self, item: Any, block: bool = True, timeout: float | None = None) -> None:  # noqa: FBT001,FBT002
+        """This method will be used by `eventlet`, when enabled, so we cannot use force proper keyword-only
+        arguments nor touch the signature. Also, the `timeout` argument will be ignored in that case.
+        """
         if self._last_item is None or item != self._last_item:
-            super()._put(item)
-            self._last_item = item
-        else:
-            # `put` increments `unfinished_tasks` even if we did not put
-            # anything into the queue here
-            self.unfinished_tasks -= 1
+            super().put(item, block, timeout)
 
-    def _get(self):
+    def _put(self, item: Any) -> None:
+        super()._put(item)
+        self._last_item = item
+
+    def _get(self) -> Any:
         item = super()._get()
         if item is self._last_item:
             self._last_item = None

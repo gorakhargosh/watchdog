@@ -11,7 +11,7 @@ Watchdog
 
 Python API library and shell utilities to monitor file system events.
 
-Works on 3.7+.
+Works on 3.9+.
 
 Directory monitoring made easy with
 -----------------------------------
@@ -39,8 +39,29 @@ User's Guide
 
    installation
    quickstart
+   examples
    api
    hacking
+
+
+Command-Line Tool
+=================
+.. toctree::
+   :maxdepth: 2
+   
+   watchmedo_cli
+   tricks
+
+.. toctree::
+   :maxdepth: 1
+
+   changelog
+
+.. toctree::
+   :maxdepth: 2
+
+   third_party_licenses
+   authors
 
 Contribute
 ==========

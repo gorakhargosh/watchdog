@@ -1,18 +1,3 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import annotations
 
 import time
@@ -20,19 +5,19 @@ from pathlib import Path
 
 import pytest
 
-from watchdog.events import FileModifiedEvent, FileOpenedEvent, LoggingEventHandler
+from watchdog.events import FileModifiedEvent, FileMovedEvent, FileOpenedEvent, LoggingEventHandler
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 
 
 def test_observer_constructor():
-    ObservedWatch(Path("/foobar"), True)
+    ObservedWatch(Path("/foobar"), recursive=True)
 
 
 def test_observer__eq__():
-    watch1 = ObservedWatch("/foobar", True)
-    watch2 = ObservedWatch("/foobar", True)
-    watch_ne1 = ObservedWatch("/foo", True)
-    watch_ne2 = ObservedWatch("/foobar", False)
+    watch1 = ObservedWatch("/foobar", recursive=True)
+    watch2 = ObservedWatch("/foobar", recursive=True)
+    watch_ne1 = ObservedWatch("/foo", recursive=True)
+    watch_ne2 = ObservedWatch("/foobar", recursive=False)
 
     assert watch1 == watch2
     assert watch1.__eq__(watch2)
@@ -41,23 +26,65 @@ def test_observer__eq__():
 
 
 def test_observer__ne__():
-    watch1 = ObservedWatch("/foobar", True)
-    watch2 = ObservedWatch("/foobar", True)
-    watch_ne1 = ObservedWatch("/foo", True)
-    watch_ne2 = ObservedWatch("/foobar", False)
+    watch1 = ObservedWatch("/foobar", recursive=True)
+    watch2 = ObservedWatch("/foobar", recursive=True)
+    watch_ne1 = ObservedWatch("/foo", recursive=True)
+    watch_ne2 = ObservedWatch("/foobar", recursive=False)
 
     assert not watch1.__ne__(watch2)
     assert watch1.__ne__(watch_ne1)
     assert watch1.__ne__(watch_ne2)
 
 
+def test_observer__eq__ignores_follow_symlink():
+    """Two watches that differ only in ``follow_symlink`` must not compare equal.
+
+    ``ObservedWatch.key`` used to build its tuple from ``path``, ``is_recursive`` and
+    ``event_filter`` only, omitting ``follow_symlink`` even though the latter is a
+    real constructor parameter stored on the instance. ``event_filter`` was
+    deliberately added to the key so that two watches on the same path with
+    different filters stay independent; ``follow_symlink`` should get the same
+    treatment, otherwise scheduling the same path twice with different
+    ``follow_symlink`` values collapses onto a single watch (see
+    ``test_observer_schedule_respects_second_follow_symlink`` below for the
+    resulting observer-level bug).
+    """
+    watch_no_follow = ObservedWatch("/foobar", recursive=True, follow_symlink=False)
+    watch_follow = ObservedWatch("/foobar", recursive=True, follow_symlink=True)
+
+    assert watch_no_follow != watch_follow
+    assert hash(watch_no_follow) != hash(watch_follow)
+
+
+def test_observer_schedule_respects_second_follow_symlink():
+    """A second ``schedule()`` call for the same path must honor its own follow_symlink.
+
+    Because ``ObservedWatch`` equality used to ignore ``follow_symlink``, scheduling
+    "/foobar" with ``follow_symlink=False`` and then again with
+    ``follow_symlink=True`` makes the second watch compare equal to the first.
+    ``BaseObserver.schedule()`` then treats an emitter as already existing for it
+    and never creates one for the ``follow_symlink=True`` request: the emitter
+    actually reachable from the returned watch still reports
+    ``follow_symlink=False``, silently dropping the caller's request.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch_no_follow = observer.schedule(handler, "/foobar", recursive=True, follow_symlink=False)
+    watch_follow = observer.schedule(handler, "/foobar", recursive=True, follow_symlink=True)
+
+    assert len(observer.emitters) == 2
+    assert not observer._emitter_for_watch[watch_no_follow].watch.follow_symlink  # noqa: SLF001
+    assert observer._emitter_for_watch[watch_follow].watch.follow_symlink  # noqa: SLF001
+
+
 def test_observer__repr__():
-    observed_watch = ObservedWatch("/foobar", True)
+    observed_watch = ObservedWatch("/foobar", recursive=True)
     repr_str = "<ObservedWatch: path='/foobar', is_recursive=True>"
     assert observed_watch.__repr__() == repr(observed_watch)
     assert repr(observed_watch) == repr_str
 
-    observed_watch = ObservedWatch("/foobar", False, [FileOpenedEvent, FileModifiedEvent])
+    observed_watch = ObservedWatch("/foobar", recursive=False, event_filter=[FileOpenedEvent, FileModifiedEvent])
     repr_str = "<ObservedWatch: path='/foobar', is_recursive=False, event_filter=FileModifiedEvent|FileOpenedEvent>"
     assert observed_watch.__repr__() == repr(observed_watch)
     assert repr(observed_watch) == repr_str
@@ -65,14 +92,14 @@ def test_observer__repr__():
 
 def test_event_emitter():
     event_queue = EventQueue()
-    watch = ObservedWatch("/foobar", True)
+    watch = ObservedWatch("/foobar", recursive=True)
     event_emitter = EventEmitter(event_queue, watch, timeout=1)
     event_emitter.queue_event(FileModifiedEvent("/foobar/blah"))
 
 
 def test_event_dispatcher():
     event = FileModifiedEvent("/foobar")
-    watch = ObservedWatch("/path", True)
+    watch = ObservedWatch("/path", recursive=True)
 
     class TestableEventDispatcher(EventDispatcher):
         def dispatch_event(self, event, watch):
@@ -90,7 +117,7 @@ def test_observer_basic():
     observer = BaseObserver(EventEmitter)
     handler = LoggingEventHandler()
 
-    watch = observer.schedule(handler, "/foobar", True)
+    watch = observer.schedule(handler, "/foobar", recursive=True)
     observer.add_handler_for_watch(handler, watch)
     observer.add_handler_for_watch(handler, watch)
     observer.remove_handler_for_watch(handler, watch)
@@ -100,10 +127,173 @@ def test_observer_basic():
     with pytest.raises(KeyError):
         observer.unschedule(watch)
 
-    watch = observer.schedule(handler, "/foobar", True)
+    watch = observer.schedule(handler, "/foobar", recursive=True)
     observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
     observer.start()
     time.sleep(1)
     observer.unschedule_all()
     observer.stop()
     observer.join()
+
+
+def test_observer_marks_every_queued_item_done():
+    """The observer must mark both the dispatched event and the stop sentinel done.
+
+    ``BaseObserver.dispatch_events()`` calls ``event_queue.task_done()`` on the
+    stop-sentinel path as well as after dispatching. Without the sentinel call a
+    caller's ``event_queue.join()`` never returns, and nothing else here notices:
+    the other tests only join the *thread*, which stops either way.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch = observer.schedule(handler, "/foobar", recursive=True)
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+    observer.start()
+    time.sleep(1)
+    observer.unschedule_all()
+    observer.stop()
+    observer.join()
+
+    # Asserted rather than calling event_queue.join(), which would hang the run
+    # instead of failing if either task_done() goes missing.
+    assert observer.event_queue.unfinished_tasks == 0
+
+
+def test_stale_event_does_not_resurrect_an_unscheduled_watch():
+    """A watch removed by unschedule() must stay removed when a queued event lands.
+
+    ``BaseObserver._handlers`` is a ``defaultdict(set)``, so indexing it in
+    ``dispatch_events()`` recreates whatever key it is given. An event queued
+    before ``unschedule()`` is still dispatched afterwards, which put the removed
+    watch back as an empty set that nothing ever cleans up.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch = observer.schedule(handler, "/foobar", recursive=True)
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+    observer.unschedule(watch)
+    assert watch not in observer._handlers  # noqa: SLF001
+
+    observer.dispatch_events(observer.event_queue)
+
+    assert watch not in observer._handlers  # noqa: SLF001
+
+
+def test_remove_handler_for_watch_does_not_resurrect_unscheduled_watch():
+    """remove_handler_for_watch() must not resurrect a watch removed by unschedule().
+
+    ``BaseObserver._handlers`` is a ``defaultdict(set)``, so indexing it in
+    ``remove_handler_for_watch()`` recreates whatever key it is given. Calling it
+    for a watch that ``unschedule()`` already removed re-creates that watch as an
+    empty set that nothing will ever clean up, the same leak ``dispatch_events()``
+    had before it switched to ``.get()``.
+    """
+    observer = BaseObserver(EventEmitter)
+    handler = LoggingEventHandler()
+
+    watch = observer.schedule(handler, "/foobar", recursive=True)
+    observer.unschedule(watch)
+    assert watch not in observer._handlers  # noqa: SLF001
+
+    with pytest.raises(KeyError):
+        observer.remove_handler_for_watch(handler, watch)
+
+    assert watch not in observer._handlers  # noqa: SLF001
+
+
+def test_observed_watch_single_file(tmp_path: Path):
+    """When an ObservedWatch is created on a single file, its watch path is set to the parent directory."""
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("content")
+
+    watch = ObservedWatch(file_path, recursive=True)
+    assert watch.is_file
+    assert watch.raw_path == str(file_path)
+    assert watch.path == str(tmp_path.resolve())
+    assert not watch.is_recursive
+
+
+def test_single_file_symlink_follow(tmp_path: Path):
+    """When follow_symlink=True, a symlink to a file watches the target's parent directory."""
+    target_dir = tmp_path / "target_dir"
+    target_dir.mkdir()
+    target_file = target_dir / "target.txt"
+    target_file.write_text("hello")
+
+    link_dir = tmp_path / "link_dir"
+    link_dir.mkdir()
+    symlink_file = link_dir / "link.txt"
+    symlink_file.symlink_to(target_file)
+
+    watch = ObservedWatch(symlink_file, recursive=False, follow_symlink=True)
+    assert watch.is_file
+    assert watch.path == str(target_dir.resolve())
+
+
+def test_single_file_symlink_no_follow(tmp_path: Path):
+    """When follow_symlink=False, a symlink to a file watches the symlink's own parent directory."""
+    target_dir = tmp_path / "target_dir"
+    target_dir.mkdir()
+    target_file = target_dir / "target.txt"
+    target_file.write_text("hello")
+
+    link_dir = tmp_path / "link_dir"
+    link_dir.mkdir()
+    symlink_file = link_dir / "link.txt"
+    symlink_file.symlink_to(target_file)
+
+    watch = ObservedWatch(symlink_file, recursive=False, follow_symlink=False)
+    assert watch.is_file
+    assert watch.path == str(link_dir.resolve())
+
+
+def test_single_file_dispatch_events(tmp_path: Path):
+    """Dispatches events for watched single file and moves, filtering out unrelated events."""
+    file_a = tmp_path / "a.txt"
+    file_a.write_text("a")
+    file_b = tmp_path / "b.txt"
+    other = tmp_path / "other.txt"
+    other.write_text("o")
+
+    events = []
+
+    class Handler(LoggingEventHandler):
+        def dispatch(self, event):
+            events.append(event)
+
+    observer = BaseObserver(EventEmitter)
+    watch_a = observer.schedule(Handler(), file_a)
+
+    # Watched file modified -> dispatched
+    mod_event = FileModifiedEvent(str(file_a))
+    observer.event_queue.put((mod_event, watch_a))
+    # Unrelated file modified -> filtered out
+    observer.event_queue.put((FileModifiedEvent(str(other)), watch_a))
+    # Watched file moved -> dispatched
+    move_event = FileMovedEvent(str(file_a), str(file_b))
+    observer.event_queue.put((move_event, watch_a))
+
+    observer.dispatch_events(observer.event_queue)
+    observer.dispatch_events(observer.event_queue)
+    observer.dispatch_events(observer.event_queue)
+
+    assert events == [mod_event, move_event]
+
+
+def test_symlinked_directory_not_treated_as_file(tmp_path: Path):
+    """A symlink pointing to a directory must not be treated as a single file watch."""
+    target_dir = tmp_path / "target_dir"
+    target_dir.mkdir()
+    link_dir = tmp_path / "link_dir"
+    link_dir.symlink_to(target_dir, target_is_directory=True)
+
+    watch = ObservedWatch(link_dir, recursive=True, follow_symlink=False)
+    assert not watch.is_file
+    assert watch.is_recursive
+    assert watch.path == str(link_dir)
+
+    watch_follow = ObservedWatch(link_dir, recursive=True, follow_symlink=True)
+    assert not watch_follow.is_file
+    assert watch_follow.is_recursive

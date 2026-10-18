@@ -1,10 +1,10 @@
 .. Global includes, substitutions, and common links.
 
-.. |author_name| replace:: Yesudeep Mangalapilly
-.. |author_email| replace:: yesudeep@gmail.com
-.. |copyright| replace:: Copyright 2012-2023 Google, Inc & contributors.
+.. |author_name| replace:: Mickaël Schoentgen
+.. |author_email| replace:: contact@tiger-222.fr
+.. |copyright| replace:: Copyright 2010-2026 Mickaël Schoentgen & contributors.
 .. |project_name| replace:: ``watchdog``
-.. |project_version| replace:: 3.0.1
+.. |project_version| replace:: 7.0.0
 
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
 .. _code repository: https://github.com/gorakhargosh/watchdog

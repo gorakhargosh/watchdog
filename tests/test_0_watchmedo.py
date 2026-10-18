@@ -1,25 +1,27 @@
 from __future__ import annotations
 
+import logging
 import os
+import signal
 import sys
 import time
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 # Skip if import PyYAML failed. PyYAML missing possible because
 # watchdog installed without watchmedo. See Installation section
 # in README.rst
-yaml = pytest.importorskip("yaml")  # noqa
+yaml = pytest.importorskip("yaml")
 
+from yaml.constructor import ConstructorError  # noqa: E402
+from yaml.scanner import ScannerError  # noqa: E402
 
-from yaml.constructor import ConstructorError  # noqa
-from yaml.scanner import ScannerError  # noqa
-
-from watchdog import watchmedo  # noqa
-from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa
-from watchdog.tricks import AutoRestartTrick, ShellCommandTrick  # noqa
-from watchdog.utils import WatchdogShutdown  # noqa
+from watchdog import watchmedo  # noqa: E402
+from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
+from watchdog.observers.api import BaseObserver  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
+from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
 
 
 def test_load_config_valid(tmpdir):
@@ -55,6 +57,45 @@ def test_load_config_invalid(tmpdir):
     assert not os.path.exists(critical_dir)
 
 
+def wait_for_marker_count(capfd, captured, marker, count, timeout=10):
+    """Block until ``marker`` has been printed ``count`` times, or ``timeout`` elapses.
+
+    The subprocesses under test are freshly spawned interpreters, and the time one
+    needs to reach its first ``print()`` is not bounded by anything the test
+    controls: under ``pytest-cov`` the child imports ``coverage`` during startup,
+    and a free-threaded build starts slower again. Waiting for the output rather
+    than sleeping a fixed interval keeps the assertion about what actually matters
+    -- that the restart happened -- instead of about how fast the machine is.
+    See #973.
+
+    ``capfd.readouterr()`` clears the buffer, so everything read here is appended
+    to ``captured`` for the caller to assert against afterwards.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        captured.append(capfd.readouterr().out)
+        if "".join(captured).splitlines().count(marker) >= count:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
+def test_watchmedo_default_patterns_match_absolute_paths(tmpdir):
+    """Regression test for #1212: the default --patterns value must match absolute
+    paths at any depth under the full_match() semantics."""
+
+    from watchdog.utils.patterns import match_any_paths
+
+    watched = os.path.join(tmpdir, "nested", "file.txt")
+    for argv in (["auto-restart", "echo", "hi"], ["shell-command"], ["log"]):
+        args = watchmedo.cli.parse_args(argv)
+        patterns, ignore_patterns = watchmedo.parse_patterns(args.patterns, args.ignore_patterns)
+        assert patterns == ["**"]
+        assert ignore_patterns == []
+        assert match_any_paths([watched], included_patterns=patterns, case_sensitive=False)
+
+
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
@@ -75,22 +116,68 @@ def test_kill_auto_restart(tmpdir, capfd):
     # assert 'KeyboardInterrupt' in cap.err
 
 
+def test_auto_restart_stop_signal_is_delivered(tmpdir, capfd):
+    """The documented stop_signal must actually reach the subprocess.
+
+    On Windows `os.kill()` maps everything but the console control events to
+    `TerminateProcess()`, so the child used to be hard killed and no cleanup
+    handler could ever run. See #1221.
+    """
+    script = os.path.join(tmpdir, "auto-test-stop-signal.py")
+    with open(script, "w") as f:
+        f.write(
+            "import signal, sys, time\n"
+            # Windows delivers CTRL_BREAK_EVENT as SIGBREAK, not as SIGINT.
+            "if hasattr(signal, 'SIGBREAK'):\n"
+            "\tsignal.signal(signal.SIGBREAK, signal.default_int_handler)\n"
+            "try:\n"
+            "\twhile True:\n"
+            "\t\ttime.sleep(0.1)\n"
+            "except KeyboardInterrupt:\n"
+            "\tprint('+++++ stopped cleanly', flush=True)\n"
+        )
+
+    trick = AutoRestartTrick([sys.executable, script])
+    trick.start()
+    time.sleep(2)
+    trick.stop()
+
+    cap = capfd.readouterr()
+    assert "+++++ stopped cleanly" in cap.out
+
+
+@pytest.mark.skipif(not platform.is_windows(), reason="CTRL_BREAK_EVENT routing is Windows-only")
+def test_kill_process_routes_sigbreak_through_ctrl_break_event():
+    """``--signal SIGBREAK`` must be routed like SIGINT, not hard-killed.
+
+    ``watchmedo.py`` turns ``--signal SIGBREAK`` into ``signal.SIGBREAK`` and
+    passes it straight to ``kill_process()``. Before this fix it fell into the
+    ``else`` branch and reached the child through a plain ``os.kill()``, which
+    Windows maps to ``TerminateProcess()`` for anything but the two console
+    control events -- the exact hard kill #1221 asked to avoid. Companion to
+    test_auto_restart_stop_signal_is_delivered above, which covers SIGINT.
+    """
+    with patch("os.kill") as mocked_kill:
+        kill_process(1234, signal.SIGBREAK)
+
+    mocked_kill.assert_called_once_with(1234, signal.CTRL_BREAK_EVENT)
+
+
 def test_shell_command_wait_for_completion(tmpdir, capfd):
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join([sys.executable, script])
+    command = f"{sys.executable} {script}"
     trick = ShellCommandTrick(command, wait_for_process=True)
     assert not trick.is_process_running()
     start_time = time.monotonic()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     elapsed = time.monotonic() - start_time
-    print(capfd.readouterr())
     assert not trick.is_process_running()
     assert elapsed >= 1
 
 
 def test_shell_command_subprocess_termination_nowait(tmpdir):
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join([sys.executable, script])
+    command = f"{sys.executable} {script}"
     trick = ShellCommandTrick(command, wait_for_process=False)
     assert not trick.is_process_running()
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
@@ -104,7 +191,7 @@ def test_shell_command_subprocess_termination_not_happening_on_file_opened_event
 ):
     # FIXME: see issue #949, and find a way to better handle that scenario
     script = make_dummy_script(tmpdir, n=1)
-    command = " ".join([sys.executable, script])
+    command = f"{sys.executable} {script}"
     trick = ShellCommandTrick(command, wait_for_process=False)
     assert not trick.is_process_running()
     trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
@@ -148,32 +235,40 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     assert trick.restart_count == 3
 
 
-@pytest.mark.xfail(
-    condition=sys.platform.startswith(("win", "darwin")) or sys.implementation.name == "pypy",
-    reason="known to be problematic, see #973",
-)
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     """Simulate changing 3 files quickly and then another change later.
 
     Expect 2 restarts due to debouncing.
     """
-    script = make_dummy_script(tmpdir, n=2)
+    # The script must outlive the test. `AutoRestartTrick` defaults to
+    # `restart_on_command_exit=True`, so a child that reaches the end of its own
+    # loop is restarted by `ProcessWatcher` and inflates `restart_count` -- a
+    # restart the test never asked for. With `n=2` the child exits after ~2s,
+    # which is inside the window this test runs in. See #973.
+    script = make_dummy_script(tmpdir, n=10)
     trick = AutoRestartTrick([sys.executable, script], debounce_interval_seconds=0.5)
+    captured = []
     trick.start()
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
+    # These three events must land inside a single debounce interval, so they
+    # are dispatched without waiting on anything in between.
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     trick.on_any_event(FileModifiedEvent("foo/bar2.baz"))
     time.sleep(0.1)
     trick.on_any_event(FileModifiedEvent("foo/bar3.baz"))
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 2), "debounced restart never happened"
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 3), "second restart never happened"
     trick.stop()
-    cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count("+++++ 0") == 3
+    captured.append(capfd.readouterr().out)
+    # Exactly 3 starts: the initial one, one for the debounced burst of three
+    # events, and one for the single event after it. A fourth would mean the
+    # burst was not debounced.
+    assert "".join(captured).splitlines(keepends=False).count("+++++ 0") == 3
     assert trick.restart_count == 2
 
 
+@pytest.mark.flaky(max_runs=5, min_passes=1)
 @pytest.mark.parametrize(
     "restart_on_command_exit",
     [
@@ -181,7 +276,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
         pytest.param(
             False,
             marks=pytest.mark.xfail(
-                condition=sys.platform.startswith(("win", "darwin")),
+                condition=platform.is_darwin() or platform.is_windows(),
                 reason="known to be problematic, see #972",
             ),
         ),
@@ -234,6 +329,38 @@ def test_auto_restart_arg_parsing():
     assert args.debounce_interval == pytest.approx(0.2)
 
 
+def test_auto_restart_events_echoed(tmpdir, caplog):
+    script = make_dummy_script(tmpdir, n=2)
+
+    with caplog.at_level(logging.INFO):
+        trick = AutoRestartTrick([sys.executable, script])
+        trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar2.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar3.baz"))
+
+    records = [record.getMessage().strip() for record in caplog.get_records(when="call")]
+    assert records == [
+        "on_any_event(self=<AutoRestartTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<AutoRestartTrick>, event=FileOpenedEvent(src_path='foo/bar2.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<AutoRestartTrick>, event=FileOpenedEvent(src_path='foo/bar3.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
+
+
+def test_logger_events_echoed(caplog):
+    with caplog.at_level(logging.INFO):
+        trick = LoggerTrick()
+        trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar2.baz"))
+        trick.on_any_event(FileOpenedEvent("foo/bar3.baz"))
+
+    records = [record.getMessage().strip() for record in caplog.get_records(when="call")]
+    assert records == [
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar2.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar3.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
+
+
 def test_shell_command_arg_parsing():
     args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'"])
     assert args.command == "'cmd'"
@@ -257,7 +384,7 @@ def test_valid_verbosity(cmdline, verbosity):
     (verbosity_cmdline_args, expected_log_level) = verbosity
     cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
     args = watchmedo.cli.parse_args(cmd)
-    log_level = watchmedo._get_log_level_from_args(args)
+    log_level = watchmedo._get_log_level_from_args(args)  # noqa: SLF001
     assert log_level == expected_log_level
 
 
@@ -280,9 +407,9 @@ def test_valid_verbosity(cmdline, verbosity):
 )
 def test_invalid_verbosity(cmdline, verbosity_cmdline_args):
     cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
-    with pytest.raises((watchmedo.LogLevelException, SystemExit)):
+    with pytest.raises((watchmedo.LogLevelError, SystemExit)):  # noqa: PT012
         args = watchmedo.cli.parse_args(cmd)
-        watchmedo._get_log_level_from_args(args)
+        watchmedo._get_log_level_from_args(args)  # noqa: SLF001
 
 
 @pytest.mark.parametrize("command", ["tricks-from", "tricks"])
@@ -292,7 +419,7 @@ def test_tricks_from_file(command, tmp_path):
         """
 tricks:
 - watchdog.tricks.LoggerTrick:
-    patterns: ["*.py", "*.js"]
+    patterns: ["**/*.py", "**/*.js"]
 """
     )
     args = watchmedo.cli.parse_args([command, str(tricks_file)])
@@ -302,8 +429,26 @@ tricks:
     def mocked_sleep(_):
         nonlocal checkpoint
         checkpoint = True
-        raise WatchdogShutdown()
+        raise WatchdogShutdownError
 
     with patch("time.sleep", mocked_sleep):
         watchmedo.tricks_from(args)
     assert checkpoint
+
+
+def test_observe_with():
+    observer = Mock(spec=BaseObserver)
+    handler = FileSystemEventHandler()
+    # Test multiple paths, with and without trailing slashes, including duplicates
+    pathnames = ["/path/one", "/path/two/", "/path/three", "/path/one"]
+
+    with patch("time.sleep", side_effect=WatchdogShutdownError):
+        watchmedo.observe_with(observer, handler, pathnames, recursive=True)
+
+    assert observer.schedule.call_count == 3
+    observer.schedule.assert_any_call(handler, "/path/one", recursive=True)
+    observer.schedule.assert_any_call(handler, "/path/two/", recursive=True)
+    observer.schedule.assert_any_call(handler, "/path/three", recursive=True)
+    assert observer.start.call_count == 1
+    assert observer.stop.call_count == 1
+    assert observer.join.call_count == 1

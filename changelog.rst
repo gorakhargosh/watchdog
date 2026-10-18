@@ -3,18 +3,170 @@
 Changelog
 ---------
 
-3.0.1
+7.0.0-dev
+~~~~~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v6.0.0...HEAD>`__
+
+**Breaking Changes**
+
+- [core] Changed pattern matching mechanism from using ``path.match()`` to ``path.full_match()``. Users must update patterns to glob-like syntax: e.g., `*.py` to `**/*.py`. (`#1101 <https://github.com/gorakhargosh/watchdog/pull/1101>`__)
+- [watchmedo] Changed the default ``--patterns`` value from ``"*"`` to ``"**"``, so the default matches absolute paths at any depth under the ``full_match()`` semantics introduced by #1101, and updated the CLI help text and docs to the ``**/`` glob syntax. (`#1212 <https://github.com/gorakhargosh/watchdog/issues/1212>`__)
+- [core] Added ``FileAttribEvent`` and ``DirAttribEvent`` for file and directory metadata modifications (such as permissions or timestamps), separate from content modifications. These events no longer trigger ``on_modified()``; implement ``on_attrib()`` to handle them. On Windows 10 (1709+) and Windows Server 2016+, ``ReadDirectoryChangesExW`` is used to differentiate attribute modifications, with fallback to ``ReadDirectoryChangesW`` on older versions or unsupported file shares. (`#260 <https://github.com/gorakhargosh/watchdog/issues/260>`__)
+
+**Other Changes**
+
+- [windows] A rename whose ``RENAMED_OLD`` and ``RENAMED_NEW`` records arrive in different ``get_events()`` batches no longer emits a move event with an empty ``src_path``. (`#1286 <https://github.com/gorakhargosh/watchdog/pull/1286>`__)
+- [core] ``case_sensitive=False`` matching now really ignores case on Python < 3.13. The ``PurePath.full_match()`` fallback compiled its regex without ``re.IGNORECASE``, so only the patterns were lower-cased and a path such as ``FOO.PY`` never matched ``**/*.py``. (`#1263 <https://github.com/gorakhargosh/watchdog/pull/1263>`__)
+- [inotify] Keep watching newly created subdirectories when recursive watches filter out creation events. (`#990 <https://github.com/gorakhargosh/watchdog/issues/990>`__)
+- [utils] Use a monotonic clock for ``DelayedQueue`` delays so system clock adjustments do not stall or prematurely release events. (`#1296 <https://github.com/gorakhargosh/watchdog/pull/1296>`__)
+- [core] Allow scheduling watches on individual files in ``Observer.schedule()``. (`#1034 <https://github.com/gorakhargosh/watchdog/issues/1034>`__)
+- [utils] ``DirectorySnapshotDiff(ignore_device=True)`` now detects moved files and directories when the device ID changes between snapshots.
+- Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
+- [core] ``remove_handler_for_watch()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one empty ``_handlers`` entry per call. (`#1285 <https://github.com/gorakhargosh/watchdog/pull/1285>`__)
+- [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
+- [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
+- [core] ``dispatch_events()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one ``_handlers`` entry per watch that had an event in flight. (`#1261 <https://github.com/gorakhargosh/watchdog/pull/1261>`__)
+- [docs] ``FileSystemEvent`` no longer claims to be immutable; its fields stay writable and the hash is derived from them, so mutating an event held in a dict or set strands it there. (`#1240 <https://github.com/gorakhargosh/watchdog/issues/1240>`__)
+- [docs] Note that ``FileClosedEvent``, ``FileClosedNoWriteEvent`` and ``FileOpenedEvent``, and their ``on_closed()``, ``on_closed_no_write()`` and ``on_opened()`` handlers, are emitted only by ``InotifyObserver`` on Linux. (`#1235 <https://github.com/gorakhargosh/watchdog/pull/1235>`__)
+- [windows] Event file names are decoded as UTF-16LE, so a name starting with U+FEFF or U+FFFE no longer reports the wrong path. (`#1228 <https://github.com/gorakhargosh/watchdog/pull/1228>`__)
+- [windows] Changing only the case of a name no longer emits a deletion event on top of the move event. (`#752 <https://github.com/gorakhargosh/watchdog/issues/752>`__)
+- [bsd] Do not let a ``PermissionError`` raised while registering a kevent kill the emitter thread. (`#1115 <https://github.com/gorakhargosh/watchdog/issues/1115>`__)
+- [core] Add context manager support to ``Observer`` class. The observer can now be used with a ``with`` statement for automatic start/stop management. (`#1090 <https://github.com/gorakhargosh/watchdog/pull/1149>`__)
+- [freebsd] Supports ``inotify`` on FreeBSD 15+. (`#1147 <https://github.com/gorakhargosh/watchdog/pull/1147>`__)
+- [core] Adjust ``Observer.schedule()`` ``path`` type annotation to reflect the ``pathlib.Path`` support. (`#1096 <https://github.com/gorakhargosh/watchdog/pull/1096>`__)
+- [core] Add support for the ``follow_symlink`` keyword argument to ``ObservedWatch``. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
+- [fsevents] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
+- [inotify] Reduce number of created inotify instance. (`#1099 <https://github.com/gorakhargosh/watchdog/pull/1099>`__)
+- [inotify] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
+- [utils] Fixed ``repr(EmptyDirectorySnapshot)``, before that it was throwing an ``AttributeError: 'EmptyDirectorySnapshot' object has no attribute '_stat_info'``.
+- [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
+- [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
+- [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
+- [docs] Document that ``BaseThread`` always runs as a daemon thread, instead of inheriting ``daemon`` from the creating thread as the inherited ``threading.Thread`` documentation states. (`#1117 <https://github.com/gorakhargosh/watchdog/issues/1117>`__)
+- [windows] Fixed an unsynchronized access to ``WindowsApiEmitter._reader``: ``queue_events()`` now
+  reads it under the same lock used by ``on_thread_stop()``. (`#1170 <https://github.com/gorakhargosh/watchdog/issues/1170>`__)
+- [core] Add ``win_arm64`` to the list of platform-specific wheels published to PyPI. (`#1137 <https://github.com/gorakhargosh/watchdog/issues/1137>`__)
+- [watchmedo] The ``AutoRestartTrick`` stop signal is now actually delivered on Windows. The subprocess is started in its own process group and signalled with ``CTRL_BREAK_EVENT``, so it can run cleanup handlers and its descendants are no longer orphaned on every restart. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
+- [watchmedo] ``AutoRestartTrick``'s ``--signal SIGBREAK`` now routes through ``CTRL_BREAK_EVENT`` on Windows too, instead of falling back to the hard kill that skips the child's cleanup handlers. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
+
+- Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate, @prateek-dagar
+
+6.0.0
 ~~~~~
 
-2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
+2024-11-01 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.3...v6.0.0>`__
 
+- Pin test dependencies.
+- [docs] Add typing info to quick start. (`#1082 <https://github.com/gorakhargosh/watchdog/pull/1082>`__)
+- [inotify] Use of ``select.poll()`` instead of deprecated ``select.select()``, if available. (`#1078 <https://github.com/gorakhargosh/watchdog/pull/1078>`__)
+- [inotify] Fix reading inotify file descriptor after closing it. (`#1081 <https://github.com/gorakhargosh/watchdog/pull/1081>`__)
+- [utils] The ``stop_signal`` keyword-argument type of the ``AutoRestartTrick`` class can now be either a ``signal.Signals`` or an ``int``.
+- [utils] Added the ``__repr__()`` method to the ``Trick`` class.
+- [utils] Removed the unused ``echo_class()`` function from the ``echo`` module.
+- [utils] Removed the unused ``echo_instancemethod()`` function from the ``echo`` module.
+- [utils] Removed the unused ``echo_module()`` function from the ``echo`` module.
+- [utils] Removed the unused ``is_class_private_name()`` function from the ``echo`` module.
+- [utils] Removed the unused ``is_classmethod()`` function from the ``echo`` module.
+- [utils] Removed the unused ``ic_method(met()`` function from the ``echo`` module.
+- [utils] Removed the unused ``method_name()`` function from the ``echo`` module.
+- [utils] Removed the unused ``name()`` function from the ``echo`` module.
+- [watchmedo] Fixed Mypy issues.
+- [watchmedo] Added the ``__repr__()`` method to the ``HelpFormatter`` class.
+- [watchmedo] Removed the ``--trace`` CLI argument from the ``watchmedo log`` command, useless since events are logged by default at the ``LoggerTrick`` class level.
+- [windows] Fixed Mypy issues.
+- Thanks to our beloved contributors: @BoboTiG, @g-pichler, @ethan-vanderheijden, @nhairs
+
+5.0.3
+~~~~~
+
+2024-09-27 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.2...v5.0.3>`__
+
+- [inotify] Improve cleaning up ``Inotify`` threads, and add ``eventlet`` test cases (`#1070 <https://github.com/gorakhargosh/watchdog/pull/1070>`__)
+- Thanks to our beloved contributors: @BoboTiG, @ethan-vanderheijden
+
+5.0.2
+~~~~~
+
+2024-09-03 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.1...v5.0.2>`__
+
+- Enable OS specific Mypy checks (`#1064 <https://github.com/gorakhargosh/watchdog/pull/1064>`__)
+- [watchmedo] Fix ``tricks`` argument type of ``schedule_tricks()`` (`#1063 <https://github.com/gorakhargosh/watchdog/pull/1063>`__)
+- Thanks to our beloved contributors: @gnought, @BoboTiG
+
+5.0.1
+~~~~~
+
+2024-09-02 • `full history <https://github.com/gorakhargosh/watchdog/compare/v5.0.0...v5.0.1>`__
+
+- [kqueue] Fix ``TypeError: kqueue.control() only accepts positional parameters``  (`#1062 <https://github.com/gorakhargosh/watchdog/pull/1062>`__)
+- Thanks to our beloved contributors: @apoirier, @BoboTiG
+
+5.0.0
+~~~~~
+
+2024-08-26 • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.2...v5.0.0>`__
+
+**Breaking Changes**
+
+- Drop support for Python 3.8 (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
+- [core] Enforced usage of proper keyword-arguments (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
+- [core] Renamed the ``BaseObserverSubclassCallable`` class to ``ObserverType`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
+- [inotify] Renamed the ``inotify_event_struct`` class to ``InotifyEventStruct`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
+- [inotify] Renamed the ``UnsupportedLibc`` exception to ``UnsupportedLibcError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
+- [inotify] Removed the ``InotifyConstants.IN_CLOSE`` constant (`#1046 <https://github.com/gorakhargosh/watchdog/pull/1046>`__)
+- [watchmedo] Renamed the ``LogLevelException`` exception to ``LogLevelError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
+- [watchmedo] Renamed the ``WatchdogShutdown`` exception to ``WatchdogShutdownError`` (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
+- [windows] Renamed the ``FILE_NOTIFY_INFORMATION`` class to ``FileNotifyInformation`` (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
+- [windows] Removed the unused ``WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` constant (`#1057 <https://github.com/gorakhargosh/watchdog/pull/1057>`__)
+
+**Other Changes**
+
+- [core] Enable ``disallow_untyped_calls`` Mypy rule (`#1055 <https://github.com/gorakhargosh/watchdog/pull/1055>`__)
+- [core] Enable ``disallow_untyped_defs`` Mypy rule (`#1060 <https://github.com/gorakhargosh/watchdog/pull/1060>`__)
+- [core] Improve typing references for events (`#1040 <https://github.com/gorakhargosh/watchdog/issues/1040>`__)
+- [inotify] Add support for ``IN_CLOSE_NOWRITE`` events. A ``FileClosedNoWriteEvent`` event will be fired, and its ``on_closed_no_write()`` dispatcher has been introduced (`#1046 <https://github.com/gorakhargosh/watchdog/pull/1046>`__)
+- Thanks to our beloved contributors: @BoboTiG
+
+4.0.2
+~~~~~
+
+2024-08-11 • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.1...v4.0.2>`__
+
+- Add support for Python 3.13 (`#1052 <https://github.com/gorakhargosh/watchdog/pull/1052>`__)
+- [core] Run ``ruff``, apply several fixes (`#1033 <https://github.com/gorakhargosh/watchdog/pull/1033>`__)
+- [core] Remove execution rights from ``events.py``
+- [documentation] Update ``PatternMatchingEventHandler`` docstrings (`#1048 <https://github.com/gorakhargosh/watchdog/pull/1048>`__)
+- [documentation] Simplify the quickstart example (`#1047 <https://github.com/gorakhargosh/watchdog/pull/1047>`__)
+- [fsevents] Add missing ``event_filter`` keyword-argument to ``FSEventsObserver.schedule()`` (`#1049 <https://github.com/gorakhargosh/watchdog/pull/1049>`__)
+- [utils] Fix a possible race condition in ``AutoRestartTrick`` (`#1002 <https://github.com/gorakhargosh/watchdog/pull/1002>`__)
+- [watchmedo] Remove execution rights from ``watchmedo.py``
+- Thanks to our beloved contributors: @BoboTiG, @nbelakovski, @ivg
+
+4.0.1
+~~~~~
+
+2024-05-23 • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.0...v4.0.1>`__
+
+- [inotify] Fix missing ``event_filter`` for the full emitter (`#1032 <https://github.com/gorakhargosh/watchdog/pull/1032>`__)
+- Thanks to our beloved contributors: @mraspaud, @BoboTiG
+
+4.0.0
+~~~~~
+
+2024-02-06 • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...v4.0.0>`__
+
+- Drop support for Python 3.7.
+- Add support for Python 3.12.
+- [snapshot] Add typing to ``dirsnapshot`` (`#1012 <https://github.com/gorakhargosh/watchdog/pull/1012>`__)
+- [snapshot] Added ``DirectorySnapshotDiff.ContextManager`` (`#1011 <https://github.com/gorakhargosh/watchdog/pull/1011>`__)
 - [events] ``FileSystemEvent``, and subclasses, are now ``dataclass``es, and their ``repr()`` has changed
 - [windows] ``WinAPINativeEvent`` is now a ``dataclass``, and its ``repr()`` has changed
 - [events] Log ``FileOpenedEvent``, and ``FileClosedEvent``, events in ``LoggingEventHandler``
 - [tests] Improve ``FileSystemEvent`` coverage
 - [watchmedo] Log all events in ``LoggerTrick``
-- [windows] The ``observers.read_directory_changes.WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` hack was removed. The constant will be kept to prevent breaking other softwares.
-- Thanks to our beloved contributors: @BoboTiG
+- [windows] The ``observers.read_directory_changes.WATCHDOG_TRAVERSE_MOVED_DIR_DELAY`` hack was removed. The constant will be kept to prevent breaking other software.
+- Thanks to our beloved contributors: @BoboTiG, @msabramo
 
 3.0.0
 ~~~~~
@@ -402,7 +554,7 @@ Changelog
 
 - Event emitters are no longer started on schedule if ``Observer`` is not
   already running
-- [mac] Fixed usued arguments to pass clang compilation (`#265 <https://github.com/gorakhargosh/watchdog/pull/265>`__)
+- [mac] Fixed unused arguments to pass clang compilation (`#265 <https://github.com/gorakhargosh/watchdog/pull/265>`__)
 - [snapshot] Fixed a possible race condition crash on directory deletion (`#281 <https://github.com/gorakhargosh/watchdog/pull/281>`__)
 - [windows] Fixed an error when watching the same folder again (`#270 <https://github.com/gorakhargosh/watchdog/pull/270>`__)
 - Thanks to our beloved contributors: @tamland, @apetrone, @Falldog,

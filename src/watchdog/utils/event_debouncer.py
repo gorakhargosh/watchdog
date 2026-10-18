@@ -3,8 +3,14 @@ from __future__ import annotations
 import logging
 import time
 import threading
+from typing import TYPE_CHECKING
 
 from watchdog.utils import BaseThread
+
+if TYPE_CHECKING:
+    from typing import Callable
+
+    from watchdog.events import FileSystemEvent
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +23,35 @@ class EventDebouncer(BaseThread):
     before the interval passes, reset the timer and keep waiting.  When the
     debouncing interval passes, the callback will be called with a list of
     events in the order in which they were received.
+
+    :param debounce_interval_seconds:
+        The number of seconds to wait before calling the callback.
+    :type debounce_interval_seconds:
+        ``int``
+    :param events_callback:
+        The callback function to be invoked with the debounced events.
+    :type events_callback:
+        ``Callable[[list[FileSystemEvent]], None]``
     """
 
-    def __init__(self, debounce_interval_seconds, events_callback):
+    def __init__(
+        self,
+        debounce_interval_seconds: int,
+        events_callback: Callable[[list[FileSystemEvent]], None],
+    ) -> None:
         super().__init__()
         self.debounce_interval_seconds = debounce_interval_seconds
         self.events_callback = events_callback
 
-        self._events = []
+        self._events: list[FileSystemEvent] = []
         self._cond = threading.Condition()
 
-    def handle_event(self, event):
+    def handle_event(self, event: FileSystemEvent) -> None:
         with self._cond:
             self._events.append(event)
             self._cond.notify()
 
-    def stop(self):
+    def stop(self) -> None:
         with self._cond:
             super().stop()
             self._cond.notify()
@@ -40,7 +59,9 @@ class EventDebouncer(BaseThread):
     def time_to_flush(self, started: float) -> bool:
         return time.monotonic() - started > self.debounce_interval_seconds
 
-    def run(self):
+    def run(self) -> None:
+        """Runs the event loop that waits for incoming filesystem events and triggers
+        the callback once the debounce interval has passed."""
         with self._cond:
             while self.should_keep_running():
                 if self.debounce_interval_seconds:

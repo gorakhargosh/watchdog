@@ -1,29 +1,10 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import annotations
 
-import pytest
-
-import watchdog.events as events
+from watchdog import events
 from watchdog.utils.bricks import SkipRepeatsQueue
 
-from .markers import cpython_only
 
-
-def basic_actions():
+def test_basic_queue():
     q = SkipRepeatsQueue()
 
     e1 = (2, "fred")
@@ -38,10 +19,6 @@ def basic_actions():
     assert e2 == q.get()
     assert e3 == q.get()
     assert q.empty()
-
-
-def test_basic_queue():
-    basic_actions()
 
 
 def test_allow_nonconsecutive():
@@ -101,14 +78,3 @@ def test_consecutives_allowed_across_empties():
     q.put(e1)  # this repeat is allowed because 'last' added is now gone from queue
     assert e1 == q.get()
     assert q.empty()
-
-
-@cpython_only
-def test_eventlet_monkey_patching():
-    try:
-        import eventlet  # type: ignore[import]
-    except Exception:
-        pytest.skip("eventlet not installed")
-
-    eventlet.monkey_patch()
-    basic_actions()

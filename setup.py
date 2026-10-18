@@ -1,18 +1,3 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import importlib.util
 import sys
 import os
@@ -91,8 +76,8 @@ setup(
     description="Filesystem events monitoring",
     long_description=readme + "\n\n" + changelog,
     long_description_content_type="text/x-rst",
-    author="Yesudeep Mangalapilly",
-    author_email="yesudeep@gmail.com",
+    author="Mickaël Schoentgen",
+    author_email="contact@tiger-222.fr",
     license="Apache-2.0",
     url="https://github.com/gorakhargosh/watchdog",
     keywords=" ".join(
@@ -110,11 +95,10 @@ setup(
         ]
     ),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
-        "License :: OSI Approved :: Apache Software License",
         "Natural Language :: English",
         "Operating System :: POSIX :: Linux",
         "Operating System :: MacOS :: MacOS X",
@@ -129,11 +113,14 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: 3.15",
+        "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Programming Language :: C",
         "Topic :: Software Development :: Libraries",
@@ -154,6 +141,6 @@ setup(
             "watchmedo = watchdog.watchmedo:main [watchmedo]",
         ]
     },
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     zip_safe=False,
 )

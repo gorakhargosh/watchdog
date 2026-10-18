@@ -1,49 +1,27 @@
-# winapi.py: Windows API-Python interface (removes dependency on pywin32)
-#
-# Copyright (C) 2007 Thomas Heller <theller@ctypes.org>
-# Copyright (C) 2010 Will McGugan <will@willmcgugan.com>
-# Copyright (C) 2010 Ryan Kelly <ryan@rfk.id.au>
-# Copyright (C) 2010 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright (C) 2014 Thomas Amland
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# * Redistributions of source code must retain the above copyright notice, this
-#   list of conditions and the following disclaimer.
-# * Redistributions in binary form must reproduce the above copyright notice,
-#   this list of conditions and the following disclaimer in the documentation
-#   and / or other materials provided with the distribution.
-# * Neither the name of the organization nor the names of its contributors may
-#   be used to endorse or promote products derived from this software without
-#   specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Portions of this code were taken from pyfilesystem, which uses the above
-# new BSD license.
+""":module: watchdog.observers.winapi
+:synopsis: Windows API-Python interface (removes dependency on ``pywin32``).
+:author: theller@ctypes.org (Thomas Heller)
+:author: will@willmcgugan.com (Will McGugan)
+:author: ryan@rfk.id.au (Ryan Kelly)
+:author: yesudeep@gmail.com (Yesudeep Mangalapilly)
+:author: thomas.amland@gmail.com (Thomas Amland)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
+:platforms: windows
+"""
 
 from __future__ import annotations
 
-import sys
+import contextlib
+import ctypes
+import queue
+import threading
+from ctypes.wintypes import BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPWSTR
 from dataclasses import dataclass
 from functools import reduce
+from typing import TYPE_CHECKING
 
-assert sys.platform.startswith("win"), f"{__name__} requires Windows"
-import ctypes.wintypes  # noqa: E402
-
-LPVOID = ctypes.wintypes.LPVOID
+if TYPE_CHECKING:
+    from typing import Any
 
 # Invalid handle value.
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
@@ -91,159 +69,213 @@ WAIT_OBJECT_0 = 0x00000000
 WAIT_TIMEOUT = 0x00000102
 
 # Error codes
+ERROR_INVALID_FUNCTION = 1
+ERROR_NOT_SUPPORTED = 50
 ERROR_OPERATION_ABORTED = 995
+ERROR_ELEMENT_NOT_FOUND = 1168
 
 
 class OVERLAPPED(ctypes.Structure):
-    _fields_ = [
+    _fields_ = (
         ("Internal", LPVOID),
         ("InternalHigh", LPVOID),
-        ("Offset", ctypes.wintypes.DWORD),
-        ("OffsetHigh", ctypes.wintypes.DWORD),
+        ("Offset", DWORD),
+        ("OffsetHigh", DWORD),
         ("Pointer", LPVOID),
-        ("hEvent", ctypes.wintypes.HANDLE),
-    ]
+        ("hEvent", HANDLE),
+    )
 
 
-def _errcheck_bool(value, func, args):
+def _errcheck_bool(value: Any | None, func: Any, args: Any) -> Any:
     if not value:
-        raise ctypes.WinError()
+        raise ctypes.WinError()  # type: ignore[attr-defined]
     return args
 
 
-def _errcheck_handle(value, func, args):
+def _errcheck_handle(value: Any | None, func: Any, args: Any) -> Any:
     if not value:
-        raise ctypes.WinError()
+        raise ctypes.WinError()  # type: ignore[attr-defined]
     if value == INVALID_HANDLE_VALUE:
-        raise ctypes.WinError()
+        raise ctypes.WinError()  # type: ignore[attr-defined]
     return args
 
 
-def _errcheck_dword(value, func, args):
+def _errcheck_dword(value: Any | None, func: Any, args: Any) -> Any:
     if value == 0xFFFFFFFF:
-        raise ctypes.WinError()
+        raise ctypes.WinError()  # type: ignore[attr-defined]
     return args
 
 
-kernel32 = ctypes.WinDLL("kernel32")
+kernel32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
 
 ReadDirectoryChangesW = kernel32.ReadDirectoryChangesW
-ReadDirectoryChangesW.restype = ctypes.wintypes.BOOL
+ReadDirectoryChangesW.restype = BOOL
 ReadDirectoryChangesW.errcheck = _errcheck_bool
 ReadDirectoryChangesW.argtypes = (
-    ctypes.wintypes.HANDLE,  # hDirectory
+    HANDLE,  # hDirectory
     LPVOID,  # lpBuffer
-    ctypes.wintypes.DWORD,  # nBufferLength
-    ctypes.wintypes.BOOL,  # bWatchSubtree
-    ctypes.wintypes.DWORD,  # dwNotifyFilter
-    ctypes.POINTER(ctypes.wintypes.DWORD),  # lpBytesReturned
+    DWORD,  # nBufferLength
+    BOOL,  # bWatchSubtree
+    DWORD,  # dwNotifyFilter
+    ctypes.POINTER(DWORD),  # lpBytesReturned
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
     LPVOID,  # FileIOCompletionRoutine # lpCompletionRoutine
 )
 
+# ReadDirectoryChangesExW was added in Windows 10, version 1709 (Fall 2017) and Windows Server 2016.
+# It supports returning extended information to differentiate content and metadata modifications.
+# References:
+# - https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesexw
+# - https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_notify_extended_information
+READ_DIRECTORY_NOTIFY_INFORMATION = 1
+READ_DIRECTORY_NOTIFY_EXTENDED_INFORMATION = 2
+
+ReadDirectoryChangesExW = getattr(kernel32, "ReadDirectoryChangesExW", None)
+if ReadDirectoryChangesExW is not None:
+    ReadDirectoryChangesExW.restype = BOOL
+    ReadDirectoryChangesExW.errcheck = _errcheck_bool
+    ReadDirectoryChangesExW.argtypes = (
+        HANDLE,  # hDirectory
+        LPVOID,  # lpBuffer
+        DWORD,  # nBufferLength
+        BOOL,  # bWatchSubtree
+        DWORD,  # dwNotifyFilter
+        ctypes.POINTER(DWORD),  # lpBytesReturned
+        ctypes.POINTER(OVERLAPPED),  # lpOverlapped
+        LPVOID,  # FileIOCompletionRoutine # lpCompletionRoutine
+        DWORD,  # ReadDirectoryNotifyInformationClass
+    )
+
 CreateFileW = kernel32.CreateFileW
-CreateFileW.restype = ctypes.wintypes.HANDLE
+CreateFileW.restype = HANDLE
 CreateFileW.errcheck = _errcheck_handle
 CreateFileW.argtypes = (
-    ctypes.wintypes.LPCWSTR,  # lpFileName
-    ctypes.wintypes.DWORD,  # dwDesiredAccess
-    ctypes.wintypes.DWORD,  # dwShareMode
+    LPCWSTR,  # lpFileName
+    DWORD,  # dwDesiredAccess
+    DWORD,  # dwShareMode
     LPVOID,  # lpSecurityAttributes
-    ctypes.wintypes.DWORD,  # dwCreationDisposition
-    ctypes.wintypes.DWORD,  # dwFlagsAndAttributes
-    ctypes.wintypes.HANDLE,  # hTemplateFile
+    DWORD,  # dwCreationDisposition
+    DWORD,  # dwFlagsAndAttributes
+    HANDLE,  # hTemplateFile
 )
 
 CloseHandle = kernel32.CloseHandle
-CloseHandle.restype = ctypes.wintypes.BOOL
-CloseHandle.argtypes = (ctypes.wintypes.HANDLE,)  # hObject
+CloseHandle.restype = BOOL
+CloseHandle.argtypes = (HANDLE,)  # hObject
 
 CancelIoEx = kernel32.CancelIoEx
-CancelIoEx.restype = ctypes.wintypes.BOOL
+CancelIoEx.restype = BOOL
 CancelIoEx.errcheck = _errcheck_bool
 CancelIoEx.argtypes = (
-    ctypes.wintypes.HANDLE,  # hObject
+    HANDLE,  # hObject
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
 )
 
 CreateEvent = kernel32.CreateEventW
-CreateEvent.restype = ctypes.wintypes.HANDLE
+CreateEvent.restype = HANDLE
 CreateEvent.errcheck = _errcheck_handle
 CreateEvent.argtypes = (
     LPVOID,  # lpEventAttributes
-    ctypes.wintypes.BOOL,  # bManualReset
-    ctypes.wintypes.BOOL,  # bInitialState
-    ctypes.wintypes.LPCWSTR,  # lpName
+    BOOL,  # bManualReset
+    BOOL,  # bInitialState
+    LPCWSTR,  # lpName
 )
 
 SetEvent = kernel32.SetEvent
-SetEvent.restype = ctypes.wintypes.BOOL
+SetEvent.restype = BOOL
 SetEvent.errcheck = _errcheck_bool
-SetEvent.argtypes = (ctypes.wintypes.HANDLE,)  # hEvent
+SetEvent.argtypes = (HANDLE,)  # hEvent
 
 WaitForSingleObjectEx = kernel32.WaitForSingleObjectEx
-WaitForSingleObjectEx.restype = ctypes.wintypes.DWORD
+WaitForSingleObjectEx.restype = DWORD
 WaitForSingleObjectEx.errcheck = _errcheck_dword
 WaitForSingleObjectEx.argtypes = (
-    ctypes.wintypes.HANDLE,  # hObject
-    ctypes.wintypes.DWORD,  # dwMilliseconds
-    ctypes.wintypes.BOOL,  # bAlertable
+    HANDLE,  # hObject
+    DWORD,  # dwMilliseconds
+    BOOL,  # bAlertable
 )
 
 CreateIoCompletionPort = kernel32.CreateIoCompletionPort
-CreateIoCompletionPort.restype = ctypes.wintypes.HANDLE
+CreateIoCompletionPort.restype = HANDLE
 CreateIoCompletionPort.errcheck = _errcheck_handle
 CreateIoCompletionPort.argtypes = (
-    ctypes.wintypes.HANDLE,  # FileHandle
-    ctypes.wintypes.HANDLE,  # ExistingCompletionPort
+    HANDLE,  # FileHandle
+    HANDLE,  # ExistingCompletionPort
     LPVOID,  # CompletionKey
-    ctypes.wintypes.DWORD,  # NumberOfConcurrentThreads
+    DWORD,  # NumberOfConcurrentThreads
 )
 
 GetQueuedCompletionStatus = kernel32.GetQueuedCompletionStatus
-GetQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
+GetQueuedCompletionStatus.restype = BOOL
 GetQueuedCompletionStatus.errcheck = _errcheck_bool
 GetQueuedCompletionStatus.argtypes = (
-    ctypes.wintypes.HANDLE,  # CompletionPort
+    HANDLE,  # CompletionPort
     LPVOID,  # lpNumberOfBytesTransferred
     LPVOID,  # lpCompletionKey
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
-    ctypes.wintypes.DWORD,  # dwMilliseconds
+    DWORD,  # dwMilliseconds
 )
 
 PostQueuedCompletionStatus = kernel32.PostQueuedCompletionStatus
-PostQueuedCompletionStatus.restype = ctypes.wintypes.BOOL
+PostQueuedCompletionStatus.restype = BOOL
 PostQueuedCompletionStatus.errcheck = _errcheck_bool
 PostQueuedCompletionStatus.argtypes = (
-    ctypes.wintypes.HANDLE,  # CompletionPort
-    ctypes.wintypes.DWORD,  # lpNumberOfBytesTransferred
-    ctypes.wintypes.DWORD,  # lpCompletionKey
+    HANDLE,  # CompletionPort
+    DWORD,  # lpNumberOfBytesTransferred
+    DWORD,  # lpCompletionKey
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
 )
 
 
 GetFinalPathNameByHandleW = kernel32.GetFinalPathNameByHandleW
-GetFinalPathNameByHandleW.restype = ctypes.wintypes.DWORD
+GetFinalPathNameByHandleW.restype = DWORD
 GetFinalPathNameByHandleW.errcheck = _errcheck_dword
 GetFinalPathNameByHandleW.argtypes = (
-    ctypes.wintypes.HANDLE,  # hFile
-    ctypes.wintypes.LPWSTR,  # lpszFilePath
-    ctypes.wintypes.DWORD,  # cchFilePath
-    ctypes.wintypes.DWORD,  # DWORD
+    HANDLE,  # hFile
+    LPWSTR,  # lpszFilePath
+    DWORD,  # cchFilePath
+    DWORD,  # DWORD
 )
 
 
-class FILE_NOTIFY_INFORMATION(ctypes.Structure):
-    _fields_ = [
-        ("NextEntryOffset", ctypes.wintypes.DWORD),
-        ("Action", ctypes.wintypes.DWORD),
-        ("FileNameLength", ctypes.wintypes.DWORD),
-        # ("FileName", (ctypes.wintypes.WCHAR * 1))]
+class FileNotifyInformation(ctypes.Structure):
+    _fields_ = (
+        ("NextEntryOffset", DWORD),
+        ("Action", DWORD),
+        ("FileNameLength", DWORD),
         ("FileName", (ctypes.c_char * 1)),
-    ]
+    )
 
 
-LPFNI = ctypes.POINTER(FILE_NOTIFY_INFORMATION)
+LPFNI = ctypes.POINTER(FileNotifyInformation)
+
+
+class FileNotifyExtendedInformation(ctypes.Structure):
+    """Corresponds to FILE_NOTIFY_EXTENDED_INFORMATION in winnt.h.
+
+    Supported in Windows 10, version 1709+ and Windows Server 2016+.
+    https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_notify_extended_information
+    """
+
+    _fields_ = (
+        ("NextEntryOffset", DWORD),
+        ("Action", DWORD),
+        ("CreationTime", ctypes.c_int64),
+        ("LastModificationTime", ctypes.c_int64),
+        ("LastChangeTime", ctypes.c_int64),
+        ("LastAccessTime", ctypes.c_int64),
+        ("AllocatedLength", ctypes.c_int64),
+        ("FileSize", ctypes.c_int64),
+        ("FileAttributes", DWORD),
+        ("ReparsePointTag", DWORD),
+        ("FileId", ctypes.c_int64),
+        ("ParentFileId", ctypes.c_int64),
+        ("FileNameLength", DWORD),
+        ("FileName", (ctypes.c_char * 1)),
+    )
+
+
+LPFNEI = ctypes.POINTER(FileNotifyExtendedInformation)
 
 
 # We don't need to recalculate these flags every time a call is made to
@@ -284,23 +316,61 @@ BUFFER_SIZE = 64000
 PATH_BUFFER_SIZE = 2048
 
 
-def _parse_event_buffer(readBuffer, nBytes):
+def _parse_event_buffer(read_buffer: bytes) -> list[tuple[int, str]]:
+    """Parse a buffer of ``FILE_NOTIFY_INFORMATION`` structures.
+
+    :param read_buffer:
+        The raw byte buffer returned by ``ReadDirectoryChangesW``.
+    :returns:
+        A list of ``(action, filename)`` tuples.
+    """
+    n_bytes = len(read_buffer)
     results = []
-    while nBytes > 0:
-        fni = ctypes.cast(readBuffer, LPFNI)[0]
-        ptr = ctypes.addressof(fni) + FILE_NOTIFY_INFORMATION.FileName.offset
-        # filename = ctypes.wstring_at(ptr, fni.FileNameLength)
+    while n_bytes > 0:
+        fni = ctypes.cast(read_buffer, LPFNI)[0]  # type: ignore[arg-type]
+        ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
         filename = ctypes.string_at(ptr, fni.FileNameLength)
-        results.append((fni.Action, filename.decode("utf-16")))
-        numToSkip = fni.NextEntryOffset
-        if numToSkip <= 0:
+        # ReadDirectoryChangesW writes UTF-16LE without a byte-order mark, so the
+        # "utf-16" codec would eat a leading U+FEFF and let a leading U+FFFE flip
+        # the byte order of the rest of the name.
+        results.append((fni.Action, filename.decode("utf-16-le")))
+        num_to_skip = fni.NextEntryOffset
+        if num_to_skip <= 0:
             break
-        readBuffer = readBuffer[numToSkip:]
-        nBytes -= numToSkip  # numToSkip is long. nBytes should be long too.
+        read_buffer = read_buffer[num_to_skip:]
+        n_bytes -= num_to_skip  # num_to_skip is long. n_bytes should be long too.
     return results
 
 
-def _is_observed_path_deleted(handle, path):
+def _parse_extended_event_buffer(read_buffer: bytes) -> list[tuple[int, str, bool]]:
+    """Parse a buffer of ``FILE_NOTIFY_EXTENDED_INFORMATION`` structures.
+
+    :param read_buffer:
+        The raw byte buffer returned by ``ReadDirectoryChangesExW``.
+    :returns:
+        A list of ``(action, filename, is_attrib)`` tuples, where ``is_attrib``
+        is ``True`` when the record indicates a metadata/attribute modification
+        (i.e. ``FILE_ACTION_MODIFIED`` where ``LastChangeTime`` is greater than
+        ``LastModificationTime``), distinguishing metadata modifications from
+        content writes.
+    """
+    n_bytes = len(read_buffer)
+    results = []
+    while n_bytes > 0:
+        fnei = ctypes.cast(read_buffer, LPFNEI)[0]  # type: ignore[arg-type]
+        ptr = ctypes.addressof(fnei) + FileNotifyExtendedInformation.FileName.offset
+        filename = ctypes.string_at(ptr, fnei.FileNameLength)
+        is_attrib = fnei.Action == FILE_ACTION_MODIFIED and fnei.LastChangeTime > fnei.LastModificationTime
+        results.append((fnei.Action, filename.decode("utf-16-le"), is_attrib))
+        num_to_skip = fnei.NextEntryOffset
+        if num_to_skip <= 0:
+            break
+        read_buffer = read_buffer[num_to_skip:]
+        n_bytes -= num_to_skip
+    return results
+
+
+def _is_observed_path_deleted(handle: HANDLE, path: str) -> bool:
     # Comparison of observed path and actual path, returned by
     # GetFinalPathNameByHandleW. If directory moved to the trash bin, or
     # deleted, actual path will not be equal to observed path.
@@ -309,17 +379,49 @@ def _is_observed_path_deleted(handle, path):
     return buff.value != path
 
 
-def _generate_observed_path_deleted_event():
-    # Create synthetic event for notify that observed directory is deleted
-    path = ctypes.create_unicode_buffer(".")
-    event = FILE_NOTIFY_INFORMATION(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
-    event_size = ctypes.sizeof(event)
+def _generate_observed_path_deleted_event(*, extended: bool = False) -> bytes:
+    """Create a synthetic event notifying that the observed directory was deleted.
+
+    :param extended:
+        Whether to format the synthetic event as a
+        ``FILE_NOTIFY_EXTENDED_INFORMATION`` structure (``True``) or a legacy
+        ``FILE_NOTIFY_INFORMATION`` structure (``False``).
+    :returns:
+        A byte buffer containing the synthetic deleted-self event record.
+    """
+    path_bytes = ".".encode("utf-16-le")
+    byte_len = len(path_bytes)
     buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
-    ctypes.memmove(buff, ctypes.addressof(event), event_size)
-    return buff, event_size
+    offset: int
+    if extended:
+        header = FileNotifyExtendedInformation(
+            0,
+            FILE_ACTION_DELETED_SELF,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            byte_len,
+            b"",
+        )
+        offset = FileNotifyExtendedInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header), offset)
+    else:
+        header_fni = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, byte_len, b"")
+        offset = FileNotifyInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header_fni), offset)
+    ctypes.memmove(ctypes.addressof(buff) + offset, path_bytes, byte_len)
+    total_size = offset + byte_len
+    return buff.raw[:total_size]
 
 
-def get_directory_handle(path):
+def _get_directory_handle(path: str) -> HANDLE:
     """Returns a Windows handle to the specified directory path."""
     return CreateFileW(
         path,
@@ -332,79 +434,231 @@ def get_directory_handle(path):
     )
 
 
-def close_directory_handle(handle):
+def _cancel_handle_io(handle: HANDLE) -> None:
     try:
-        CancelIoEx(handle, None)  # force ReadDirectoryChangesW to return
-        CloseHandle(handle)  # close directory handle
-    except OSError:
-        try:
-            CloseHandle(handle)  # close directory handle
-        except Exception:
-            return
-
-
-def read_directory_changes(handle, path, recursive):
-    """Read changes to the directory using the specified directory handle.
-
-    http://timgolden.me.uk/pywin32-docs/win32file__ReadDirectoryChangesW_meth.html
-    """
-    event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
-    nbytes = ctypes.wintypes.DWORD()
-    try:
-        ReadDirectoryChangesW(
-            handle,
-            ctypes.byref(event_buffer),
-            len(event_buffer),
-            recursive,
-            WATCHDOG_FILE_NOTIFY_FLAGS,
-            ctypes.byref(nbytes),
-            None,
-            None,
-        )
+        CancelIoEx(handle, None)
     except OSError as e:
-        if e.winerror == ERROR_OPERATION_ABORTED:
-            return [], 0
+        if e.winerror == ERROR_ELEMENT_NOT_FOUND:  # type: ignore[attr-defined]
+            # Happens when the directory has been deleted, ignore.
+            return
+        raise
 
-        # Handle the case when the root path is deleted
-        if _is_observed_path_deleted(handle, path):
-            return _generate_observed_path_deleted_event()
 
-        raise e
-
-    return event_buffer.raw, int(nbytes.value)
+def _close_directory_handle(handle: HANDLE) -> None:
+    with contextlib.suppress(OSError):
+        CloseHandle(handle)
 
 
 @dataclass(unsafe_hash=True)
 class WinAPINativeEvent:
+    """Represents a native event emitted by the Windows directory change API.
+
+    :param action: The native Windows action flag (e.g. ``FILE_ACTION_MODIFIED``).
+    :param src_path: The relative source path of the affected file or directory.
+    :param is_attrib: Indicates whether the event is an attribute/metadata change
+                      rather than a content modification.
+    """
+
     action: int
     src_path: str
+    is_attrib: bool = False
 
     @property
-    def is_added(self):
-        return self.action == FILE_ACTION_CREATED
+    def is_added(self) -> bool:
+        return self.action == FILE_ACTION_ADDED
 
     @property
-    def is_removed(self):
+    def is_removed(self) -> bool:
         return self.action == FILE_ACTION_REMOVED
 
     @property
-    def is_modified(self):
-        return self.action == FILE_ACTION_MODIFIED
+    def is_modified(self) -> bool:
+        return self.action == FILE_ACTION_MODIFIED and not self.is_attrib
 
     @property
-    def is_renamed_old(self):
+    def is_renamed_old(self) -> bool:
         return self.action == FILE_ACTION_RENAMED_OLD_NAME
 
     @property
-    def is_renamed_new(self):
+    def is_renamed_new(self) -> bool:
         return self.action == FILE_ACTION_RENAMED_NEW_NAME
 
     @property
-    def is_removed_self(self):
+    def is_removed_self(self) -> bool:
         return self.action == FILE_ACTION_REMOVED_SELF
 
 
-def read_events(handle, path, recursive):
-    buf, nbytes = read_directory_changes(handle, path, recursive)
-    events = _parse_event_buffer(buf, nbytes)
-    return [WinAPINativeEvent(action, src_path) for action, src_path in events]
+def _drop_case_only_rename_deletions(events: list[WinAPINativeEvent]) -> list[WinAPINativeEvent]:
+    """Drop the spurious deletion reported ahead of a case-only rename.
+
+    Renaming ``file`` to ``FILE`` makes ReadDirectoryChangesW report a
+    ``FILE_ACTION_REMOVED`` for the old name on top of the usual
+    ``FILE_ACTION_RENAMED_OLD_NAME``/``FILE_ACTION_RENAMED_NEW_NAME`` pair, so such a
+    rename would surface as a deletion followed by a move. A rename that also changes
+    the name reports the pair alone, hence the deletion is dropped only when the very
+    next record renames that same path: nothing can rename a genuinely deleted path.
+    """
+    return [
+        event
+        for index, event in enumerate(events)
+        if not (
+            event.is_removed
+            and index + 1 < len(events)
+            and events[index + 1].is_renamed_old
+            and events[index + 1].src_path == event.src_path
+        )
+    ]
+
+
+class DirectoryChangeReader:
+    """Uses ReadDirectoryChangesW() or ReadDirectoryChangesExW() to detect file system changes.  A separate
+    thread is used to make that call in order to reduce the time window
+    in that events may be lost.  The processing of data received from
+    ReadDirectoryChangesW() is queued and processed by another thread.
+    """
+
+    def __init__(self, path: str, *, recursive: bool) -> None:
+        self._path = path
+        self._recursive = recursive
+        self._reader_thread: threading.Thread | None = None
+        self._handle: HANDLE | None = None
+        self._should_stop = False
+        self._buf_queue: queue.Queue = queue.Queue()
+        self._lock = threading.Lock()
+        self._extended = ReadDirectoryChangesExW is not None
+
+    def _run_inner(self, handle: HANDLE, event_buffer: ctypes.Array[ctypes.c_char], nbytes: DWORD) -> None:
+        # This runs in its own thread and it makes a single call to
+        # ReadDirectoryChangesExW() (if supported) or ReadDirectoryChangesW().
+        # This blocks until at least some events are available (or there is an error).
+        # We will re-use the _event_buffer and so we copy the data into a second buffer
+        # (double-buffering technique) and queue it for another thread to process.
+        # This reduces the time window in which we could miss events.
+        try:
+            if self._extended and ReadDirectoryChangesExW is not None:
+                try:
+                    ReadDirectoryChangesExW(
+                        handle,
+                        ctypes.byref(event_buffer),
+                        len(event_buffer),
+                        self._recursive,
+                        WATCHDOG_FILE_NOTIFY_FLAGS,
+                        ctypes.byref(nbytes),
+                        None,
+                        None,
+                        READ_DIRECTORY_NOTIFY_EXTENDED_INFORMATION,
+                    )
+                except OSError as e:
+                    # Remote network shares (SMB/CIFS) or non-NTFS volumes may not support
+                    # extended directory notifications and return ERROR_INVALID_FUNCTION (1)
+                    # or ERROR_NOT_SUPPORTED (50). Fall back to ReadDirectoryChangesW.
+                    # Ref: https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-readdirectorychangesw#return-value
+                    if getattr(e, "winerror", None) in (ERROR_INVALID_FUNCTION, ERROR_NOT_SUPPORTED):
+                        self._extended = False
+                        ReadDirectoryChangesW(
+                            handle,
+                            ctypes.byref(event_buffer),
+                            len(event_buffer),
+                            self._recursive,
+                            WATCHDOG_FILE_NOTIFY_FLAGS,
+                            ctypes.byref(nbytes),
+                            None,
+                            None,
+                        )
+                    else:
+                        raise
+            else:
+                ReadDirectoryChangesW(
+                    handle,
+                    ctypes.byref(event_buffer),
+                    len(event_buffer),
+                    self._recursive,
+                    WATCHDOG_FILE_NOTIFY_FLAGS,
+                    ctypes.byref(nbytes),
+                    None,
+                    None,
+                )
+            buf = event_buffer.raw[: nbytes.value]
+        except OSError as e:
+            if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
+                return
+            if _is_observed_path_deleted(handle, self._path):
+                # Handle the case when the root path is deleted
+                with self._lock:
+                    # Additional calls to ReadDirectoryChangesW() will fail so stop.
+                    self._should_stop = True
+                # Create synthetic event for deletion
+                buf = _generate_observed_path_deleted_event(extended=self._extended)
+            else:
+                raise
+        self._buf_queue.put((buf, self._extended))
+
+    def _run(self) -> None:
+        with self._lock:
+            assert self._handle is None
+            handle = self._handle = _get_directory_handle(self._path)
+        # To improve performance and reduce the window in which events can be
+        # missed, we re-use these for each call to _run_inner().
+        event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
+        nbytes = DWORD()
+        self._buf_queue.put((b"", self._extended))  # indicates that this thread has started
+        try:
+            while not self._should_stop:
+                self._run_inner(handle, event_buffer, nbytes)
+        finally:
+            # Note that a HANDLE value can be re-used by the OS once we close
+            # it.  So we need to be careful not to hang on to the value after
+            # we close it.
+            with self._lock:
+                self._handle = None
+            _close_directory_handle(handle)
+
+    def start(self) -> None:
+        with self._lock:
+            assert self._reader_thread is None
+            if self._should_stop:
+                return  # stop already called, do not start
+            self._reader_thread = threading.Thread(target=self._run)
+        self._reader_thread.start()
+        # Wait for empty bytes object, indicating reader thread has started.
+        # This reduces the time window between this method returning and the
+        # actual ReadDirectoryChangesW() call, which reduces the time that
+        # events could be missed.
+        _ = self._buf_queue.get(timeout=2)
+
+    def stop(self) -> None:
+        with self._lock:
+            if self._should_stop:
+                return  # already stopping
+            self._should_stop = True
+            reader_thread = self._reader_thread
+            if reader_thread is None:
+                return  # never started
+            self._reader_thread = None
+            if self._handle is not None:
+                # Note that we don't close the handle here but let the reader
+                # thread do that.  The _should_stop flag will tell it to exit the
+                # _run loop, cleanup and exit.  Since it might be blocked inside
+                # ReadDirectoryChangesW, we call CancelIoEx to wake it. This
+                # cancel call is done while holding self._lock so that the run
+                # thread cannot race with us and close the handle before we
+                # make this call.
+                _cancel_handle_io(self._handle)
+        reader_thread.join()
+
+    def get_events(self, timeout: float) -> list[WinAPINativeEvent]:
+        events: list[WinAPINativeEvent] = []
+        while True:
+            try:
+                buf, is_extended = self._buf_queue.get(timeout=timeout)
+            except queue.Empty:
+                break
+            if not buf:
+                continue
+            if is_extended:
+                for action, src_path, is_attrib in _parse_extended_event_buffer(buf):
+                    events.append(WinAPINativeEvent(action, src_path, is_attrib=is_attrib))
+            else:
+                for action, src_path in _parse_event_buffer(buf):
+                    events.append(WinAPINativeEvent(action, src_path, is_attrib=False))
+        return _drop_case_only_rename_deletions(events)

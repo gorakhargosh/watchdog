@@ -1,23 +1,6 @@
-#
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""
-:module: watchdog.watchmedo
+""":module: watchdog.watchmedo
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 :synopsis: ``watchmedo`` shell script utility.
 """
 
@@ -32,11 +15,19 @@ import time
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from textwrap import dedent
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from watchdog.observers.api import BaseObserverSubclassCallable
-from watchdog.utils import WatchdogShutdown, load_class
+from watchdog.utils import WatchdogShutdownError, load_class, platform
 from watchdog.version import VERSION_STRING
+
+if TYPE_CHECKING:
+    from argparse import Namespace, _SubParsersAction
+    from typing import Callable
+
+    from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import ObserverType
+    from watchdog.observers.api import BaseObserver
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,37 +45,49 @@ class HelpFormatter(RawDescriptionHelpFormatter):
     Source: https://github.com/httpie/httpie/blob/2423f89/httpie/cli/argparser.py#L31
     """
 
-    def __init__(self, *args, max_help_position=6, **kwargs):
+    def __init__(self, *args: Any, max_help_position: int = 6, **kwargs: Any) -> None:
         # A smaller indent for args help.
         kwargs["max_help_position"] = max_help_position
         super().__init__(*args, **kwargs)
 
-    def _split_lines(self, text, width):
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__}>"
+
+    def _split_lines(self, text: str, width: int) -> list[str]:
         text = dedent(text).strip() + "\n\n"
         return text.splitlines()
 
 
 epilog = """\
-Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>.
-Copyright 2012 Google, Inc & contributors.
+Copyright 2018-2026 Mickaël Schoentgen & contributors
+Copyright 2014-2018 Thomas Amland & contributors
+Copyright 2012-2014 Google, Inc.
+Copyright 2011-2012 Yesudeep Mangalapilly
 
 Licensed under the terms of the Apache license, version 2.0. Please see
 LICENSE in the source code for more information."""
 
 cli = ArgumentParser(epilog=epilog, formatter_class=HelpFormatter)
-cli.add_argument("--version", action="version", version=VERSION_STRING)
-subparsers = cli.add_subparsers(dest="top_command")
+cli.add_argument("-V", "--version", action="version", version=VERSION_STRING)
+subparsers = cli.add_subparsers(dest="top_command", title="subcommands")
 command_parsers = {}
 
+Argument = tuple[list[str], Any]
 
-def argument(*name_or_flags, **kwargs):
+
+def argument(*name_or_flags: str, **kwargs: Any) -> Argument:
     """Convenience function to properly format arguments to pass to the
     command decorator.
     """
     return list(name_or_flags), kwargs
 
 
-def command(args=[], parent=subparsers, cmd_aliases=[]):
+def command(
+    args: list[Argument],
+    *,
+    parent: _SubParsersAction[ArgumentParser] = subparsers,
+    cmd_aliases: list[str] | None = None,
+) -> Callable:
     """Decorator to define a new command in a sanity-preserving way.
     The function will be stored in the ``func`` variable when the parser
     parses arguments so that it can be called directly like so::
@@ -94,37 +97,41 @@ def command(args=[], parent=subparsers, cmd_aliases=[]):
 
     """
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         name = func.__name__.replace("_", "-")
-        desc = dedent(func.__doc__)
-        parser = parent.add_parser(name, description=desc, aliases=cmd_aliases, formatter_class=HelpFormatter)
+        desc = dedent(func.__doc__ or "")
+        parser = parent.add_parser(
+            name,
+            aliases=cmd_aliases or [],
+            description=desc,
+            help=desc.splitlines()[0].strip() if desc else None,
+            formatter_class=HelpFormatter,
+        )
         command_parsers[name] = parser
         verbosity_group = parser.add_mutually_exclusive_group()
         verbosity_group.add_argument("-q", "--quiet", dest="verbosity", action="append_const", const=-1)
         verbosity_group.add_argument("-v", "--verbose", dest="verbosity", action="append_const", const=1)
-        for arg in args:
-            parser.add_argument(*arg[0], **arg[1])
+        for name_or_flags, kwargs in args:
+            parser.add_argument(*name_or_flags, **kwargs)
             parser.set_defaults(func=func)
         return func
 
     return decorator
 
 
-def path_split(pathname_spec, separator=os.pathsep):
-    """
-    Splits a pathname specification separated by an OS-dependent separator.
+def path_split(pathname_spec: str, *, separator: str = os.pathsep) -> list[str]:
+    """Splits a pathname specification separated by an OS-dependent separator.
 
     :param pathname_spec:
         The pathname specification.
     :param separator:
         (OS Dependent) `:` on Unix and `;` on Windows or user-specified.
     """
-    return list(pathname_spec.split(separator))
+    return pathname_spec.split(separator)
 
 
-def add_to_sys_path(pathnames, index=0):
-    """
-    Adds specified paths at specified index into the sys.path list.
+def add_to_sys_path(pathnames: list[str], *, index: int = 0) -> None:
+    """Adds specified paths at specified index into the sys.path list.
 
     :param paths:
         A list of paths to add to the sys.path
@@ -136,9 +143,8 @@ def add_to_sys_path(pathnames, index=0):
         sys.path.insert(index, pathname)
 
 
-def load_config(tricks_file_pathname):
-    """
-    Loads the YAML configuration from the specified file.
+def load_config(tricks_file_pathname: str) -> dict:
+    """Loads the YAML configuration from the specified file.
 
     :param tricks_file_path:
         The path to the tricks configuration file.
@@ -151,21 +157,27 @@ def load_config(tricks_file_pathname):
         return yaml.safe_load(f.read())
 
 
-def parse_patterns(patterns_spec, ignore_patterns_spec, separator=";"):
-    """
-    Parses pattern argument specs and returns a two-tuple of
+def parse_patterns(
+    patterns_spec: str, ignore_patterns_spec: str, *, separator: str = ";"
+) -> tuple[list[str], list[str]]:
+    """Parses pattern argument specs and returns a two-tuple of
     (patterns, ignore_patterns).
     """
     patterns = patterns_spec.split(separator)
     ignore_patterns = ignore_patterns_spec.split(separator)
     if ignore_patterns == [""]:
         ignore_patterns = []
-    return (patterns, ignore_patterns)
+    return patterns, ignore_patterns
 
 
-def observe_with(observer, event_handler, pathnames, recursive):
-    """
-    Single observer thread with a scheduled path and event handler.
+def observe_with(
+    observer: BaseObserver,
+    event_handler: FileSystemEventHandler,
+    pathnames: list[str],
+    *,
+    recursive: bool,
+) -> None:
+    """Single observer thread with a scheduled path and event handler.
 
     :param observer:
         The observer thread.
@@ -177,19 +189,18 @@ def observe_with(observer, event_handler, pathnames, recursive):
         ``True`` if recursive; ``False`` otherwise.
     """
     for pathname in set(pathnames):
-        observer.schedule(event_handler, pathname, recursive)
+        observer.schedule(event_handler, pathname, recursive=recursive)
     observer.start()
     try:
         while True:
             time.sleep(1)
-    except WatchdogShutdown:
+    except WatchdogShutdownError:
         observer.stop()
     observer.join()
 
 
-def schedule_tricks(observer, tricks, pathname, recursive):
-    """
-    Schedules tricks with the specified observer and for the given watch
+def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *, recursive: bool) -> None:
+    """Schedules tricks with the specified observer and for the given watch
     path.
 
     :param observer:
@@ -202,11 +213,11 @@ def schedule_tricks(observer, tricks, pathname, recursive):
         ``True`` if recursive; ``False`` otherwise.
     """
     for trick in tricks:
-        for name, value in list(trick.items()):
-            TrickClass = load_class(name)
-            handler = TrickClass(**value)
+        for name, value in trick.items():
+            trick_cls = load_class(name)
+            handler = trick_cls(**value)
             trick_pathname = getattr(handler, "source_directory", None) or pathname
-            observer.schedule(handler, trick_pathname, recursive)
+            observer.schedule(handler, trick_pathname, recursive=recursive)
 
 
 @command(
@@ -255,30 +266,40 @@ def schedule_tricks(observer, tricks, pathname, recursive):
     ],
     cmd_aliases=["tricks"],
 )
-def tricks_from(args):
-    """
-    Command to execute tricks from a tricks configuration file.
-    """
-    Observer: BaseObserverSubclassCallable
+def tricks_from(args: Namespace) -> None:
+    """Command to execute tricks from a tricks configuration file."""
+    observer_cls: ObserverType
     if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver as Observer
+        from watchdog.observers.polling import PollingObserver
+
+        observer_cls = PollingObserver
     elif args.debug_force_kqueue:
-        from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
-        from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer
+        from watchdog.observers.kqueue import KqueueObserver
+
+        observer_cls = KqueueObserver
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and platform.is_windows()):
+        from watchdog.observers.read_directory_changes import WindowsApiObserver
+
+        observer_cls = WindowsApiObserver
     elif args.debug_force_inotify:
-        from watchdog.observers.inotify import InotifyObserver as Observer
+        from watchdog.observers.inotify import InotifyObserver
+
+        observer_cls = InotifyObserver
     elif args.debug_force_fsevents:
-        from watchdog.observers.fsevents import FSEventsObserver as Observer
+        from watchdog.observers.fsevents import FSEventsObserver
+
+        observer_cls = FSEventsObserver
     else:
         # Automatically picks the most appropriate observer for the platform
         # on which it is running.
         from watchdog.observers import Observer
 
+        observer_cls = Observer
+
     add_to_sys_path(path_split(args.python_path))
     observers = []
     for tricks_file in args.files:
-        observer = Observer(timeout=args.timeout)
+        observer = observer_cls(timeout=args.timeout)
 
         if not os.path.exists(tricks_file):
             raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), tricks_file)
@@ -287,23 +308,22 @@ def tricks_from(args):
 
         try:
             tricks = config[CONFIG_KEY_TRICKS]
-        except KeyError:
-            raise KeyError(f"No {CONFIG_KEY_TRICKS!r} key specified in {tricks_file!r}.")
+        except KeyError as e:
+            error = f"No {CONFIG_KEY_TRICKS!r} key specified in {tricks_file!r}."
+            raise KeyError(error) from e
 
         if CONFIG_KEY_PYTHON_PATH in config:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
 
-        dir_path = os.path.dirname(tricks_file)
-        if not dir_path:
-            dir_path = os.path.relpath(os.getcwd())
-        schedule_tricks(observer, tricks, dir_path, args.recursive)
+        dir_path = os.path.dirname(tricks_file) or os.path.relpath(os.getcwd())
+        schedule_tricks(observer, tricks, dir_path, recursive=args.recursive)
         observer.start()
         observers.append(observer)
 
     try:
         while True:
             time.sleep(1)
-    except WatchdogShutdown:
+    except WatchdogShutdownError:
         for o in observers:
             o.unschedule_all()
             o.stop()
@@ -342,10 +362,8 @@ def tricks_from(args):
     ],
     cmd_aliases=["generate-tricks-yaml"],
 )
-def tricks_generate_yaml(args):
-    """
-    Command to generate Yaml configuration for tricks named on the command line.
-    """
+def tricks_generate_yaml(args: Namespace) -> None:
+    """Command to generate Yaml configuration for tricks named on the command line."""
     import yaml
 
     python_paths = path_split(args.python_path)
@@ -353,8 +371,8 @@ def tricks_generate_yaml(args):
     output = StringIO()
 
     for trick_path in args.trick_paths:
-        TrickClass = load_class(trick_path)
-        output.write(TrickClass.generate_yaml())
+        trick_cls = load_class(trick_path)
+        output.write(trick_cls.generate_yaml())
 
     content = output.getvalue()
     output.close()
@@ -386,8 +404,8 @@ def tricks_generate_yaml(args):
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -419,7 +437,6 @@ def tricks_generate_yaml(args):
             type=float,
             help="Use this as the polling interval/blocking timeout.",
         ),
-        argument("--trace", action="store_true", help="Dumps complete dispatching trace."),
         argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
         argument(
             "--debug-force-kqueue",
@@ -441,18 +458,11 @@ def tricks_generate_yaml(args):
             action="store_true",
             help="[debug] Forces Linux inotify(7).",
         ),
-    ]
+    ],
 )
-def log(args):
-    """
-    Command to log file system events to the console.
-    """
+def log(args: Namespace) -> None:
+    """Command to log file system events to the console."""
     from watchdog.tricks import LoggerTrick
-    from watchdog.utils import echo
-
-    if args.trace:
-        class_module_logger = logging.getLogger(LoggerTrick.__module__)
-        echo.echo_class(LoggerTrick, write=lambda msg: class_module_logger.info(msg))
 
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     handler = LoggerTrick(
@@ -461,23 +471,36 @@ def log(args):
         ignore_directories=args.ignore_directories,
     )
 
-    Observer: BaseObserverSubclassCallable
+    observer_cls: ObserverType
     if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver as Observer
+        from watchdog.observers.polling import PollingObserver
+
+        observer_cls = PollingObserver
     elif args.debug_force_kqueue:
-        from watchdog.observers.kqueue import KqueueObserver as Observer
-    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and sys.platform.startswith("win")):
-        from watchdog.observers.read_directory_changes import WindowsApiObserver as Observer
+        from watchdog.observers.kqueue import KqueueObserver
+
+        observer_cls = KqueueObserver
+    elif (not TYPE_CHECKING and args.debug_force_winapi) or (TYPE_CHECKING and platform.is_windows()):
+        from watchdog.observers.read_directory_changes import WindowsApiObserver
+
+        observer_cls = WindowsApiObserver
     elif args.debug_force_inotify:
-        from watchdog.observers.inotify import InotifyObserver as Observer
+        from watchdog.observers.inotify import InotifyObserver
+
+        observer_cls = InotifyObserver
     elif args.debug_force_fsevents:
-        from watchdog.observers.fsevents import FSEventsObserver as Observer
+        from watchdog.observers.fsevents import FSEventsObserver
+
+        observer_cls = FSEventsObserver
     else:
         # Automatically picks the most appropriate observer for the platform
         # on which it is running.
         from watchdog.observers import Observer
-    observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
+
+        observer_cls = Observer
+
+    observer = observer_cls(timeout=args.timeout)
+    observe_with(observer, handler, args.directories, recursive=args.recursive)
 
 
 @command(
@@ -513,8 +536,8 @@ def log(args):
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -563,34 +586,36 @@ def log(args):
             " executed to avoid multiple simultaneous instances.",
         ),
         argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
-    ]
+    ],
 )
-def shell_command(args):
-    """
-    Command to execute shell commands in response to file system events.
-    """
+def shell_command(args: Namespace) -> None:
+    """Command to execute shell commands in response to file system events."""
     from watchdog.tricks import ShellCommandTrick
 
     if not args.command:
         args.command = None
 
-    Observer: BaseObserverSubclassCallable
+    observer_cls: ObserverType
     if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver as Observer
+        from watchdog.observers.polling import PollingObserver
+
+        observer_cls = PollingObserver
     else:
         from watchdog.observers import Observer
 
+        observer_cls = Observer
+
     patterns, ignore_patterns = parse_patterns(args.patterns, args.ignore_patterns)
     handler = ShellCommandTrick(
-        shell_command=args.command,
+        args.command,
         patterns=patterns,
         ignore_patterns=ignore_patterns,
         ignore_directories=args.ignore_directories,
         wait_for_process=args.wait_for_process,
         drop_during_process=args.drop_during_process,
     )
-    observer = Observer(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, args.recursive)
+    observer = observer_cls(timeout=args.timeout)
+    observe_with(observer, handler, args.directories, recursive=args.recursive)
 
 
 @command(
@@ -613,15 +638,15 @@ def shell_command(args):
             dest="directories",
             metavar="DIRECTORY",
             action="append",
-            help="Directory to watch. Use another -d or --directory option " "for each directory.",
+            help="Directory to watch. Use another -d or --directory option for each directory.",
         ),
         argument(
             "-p",
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -666,7 +691,7 @@ def shell_command(args):
             dest="kill_after",
             default=10.0,
             type=float,
-            help="When stopping, kill the subprocess after the specified timeout " "in seconds (default 10.0).",
+            help="When stopping, kill the subprocess after the specified timeout in seconds (default 10.0).",
         ),
         argument(
             "--debounce-interval",
@@ -683,18 +708,19 @@ def shell_command(args):
             action="store_false",
             help="Don't auto-restart the command after it exits.",
         ),
-    ]
+    ],
 )
-def auto_restart(args):
-    """
-    Command to start a long-running subprocess and restart it on matched events.
-    """
-
-    Observer: BaseObserverSubclassCallable
+def auto_restart(args: Namespace) -> None:
+    """Command to start a long-running subprocess and restart it on matched events."""
+    observer_cls: ObserverType
     if args.debug_force_polling:
-        from watchdog.observers.polling import PollingObserver as Observer
+        from watchdog.observers.polling import PollingObserver
+
+        observer_cls = PollingObserver
     else:
         from watchdog.observers import Observer
+
+        observer_cls = Observer
 
     import signal
 
@@ -704,10 +730,7 @@ def auto_restart(args):
         args.directories = ["."]
 
     # Allow either signal name or number.
-    if args.signal.startswith("SIG"):
-        stop_signal = getattr(signal, args.signal)
-    else:
-        stop_signal = int(args.signal)
+    stop_signal = getattr(signal, args.signal) if args.signal.startswith("SIG") else int(args.signal)
 
     # Handle termination signals by raising a semantic exception which will
     # allow us to gracefully unwind and stop the observer
@@ -716,11 +739,11 @@ def auto_restart(args):
     if hasattr(signal, "SIGHUP"):
         termination_signals.add(signal.SIGHUP)
 
-    def handler_termination_signal(_signum, _frame):
+    def handler_termination_signal(_signum: signal._SIGNUM, _frame: object) -> None:
         # Neuter all signals so that we don't attempt a double shutdown
         for signum in termination_signals:
             signal.signal(signum, signal.SIG_IGN)
-        raise WatchdogShutdown
+        raise WatchdogShutdownError
 
     for signum in termination_signals:
         signal.signal(signum, handler_termination_signal)
@@ -729,7 +752,7 @@ def auto_restart(args):
     command = [args.command]
     command.extend(args.command_args)
     handler = AutoRestartTrick(
-        command=command,
+        command,
         patterns=patterns,
         ignore_patterns=ignore_patterns,
         ignore_directories=args.ignore_directories,
@@ -739,29 +762,31 @@ def auto_restart(args):
         restart_on_command_exit=args.restart_on_command_exit,
     )
     handler.start()
-    observer = Observer(timeout=args.timeout)
+    observer = observer_cls(timeout=args.timeout)
     try:
-        observe_with(observer, handler, args.directories, args.recursive)
-    except WatchdogShutdown:
+        observe_with(observer, handler, args.directories, recursive=args.recursive)
+    except WatchdogShutdownError:
         pass
     finally:
         handler.stop()
 
 
-class LogLevelException(Exception):
+class LogLevelError(Exception):
     pass
 
 
-def _get_log_level_from_args(args):
+def _get_log_level_from_args(args: Namespace) -> str:
     verbosity = sum(args.verbosity or [])
     if verbosity < -1:
-        raise LogLevelException("-q/--quiet may be specified only once.")
+        error = "-q/--quiet may be specified only once."
+        raise LogLevelError(error)
     if verbosity > 2:
-        raise LogLevelException("-v/--verbose may be specified up to 2 times.")
+        error = "-v/--verbose may be specified up to 2 times."
+        raise LogLevelError(error)
     return ["ERROR", "WARNING", "INFO", "DEBUG"][1 + verbosity]
 
 
-def main():
+def main() -> int:
     """Entry-point function."""
     args = cli.parse_args()
     if args.top_command is None:
@@ -770,8 +795,8 @@ def main():
 
     try:
         log_level = _get_log_level_from_args(args)
-    except LogLevelException as exc:
-        print(f"Error: {exc.args[0]}", file=sys.stderr)
+    except LogLevelError as exc:
+        print(f"Error: {exc.args[0]}", file=sys.stderr)  # noqa:T201
         command_parsers[args.top_command].print_help()
         return 1
     logging.getLogger("watchdog").setLevel(log_level)

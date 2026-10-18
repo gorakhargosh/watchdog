@@ -1,32 +1,7 @@
-# Copyright 2011 Yesudeep Mangalapilly <yesudeep@gmail.com>
-# Copyright 2012 Google, Inc & contributors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-from __future__ import annotations
-
-# The `select` module varies between platforms.
-# mypy may complain about missing module attributes
-# depending on which platform it's running on.
-# The comment below disables mypy's attribute check.
-#
-# mypy: disable-error-code=attr-defined
-#
-"""
-:module: watchdog.observers.kqueue
+""":module: watchdog.observers.kqueue
 :synopsis: ``kqueue(2)`` based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
-:author: contact@tiger-222.fr (Mickaël Schoentgen)
+:author: Mickaël Schoentgen <contact@tiger-222.fr>
 :platforms: macOS and BSD with kqueue(2).
 
 .. WARNING:: kqueue is a very heavyweight way to monitor file systems.
@@ -74,21 +49,33 @@ Collections and Utility Classes
 
 """
 
+
+# The `select` module varies between platforms.
+# mypy may complain about missing module attributes depending on which platform it's running on.
+# The comment below disables mypy's attribute check.
+# mypy: disable-error-code="attr-defined, name-defined"
+
+from __future__ import annotations
+
+import contextlib
 import errno
 import os
 import os.path
 import select
 import threading
 from stat import S_ISDIR
+from typing import TYPE_CHECKING
 
 from watchdog.events import (
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MOVED,
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -99,6 +86,13 @@ from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIM
 from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from typing import Callable
+
+    from watchdog.events import FileSystemEvent
+    from watchdog.observers.api import EventQueue, ObservedWatch
+
 # Maximum number of events to process.
 MAX_EVENTS = 4096
 
@@ -106,10 +100,7 @@ MAX_EVENTS = 4096
 O_EVTONLY = 0x8000
 
 # Pre-calculated values for the kevent filter, flags, and fflags attributes.
-if platform.is_darwin():
-    WATCHDOG_OS_OPEN_FLAGS = O_EVTONLY
-else:
-    WATCHDOG_OS_OPEN_FLAGS = os.O_RDONLY | os.O_NONBLOCK
+WATCHDOG_OS_OPEN_FLAGS = O_EVTONLY if platform.is_darwin() else os.O_RDONLY | os.O_NONBLOCK
 WATCHDOG_KQ_FILTER = select.KQ_FILTER_VNODE
 WATCHDOG_KQ_EV_FLAGS = select.KQ_EV_ADD | select.KQ_EV_ENABLE | select.KQ_EV_CLEAR
 WATCHDOG_KQ_FFLAGS = (
@@ -123,74 +114,58 @@ WATCHDOG_KQ_FFLAGS = (
 )
 
 
-def absolute_path(path):
+def absolute_path(path: bytes | str) -> bytes | str:
     return os.path.abspath(os.path.normpath(path))
 
 
 # Flag tests.
 
 
-def is_deleted(kev):
+def is_deleted(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents deletion."""
-    return kev.fflags & select.KQ_NOTE_DELETE
+    return kev.fflags & select.KQ_NOTE_DELETE > 0
 
 
-def is_modified(kev):
+def is_modified(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents modification."""
     fflags = kev.fflags
-    return (fflags & select.KQ_NOTE_EXTEND) or (fflags & select.KQ_NOTE_WRITE)
+    return (fflags & select.KQ_NOTE_EXTEND > 0) or (fflags & select.KQ_NOTE_WRITE > 0)
 
 
-def is_attrib_modified(kev):
+def is_attrib_modified(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents attribute modification."""
-    return kev.fflags & select.KQ_NOTE_ATTRIB
+    return kev.fflags & select.KQ_NOTE_ATTRIB > 0
 
 
-def is_renamed(kev):
+def is_renamed(kev: select.kevent) -> bool:
     """Determines whether the given kevent represents movement."""
-    return kev.fflags & select.KQ_NOTE_RENAME
+    return kev.fflags & select.KQ_NOTE_RENAME > 0
 
 
 class KeventDescriptorSet:
+    """Thread-safe kevent descriptor collection."""
 
-    """
-    Thread-safe kevent descriptor collection.
-    """
-
-    def __init__(self):
-        # Set of KeventDescriptor
-        self._descriptors = set()
-
-        # Descriptor for a given path.
-        self._descriptor_for_path = dict()
-
-        # Descriptor for a given fd.
-        self._descriptor_for_fd = dict()
-
-        # List of kevent objects.
-        self._kevents = list()
-
+    def __init__(self) -> None:
+        self._descriptors: set[KeventDescriptor] = set()
+        self._descriptor_for_path: dict[bytes | str, KeventDescriptor] = {}
+        self._descriptor_for_fd: dict[int, KeventDescriptor] = {}
+        self._kevents: list[select.kevent] = []
         self._lock = threading.Lock()
 
     @property
-    def kevents(self):
-        """
-        List of kevents monitored.
-        """
+    def kevents(self) -> list[select.kevent]:
+        """List of kevents monitored."""
         with self._lock:
             return self._kevents
 
     @property
-    def paths(self):
-        """
-        List of paths for which kevents have been created.
-        """
+    def paths(self) -> list[bytes | str]:
+        """List of paths for which kevents have been created."""
         with self._lock:
             return list(self._descriptor_for_path.keys())
 
-    def get_for_fd(self, fd):
-        """
-        Given a file descriptor, returns the kevent descriptor object
+    def get_for_fd(self, fd: int) -> KeventDescriptor:
+        """Given a file descriptor, returns the kevent descriptor object
         for it.
 
         :param fd:
@@ -203,9 +178,8 @@ class KeventDescriptorSet:
         with self._lock:
             return self._descriptor_for_fd[fd]
 
-    def get(self, path):
-        """
-        Obtains a :class:`KeventDescriptor` object for the specified path.
+    def get(self, path: bytes | str) -> KeventDescriptor:
+        """Obtains a :class:`KeventDescriptor` object for the specified path.
 
         :param path:
             Path for which the descriptor will be obtained.
@@ -214,9 +188,8 @@ class KeventDescriptorSet:
             path = absolute_path(path)
             return self._get(path)
 
-    def __contains__(self, path):
-        """
-        Determines whether a :class:`KeventDescriptor has been registered
+    def __contains__(self, path: bytes | str) -> bool:
+        """Determines whether a :class:`KeventDescriptor has been registered
         for the specified path.
 
         :param path:
@@ -226,9 +199,8 @@ class KeventDescriptorSet:
             path = absolute_path(path)
             return self._has_path(path)
 
-    def add(self, path, is_directory):
-        """
-        Adds a :class:`KeventDescriptor` to the collection for the given
+    def add(self, path: bytes | str, *, is_directory: bool) -> None:
+        """Adds a :class:`KeventDescriptor` to the collection for the given
         path.
 
         :param path:
@@ -242,11 +214,10 @@ class KeventDescriptorSet:
         with self._lock:
             path = absolute_path(path)
             if not self._has_path(path):
-                self._add_descriptor(KeventDescriptor(path, is_directory))
+                self._add_descriptor(KeventDescriptor(path, is_directory=is_directory))
 
-    def remove(self, path):
-        """
-        Removes the :class:`KeventDescriptor` object for the given path
+    def remove(self, path: bytes | str) -> None:
+        """Removes the :class:`KeventDescriptor` object for the given path
         if it already exists.
 
         :param path:
@@ -258,10 +229,8 @@ class KeventDescriptorSet:
             if self._has_path(path):
                 self._remove_descriptor(self._get(path))
 
-    def clear(self):
-        """
-        Clears the collection and closes all open descriptors.
-        """
+    def clear(self) -> None:
+        """Clears the collection and closes all open descriptors."""
         with self._lock:
             for descriptor in self._descriptors:
                 descriptor.close()
@@ -271,18 +240,18 @@ class KeventDescriptorSet:
             self._kevents = []
 
     # Thread-unsafe methods. Locking is provided at a higher level.
-    def _get(self, path):
+    def _get(self, path: bytes | str) -> KeventDescriptor:
         """Returns a kevent descriptor for a given path."""
         return self._descriptor_for_path[path]
 
-    def _has_path(self, path):
+    def _has_path(self, path: bytes | str) -> bool:
         """Determines whether a :class:`KeventDescriptor` for the specified
-        path exists already in the collection."""
+        path exists already in the collection.
+        """
         return path in self._descriptor_for_path
 
-    def _add_descriptor(self, descriptor):
-        """
-        Adds a descriptor to the collection.
+    def _add_descriptor(self, descriptor: KeventDescriptor) -> None:
+        """Adds a descriptor to the collection.
 
         :param descriptor:
             An instance of :class:`KeventDescriptor` to be added.
@@ -292,9 +261,8 @@ class KeventDescriptorSet:
         self._descriptor_for_path[descriptor.path] = descriptor
         self._descriptor_for_fd[descriptor.fd] = descriptor
 
-    def _remove_descriptor(self, descriptor):
-        """
-        Removes a descriptor from the collection.
+    def _remove_descriptor(self, descriptor: KeventDescriptor) -> None:
+        """Removes a descriptor from the collection.
 
         :param descriptor:
             An instance of :class:`KeventDescriptor` to be removed.
@@ -307,9 +275,7 @@ class KeventDescriptorSet:
 
 
 class KeventDescriptor:
-
-    """
-    A kevent descriptor convenience data structure to keep together:
+    """A kevent descriptor convenience data structure to keep together:
 
         * kevent
         * directory status
@@ -324,7 +290,7 @@ class KeventDescriptor:
         ``bool``
     """
 
-    def __init__(self, path, is_directory):
+    def __init__(self, path: bytes | str, *, is_directory: bool) -> None:
         self._path = absolute_path(path)
         self._is_directory = is_directory
         self._fd = os.open(path, WATCHDOG_OS_OPEN_FLAGS)
@@ -336,22 +302,22 @@ class KeventDescriptor:
         )
 
     @property
-    def fd(self):
+    def fd(self) -> int:
         """OS file descriptor for the kevent descriptor."""
         return self._fd
 
     @property
-    def path(self):
+    def path(self) -> bytes | str:
         """The path associated with the kevent descriptor."""
         return self._path
 
     @property
-    def kevent(self):
+    def kevent(self) -> select.kevent:
         """The kevent object associated with the kevent descriptor."""
         return self._kev
 
     @property
-    def is_directory(self):
+    def is_directory(self) -> bool:
         """Determines whether the kevent descriptor refers to a directory.
 
         :returns:
@@ -359,36 +325,34 @@ class KeventDescriptor:
         """
         return self._is_directory
 
-    def close(self):
-        """
-        Closes the file descriptor associated with a kevent descriptor.
-        """
-        try:
+    def close(self) -> None:
+        """Closes the file descriptor associated with a kevent descriptor."""
+        with contextlib.suppress(OSError):
             os.close(self.fd)
-        except OSError:
-            pass
 
     @property
-    def key(self):
+    def key(self) -> tuple[bytes | str, bool]:
         return (self.path, self.is_directory)
 
-    def __eq__(self, descriptor):
+    def __eq__(self, descriptor: object) -> bool:
+        if not isinstance(descriptor, KeventDescriptor):
+            return NotImplemented
         return self.key == descriptor.key
 
-    def __ne__(self, descriptor):
+    def __ne__(self, descriptor: object) -> bool:
+        if not isinstance(descriptor, KeventDescriptor):
+            return NotImplemented
         return self.key != descriptor.key
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.key)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{type(self).__name__}: path={self.path!r}, is_directory={self.is_directory}>"
 
 
 class KqueueEmitter(EventEmitter):
-
-    """
-    kqueue(2)-based event emitter.
+    """kqueue(2)-based event emitter.
 
     .. ADMONITION:: About ``kqueue(2)`` behavior and this implementation
 
@@ -431,12 +395,20 @@ class KqueueEmitter(EventEmitter):
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
-        Optional[Iterable[:class:`watchdog.events.FileSystemEvent`]]
+        Iterable[:class:`watchdog.events.FileSystemEvent`] | None
     :param stat: stat function. See ``os.stat`` for details.
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None, stat=os.stat):
-        super().__init__(event_queue, watch, timeout, event_filter)
+    def __init__(
+        self,
+        event_queue: EventQueue,
+        watch: ObservedWatch,
+        *,
+        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        stat: Callable[[str], os.stat_result] = os.stat,
+    ) -> None:
+        super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
 
         self._kq = select.kqueue()
         self._lock = threading.RLock()
@@ -444,16 +416,15 @@ class KqueueEmitter(EventEmitter):
         # A collection of KeventDescriptor.
         self._descriptors = KeventDescriptorSet()
 
-        def custom_stat(path, self=self):
+        def custom_stat(path: str, cls: KqueueEmitter = self) -> os.stat_result:
             stat_info = stat(path)
-            self._register_kevent(path, S_ISDIR(stat_info.st_mode))
+            cls._register_kevent(path, is_directory=S_ISDIR(stat_info.st_mode))
             return stat_info
 
         self._snapshot = DirectorySnapshot(watch.path, recursive=watch.is_recursive, stat=custom_stat)
 
-    def _register_kevent(self, path, is_directory):
-        """
-        Registers a kevent descriptor for the given path.
+    def _register_kevent(self, path: bytes | str, *, is_directory: bool) -> None:
+        """Registers a kevent descriptor for the given path.
 
         :param path:
             Path for which a kevent descriptor will be created.
@@ -463,20 +434,13 @@ class KqueueEmitter(EventEmitter):
             ``bool``
         """
         try:
-            self._descriptors.add(path, is_directory)
+            self._descriptors.add(path, is_directory=is_directory)
         except OSError as e:
             if e.errno == errno.ENOENT:
                 # Probably dealing with a temporary file that was created
                 # and then quickly deleted before we could open
                 # a descriptor for it. Therefore, simply queue a sequence
                 # of created and deleted events for the path.
-                # path = absolute_path(path)
-                # if is_directory:
-                #    self.queue_event(DirCreatedEvent(path))
-                #    self.queue_event(DirDeletedEvent(path))
-                # else:
-                #    self.queue_event(FileCreatedEvent(path))
-                #    self.queue_event(FileDeletedEvent(path))
 
                 # TODO: We could simply ignore these files.
                 # Locked files cause the python process to die with
@@ -490,13 +454,18 @@ class KqueueEmitter(EventEmitter):
                 # access to it (e.g. NFS). On BSD systems look at
                 # EOPNOTSUPP in man 2 open.
                 pass
+            elif e.errno in {errno.EACCES, errno.EPERM}:
+                # The path is not readable by the current user, e.g. a file
+                # created by another user in a world-writable directory such
+                # as /tmp. We cannot watch it, but that must not kill the
+                # emitter thread: the event itself was already queued.
+                pass
             else:
                 # All other errors are propagated.
                 raise
 
-    def _unregister_kevent(self, path):
-        """
-        Convenience function to close the kevent descriptor for a
+    def _unregister_kevent(self, path: bytes | str) -> None:
+        """Convenience function to close the kevent descriptor for a
         specified kqueue-monitored path.
 
         :param path:
@@ -504,9 +473,8 @@ class KqueueEmitter(EventEmitter):
         """
         self._descriptors.remove(path)
 
-    def queue_event(self, event):
-        """
-        Handles queueing a single event object.
+    def queue_event(self, event: FileSystemEvent) -> None:
+        """Handles queueing a single event object.
 
         :param event:
             An instance of :class:`watchdog.events.FileSystemEvent`
@@ -518,16 +486,17 @@ class KqueueEmitter(EventEmitter):
         # for all those events anyway.
         EventEmitter.queue_event(self, event)
         if event.event_type == EVENT_TYPE_CREATED:
-            self._register_kevent(event.src_path, event.is_directory)
+            self._register_kevent(event.src_path, is_directory=event.is_directory)
         elif event.event_type == EVENT_TYPE_MOVED:
             self._unregister_kevent(event.src_path)
-            self._register_kevent(event.dest_path, event.is_directory)
+            self._register_kevent(event.dest_path, is_directory=event.is_directory)
         elif event.event_type == EVENT_TYPE_DELETED:
             self._unregister_kevent(event.src_path)
 
-    def _gen_kqueue_events(self, kev, ref_snapshot, new_snapshot):
-        """
-        Generate events from the kevent list returned from the call to
+    def _gen_kqueue_events(
+        self, kev: select.kevent, ref_snapshot: DirectorySnapshot, new_snapshot: DirectorySnapshot
+    ) -> Generator[FileSystemEvent]:
+        """Generate events from the kevent list returned from the call to
         :meth:`select.kqueue.control`.
 
         .. NOTE:: kqueue only tells us about deletions, file modifications,
@@ -543,13 +512,17 @@ class KqueueEmitter(EventEmitter):
             # Kqueue does not specify the destination names for renames
             # to, so we have to process these using the a snapshot
             # of the directory.
-            for event in self._gen_renamed_events(src_path, descriptor.is_directory, ref_snapshot, new_snapshot):
-                yield event
+            yield from self._gen_renamed_events(
+                src_path,
+                ref_snapshot,
+                new_snapshot,
+                is_directory=descriptor.is_directory,
+            )
         elif is_attrib_modified(kev):
             if descriptor.is_directory:
-                yield DirModifiedEvent(src_path)
+                yield DirAttribEvent(src_path)
             else:
-                yield FileModifiedEvent(src_path)
+                yield FileAttribEvent(src_path)
         elif is_modified(kev):
             if descriptor.is_directory:
                 if self.watch.is_recursive or self.watch.path == src_path:
@@ -566,15 +539,19 @@ class KqueueEmitter(EventEmitter):
             else:
                 yield FileDeletedEvent(src_path)
 
-    def _parent_dir_modified(self, src_path):
-        """
-        Helper to generate a DirModifiedEvent on the parent of src_path.
-        """
+    def _parent_dir_modified(self, src_path: bytes | str) -> DirModifiedEvent:
+        """Helper to generate a DirModifiedEvent on the parent of src_path."""
         return DirModifiedEvent(os.path.dirname(src_path))
 
-    def _gen_renamed_events(self, src_path, is_directory, ref_snapshot, new_snapshot):
-        """
-        Compares information from two directory snapshots (one taken before
+    def _gen_renamed_events(
+        self,
+        src_path: bytes | str,
+        ref_snapshot: DirectorySnapshot,
+        new_snapshot: DirectorySnapshot,
+        *,
+        is_directory: bool,
+    ) -> Generator[FileSystemEvent]:
+        """Compares information from two directory snapshots (one taken before
         the rename operation and another taken right after) to determine the
         destination path of the file system object renamed, and yields
         the appropriate events to be queued.
@@ -599,21 +576,18 @@ class KqueueEmitter(EventEmitter):
         if dest_path is not None:
             dest_path = absolute_path(dest_path)
             if is_directory:
-                event = DirMovedEvent(src_path, dest_path)
-                yield event
+                yield DirMovedEvent(src_path, dest_path)
             else:
                 yield FileMovedEvent(src_path, dest_path)
             yield self._parent_dir_modified(src_path)
             yield self._parent_dir_modified(dest_path)
-            if is_directory:
+            if is_directory and self.watch.is_recursive:
                 # TODO: Do we need to fire moved events for the items
                 # inside the directory tree? Does kqueue does this
                 # all by itself? Check this and then enable this code
                 # only if it doesn't already.
                 # A: It doesn't. So I've enabled this block.
-                if self.watch.is_recursive:
-                    for sub_event in generate_sub_moved_events(src_path, dest_path):
-                        yield sub_event
+                yield from generate_sub_moved_events(src_path, dest_path)
         else:
             # If the new snapshot does not have an inode for the
             # old path, we haven't found the new name. Therefore,
@@ -624,9 +598,8 @@ class KqueueEmitter(EventEmitter):
                 yield FileDeletedEvent(src_path)
             yield self._parent_dir_modified(src_path)
 
-    def _read_events(self, timeout=None):
-        """
-        Reads events from a call to the blocking
+    def _read_events(self, timeout: float) -> list[select.kevent]:
+        """Reads events from a call to the blocking
         :meth:`select.kqueue.control()` method.
 
         :param timeout:
@@ -636,9 +609,8 @@ class KqueueEmitter(EventEmitter):
         """
         return self._kq.control(self._descriptors.kevents, MAX_EVENTS, timeout)
 
-    def queue_events(self, timeout):
-        """
-        Queues events by reading them from a call to the blocking
+    def queue_events(self, timeout: float) -> None:
+        """Queues events by reading them from a call to the blocking
         :meth:`select.kqueue.control()` method.
 
         :param timeout:
@@ -654,7 +626,7 @@ class KqueueEmitter(EventEmitter):
 
                 # Take a fresh snapshot of the directory and update the
                 # saved snapshot.
-                new_snapshot = DirectorySnapshot(self.watch.path, self.watch.is_recursive)
+                new_snapshot = DirectorySnapshot(self.watch.path, recursive=self.watch.is_recursive)
                 ref_snapshot = self._snapshot
                 self._snapshot = new_snapshot
                 diff_events = new_snapshot - ref_snapshot
@@ -675,7 +647,7 @@ class KqueueEmitter(EventEmitter):
                 if e.errno != errno.EBADF:
                     raise
 
-    def on_thread_stop(self):
+    def on_thread_stop(self) -> None:
         # Clean up.
         with self._lock:
             self._descriptors.clear()
@@ -683,11 +655,9 @@ class KqueueEmitter(EventEmitter):
 
 
 class KqueueObserver(BaseObserver):
-
-    """
-    Observer thread that schedules watching directories and dispatches
+    """Observer thread that schedules watching directories and dispatches
     calls to event handlers.
     """
 
-    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
-        super().__init__(emitter_class=KqueueEmitter, timeout=timeout)
+    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+        super().__init__(KqueueEmitter, timeout=timeout)

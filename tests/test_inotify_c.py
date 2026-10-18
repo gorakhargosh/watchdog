@@ -4,26 +4,31 @@ import pytest
 
 from watchdog.utils import platform
 
-if not platform.is_linux():  # noqa
+if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
 import ctypes
 import errno
+import fcntl
 import logging
 import os
+import resource
+import select
 import struct
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
-from watchdog.observers.inotify_c import Inotify, InotifyConstants, InotifyEvent
+from watchdog.observers.inotify_c import InotifyConstants, InotifyEvent, InotifyFD, WatchDescriptor
 
-from .utils import Helper, P, StartWatching, TestEventQueue
+if TYPE_CHECKING:
+    from .utils import Helper, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def struct_inotify(wd, mask, cookie=0, length=0, name=b""):
+def struct_inotify(wd, mask, cookie=0, length=0, name=b"") -> bytes:
     assert len(name) <= length
     struct_format = (
         "="  # (native endianness, standard sizes)
@@ -40,11 +45,12 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     inotify_fd = type("FD", (object,), {})()
     inotify_fd.last = 0
     inotify_fd.wds = []
+    inotify_fd.buf = b""
 
     const = InotifyConstants()
 
     # CREATE DELETE CREATE DELETE DELETE_SELF IGNORE DELETE_SELF IGNORE
-    inotify_fd.buf = (
+    inotify_fd_buf = (
         struct_inotify(wd=1, mask=const.IN_CREATE | const.IN_ISDIR, length=16, name=b"subdir1")
         + struct_inotify(wd=1, mask=const.IN_DELETE | const.IN_ISDIR, length=16, name=b"subdir1")
     ) * 2 + (
@@ -53,6 +59,31 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
         + struct_inotify(wd=3, mask=const.IN_DELETE_SELF)
         + struct_inotify(wd=3, mask=const.IN_IGNORED)
     )
+
+    select_bkp = select.select
+
+    def fakeselect(read_list, *args, **kwargs):
+        if inotify_fd in read_list:
+            return [inotify_fd], [], []
+        return select_bkp(read_list, *args, **kwargs)
+
+    poll_bkp = select.poll
+
+    class Fakepoll:
+        def __init__(self):
+            self._orig = poll_bkp()
+            self._fake = False
+
+        def register(self, fd, *args, **kwargs):
+            if fd == inotify_fd:
+                self._fake = True
+                return None
+            return self._orig.register(fd, *args, **kwargs)
+
+        def poll(self, *args, **kwargs):
+            if self._fake:
+                return [(inotify_fd, select.POLLIN)]
+            return self._orig.poll(*args, **kwargs)
 
     os_read_bkp = os.read
 
@@ -73,12 +104,12 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
     def inotify_add_watch(fd, path, mask):
         fd.last += 1
-        logger.debug(f"New wd = {fd.last}")
+        logger.debug("New wd = %d", fd.last)
         fd.wds.append(fd.last)
         return fd.last
 
     def inotify_rm_watch(fd, wd):
-        logger.debug(f"Removing wd = {wd}")
+        logger.debug("Removing wd = %d", wd)
         fd.wds.remove(wd)
         return 0
 
@@ -90,18 +121,33 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     mock3 = patch.object(inotify_c, "inotify_init", new=inotify_init)
     mock4 = patch.object(inotify_c, "inotify_add_watch", new=inotify_add_watch)
     mock5 = patch.object(inotify_c, "inotify_rm_watch", new=inotify_rm_watch)
+    mock6 = patch.object(select, "select", new=fakeselect)
+    mock7 = patch.object(select, "poll", new=Fakepoll)
+    mock8 = patch.object(inotify_c.InotifyFD, "_instance", new=None)
 
-    with mock1, mock2, mock3, mock4, mock5:
-        start_watching(p(""))
-        # Watchdog Events
-        for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:
-            event = event_queue.get(timeout=5)[0]
-            assert isinstance(event, evt_cls)
-            assert event.src_path == p("subdir1")
-            event = event_queue.get(timeout=5)[0]
-            assert isinstance(event, DirModifiedEvent)
-            assert event.src_path == p("").rstrip(os.path.sep)
-        helper.close()
+    with mock1, mock2, mock3, mock4, mock5, mock6, mock7, mock8:
+        try:
+            try:
+                start_watching(path=p(""))
+                inotify_fd.buf = inotify_fd_buf
+                # Watchdog Events
+                for evt_cls in [DirCreatedEvent, DirDeletedEvent] * 2:
+                    event = event_queue.get(timeout=5)[0]
+                    assert isinstance(event, evt_cls)
+                    assert event.src_path == p("subdir1")
+                    event = event_queue.get(timeout=5)[0]
+                    assert isinstance(event, DirModifiedEvent)
+                    assert event.src_path == p("").rstrip(os.path.sep)
+            finally:
+                helper.close()
+        finally:
+            # reset InotifyFD singleton
+            inotify_fd_instance = inotify_c.InotifyFD._instance  # noqa: SLF001
+            if inotify_fd_instance.is_alive():
+                inotify_fd_instance.stop()
+                inotify_fd_instance.join()
+            elif not inotify_fd_instance._closed:  # noqa: SLF001
+                inotify_fd_instance.close()
 
     assert inotify_fd.last == 3  # Number of directories
     assert inotify_fd.buf == b""  # Didn't miss any event
@@ -109,22 +155,18 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
 
 @pytest.mark.parametrize(
-    "error, patterns",
+    ("error", "pattern"),
     [
-        (errno.ENOSPC, ("inotify watch limit reached",)),
-        (errno.EMFILE, ("inotify instance limit reached",)),
-        (errno.ENOENT, ("No such file or directory",)),
-        # Error messages for -1 are undocumented
-        # and vary between libc implementations.
-        (-1, ("Unknown error -1", "No error information")),
+        (errno.ENOSPC, "inotify watch limit reached"),
+        (errno.EMFILE, "inotify instance limit reached"),
+        (errno.ENOENT, "No such file or directory"),
+        (-1, "error"),
     ],
 )
-def test_raise_error(error, patterns):
-    with patch.object(ctypes, "get_errno", new=lambda: error):
-        with pytest.raises(OSError) as exc:
-            Inotify._raise_error()
+def test_raise_error(error, pattern):
+    with patch.object(ctypes, "get_errno", new=lambda: error), pytest.raises(OSError, match=pattern) as exc:
+        InotifyFD._raise_error()  # noqa: SLF001
     assert exc.value.errno == error
-    assert any(pattern in str(exc.value) for pattern in patterns)
 
 
 def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
@@ -132,10 +174,10 @@ def test_non_ascii_path(p: P, event_queue: TestEventQueue, start_watching: Start
     Inotify can construct an event for a path containing non-ASCII.
     """
     path = p("\N{SNOWMAN}")
-    start_watching(p(""))
+    start_watching(path=p(""))
     os.mkdir(path)
     event, _ = event_queue.get(timeout=5)
-    assert isinstance(event.src_path, type(""))
+    assert isinstance(event.src_path, str)
     assert event.src_path == path
     # Just make sure it doesn't raise an exception.
     assert repr(event)
@@ -145,19 +187,59 @@ def test_watch_file(p: P, event_queue: TestEventQueue, start_watching: StartWatc
     path = p("this_is_a_file")
     with open(path, "a"):
         pass
-    start_watching(path)
+    start_watching(path=path)
     os.remove(path)
     event, _ = event_queue.get(timeout=5)
     assert repr(event)
 
 
 def test_event_equality(p: P) -> None:
-    wd_parent_dir = 42
-    filename = "file.ext"
-    full_path = p(filename)
-    event1 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
-    event2 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename, full_path)
-    event3 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_ACCESS, 0, filename, full_path)
+    wd_parent_dir = WatchDescriptor(42)
+    filename = b"file.ext"
+    event1 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename)
+    event2 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_CREATE, 0, filename)
+    event3 = InotifyEvent(wd_parent_dir, InotifyConstants.IN_ACCESS, 0, filename)
     assert event1 == event2
     assert event1 != event3
     assert event2 != event3
+
+
+def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+    soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+    if soft_limit != resource.RLIM_INFINITY and soft_limit <= 1024:
+        pytest.skip("A file descriptor above select()'s limit requires RLIMIT_NOFILE > 1024")
+
+    create_inotify_fd = InotifyFD._create_inotify_fd  # noqa: SLF001
+
+    def create_high_fd() -> int:
+        fd = create_inotify_fd()
+        try:
+            # Exercise a real descriptor outside select()'s range without
+            # opening thousands of unrelated files.
+            return fcntl.fcntl(fd, fcntl.F_DUPFD_CLOEXEC, 1024)
+        finally:
+            os.close(fd)
+
+    # The normal singleton is created at import time, before this test runs.
+    with (
+        patch.object(InotifyFD, "_create_inotify_fd", side_effect=create_high_fd) as create_fd,
+        patch.object(InotifyFD, "_instance", new=None),
+    ):
+        inotify_fd = InotifyFD.get_instance()
+        try:
+            create_fd.assert_called_once()
+            # Watch this file, then trigger an event by deleting it.
+            path = p("this_is_a_file")
+            with open(path, "a"):
+                pass
+            start_watching(path=path)
+            os.remove(path)
+            event, _ = event_queue.get(timeout=5)
+            assert event.src_path == path
+        finally:
+            try:
+                helper.close()
+            finally:
+                inotify_fd.stop()
+                inotify_fd.join(5)
+                assert not inotify_fd.is_alive()
