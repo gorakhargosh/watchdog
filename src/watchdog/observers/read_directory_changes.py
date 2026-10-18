@@ -6,10 +6,12 @@ import threading
 from typing import TYPE_CHECKING
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -26,8 +28,8 @@ if TYPE_CHECKING:
 
 
 class WindowsApiEmitter(EventEmitter):
-    """Windows API-based emitter that uses ReadDirectoryChangesW
-    to detect file system changes for a watch.
+    """Windows API-based emitter that uses ``ReadDirectoryChangesW`` or
+    ``ReadDirectoryChangesExW`` to detect file system changes for a watch.
     """
 
     def __init__(
@@ -41,12 +43,16 @@ class WindowsApiEmitter(EventEmitter):
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._lock = threading.RLock()
         self._reader: DirectoryChangeReader | None = None
+        # The two halves of a rename are not guaranteed to reach one
+        # get_events() batch, so the pairing outlives a queue_events() call.
+        self._last_renamed_src_path = ""
 
     def on_thread_start(self) -> None:
         with self._lock:
             assert self._reader is None
-            self._reader = DirectoryChangeReader(self.watch.path, recursive=self.watch.is_recursive)
-        self._reader.start()
+            reader = DirectoryChangeReader(self.watch.path, recursive=self.watch.is_recursive)
+            self._reader = reader
+        reader.start()
 
     if platform.python_implementation() == "PyPy":
 
@@ -65,19 +71,20 @@ class WindowsApiEmitter(EventEmitter):
             reader.stop()
 
     def queue_events(self, timeout: float) -> None:
-        reader = self._reader
+        with self._lock:
+            reader = self._reader
         if reader is None:
             return  # reader has been stopped
-        last_renamed_src_path = ""
         should_stop = False
         for winapi_event in reader.get_events(timeout):
             src_path = os.path.join(self.watch.path, winapi_event.src_path)
 
             if winapi_event.is_renamed_old:
-                last_renamed_src_path = src_path
+                self._last_renamed_src_path = src_path
             elif winapi_event.is_renamed_new:
                 dest_path = src_path
-                src_path = last_renamed_src_path
+                src_path = self._last_renamed_src_path
+                self._last_renamed_src_path = ""
                 if os.path.isdir(dest_path):
                     self.queue_event(DirMovedEvent(src_path, dest_path))
                     if self.watch.is_recursive:
@@ -85,6 +92,8 @@ class WindowsApiEmitter(EventEmitter):
                             self.queue_event(sub_moved_event)
                 else:
                     self.queue_event(FileMovedEvent(src_path, dest_path))
+            elif winapi_event.is_attrib:
+                self.queue_event((DirAttribEvent if os.path.isdir(src_path) else FileAttribEvent)(src_path))
             elif winapi_event.is_modified:
                 self.queue_event((DirModifiedEvent if os.path.isdir(src_path) else FileModifiedEvent)(src_path))
             elif winapi_event.is_added:
