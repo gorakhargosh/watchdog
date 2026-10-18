@@ -42,6 +42,7 @@
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/kokotatan"><img src="https://avatars.githubusercontent.com/u/199421981?v=4?s=70" width="70px;" alt="kokotatan"/><br /><sub><b>kokotatan</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=kokotatan" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Rosuav"><img src="https://avatars.githubusercontent.com/u/640535?v=4?s=70" width="70px;" alt="Chris Angelico"/><br /><sub><b>Chris Angelico</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Rosuav" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

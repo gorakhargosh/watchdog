@@ -271,6 +271,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Rosuav",
+      "name": "Chris Angelico",
+      "avatar_url": "https://avatars.githubusercontent.com/u/640535?v=4",
+      "profile": "https://github.com/Rosuav",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
