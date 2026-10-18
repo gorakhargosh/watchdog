@@ -29,3 +29,11 @@ Text editors and build tools can emit several events for a single logical change
 .. literalinclude:: examples/debounced.py
    :language: python
    :linenos:
+
+Organizing Files by Type
+------------------------
+A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy by automatically moving newly created files into category subfolders based on their file extension:
+
+.. literalinclude:: examples/file_organizer.py
+   :language: python
+   :linenos:

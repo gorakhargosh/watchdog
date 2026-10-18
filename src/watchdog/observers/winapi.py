@@ -69,6 +69,8 @@ WAIT_OBJECT_0 = 0x00000000
 WAIT_TIMEOUT = 0x00000102
 
 # Error codes
+ERROR_INVALID_FUNCTION = 1
+ERROR_NOT_SUPPORTED = 50
 ERROR_OPERATION_ABORTED = 995
 ERROR_ELEMENT_NOT_FOUND = 1168
 
@@ -119,6 +121,30 @@ ReadDirectoryChangesW.argtypes = (
     ctypes.POINTER(OVERLAPPED),  # lpOverlapped
     LPVOID,  # FileIOCompletionRoutine # lpCompletionRoutine
 )
+
+# ReadDirectoryChangesExW was added in Windows 10, version 1709 (Fall 2017) and Windows Server 2016.
+# It supports returning extended information to differentiate content and metadata modifications.
+# References:
+# - https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesexw
+# - https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_notify_extended_information
+READ_DIRECTORY_NOTIFY_INFORMATION = 1
+READ_DIRECTORY_NOTIFY_EXTENDED_INFORMATION = 2
+
+ReadDirectoryChangesExW = getattr(kernel32, "ReadDirectoryChangesExW", None)
+if ReadDirectoryChangesExW is not None:
+    ReadDirectoryChangesExW.restype = BOOL
+    ReadDirectoryChangesExW.errcheck = _errcheck_bool
+    ReadDirectoryChangesExW.argtypes = (
+        HANDLE,  # hDirectory
+        LPVOID,  # lpBuffer
+        DWORD,  # nBufferLength
+        BOOL,  # bWatchSubtree
+        DWORD,  # dwNotifyFilter
+        ctypes.POINTER(DWORD),  # lpBytesReturned
+        ctypes.POINTER(OVERLAPPED),  # lpOverlapped
+        LPVOID,  # FileIOCompletionRoutine # lpCompletionRoutine
+        DWORD,  # ReadDirectoryNotifyInformationClass
+    )
 
 CreateFileW = kernel32.CreateFileW
 CreateFileW.restype = HANDLE
@@ -224,6 +250,34 @@ class FileNotifyInformation(ctypes.Structure):
 LPFNI = ctypes.POINTER(FileNotifyInformation)
 
 
+class FileNotifyExtendedInformation(ctypes.Structure):
+    """Corresponds to FILE_NOTIFY_EXTENDED_INFORMATION in winnt.h.
+
+    Supported in Windows 10, version 1709+ and Windows Server 2016+.
+    https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_notify_extended_information
+    """
+
+    _fields_ = (
+        ("NextEntryOffset", DWORD),
+        ("Action", DWORD),
+        ("CreationTime", ctypes.c_int64),
+        ("LastModificationTime", ctypes.c_int64),
+        ("LastChangeTime", ctypes.c_int64),
+        ("LastAccessTime", ctypes.c_int64),
+        ("AllocatedLength", ctypes.c_int64),
+        ("FileSize", ctypes.c_int64),
+        ("FileAttributes", DWORD),
+        ("ReparsePointTag", DWORD),
+        ("FileId", ctypes.c_int64),
+        ("ParentFileId", ctypes.c_int64),
+        ("FileNameLength", DWORD),
+        ("FileName", (ctypes.c_char * 1)),
+    )
+
+
+LPFNEI = ctypes.POINTER(FileNotifyExtendedInformation)
+
+
 # We don't need to recalculate these flags every time a call is made to
 # the win32 API functions.
 WATCHDOG_FILE_FLAGS = FILE_FLAG_BACKUP_SEMANTICS
@@ -263,18 +317,56 @@ PATH_BUFFER_SIZE = 2048
 
 
 def _parse_event_buffer(read_buffer: bytes) -> list[tuple[int, str]]:
+    """Parse a buffer of ``FILE_NOTIFY_INFORMATION`` structures.
+
+    :param read_buffer:
+        The raw byte buffer returned by ``ReadDirectoryChangesW``.
+    :returns:
+        A list of ``(action, filename)`` tuples.
+    """
     n_bytes = len(read_buffer)
     results = []
     while n_bytes > 0:
         fni = ctypes.cast(read_buffer, LPFNI)[0]  # type: ignore[arg-type]
         ptr = ctypes.addressof(fni) + FileNotifyInformation.FileName.offset
         filename = ctypes.string_at(ptr, fni.FileNameLength)
-        results.append((fni.Action, filename.decode("utf-16")))
+        # ReadDirectoryChangesW writes UTF-16LE without a byte-order mark, so the
+        # "utf-16" codec would eat a leading U+FEFF and let a leading U+FFFE flip
+        # the byte order of the rest of the name.
+        results.append((fni.Action, filename.decode("utf-16-le")))
         num_to_skip = fni.NextEntryOffset
         if num_to_skip <= 0:
             break
         read_buffer = read_buffer[num_to_skip:]
         n_bytes -= num_to_skip  # num_to_skip is long. n_bytes should be long too.
+    return results
+
+
+def _parse_extended_event_buffer(read_buffer: bytes) -> list[tuple[int, str, bool]]:
+    """Parse a buffer of ``FILE_NOTIFY_EXTENDED_INFORMATION`` structures.
+
+    :param read_buffer:
+        The raw byte buffer returned by ``ReadDirectoryChangesExW``.
+    :returns:
+        A list of ``(action, filename, is_attrib)`` tuples, where ``is_attrib``
+        is ``True`` when the record indicates a metadata/attribute modification
+        (i.e. ``FILE_ACTION_MODIFIED`` where ``LastChangeTime`` is greater than
+        ``LastModificationTime``), distinguishing metadata modifications from
+        content writes.
+    """
+    n_bytes = len(read_buffer)
+    results = []
+    while n_bytes > 0:
+        fnei = ctypes.cast(read_buffer, LPFNEI)[0]  # type: ignore[arg-type]
+        ptr = ctypes.addressof(fnei) + FileNotifyExtendedInformation.FileName.offset
+        filename = ctypes.string_at(ptr, fnei.FileNameLength)
+        is_attrib = fnei.Action == FILE_ACTION_MODIFIED and fnei.LastChangeTime > fnei.LastModificationTime
+        results.append((fnei.Action, filename.decode("utf-16-le"), is_attrib))
+        num_to_skip = fnei.NextEntryOffset
+        if num_to_skip <= 0:
+            break
+        read_buffer = read_buffer[num_to_skip:]
+        n_bytes -= num_to_skip
     return results
 
 
@@ -287,14 +379,46 @@ def _is_observed_path_deleted(handle: HANDLE, path: str) -> bool:
     return buff.value != path
 
 
-def _generate_observed_path_deleted_event() -> bytes:
-    # Create synthetic event for notify that observed directory is deleted
-    path = ctypes.create_unicode_buffer(".")
-    event = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, len(path), path.value.encode("utf-8"))
-    event_size = ctypes.sizeof(event)
+def _generate_observed_path_deleted_event(*, extended: bool = False) -> bytes:
+    """Create a synthetic event notifying that the observed directory was deleted.
+
+    :param extended:
+        Whether to format the synthetic event as a
+        ``FILE_NOTIFY_EXTENDED_INFORMATION`` structure (``True``) or a legacy
+        ``FILE_NOTIFY_INFORMATION`` structure (``False``).
+    :returns:
+        A byte buffer containing the synthetic deleted-self event record.
+    """
+    path_bytes = ".".encode("utf-16-le")
+    byte_len = len(path_bytes)
     buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
-    ctypes.memmove(buff, ctypes.addressof(event), event_size)
-    return buff.raw[:event_size]
+    offset: int
+    if extended:
+        header = FileNotifyExtendedInformation(
+            0,
+            FILE_ACTION_DELETED_SELF,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            byte_len,
+            b"",
+        )
+        offset = FileNotifyExtendedInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header), offset)
+    else:
+        header_fni = FileNotifyInformation(0, FILE_ACTION_DELETED_SELF, byte_len, b"")
+        offset = FileNotifyInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header_fni), offset)
+    ctypes.memmove(ctypes.addressof(buff) + offset, path_bytes, byte_len)
+    total_size = offset + byte_len
+    return buff.raw[:total_size]
 
 
 def _get_directory_handle(path: str) -> HANDLE:
@@ -327,8 +451,17 @@ def _close_directory_handle(handle: HANDLE) -> None:
 
 @dataclass(unsafe_hash=True)
 class WinAPINativeEvent:
+    """Represents a native event emitted by the Windows directory change API.
+
+    :param action: The native Windows action flag (e.g. ``FILE_ACTION_MODIFIED``).
+    :param src_path: The relative source path of the affected file or directory.
+    :param is_attrib: Indicates whether the event is an attribute/metadata change
+                      rather than a content modification.
+    """
+
     action: int
     src_path: str
+    is_attrib: bool = False
 
     @property
     def is_added(self) -> bool:
@@ -340,7 +473,7 @@ class WinAPINativeEvent:
 
     @property
     def is_modified(self) -> bool:
-        return self.action == FILE_ACTION_MODIFIED
+        return self.action == FILE_ACTION_MODIFIED and not self.is_attrib
 
     @property
     def is_renamed_old(self) -> bool:
@@ -378,7 +511,7 @@ def _drop_case_only_rename_deletions(events: list[WinAPINativeEvent]) -> list[Wi
 
 
 class DirectoryChangeReader:
-    """Uses ReadDirectoryChangesW() to detect file system changes.  A separate
+    """Uses ReadDirectoryChangesW() or ReadDirectoryChangesExW() to detect file system changes.  A separate
     thread is used to make that call in order to reduce the time window
     in that events may be lost.  The processing of data received from
     ReadDirectoryChangesW() is queued and processed by another thread.
@@ -392,25 +525,59 @@ class DirectoryChangeReader:
         self._should_stop = False
         self._buf_queue: queue.Queue = queue.Queue()
         self._lock = threading.Lock()
+        self._extended = ReadDirectoryChangesExW is not None
 
     def _run_inner(self, handle: HANDLE, event_buffer: ctypes.Array[ctypes.c_char], nbytes: DWORD) -> None:
         # This runs in its own thread and it makes a single call to
-        # ReadDirectoryChangesW().  This blocks until at least some events are
-        # available (or there is an error).  We will re-use the _event_buffer
-        # and so we copy the data into a second buffer (double-buffering
-        # technique) and queue it for another thread to process.  This reduces
-        # the time window in which we could miss events.
+        # ReadDirectoryChangesExW() (if supported) or ReadDirectoryChangesW().
+        # This blocks until at least some events are available (or there is an error).
+        # We will re-use the _event_buffer and so we copy the data into a second buffer
+        # (double-buffering technique) and queue it for another thread to process.
+        # This reduces the time window in which we could miss events.
         try:
-            ReadDirectoryChangesW(
-                handle,
-                ctypes.byref(event_buffer),
-                len(event_buffer),
-                self._recursive,
-                WATCHDOG_FILE_NOTIFY_FLAGS,
-                ctypes.byref(nbytes),
-                None,
-                None,
-            )
+            if self._extended and ReadDirectoryChangesExW is not None:
+                try:
+                    ReadDirectoryChangesExW(
+                        handle,
+                        ctypes.byref(event_buffer),
+                        len(event_buffer),
+                        self._recursive,
+                        WATCHDOG_FILE_NOTIFY_FLAGS,
+                        ctypes.byref(nbytes),
+                        None,
+                        None,
+                        READ_DIRECTORY_NOTIFY_EXTENDED_INFORMATION,
+                    )
+                except OSError as e:
+                    # Remote network shares (SMB/CIFS) or non-NTFS volumes may not support
+                    # extended directory notifications and return ERROR_INVALID_FUNCTION (1)
+                    # or ERROR_NOT_SUPPORTED (50). Fall back to ReadDirectoryChangesW.
+                    # Ref: https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-readdirectorychangesw#return-value
+                    if getattr(e, "winerror", None) in (ERROR_INVALID_FUNCTION, ERROR_NOT_SUPPORTED):
+                        self._extended = False
+                        ReadDirectoryChangesW(
+                            handle,
+                            ctypes.byref(event_buffer),
+                            len(event_buffer),
+                            self._recursive,
+                            WATCHDOG_FILE_NOTIFY_FLAGS,
+                            ctypes.byref(nbytes),
+                            None,
+                            None,
+                        )
+                    else:
+                        raise
+            else:
+                ReadDirectoryChangesW(
+                    handle,
+                    ctypes.byref(event_buffer),
+                    len(event_buffer),
+                    self._recursive,
+                    WATCHDOG_FILE_NOTIFY_FLAGS,
+                    ctypes.byref(nbytes),
+                    None,
+                    None,
+                )
             buf = event_buffer.raw[: nbytes.value]
         except OSError as e:
             if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
@@ -421,10 +588,10 @@ class DirectoryChangeReader:
                     # Additional calls to ReadDirectoryChangesW() will fail so stop.
                     self._should_stop = True
                 # Create synthetic event for deletion
-                buf = _generate_observed_path_deleted_event()
+                buf = _generate_observed_path_deleted_event(extended=self._extended)
             else:
                 raise
-        self._buf_queue.put(buf)
+        self._buf_queue.put((buf, self._extended))
 
     def _run(self) -> None:
         with self._lock:
@@ -434,7 +601,7 @@ class DirectoryChangeReader:
         # missed, we re-use these for each call to _run_inner().
         event_buffer = ctypes.create_string_buffer(BUFFER_SIZE)
         nbytes = DWORD()
-        self._buf_queue.put(b"")  # indicates that this thread has started
+        self._buf_queue.put((b"", self._extended))  # indicates that this thread has started
         try:
             while not self._should_stop:
                 self._run_inner(handle, event_buffer, nbytes)
@@ -480,11 +647,18 @@ class DirectoryChangeReader:
         reader_thread.join()
 
     def get_events(self, timeout: float) -> list[WinAPINativeEvent]:
-        events = []
+        events: list[WinAPINativeEvent] = []
         while True:
             try:
-                buf = self._buf_queue.get(timeout=timeout)
+                buf, is_extended = self._buf_queue.get(timeout=timeout)
             except queue.Empty:
                 break
-            events.extend(_parse_event_buffer(buf))
-        return _drop_case_only_rename_deletions([WinAPINativeEvent(action, src_path) for action, src_path in events])
+            if not buf:
+                continue
+            if is_extended:
+                for action, src_path, is_attrib in _parse_extended_event_buffer(buf):
+                    events.append(WinAPINativeEvent(action, src_path, is_attrib=is_attrib))
+            else:
+                for action, src_path in _parse_event_buffer(buf):
+                    events.append(WinAPINativeEvent(action, src_path, is_attrib=False))
+        return _drop_case_only_rename_deletions(events)

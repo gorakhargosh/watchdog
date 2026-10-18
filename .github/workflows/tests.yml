@@ -41,6 +41,7 @@ jobs:
   tox:
     name: ${{ matrix.tox.name }} ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
     runs-on: ${{ matrix.os.runs-on }}
+    if: "!startsWith(github.head_ref, 'all-contributors/') && !startsWith(github.event.pull_request.title, 'docs:')"
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -67,6 +68,8 @@ jobs:
           - "3.13t"
           - "3.14"
           - "3.14t"
+          - "3.15"
+          - "3.15t"
           - "pypy-3.9"
         exclude:
           - os:
