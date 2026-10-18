@@ -6,6 +6,8 @@ import pickle
 import time
 from unittest.mock import patch
 
+import pytest
+
 from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
@@ -202,7 +204,68 @@ def test_ignore_device(p):
         assert diff_without_device.files_created == []
 
 
-def test_empty_snapshot(p):
+def stat_with_changed_device(path):
+    # Change the device ID while preserving the fields used by DirectorySnapshot.
+    stat = os.stat(path)
+    values = list(stat)
+    values[2] += 1
+    return os.stat_result(values, {"st_atime": stat.st_atime, "st_mtime": stat.st_mtime, "st_ctime": stat.st_ctime})
+
+
+@pytest.mark.parametrize("is_directory", [False, True])
+@pytest.mark.parametrize("modified", [False, True])
+@pytest.mark.parametrize("ignore_device", [False, True])
+def test_move_with_changed_device(p, is_directory, modified, ignore_device):
+    source = p("before")
+    destination = p("after")
+    if is_directory:
+        mkdir(source)
+    else:
+        touch(source)
+    os.utime(source, (1000, 1000))
+    ref = DirectorySnapshot(p(""))
+    mv(source, destination)
+    os.utime(destination, (1000, 1010 if modified else 1000))
+
+    snapshot = DirectorySnapshot(p(""), stat=stat_with_changed_device)
+    diff = DirectorySnapshotDiff(ref, snapshot, ignore_device=ignore_device)
+    kind = "dirs" if is_directory else "files"
+    if ignore_device:
+        assert getattr(diff, f"{kind}_moved") == [(source, destination)]
+        assert getattr(diff, f"{kind}_deleted") == []
+        assert getattr(diff, f"{kind}_created") == []
+        assert (source in getattr(diff, f"{kind}_modified")) == modified
+    else:
+        assert getattr(diff, f"{kind}_moved") == []
+        assert source in getattr(diff, f"{kind}_deleted")
+        assert destination in getattr(diff, f"{kind}_created")
+
+
+def test_ignore_device_preserves_hard_link_moves(p):
+    touch(p("a"))
+    try:
+        os.link(p("a"), p("b"))
+    except OSError as e:
+        pytest.skip(f"Hard links are unavailable: {e}")
+
+    def listdir(path):
+        with os.scandir(path) as entries:
+            yield from sorted(entries, key=lambda entry: entry.name)
+
+    ref = DirectorySnapshot(p(""))
+    mv(p("a"), p("c"))
+    snapshot = DirectorySnapshot(p(""), listdir=listdir)
+    expected = DirectorySnapshotDiff(ref, snapshot)
+    changed = DirectorySnapshot(p(""), stat=stat_with_changed_device, listdir=listdir)
+    diff = DirectorySnapshotDiff(ref, changed, ignore_device=True)
+    assert set(diff.files_moved) == set(expected.files_moved)
+    assert diff.files_created == expected.files_created
+    assert diff.files_deleted == expected.files_deleted
+
+
+@pytest.mark.parametrize("ignore_device", [False, True])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_empty_snapshot(p, ignore_device, reverse):
     # Create a file and declare a DirectorySnapshot and a EmptyDirectorySnapshot.
     # When we make the diff, although both objects were declared with the same items on
     # the directory, the file and directories created BEFORE the DirectorySnapshot will
@@ -214,7 +277,12 @@ def test_empty_snapshot(p):
     empty = EmptyDirectorySnapshot()
     assert repr(empty) == "{}"
 
-    diff = DirectorySnapshotDiff(empty, ref)
+    diff = (
+        DirectorySnapshotDiff(ref, empty, ignore_device=ignore_device)
+        if reverse
+        else DirectorySnapshotDiff(empty, ref, ignore_device=ignore_device)
+    )
     assert len(diff) == 4
-    assert diff.files_created == [p("a")]
-    assert sorted(diff.dirs_created) == sorted([p(""), p("b"), p("b", "c")])
+    kind = "deleted" if reverse else "created"
+    assert getattr(diff, f"files_{kind}") == [p("a")]
+    assert sorted(getattr(diff, f"dirs_{kind}")) == sorted([p(""), p("b"), p("b", "c")])

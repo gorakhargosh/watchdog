@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import os
 import os.path
+import stat
 import struct
+import threading
 from queue import Empty, Queue
 from time import sleep
+from typing import TYPE_CHECKING
 
 import pytest
 
-from watchdog.events import DirCreatedEvent, DirMovedEvent, FileMovedEvent
+from watchdog.events import DirCreatedEvent, DirMovedEvent, FileAttribEvent, FileMovedEvent
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
@@ -18,15 +21,22 @@ from .shell import mkdir, mkdtemp, mv, rm
 if not platform.is_windows():
     pytest.skip("Windows only.", allow_module_level=True)
 
+if TYPE_CHECKING:
+    from typing_extensions import Self
+
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
 from watchdog.observers.winapi import (
     FILE_ACTION_CREATED,
     FILE_ACTION_DELETED,
+    FILE_ACTION_DELETED_SELF,
+    FILE_ACTION_MODIFIED,
     FILE_ACTION_RENAMED_NEW_NAME,
     FILE_ACTION_RENAMED_OLD_NAME,
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
+    _generate_observed_path_deleted_event,
     _parse_event_buffer,
+    _parse_extended_event_buffer,
 )
 
 SLEEP_TIME = 2
@@ -96,6 +106,34 @@ def test___init__(event_queue, emitter):
     assert expected == got
 
 
+def test_windows_api_emitter_attrib_event(event_queue, emitter):
+    file_path = p("attr_file.txt")
+    with open(file_path, "w") as f:
+        f.write("initial")
+
+    emitter.start()
+    sleep(SLEEP_TIME)
+
+    os.chmod(file_path, stat.S_IREAD)
+    sleep(SLEEP_TIME)
+
+    emitter.stop()
+    sleep(SLEEP_TIME)
+
+    os.chmod(file_path, stat.S_IWRITE)
+
+    got = []
+    while True:
+        try:
+            event, _ = event_queue.get_nowait()
+        except Empty:
+            break
+        else:
+            got.append(event)
+
+    assert any(isinstance(ev, FileAttribEvent) and ev.src_path == file_path for ev in got)
+
+
 def test_root_deleted(event_queue, emitter):
     r"""Test the event got when removing the watched folder.
     The regression to prevent is:
@@ -137,6 +175,46 @@ def test_root_deleted(event_queue, emitter):
 
     # The emitter is automatically stopped, with no error
     assert not emitter.should_keep_running()
+
+
+def test_queue_events_locks_reader_access():
+    """Regression test for #1170.
+
+    on_thread_stop() clears _reader while holding self._lock, so queue_events()
+    must read _reader under the same lock. Otherwise a concurrent stop could
+    leave queue_events() processing events from a reader that is being stopped.
+    """
+
+    emitter = WindowsApiEmitter(Queue(), ObservedWatch(temp_dir, recursive=True), timeout=0.05)
+
+    class DummyReader:
+        def get_events(self, timeout: float) -> list:
+            return []
+
+        def stop(self) -> None:
+            pass
+
+    emitter._reader = DummyReader()  # noqa: SLF001
+
+    locked = threading.Event()
+
+    class TrackingLock:
+        def __init__(self) -> None:
+            self._lock = threading.RLock()
+
+        def __enter__(self) -> Self:
+            locked.set()
+            self._lock.acquire()
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            self._lock.release()
+
+    emitter._lock = TrackingLock()  # noqa: SLF001
+
+    emitter.queue_events(0)
+
+    assert locked.is_set()
 
 
 def test_drop_case_only_rename_deletions():
@@ -227,3 +305,56 @@ def test_rename_split_across_two_batches_keeps_the_source_path(event_queue, emit
     event, _ = event_queue.get_nowait()
 
     assert event == FileMovedEvent(p("old_name"), p("new_name"))
+
+
+@pytest.mark.parametrize(
+    ("last_change_time", "last_mod_time", "expected_attrib"),
+    [
+        (200, 100, True),
+        (100, 100, False),
+        (50, 100, False),
+    ],
+)
+def test_parse_extended_event_buffer_modified(last_change_time, last_mod_time, expected_attrib):
+    name = "test.txt".encode("utf-16-le")
+    buffer = (
+        struct.pack(
+            "<IIqqqqqqIIqqI",
+            0,
+            FILE_ACTION_MODIFIED,
+            0,
+            last_mod_time,
+            last_change_time,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            len(name),
+        )
+        + name
+    )
+    events = _parse_extended_event_buffer(buffer)
+    assert events == [(FILE_ACTION_MODIFIED, "test.txt", expected_attrib)]
+
+
+def test_winapi_native_event_is_attrib():
+    attrib_event = WinAPINativeEvent(FILE_ACTION_MODIFIED, "test.txt", is_attrib=True)
+    assert attrib_event.is_attrib
+    assert not attrib_event.is_modified
+
+    modified_event = WinAPINativeEvent(FILE_ACTION_MODIFIED, "test.txt", is_attrib=False)
+    assert not modified_event.is_attrib
+    assert modified_event.is_modified
+
+
+def test_generate_observed_path_deleted_event():
+    buf_extended = _generate_observed_path_deleted_event(extended=True)
+    events_extended = _parse_extended_event_buffer(buf_extended)
+    assert events_extended == [(FILE_ACTION_DELETED_SELF, ".", False)]
+
+    buf_standard = _generate_observed_path_deleted_event(extended=False)
+    events_standard = _parse_event_buffer(buf_standard)
+    assert events_standard == [(FILE_ACTION_DELETED_SELF, ".")]
