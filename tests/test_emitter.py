@@ -143,6 +143,8 @@ def test_modify(
 
 def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     mkfile(p("a"))
+    # Set initial mtime in the past so Windows NTFS ChangeTime > LastWriteTime
+    # reliably distinguishes this metadata change without sleeping.
     os.utime(p("a"), (1000, 1000))
     start_watching()
 
@@ -633,6 +635,7 @@ def test_chmod_file(
         ec.add(FileAttribEvent, "newfile")
 
     if platform.is_windows():
+        # Reset permissions to allow cleanup.
         chmod(p("newfile"), stat.S_IWRITE)
 
 
@@ -650,4 +653,5 @@ def test_chmod_dir(
             ec.add(DirAttribEvent, "dir1")
 
     if platform.is_windows():
+        # Reset permissions to allow cleanup.
         chmod(p("dir1"), stat.S_IWRITE)

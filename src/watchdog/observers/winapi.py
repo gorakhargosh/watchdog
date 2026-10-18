@@ -536,7 +536,6 @@ class DirectoryChangeReader:
         # This reduces the time window in which we could miss events.
         try:
             if self._extended:
-                assert ReadDirectoryChangesExW is not None
                 try:
                     ReadDirectoryChangesExW(
                         handle,
@@ -550,6 +549,10 @@ class DirectoryChangeReader:
                         READ_DIRECTORY_NOTIFY_EXTENDED_INFORMATION,
                     )
                 except OSError as e:
+                    # Remote network shares (SMB/CIFS) or non-NTFS volumes may not support
+                    # extended directory notifications and return ERROR_INVALID_FUNCTION (1)
+                    # or ERROR_NOT_SUPPORTED (50). Fall back to ReadDirectoryChangesW.
+                    # Ref: https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-readdirectorychangesw#return-value
                     if getattr(e, "winerror", None) in (ERROR_INVALID_FUNCTION, ERROR_NOT_SUPPORTED):
                         self._extended = False
                         ReadDirectoryChangesW(
@@ -576,7 +579,6 @@ class DirectoryChangeReader:
                     None,
                 )
             buf = event_buffer.raw[: nbytes.value]
-            is_extended = self._extended
         except OSError as e:
             if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
                 return
@@ -587,10 +589,9 @@ class DirectoryChangeReader:
                     self._should_stop = True
                 # Create synthetic event for deletion
                 buf = _generate_observed_path_deleted_event(extended=self._extended)
-                is_extended = self._extended
             else:
                 raise
-        self._buf_queue.put((buf, is_extended))
+        self._buf_queue.put((buf, self._extended))
 
     def _run(self) -> None:
         with self._lock:

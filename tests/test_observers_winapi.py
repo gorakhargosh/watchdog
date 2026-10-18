@@ -262,12 +262,12 @@ def test_parse_extended_event_buffer_modified(last_change_time, last_mod_time, e
 
 def test_winapi_native_event_is_attrib():
     attrib_event = WinAPINativeEvent(FILE_ACTION_MODIFIED, "test.txt", is_attrib=True)
-    assert attrib_event.is_attrib is True
-    assert attrib_event.is_modified is False
+    assert attrib_event.is_attrib
+    assert not attrib_event.is_modified
 
     modified_event = WinAPINativeEvent(FILE_ACTION_MODIFIED, "test.txt", is_attrib=False)
-    assert modified_event.is_attrib is False
-    assert modified_event.is_modified is True
+    assert not modified_event.is_attrib
+    assert modified_event.is_modified
 
 
 def test_generate_observed_path_deleted_event():
