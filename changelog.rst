@@ -43,6 +43,8 @@ Changelog
 - [utils] Implemented ``len(DirectorySnapshotDiff)`` to return the total number of changes.
 - [core] Fixed ``generate_sub_moved_events()`` corrupting paths when the directory name appears multiple times in the path. (`#1158 <https://github.com/gorakhargosh/watchdog/pull/1158>`__)
 - [core] Call ``task_done()`` for the stop sentinel in ``dispatch_events()`` to prevent ``join()`` from hanging. (`#1159 <https://github.com/gorakhargosh/watchdog/pull/1159>`__)
+- [utils] Fixed ``DirectorySnapshotDiff`` reporting a newly created symlink as a move of its target (and a removed symlink as a move onto its target), so ``PollingObserver`` now emits a create/delete event to match the native observers. (`#1176 <https://github.com/gorakhargosh/watchdog/pull/1176>`__)
+- [inotify] Snapshot the watch group before the blocking read in ``InotifyEmitter.queue_events()`` so stopping the emitter cannot raise ``AttributeError`` on a cleared ``self._inotify``.
 - [docs] Document that ``BaseThread`` always runs as a daemon thread, instead of inheriting ``daemon`` from the creating thread as the inherited ``threading.Thread`` documentation states. (`#1117 <https://github.com/gorakhargosh/watchdog/issues/1117>`__)
 - [windows] Fixed an unsynchronized access to ``WindowsApiEmitter._reader``: ``queue_events()`` now
   reads it under the same lock used by ``on_thread_stop()``. (`#1170 <https://github.com/gorakhargosh/watchdog/issues/1170>`__)
