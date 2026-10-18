@@ -588,6 +588,7 @@ def test_move_nested_subdirectories_on_windows(
         ec.add(DirCreatedEvent, "dir2")
         ec.add(DirCreatedEvent, "dir2/dir3")
         ec.add(FileCreatedEvent, "dir2/dir3/a")
+        ec.add(DirAttribEvent, "dir2")
         # The path of the trailing DirModifiedEvent is not consistent across
         # environments: CI emits `dir2`, while some native Windows installs
         # emit `dir2/dir3`. Match any DirModifiedEvent under the moved tree
