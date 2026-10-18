@@ -14,7 +14,7 @@ class MyEventHandler(PatternMatchingEventHandler):
 
 
 event_handler = MyEventHandler(
-    patterns=["**/*.py", "**/*.pyc"], ignore_patterns=["version.py"], ignore_directories=True
+    patterns=["**/*.py", "**/*.pyc"], ignore_patterns=["**/version.py"], ignore_directories=True
 )
 observer = Observer()
 observer.schedule(event_handler, sys.argv[1], recursive=True)
