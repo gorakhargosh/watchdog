@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import queue
 import threading
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from watchdog.events import FileSystemMovedEvent
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
@@ -23,8 +25,8 @@ DEFAULT_OBSERVER_TIMEOUT = 1.0  # in seconds
 
 class EventQueue(SkipRepeatsQueue):
     """Thread-safe event queue based on a special queue that skips adding
-    the same event (:class:`FileSystemEvent`) multiple times consecutively.
-    Thus avoiding dispatching multiple event handling
+    the same event (:class:`watchdog.events.FileSystemEvent`) multiple times
+    consecutively. Thus avoiding dispatching multiple event handling
     calls when multiple identical events are produced quicker than an observer
     can consume them.
 
@@ -43,7 +45,7 @@ class ObservedWatch:
     :type path:
         ``str`` or :class:`pathlib.Path`
     :param recursive:
-        ``True`` if watch is recursive; ``False`` otherwise.
+        ``True`` if watch should include subdirectories; ``False`` otherwise.
     :type recursive:
         ``bool``
     :param event_filter:
@@ -64,35 +66,27 @@ class ObservedWatch:
         event_filter: list[type[FileSystemEvent]] | None = None,
         follow_symlink: bool = False,
     ):
-        self._path = str(path) if isinstance(path, Path) else path
-        self._is_recursive = recursive
-        self._follow_symlink = follow_symlink
-        self._event_filter = frozenset(event_filter) if event_filter is not None else None
+        raw_path = str(path) if isinstance(path, Path) else path
+        self.raw_path = raw_path
+        self.follow_symlink = follow_symlink
+        self.event_filter = frozenset(event_filter) if event_filter is not None else None
+
+        self.is_file = os.path.isfile(raw_path)
+        self.resolved_path = (
+            os.path.realpath(os.path.abspath(raw_path)) if follow_symlink else os.path.abspath(raw_path)
+        )
+
+        if self.is_file:
+            self.path = os.path.dirname(self.resolved_path)
+            self.is_recursive = False
+        else:
+            self.path = raw_path
+            self.is_recursive = recursive
 
     @property
-    def path(self) -> str:
-        """The path that this watch monitors."""
-        return self._path
-
-    @property
-    def is_recursive(self) -> bool:
-        """Determines whether subdirectories are watched for the path."""
-        return self._is_recursive
-
-    @property
-    def follow_symlink(self) -> bool:
-        """Determines whether symlink are followed."""
-        return self._follow_symlink
-
-    @property
-    def event_filter(self) -> frozenset[type[FileSystemEvent]] | None:
-        """Collection of event types watched for the path"""
-        return self._event_filter
-
-    @property
-    def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None]:
-        """A tuple key identifying the watch (path, recursive, event_filter)."""
-        return self.path, self.is_recursive, self.event_filter
+    def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None, bool]:
+        """A tuple key identifying the watch (raw_path, recursive, event_filter, follow_symlink)."""
+        return self.raw_path, self.is_recursive, self.event_filter, self.follow_symlink
 
     def __eq__(self, watch: object) -> bool:
         if not isinstance(watch, ObservedWatch):
@@ -124,7 +118,7 @@ class EventEmitter(BaseThread):
     :param event_queue:
         The event queue to populate with generated events.
     :type event_queue:
-        :class:`watchdog.events.EventQueue`
+        :class:`EventQueue`
     :param watch:
         The watch to observe and produce events for.
     :type watch:
@@ -346,7 +340,7 @@ class BaseObserver(EventDispatcher):
         :type event_handler:
             :class:`watchdog.events.FileSystemEventHandler` or a subclass
         :param path:
-            Directory path that will be monitored.
+            Directory or file path that will be monitored.
         :type path:
             ``str`` or :class:`pathlib.Path`
         :param recursive:
@@ -413,7 +407,10 @@ class BaseObserver(EventDispatcher):
             :class:`ObservedWatch`
         """
         with self._lock:
-            self._handlers[watch].remove(event_handler)
+            # Use .get() rather than indexing: _handlers is a defaultdict, so
+            # indexing it here would resurrect a watch that unschedule() already
+            # removed, leaving a permanent empty-set entry behind.
+            self._handlers.get(watch, set()).remove(event_handler)
 
     def unschedule(self, watch: ObservedWatch) -> None:
         """Unschedules a watch.
@@ -448,11 +445,32 @@ class BaseObserver(EventDispatcher):
 
         event, watch = entry
 
+        if watch.is_file:
+            target = watch.resolved_path
+            src_path = (
+                os.path.realpath(os.path.abspath(event.src_path))
+                if watch.follow_symlink
+                else os.path.abspath(event.src_path)
+            )
+            dest_path = None
+            if isinstance(event, FileSystemMovedEvent) and event.dest_path:
+                dest_path = (
+                    os.path.realpath(os.path.abspath(event.dest_path))
+                    if watch.follow_symlink
+                    else os.path.abspath(event.dest_path)
+                )
+            if src_path != target and dest_path != target:
+                event_queue.task_done()
+                return
+
         with self._lock:
             # To allow unschedule/stop and safe removal of event handlers
             # within event handlers itself, check if the handler is still
             # registered after every dispatch.
-            for handler in self._handlers[watch].copy():
-                if handler in self._handlers[watch]:
+            # Use .get() rather than indexing: _handlers is a defaultdict, so
+            # indexing it here would resurrect a watch that unschedule() removed
+            # but whose events were already queued.
+            for handler in list(self._handlers.get(watch, ())):
+                if handler in self._handlers.get(watch, ()):
                     handler.dispatch(event)
         event_queue.task_done()

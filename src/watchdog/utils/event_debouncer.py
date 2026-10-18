@@ -22,6 +22,15 @@ class EventDebouncer(BaseThread):
     before the interval passes, reset the timer and keep waiting.  When the
     debouncing interval passes, the callback will be called with a list of
     events in the order in which they were received.
+
+    :param debounce_interval_seconds:
+        The number of seconds to wait before calling the callback.
+    :type debounce_interval_seconds:
+        ``int``
+    :param events_callback:
+        The callback function to be invoked with the debounced events.
+    :type events_callback:
+        ``Callable[[list[FileSystemEvent]], None]``
     """
 
     def __init__(
@@ -47,6 +56,8 @@ class EventDebouncer(BaseThread):
             self._cond.notify()
 
     def run(self) -> None:
+        """Runs the event loop that waits for incoming filesystem events and triggers
+        the callback once the debounce interval has passed."""
         with self._cond:
             while True:
                 # Wait for first event (or shutdown).

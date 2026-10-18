@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
+import signal
 import sys
 import time
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -17,8 +18,9 @@ from yaml.constructor import ConstructorError  # noqa: E402
 from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
-from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
-from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick  # noqa: E402
+from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
+from watchdog.observers.api import BaseObserver  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
 
 
@@ -79,6 +81,21 @@ def wait_for_marker_count(capfd, captured, marker, count, timeout=10):
         time.sleep(0.05)
 
 
+def test_watchmedo_default_patterns_match_absolute_paths(tmpdir):
+    """Regression test for #1212: the default --patterns value must match absolute
+    paths at any depth under the full_match() semantics."""
+
+    from watchdog.utils.patterns import match_any_paths
+
+    watched = os.path.join(tmpdir, "nested", "file.txt")
+    for argv in (["auto-restart", "echo", "hi"], ["shell-command"], ["log"]):
+        args = watchmedo.cli.parse_args(argv)
+        patterns, ignore_patterns = watchmedo.parse_patterns(args.patterns, args.ignore_patterns)
+        assert patterns == ["**"]
+        assert ignore_patterns == []
+        assert match_any_paths([watched], included_patterns=patterns, case_sensitive=False)
+
+
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
@@ -127,6 +144,23 @@ def test_auto_restart_stop_signal_is_delivered(tmpdir, capfd):
 
     cap = capfd.readouterr()
     assert "+++++ stopped cleanly" in cap.out
+
+
+@pytest.mark.skipif(not platform.is_windows(), reason="CTRL_BREAK_EVENT routing is Windows-only")
+def test_kill_process_routes_sigbreak_through_ctrl_break_event():
+    """``--signal SIGBREAK`` must be routed like SIGINT, not hard-killed.
+
+    ``watchmedo.py`` turns ``--signal SIGBREAK`` into ``signal.SIGBREAK`` and
+    passes it straight to ``kill_process()``. Before this fix it fell into the
+    ``else`` branch and reached the child through a plain ``os.kill()``, which
+    Windows maps to ``TerminateProcess()`` for anything but the two console
+    control events -- the exact hard kill #1221 asked to avoid. Companion to
+    test_auto_restart_stop_signal_is_delivered above, which covers SIGINT.
+    """
+    with patch("os.kill") as mocked_kill:
+        kill_process(1234, signal.SIGBREAK)
+
+    mocked_kill.assert_called_once_with(1234, signal.CTRL_BREAK_EVENT)
 
 
 def test_shell_command_wait_for_completion(tmpdir, capfd):
@@ -400,3 +434,21 @@ tricks:
     with patch("time.sleep", mocked_sleep):
         watchmedo.tricks_from(args)
     assert checkpoint
+
+
+def test_observe_with():
+    observer = Mock(spec=BaseObserver)
+    handler = FileSystemEventHandler()
+    # Test multiple paths, with and without trailing slashes, including duplicates
+    pathnames = ["/path/one", "/path/two/", "/path/three", "/path/one"]
+
+    with patch("time.sleep", side_effect=WatchdogShutdownError):
+        watchmedo.observe_with(observer, handler, pathnames, recursive=True)
+
+    assert observer.schedule.call_count == 3
+    observer.schedule.assert_any_call(handler, "/path/one", recursive=True)
+    observer.schedule.assert_any_call(handler, "/path/two/", recursive=True)
+    observer.schedule.assert_any_call(handler, "/path/three", recursive=True)
+    assert observer.start.call_count == 1
+    assert observer.stop.call_count == 1
+    assert observer.join.call_count == 1

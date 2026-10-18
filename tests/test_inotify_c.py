@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from contextlib import ExitStack
-
 import pytest
 
 from watchdog.utils import platform
@@ -11,8 +9,10 @@ if not platform.is_linux():
 
 import ctypes
 import errno
+import fcntl
 import logging
 import os
+import resource
 import select
 import struct
 import threading
@@ -217,21 +217,42 @@ def test_event_equality(p: P) -> None:
     assert event2 != event3
 
 
-def test_select_fd(p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
-    # We open a file 2048 times to ensure that we exhaust 1024 file
-    # descriptors, the limit of a select() call.
-    path = p("new_file")
-    with open(path, "a"):
-        pass
-    with ExitStack() as stack:
-        for _i in range(2048):
-            stack.enter_context(open(path))
+def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
+    soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+    if soft_limit != resource.RLIM_INFINITY and soft_limit <= 1024:
+        pytest.skip("A file descriptor above select()'s limit requires RLIMIT_NOFILE > 1024")
 
-        # Watch this file for deletion (copied from `test_watch_file`)
-        path = p("this_is_a_file")
-        with open(path, "a"):
-            pass
-        start_watching(path=path)
-        os.remove(path)
-        event, _ = event_queue.get(timeout=5)
-        assert repr(event)
+    create_inotify_fd = InotifyFD._create_inotify_fd  # noqa: SLF001
+
+    def create_high_fd() -> int:
+        fd = create_inotify_fd()
+        try:
+            # Exercise a real descriptor outside select()'s range without
+            # opening thousands of unrelated files.
+            return fcntl.fcntl(fd, fcntl.F_DUPFD_CLOEXEC, 1024)
+        finally:
+            os.close(fd)
+
+    # The normal singleton is created at import time, before this test runs.
+    with (
+        patch.object(InotifyFD, "_create_inotify_fd", side_effect=create_high_fd) as create_fd,
+        patch.object(InotifyFD, "_instance", new=None),
+    ):
+        inotify_fd = InotifyFD.get_instance()
+        try:
+            create_fd.assert_called_once()
+            # Watch this file, then trigger an event by deleting it.
+            path = p("this_is_a_file")
+            with open(path, "a"):
+                pass
+            start_watching(path=path)
+            os.remove(path)
+            event, _ = event_queue.get(timeout=5)
+            assert event.src_path == path
+        finally:
+            try:
+                helper.close()
+            finally:
+                inotify_fd.stop()
+                inotify_fd.join(5)
+                assert not inotify_fd.is_alive()

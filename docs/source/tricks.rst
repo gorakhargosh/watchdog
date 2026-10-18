@@ -19,13 +19,13 @@ Without tricks, running multiple tasks requires starting several terminal proces
 .. code-block:: bash
 
     # Terminal 1
-    watchmedo log --patterns="*.py" .
+    watchmedo log --patterns="**/*.py" .
 
     # Terminal 2
-    watchmedo shell-command --patterns="*.py" --command="ruff check ." .
+    watchmedo shell-command --patterns="**/*.py" --command="ruff check ." .
 
     # Terminal 3
-    watchmedo auto-restart --patterns="*.py" --command="python app.py" .
+    watchmedo auto-restart --patterns="**/*.py" --command="python app.py" .
 
 Using tricks simplifies configuration by allowing multiple event handlers to run under a single observer:
 
@@ -68,10 +68,10 @@ Here is a typical ``tricks.yaml`` configuration file demonstrating how to combin
 
     tricks:
     - watchdog.tricks.LoggerTrick:
-        patterns: ["*.py", "*.txt"]
+        patterns: ["**/*.py", "**/*.txt"]
         ignore_directories: true
     - watchdog.tricks.ShellCommandTrick:
-        patterns: ["*.py"]
+        patterns: ["**/*.py"]
         shell_command: "echo 'file changed: ${watch_src_path}'"
         wait_for_process: true
 
@@ -98,7 +98,7 @@ In addition to the built-in tricks, you can create your own by subclassing :clas
 
        tricks:
        - mypackage.tricks.NotifyTeamTrick:
-           patterns: ["*.yaml"]
+           patterns: ["**/*.yaml"]
 
 Tricks Module Reference
 -----------------------
