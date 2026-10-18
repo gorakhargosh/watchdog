@@ -40,6 +40,9 @@
       <td align="center" valign="top" width="14.28%"><a href="https://greatbahram.github.io/"><img src="https://avatars.githubusercontent.com/u/14103831?v=4?s=70" width="70px;" alt="Bahram Aghaei"/><br /><sub><b>Bahram Aghaei</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=GreatBahram" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/arindamsikder"><img src="https://avatars.githubusercontent.com/u/88596876?v=4?s=70" width="70px;" alt="Arindam Sikder"/><br /><sub><b>Arindam Sikder</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=arindamsikder" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/kokotatan"><img src="https://avatars.githubusercontent.com/u/199421981?v=4?s=70" width="70px;" alt="kokotatan"/><br /><sub><b>kokotatan</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=kokotatan" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
