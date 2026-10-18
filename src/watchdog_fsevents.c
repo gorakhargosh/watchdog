@@ -621,33 +621,12 @@ static PyTypeObject StreamType = {
 PyDoc_STRVAR(watchdog_fsevents_module__doc__,
              "Low-level FSEvents Python/C API bridge.");
 
-static struct PyModuleDef watchdog_fsevents_module = {
-    PyModuleDef_HEAD_INIT,
-    MODULE_NAME,
-    watchdog_fsevents_module__doc__,
-    -1,
-    NULL,  /* m_methods */
-    NULL,  /* m_slots */
-    NULL,  /* m_traverse */
-    0,     /* m_clear */
-    NULL   /* m_free */
-};
-
-/**
- * Initialize the Python 3.x module.
- */
-PyMODINIT_FUNC
-PyInit__watchdog_fsevents(void){
+static int
+watchdog_fsevents_exec(PyObject *module)
+{
     if (PyType_Ready(&NativeEventType) < 0 || PyType_Ready(&StreamType) < 0) {
-        return NULL;
+        return -1;
     }
-    PyObject *module = PyModule_Create(&watchdog_fsevents_module);
-    if (module == NULL) {
-        return NULL;
-    }
-#ifdef Py_GIL_DISABLED
-    PyUnstable_Module_SetGIL(module, Py_MOD_GIL_NOT_USED);
-#endif
     if (PyModule_AddObjectRef(module, "NativeEvent", (PyObject *)&NativeEventType) < 0
         || PyModule_AddObjectRef(module, "Stream", (PyObject *)&StreamType) < 0
         || PyModule_AddIntConstant(module, "POLLIN", kCFFileDescriptorReadCallBack) < 0
@@ -655,8 +634,39 @@ PyInit__watchdog_fsevents(void){
         || PyModule_Add(module, "__version__", Py_BuildValue("(iii)", WATCHDOG_VERSION_MAJOR,
                                                           WATCHDOG_VERSION_MINOR, WATCHDOG_VERSION_BUILD)) < 0
         || PyModule_AddStringConstant(module, "version_string", WATCHDOG_VERSION_STRING) < 0) {
-        Py_DECREF(module);
-        return NULL;
+        return -1;
     }
-    return module;
+    return 0;
+}
+
+static PyModuleDef_Slot watchdog_fsevents_slots[] = {
+    {Py_mod_exec, (void *)watchdog_fsevents_exec},
+#ifdef Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED
+    {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},
+#endif
+#ifdef Py_MOD_GIL_NOT_USED
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
+#endif
+    {0, NULL}
+};
+
+static struct PyModuleDef watchdog_fsevents_module = {
+    PyModuleDef_HEAD_INIT,
+    MODULE_NAME,
+    watchdog_fsevents_module__doc__,
+    0,                        /* m_size */
+    NULL,                     /* m_methods */
+    watchdog_fsevents_slots,  /* m_slots */
+    NULL,                     /* m_traverse */
+    0,                        /* m_clear */
+    NULL                      /* m_free */
+};
+
+/**
+ * Initialize the Python 3.x module (PEP 489 multi-phase initialization).
+ */
+PyMODINIT_FUNC
+PyInit__watchdog_fsevents(void)
+{
+    return PyModuleDef_Init(&watchdog_fsevents_module);
 }
