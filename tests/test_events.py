@@ -4,6 +4,7 @@ import os
 import tempfile
 
 from watchdog.events import (
+    EVENT_TYPE_ATTRIB,
     EVENT_TYPE_CLOSED,
     EVENT_TYPE_CLOSED_NO_WRITE,
     EVENT_TYPE_CREATED,
@@ -11,10 +12,12 @@ from watchdog.events import (
     EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED,
     EVENT_TYPE_OPENED,
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
     FileCreatedEvent,
@@ -101,10 +104,26 @@ def test_file_opened_event():
     assert not event.is_synthetic
 
 
+def test_file_attrib_event():
+    event = FileAttribEvent(path_1)
+    assert path_1 == event.src_path
+    assert event.event_type == EVENT_TYPE_ATTRIB
+    assert not event.is_directory
+    assert not event.is_synthetic
+
+
 def test_dir_deleted_event():
     event = DirDeletedEvent(path_1)
     assert path_1 == event.src_path
     assert event.event_type == EVENT_TYPE_DELETED
+    assert event.is_directory
+    assert not event.is_synthetic
+
+
+def test_dir_attrib_event():
+    event = DirAttribEvent(path_1)
+    assert path_1 == event.src_path
+    assert event.event_type == EVENT_TYPE_ATTRIB
     assert event.is_directory
     assert not event.is_synthetic
 
@@ -137,6 +156,8 @@ def test_file_system_event_handler_dispatch():
     file_mod_event = FileModifiedEvent("/path/blah.txt")
     dir_mov_event = DirMovedEvent("/path/blah.py", "/path/blah")
     file_mov_event = FileMovedEvent("/path/blah.txt", "/path/blah")
+    file_attr_event = FileAttribEvent("/path/blah.py")
+    dir_attr_event = DirAttribEvent("/path/dir")
 
     all_events = [
         dir_mod_event,
@@ -150,6 +171,8 @@ def test_file_system_event_handler_dispatch():
         file_cls_event,
         file_cls_nw_event,
         file_opened_event,
+        file_attr_event,
+        dir_attr_event,
     ]
 
     checkpoint = 0
@@ -193,6 +216,11 @@ def test_file_system_event_handler_dispatch():
             nonlocal checkpoint
             checkpoint += 1
             assert event.event_type == EVENT_TYPE_OPENED
+
+        def on_attrib(self, event):
+            nonlocal checkpoint
+            checkpoint += 1
+            assert event.event_type == EVENT_TYPE_ATTRIB
 
     handler = TestableEventHandler()
 
@@ -254,3 +282,17 @@ def test_generate_sub_moved_events_repeated_dirname():
 
         assert len(file_events) == 1
         assert file_events[0].src_path == os.path.join(src_root, "data", "file.txt")
+
+
+def test_attrib_event_dispatch():
+    attrib_called = None
+
+    class Handler(FileSystemEventHandler):
+        def on_attrib(self, event):
+            nonlocal attrib_called
+            attrib_called = event
+
+    handler = Handler()
+    attrib_event = FileAttribEvent("/path/to/file")
+    handler.dispatch(attrib_event)
+    assert attrib_called == attrib_event

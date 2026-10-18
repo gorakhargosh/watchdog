@@ -17,10 +17,12 @@ from typing import TYPE_CHECKING
 import _watchdog_fsevents as _fsevents
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -125,6 +127,10 @@ class FSEventsEmitter(EventEmitter):
         cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
         self.queue_event(cls(src_path))
 
+    def _queue_attrib_event(self, event: FileSystemEvent, src_path: bytes | str, dirname: bytes | str) -> None:
+        cls = DirAttribEvent if event.is_directory else FileAttribEvent
+        self.queue_event(cls(src_path))
+
     def _queue_renamed_event(
         self,
         src_event: FileSystemEvent,
@@ -212,8 +218,10 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or self._is_meta_mod(event):
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
+                elif self._is_meta_mod(event):
+                    self._queue_attrib_event(event, src_path, src_dirname)
 
                 self._queue_deleted_event(event, src_path, src_dirname)
                 self._fs_view.discard(event.inode)
@@ -224,8 +232,10 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or self._is_meta_mod(event):
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
+                elif self._is_meta_mod(event):
+                    self._queue_attrib_event(event, src_path, src_dirname)
 
                 if event.is_renamed:
                     # Check if we have a corresponding destination event in the watched path.
@@ -251,8 +261,10 @@ class FSEventsEmitter(EventEmitter):
 
                         events.remove(dst_event)
 
-                        if dst_event.is_modified or self._is_meta_mod(dst_event):
+                        if dst_event.is_modified:
                             self._queue_modified_event(dst_event, dst_path, dst_dirname)
+                        elif self._is_meta_mod(dst_event):
+                            self._queue_attrib_event(dst_event, dst_path, dst_dirname)
 
                         if dst_event.is_removed:
                             self._queue_deleted_event(dst_event, dst_path, dst_dirname)
