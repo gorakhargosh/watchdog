@@ -221,17 +221,18 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
 
     Expect 3 restarts.
     """
-    script = make_dummy_script(tmpdir, n=2)
+    script = make_dummy_script(tmpdir, n=10)
     trick = AutoRestartTrick([sys.executable, script])
+    captured = []
     trick.start()
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     trick.on_any_event(FileModifiedEvent("foo/bar2.baz"))
     trick.on_any_event(FileModifiedEvent("foo/bar3.baz"))
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 2), "restart never happened"
     trick.stop()
-    cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count("+++++ 0") >= 2
+    captured.append(capfd.readouterr().out)
+    assert "".join(captured).splitlines(keepends=False).count("+++++ 0") >= 2
     assert trick.restart_count == 3
 
 

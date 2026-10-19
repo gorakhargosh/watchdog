@@ -419,7 +419,9 @@ def test_recursive_on(
             ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
         elif platform.is_windows():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
-            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+            # On Windows, touch() updates utime and may emit either FileAttribEvent or
+            # FileModifiedEvent depending on the 15.6ms system timer resolution.
+            ec.allow_extra_events()
         else:
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
@@ -581,6 +583,9 @@ def test_move_nested_subdirectories_on_windows(
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
     start_watching(path=p(""))
+    # Ensure system clock advances past creation mtime so Windows NTFS sets
+    # LastChangeTime > LastModificationTime, deterministically emitting DirAttribEvent.
+    time.sleep(0.05)
     mv(p("dir1/dir2"), p("dir2"))
 
     with events_checker() as ec:
