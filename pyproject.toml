@@ -48,7 +48,7 @@ addopts = """
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 extend-select = ["ALL"]
@@ -56,6 +56,7 @@ ignore = [
     "ARG",
     "ANN",  # TODO
     "B023",  # TODO
+    "B905",
     "BLE001",
     "C90",
     "COM812",
@@ -69,6 +70,7 @@ ignore = [
     "PTH",  # TODO?
     "S",
     "TD",
+    "UP",
 ]
 fixable = ["ALL"]
 
