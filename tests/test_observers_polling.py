@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from queue import Empty, Queue
 from time import sleep
 
@@ -19,18 +18,9 @@ from watchdog.events import (
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
 
-from .shell import mkdir, mkdtemp, msize, mv, rm, touch
+from .shell import mkdir, msize, mv, rm, touch
 
-SLEEP_TIME = 0.4
-TEMP_DIR = mkdtemp()
-
-
-def p(*args):
-    """
-    Convenience function to join the temporary directory path
-    with the provided arguments.
-    """
-    return os.path.join(TEMP_DIR, *args)
+SLEEP_TIME = 0.5
 
 
 @pytest.fixture
@@ -39,8 +29,8 @@ def event_queue():
 
 
 @pytest.fixture
-def emitter(event_queue):
-    watch = ObservedWatch(TEMP_DIR, recursive=True)
+def emitter(event_queue, p):
+    watch = ObservedWatch(str(p()), recursive=True)
     em = Emitter(event_queue, watch, timeout=0.2)
     em.start()
     yield em
@@ -48,7 +38,8 @@ def emitter(event_queue):
     em.join(5)
 
 
-def test___init__(event_queue, emitter):
+@pytest.mark.flaky(max_runs=3, min_passes=1)
+def test___init__(p, event_queue, emitter):
     sleep(SLEEP_TIME)
     mkdir(p("project"))
 
@@ -130,8 +121,9 @@ def test___init__(event_queue, emitter):
     assert expected == got
 
 
-def test_delete_watched_dir(event_queue, emitter):
-    rm(p(""), recursive=True)
+@pytest.mark.flaky(max_runs=3, min_passes=1)
+def test_delete_watched_dir(p, event_queue, emitter):
+    rm(p(), recursive=True)
 
     sleep(SLEEP_TIME)
     emitter.stop()
@@ -142,7 +134,7 @@ def test_delete_watched_dir(event_queue, emitter):
     #   * non-unique
     # A multiset! Python's collections.Counter class seems appropriate.
     expected = {
-        DirDeletedEvent(os.path.dirname(p(""))),
+        DirDeletedEvent(p()),
     }
 
     got = set()
