@@ -581,6 +581,9 @@ def test_move_nested_subdirectories_on_windows(
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
     start_watching(path=p(""))
+    # Ensure system clock advances past creation mtime so Windows NTFS sets
+    # LastChangeTime > LastModificationTime, deterministically emitting DirAttribEvent.
+    time.sleep(0.05)
     mv(p("dir1/dir2"), p("dir2"))
 
     with events_checker() as ec:
