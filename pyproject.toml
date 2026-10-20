@@ -70,7 +70,6 @@ ignore = [
     "PTH",  # TODO?
     "S",
     "TD",
-    "UP031",
 ]
 fixable = ["ALL"]
 

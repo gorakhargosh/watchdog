@@ -99,7 +99,7 @@ def test_watchmedo_default_patterns_match_absolute_paths(tmpdir):
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
-        f.write('import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i, flush=True)\n\ttime.sleep(1)\n' % n)
+        f.write(f'import time\nfor i in range({n}):\n\tprint(f"+++++ {{i}}", flush=True)\n\ttime.sleep(1)\n')
     return script
 
 
