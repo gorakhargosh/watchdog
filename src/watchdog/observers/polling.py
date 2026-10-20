@@ -41,8 +41,7 @@ from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIM
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch
