@@ -21,6 +21,7 @@ Classes
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from functools import partial
@@ -46,6 +47,8 @@ if TYPE_CHECKING:
     from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch
 
+logger = logging.getLogger(__name__)
+
 
 class PollingEmitter(EventEmitter):
     """Platform-independent emitter that polls a directory to detect file
@@ -65,6 +68,7 @@ class PollingEmitter(EventEmitter):
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
         self._snapshot: DirectorySnapshot = EmptyDirectorySnapshot()
         self._lock = threading.Lock()
+        self._snapshot_failing = False
         self._take_snapshot: Callable[[], DirectorySnapshot] = lambda: DirectorySnapshot(
             self.watch.path,
             recursive=self.watch.is_recursive,
@@ -89,10 +93,23 @@ class PollingEmitter(EventEmitter):
             # Update snapshot.
             try:
                 new_snapshot = self._take_snapshot()
-            except OSError:
+            except (FileNotFoundError, NotADirectoryError):
                 self.queue_event(DirDeletedEvent(self.watch.path))
                 self.stop()
                 return
+            except OSError as exc:
+                # Other errors (EIO, ESTALE, EHOSTDOWN, ...) are often temporary,
+                # e.g. a network share that is briefly unreachable. Keep the last
+                # snapshot and try again on the next poll, so that changes made
+                # in the meantime are still reported.
+                if not self._snapshot_failing:
+                    self._snapshot_failing = True
+                    logger.warning("Cannot take a snapshot of %r, will retry: %s", self.watch.path, exc)
+                return
+
+            if self._snapshot_failing:
+                self._snapshot_failing = False
+                logger.info("Snapshot of %r succeeded again, resuming", self.watch.path)
 
             events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
             self._snapshot = new_snapshot
@@ -121,6 +138,14 @@ class PollingEmitter(EventEmitter):
 class PollingObserver(BaseObserver):
     """Platform-independent observer that polls a directory to detect file
     system changes.
+
+    If a poll fails because the watched directory no longer exists
+    (``FileNotFoundError`` or ``NotADirectoryError``), a
+    :class:`~watchdog.events.DirDeletedEvent` is emitted and watching stops.
+    Any other ``OSError``, for instance while a network share is briefly
+    unreachable, is logged once and the next poll tries again. Changes made
+    in the meantime are reported once the directory can be read again. An
+    outage that the OS reports as ``ENOENT`` still looks like a deletion.
     """
 
     def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
