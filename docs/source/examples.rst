@@ -30,6 +30,19 @@ Text editors and build tools can emit several events for a single logical change
    :language: python
    :linenos:
 
+Validating JSON in Worker Processes
+-----------------------------------
+This example watches for new or changed JSON files. It reads each file on the
+observer thread, then parses the contents in a :class:`concurrent.futures.ProcessPoolExecutor`
+so parsing does not hold up filesystem event handling. The ``main`` guard keeps
+worker processes from starting another observer when they import the script on
+Windows. Run it with
+``python docs/source/examples/process_pool.py PATH_TO_WATCH``.
+
+.. literalinclude:: examples/process_pool.py
+   :language: python
+   :linenos:
+
 Organizing Files by Type
 ------------------------
 A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy by automatically moving newly created files into category subfolders based on their file extension:
