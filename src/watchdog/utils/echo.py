@@ -30,7 +30,8 @@ import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from typing import Any
+    from collections.abc import Callable
 
 
 def format_arg_value(arg_val: tuple[str, tuple[Any, ...]]) -> str:

@@ -12,7 +12,8 @@ import warnings
 from ctypes import c_char_p, c_int, c_uint32
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import TYPE_CHECKING, Callable, ClassVar, NewType, Protocol, cast
+from typing import TYPE_CHECKING, ClassVar, NewType, Protocol, cast
+from collections.abc import Callable
 
 from watchdog.utils import BaseThread, UnsupportedLibcError
 
