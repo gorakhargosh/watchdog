@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import errno
+import logging
+import os
+import threading
 from queue import Empty, Queue
-from time import sleep
+from time import monotonic, sleep
 
 import pytest
 
@@ -119,6 +123,89 @@ def test___init__(p, event_queue, emitter):
             break
 
     assert expected == got
+
+
+def _wait_for_failed_polls(emitter, failures, count=2, timeout=5):
+    deadline = monotonic() + timeout
+    while len(failures) < count and emitter.should_keep_running() and monotonic() < deadline:
+        sleep(0.05)
+
+
+def _wait_for_event(event_queue, expected, timeout=5):
+    got = set()
+    while expected not in got:
+        event, _ = event_queue.get(timeout=timeout)
+        got.add(event)
+    return got
+
+
+@pytest.mark.flaky(max_runs=3, min_passes=1)
+@pytest.mark.parametrize("error", ["EACCES", "EBUSY", "EHOSTDOWN", "ESTALE"])
+def test_transient_error_on_watched_dir(p, event_queue, caplog, error):
+    # A network share that is briefly unreachable must not be reported as
+    # deleted, and changes made during the outage must be reported once it
+    # is back (#1065).
+    code = getattr(errno, error)
+    watch = ObservedWatch(p(), recursive=True)
+    outage = threading.Event()
+    failures = []
+
+    def flaky_stat(path):
+        if outage.is_set() and path == watch.path:
+            failures.append(path)
+            raise OSError(code, os.strerror(code), path)
+        return os.stat(path)
+
+    emitter = Emitter(event_queue, watch, timeout=0.2, stat=flaky_stat)
+    emitter.start()
+    try:
+        outage.set()
+        touch(p("during_outage"))
+        _wait_for_failed_polls(emitter, failures)
+        assert emitter.should_keep_running()
+        assert len(failures) >= 2
+        outage.clear()
+
+        got = _wait_for_event(event_queue, FileCreatedEvent(p("during_outage")))
+        assert DirDeletedEvent(p()) not in got
+        assert emitter.should_keep_running()
+    finally:
+        emitter.stop()
+        emitter.join(5)
+
+    warnings = [r for r in caplog.records if r.name == "watchdog.observers.polling" and r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+
+
+@pytest.mark.flaky(max_runs=3, min_passes=1)
+def test_transient_error_in_subdirectory(p, event_queue):
+    mkdir(p("sub"))
+    watch = ObservedWatch(p(), recursive=True)
+    outage = threading.Event()
+    failures = []
+
+    def flaky_listdir(path):
+        if outage.is_set() and path == p("sub"):
+            failures.append(path)
+            raise OSError(errno.EIO, os.strerror(errno.EIO), path)
+        return os.scandir(path)
+
+    emitter = Emitter(event_queue, watch, timeout=0.2, listdir=flaky_listdir)
+    emitter.start()
+    try:
+        outage.set()
+        touch(p("sub", "during_outage"))
+        _wait_for_failed_polls(emitter, failures)
+        assert emitter.should_keep_running()
+        assert len(failures) >= 2
+        outage.clear()
+
+        got = _wait_for_event(event_queue, FileCreatedEvent(p("sub", "during_outage")))
+        assert DirDeletedEvent(p()) not in got
+        assert emitter.should_keep_running()
+    finally:
+        emitter.stop()
+        emitter.join(5)
 
 
 @pytest.mark.flaky(max_runs=3, min_passes=1)
