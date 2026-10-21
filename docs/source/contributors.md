@@ -46,6 +46,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/TobiasRzepka"><img src="https://avatars.githubusercontent.com/u/7453528?v=4?s=70" width="70px;" alt="TobiasRzepka"/><br /><sub><b>TobiasRzepka</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=TobiasRzepka" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/apoorvdarshan"><img src="https://avatars.githubusercontent.com/u/90602809?v=4?s=70" width="70px;" alt="Apoorv Darshan"/><br /><sub><b>Apoorv Darshan</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=apoorvdarshan" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Om-singhaI"><img src="https://avatars.githubusercontent.com/u/91667160?v=4?s=70" width="70px;" alt="om singhal"/><br /><sub><b>om singhal</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Om-singhaI" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/amprew"><img src="https://avatars.githubusercontent.com/u/20781479?v=4?s=70" width="70px;" alt="Andrew Collins"/><br /><sub><b>Andrew Collins</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=amprew" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
