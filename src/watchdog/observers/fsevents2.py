@@ -129,7 +129,10 @@ class FSEventsQueue(Thread):
         event_flags: list[int],
         event_ids: list[int],
     ) -> None:
-        events = [NativeEvent(path, flags, _id) for path, flags, _id in zip(event_paths, event_flags, event_ids)]
+        events = [
+            NativeEvent(path, flags, _id)
+            for path, flags, _id in zip(event_paths, event_flags, event_ids, strict=False)
+        ]
         logger.debug("FSEvents callback. Got %d events:", num_events)
         for e in events:
             logger.debug(e)

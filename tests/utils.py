@@ -248,7 +248,7 @@ class _EventsChecker:
         if not self._allow_extra:
             # we need exactly the number of expected events
             assert len(found_events) == len(self.expected_events), "wrong number of events"
-        for event, expected_event in zip(found_events, self.expected_events):
+        for event, expected_event in zip(found_events, self.expected_events, strict=False):
             assert self._match_event(event, expected_event), "did not find expected event"
 
     def check_events(self, timeout: float = 2) -> None:

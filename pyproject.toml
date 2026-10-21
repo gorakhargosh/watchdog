@@ -56,7 +56,6 @@ ignore = [
     "ARG",
     "ANN",  # TODO
     "B023",  # TODO
-    "B905",
     "BLE001",
     "C90",
     "COM812",
