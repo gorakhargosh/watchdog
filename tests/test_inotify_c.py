@@ -229,7 +229,9 @@ def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watc
         try:
             # Exercise a real descriptor outside select()'s range without
             # opening thousands of unrelated files.
-            return fcntl.fcntl(fd, fcntl.F_DUPFD_CLOEXEC, 1024)
+            high_fd = fcntl.fcntl(fd, fcntl.F_DUPFD, 1024)
+            fcntl.fcntl(high_fd, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
+            return high_fd
         finally:
             os.close(fd)
 
