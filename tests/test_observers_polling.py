@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import logging
 import os
+import stat
 import threading
 from queue import Empty, Queue
 from time import monotonic, sleep
@@ -10,10 +11,12 @@ from time import monotonic, sleep
 import pytest
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -21,8 +24,10 @@ from watchdog.events import (
 )
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
+from watchdog.utils import platform
+from watchdog.utils.dirsnapshot import EmptyDirectorySnapshot
 
-from .shell import mkdir, msize, mv, rm, touch
+from .shell import chmod, mkdir, msize, mv, rm, touch
 
 SLEEP_TIME = 0.5
 
@@ -234,3 +239,43 @@ def test_delete_watched_dir(p, event_queue, emitter):
             break
 
     assert expected == got
+
+
+def test_polling_emitter_attrib(event_queue, tmp_path):
+    # Use tmp_path so this test runs in an isolated directory and is not
+    # impacted by test_delete_watched_dir removing the module-level TEMP_DIR.
+    temp_dir = str(tmp_path)
+    file_path = os.path.join(temp_dir, "attr_file.txt")
+    dir_path = os.path.join(temp_dir, "attr_dir")
+    touch(file_path)
+    mkdir(dir_path)
+
+    watch = ObservedWatch(temp_dir, recursive=True)
+    emitter = Emitter(event_queue, watch, timeout=0.1)
+    emitter.start()
+
+    # Wait until the emitter thread finishes its initial snapshot before modifying attributes
+    while isinstance(emitter._snapshot, EmptyDirectorySnapshot):  # noqa: SLF001
+        sleep(0.01)
+
+    mode = stat.S_IREAD if platform.is_windows() else 0o777
+    try:
+        chmod(file_path, mode)
+        chmod(dir_path, mode)
+
+        # Wait for both attribute events with a timeout to prevent flakiness on slow/busy CI runners
+        got = set()
+        while len(got) < 2:
+            event, _ = event_queue.get(timeout=5)
+            got.add(event)
+
+        assert FileAttribEvent(file_path) in got
+        assert DirAttribEvent(dir_path) in got
+        assert FileModifiedEvent(file_path) not in got
+        assert DirModifiedEvent(dir_path) not in got
+    finally:
+        if platform.is_windows():
+            chmod(file_path, stat.S_IWRITE)
+            chmod(dir_path, stat.S_IWRITE)
+        emitter.stop()
+        emitter.join(5)

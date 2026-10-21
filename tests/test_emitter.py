@@ -147,13 +147,15 @@ def test_touch(
     mkfile(p("a"))
     start_watching()
 
-    touch(p("a"))
+    # Pass an explicit past timestamp so Windows NTFS ChangeTime (now) > LastModificationTime (1000)
+    # deterministically identifies this as a metadata attribute change without timer race conditions.
+    touch(p("a"), (1000, 1000))
 
     with events_checker() as ec:
         if platform.is_linux():
             ec.add(FileOpenedEvent, "a")
 
-        ec.add(FileModifiedEvent if platform.is_windows() else FileAttribEvent, "a")
+        ec.add(FileAttribEvent, "a")
 
         if platform.is_linux():
             ec.add(FileClosedEvent, "a")

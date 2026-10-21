@@ -28,10 +28,12 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -122,6 +124,8 @@ class PollingEmitter(EventEmitter):
                 self.queue_event(FileCreatedEvent(src_path))
             for src_path, dest_path in events.files_moved:
                 self.queue_event(FileMovedEvent(src_path, dest_path))
+            for src_path in events.files_attrib:
+                self.queue_event(FileAttribEvent(src_path))
 
             # Directories.
             for src_path in events.dirs_deleted:
@@ -132,6 +136,8 @@ class PollingEmitter(EventEmitter):
                 self.queue_event(DirCreatedEvent(src_path))
             for src_path, dest_path in events.dirs_moved:
                 self.queue_event(DirMovedEvent(src_path, dest_path))
+            for src_path in events.dirs_attrib:
+                self.queue_event(DirAttribEvent(src_path))
 
 
 class PollingObserver(BaseObserver):
