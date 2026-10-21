@@ -7,7 +7,7 @@ from watchdog.utils import BaseThread
 
 if TYPE_CHECKING:
     import subprocess
-    from typing import Callable
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 

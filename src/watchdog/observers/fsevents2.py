@@ -60,7 +60,7 @@ from watchdog.events import (
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from collections.abc import Callable
 
     from watchdog.observers.api import EventQueue, ObservedWatch
 

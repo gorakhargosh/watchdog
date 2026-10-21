@@ -87,8 +87,7 @@ from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-    from typing import Callable
+    from collections.abc import Callable, Generator
 
     from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch

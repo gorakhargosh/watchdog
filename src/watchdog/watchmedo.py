@@ -22,7 +22,7 @@ from watchdog.version import VERSION_STRING
 
 if TYPE_CHECKING:
     from argparse import Namespace, _SubParsersAction
-    from typing import Callable
+    from collections.abc import Callable
 
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import ObserverType

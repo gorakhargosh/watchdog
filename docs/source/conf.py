@@ -125,7 +125,7 @@ html_theme_options = {
 toc_object_entries_show_parents = "hide"
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "%sdoc" % PROJECT_NAME
+htmlhelp_basename = f"{PROJECT_NAME}doc"
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -135,8 +135,8 @@ htmlhelp_basename = "%sdoc" % PROJECT_NAME
 latex_documents = [
     (
         "index",
-        "%s.tex" % PROJECT_NAME,
-        "%s Documentation" % PROJECT_NAME,
+        f"{PROJECT_NAME}.tex",
+        f"{PROJECT_NAME} Documentation",
         AUTHOR_NAME,
         "manual",
     ),
@@ -147,7 +147,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ("index", PROJECT_NAME, "%s Documentation" % PROJECT_NAME, [AUTHOR_NAME], 1)
+    ("index", PROJECT_NAME, f"{PROJECT_NAME} Documentation", [AUTHOR_NAME], 1)
 ]
 
 
