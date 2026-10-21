@@ -55,7 +55,6 @@ extend-select = ["ALL"]
 ignore = [
     "ARG",
     "ANN",  # TODO
-    "B023",  # TODO
     "BLE001",
     "C90",
     "COM812",
