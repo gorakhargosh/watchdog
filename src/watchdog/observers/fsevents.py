@@ -310,7 +310,7 @@ class FSEventsEmitter(EventEmitter):
         try:
             events = [
                 cls(path, inode, event_flags, event_id)
-                for path, inode, event_flags, event_id in zip(paths, inodes, flags, ids)
+                for path, inode, event_flags, event_id in zip(paths, inodes, flags, ids, strict=False)
             ]
             with self._lock:
                 self.queue_events(self.timeout, events)
