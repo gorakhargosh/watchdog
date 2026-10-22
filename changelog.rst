@@ -17,6 +17,7 @@ Changelog
 
 **Other Changes**
 
+- [core] ``EventEmitter`` and ``EventDispatcher`` reject a bool ``timeout``. ``bool`` subclasses ``int``, so ``timeout=True`` was stored and treated as ``1.0`` seconds. (`#1287 <https://github.com/gorakhargosh/watchdog/pull/1287>`__)
 - [core] Added the ``watchdog.utils.Seconds`` type alias and used it for the time-duration parameters (``timeout``, ``polling_interval``, ``kill_after``, ...) instead of documenting the unit in each docstring. Duration parameters previously hinted as ``int`` now accept ``float``.
 - [polling] Detect permission, ownership, and file attribute modifications in ``DirectorySnapshotDiff`` and emit ``FileAttribEvent`` and ``DirAttribEvent`` in ``PollingObserver``. (`#881 <https://github.com/gorakhargosh/watchdog/issues/881>`__)
 - [windows] A rename whose ``RENAMED_OLD`` and ``RENAMED_NEW`` records arrive in different ``get_events()`` batches no longer emits a move event with an empty ``src_path``. (`#1286 <https://github.com/gorakhargosh/watchdog/pull/1286>`__)
