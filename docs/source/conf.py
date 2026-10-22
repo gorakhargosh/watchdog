@@ -61,8 +61,12 @@ intersphinx_mapping = {
 #   each only be imported, and therefore documented, on their respective
 #   platform, so at most one of them can ever resolve when building the
 #   documentation on a single machine.
+# * ``Seconds`` (``watchdog.utils.Seconds``) is an alias for ``float``, documented
+#   as data. It is only imported under ``TYPE_CHECKING`` in the modules using it,
+#   and Sphinx only resolves annotation references to classes, not to data.
 nitpick_ignore = [
     ("py:class", "Path"),
+    ("py:class", "Seconds"),
     ("py:meth", "__init__"),
     ("py:class", "watchdog.utils.bricks.SkipRepeatsQueue"),
     ("py:class", "inotify.InotifyObserver"),

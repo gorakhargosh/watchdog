@@ -17,6 +17,7 @@ Changelog
 
 **Other Changes**
 
+- [core] Added the ``watchdog.utils.Seconds`` type alias and used it for the time-duration parameters (``timeout``, ``polling_interval``, ``kill_after``, ...) instead of documenting the unit in each docstring. Duration parameters previously hinted as ``int`` now accept ``float``.
 - [polling] Detect permission, ownership, and file attribute modifications in ``DirectorySnapshotDiff`` and emit ``FileAttribEvent`` and ``DirAttribEvent`` in ``PollingObserver``. (`#881 <https://github.com/gorakhargosh/watchdog/issues/881>`__)
 - [windows] A rename whose ``RENAMED_OLD`` and ``RENAMED_NEW`` records arrive in different ``get_events()`` batches no longer emits a move event with an empty ``src_path``. (`#1286 <https://github.com/gorakhargosh/watchdog/pull/1286>`__)
 - [core] ``case_sensitive=False`` matching now really ignores case on Python < 3.13. The ``PurePath.full_match()`` fallback compiled its regex without ``re.IGNORECASE``, so only the patterns were lower-cased and a path such as ``FOO.PY`` never matched ``**/*.py``. (`#1263 <https://github.com/gorakhargosh/watchdog/pull/1263>`__)

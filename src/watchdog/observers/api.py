@@ -18,9 +18,10 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.utils import Seconds
 
-DEFAULT_EMITTER_TIMEOUT = 1.0  # in seconds
-DEFAULT_OBSERVER_TIMEOUT = 1.0  # in seconds
+DEFAULT_EMITTER_TIMEOUT: Seconds = 1.0
+DEFAULT_OBSERVER_TIMEOUT: Seconds = 1.0
 
 
 class EventQueue(SkipRepeatsQueue):
@@ -124,9 +125,9 @@ class EventEmitter(BaseThread):
     :type watch:
         :class:`ObservedWatch`
     :param timeout:
-        Timeout (in seconds) between successive attempts at reading events.
+        Timeout between successive attempts at reading events.
     :type timeout:
-        ``float``
+        ``Seconds``
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
@@ -138,7 +139,7 @@ class EventEmitter(BaseThread):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__()
@@ -148,7 +149,7 @@ class EventEmitter(BaseThread):
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
     @property
-    def timeout(self) -> float:
+    def timeout(self) -> Seconds:
         """Blocking timeout for reading events."""
         return self._timeout
 
@@ -169,15 +170,15 @@ class EventEmitter(BaseThread):
         if self._event_filter is None or any(isinstance(event, cls) for cls in self._event_filter):
             self._event_queue.put((event, self.watch))
 
-    def queue_events(self, timeout: float) -> None:
+    def queue_events(self, timeout: Seconds) -> None:
         """Override this method to populate the event queue with events
         per interval period.
 
         :param timeout:
-            Timeout (in seconds) between successive attempts at
+            Timeout between successive attempts at
             reading events.
         :type timeout:
-            ``float``
+            ``Seconds``
         """
 
     def run(self) -> None:
@@ -190,22 +191,22 @@ class EventDispatcher(BaseThread):
     that dispatch events from an event queue to appropriate event handlers.
 
     :param timeout:
-        Timeout value (in seconds) passed to emitters
+        Timeout value passed to emitters
         constructions in the child class BaseObserver.
     :type timeout:
-        ``float``
+        ``Seconds``
     """
 
     stop_event = object()
     """Event inserted into the queue to signal a requested stop."""
 
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__()
         self._event_queue = EventQueue()
         self._timeout = timeout
 
     @property
-    def timeout(self) -> float:
+    def timeout(self) -> Seconds:
         """Timeout value to construct emitters with."""
         return self._timeout
 
@@ -250,12 +251,12 @@ class BaseObserver(EventDispatcher):
     :type emitter_class:
         ``type[EventEmitter]``
     :param timeout:
-        The timeout (in seconds) for the observer to wait on events.
+        The timeout for the observer to wait on events.
     :type timeout:
-        ``float``
+        ``Seconds``
     """
 
-    def __init__(self, emitter_class: type[EventEmitter], *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, emitter_class: type[EventEmitter], *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(timeout=timeout)
         self._emitter_class = emitter_class
         self._lock = threading.RLock()

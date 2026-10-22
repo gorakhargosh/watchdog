@@ -63,6 +63,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +193,7 @@ class FSEventsEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
     ):
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
@@ -202,7 +203,7 @@ class FSEventsEmitter(EventEmitter):
     def on_thread_stop(self) -> None:
         self._fsevents.stop()
 
-    def queue_events(self, timeout: float) -> None:
+    def queue_events(self, timeout: Seconds) -> None:
         events = self._fsevents.read_events()
         if events is None:
             return
@@ -258,5 +259,5 @@ class FSEventsEmitter(EventEmitter):
 
 
 class FSEventsObserver2(BaseObserver):
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(FSEventsEmitter, timeout=timeout)

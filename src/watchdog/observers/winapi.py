@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any
 
+    from watchdog.utils import Seconds
+
 # Invalid handle value.
 INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
@@ -646,7 +648,7 @@ class DirectoryChangeReader:
                 _cancel_handle_io(self._handle)
         reader_thread.join()
 
-    def get_events(self, timeout: float) -> list[WinAPINativeEvent]:
+    def get_events(self, timeout: Seconds) -> list[WinAPINativeEvent]:
         events: list[WinAPINativeEvent] = []
         while True:
             try:

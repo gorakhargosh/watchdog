@@ -10,6 +10,10 @@ Classes
    :show-inheritance:
    :inherited-members:
 
+Types
+-----
+.. autodata:: Seconds
+
 """
 
 from __future__ import annotations
@@ -22,6 +26,9 @@ if TYPE_CHECKING:
     from types import ModuleType
 
     from watchdog.tricks import Trick
+
+Seconds = float
+"""A duration expressed in seconds."""
 
 
 class UnsupportedLibcError(Exception):

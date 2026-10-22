@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 
 logger = logging.getLogger("fsevents")
@@ -53,7 +54,7 @@ class FSEventsEmitter(EventEmitter):
     :type watch:
         :class:`watchdog.observers.api.ObservedWatch`
     :param timeout:
-        Read events blocking timeout (in seconds).
+        Read events blocking timeout.
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :param suppress_history:
@@ -63,7 +64,7 @@ class FSEventsEmitter(EventEmitter):
         as a reference to suppress old events. Warning: This may result in significant
         memory usage in case of a large number of items in the watched path.
     :type timeout:
-        ``float``
+        ``Seconds``
     """
 
     def __init__(
@@ -71,7 +72,7 @@ class FSEventsEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         suppress_history: bool = False,
     ) -> None:
@@ -167,7 +168,7 @@ class FSEventsEmitter(EventEmitter):
         """Returns True if the event indicates a change in metadata."""
         return event.is_inode_meta_mod or event.is_xattr_mod or event.is_owner_change
 
-    def queue_events(self, timeout: float, events: list[_fsevents.NativeEvent]) -> None:  # type: ignore[override]
+    def queue_events(self, timeout: Seconds, events: list[_fsevents.NativeEvent]) -> None:  # type: ignore[override]
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
                 flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
@@ -351,7 +352,7 @@ class FSEventsEmitter(EventEmitter):
 
 
 class FSEventsObserver(BaseObserver):
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(FSEventsEmitter, timeout=timeout)
 
     def schedule(
