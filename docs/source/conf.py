@@ -33,6 +33,7 @@ COPYRIGHT = f"2010-2026, {AUTHOR_NAME}"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.doctest",
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
     "sphinx.ext.ifconfig",

@@ -70,7 +70,7 @@ LICENSE in the source code for more information."""
 cli = ArgumentParser(epilog=epilog, formatter_class=HelpFormatter)
 cli.add_argument("-V", "--version", action="version", version=VERSION_STRING)
 subparsers = cli.add_subparsers(dest="top_command", title="subcommands")
-command_parsers = {}
+command_parsers: dict[str, ArgumentParser] = {}
 
 Argument = tuple[list[str], Any]
 
