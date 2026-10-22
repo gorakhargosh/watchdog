@@ -1,8 +1,8 @@
 tricks:
 - watchdog.tricks.LoggerTrick:
-    patterns: ["*.py", "*.js"]
+    patterns: ["**/*.py", "**/*.js"]
 - watchmedo_webtricks.GoogleClosureTrick:
-    patterns: ['*.js']
+    patterns: ['**/*.js']
     hash_names: true
     mappings_format: json                  # json|yaml|python
     mappings_module: app/javascript_mappings

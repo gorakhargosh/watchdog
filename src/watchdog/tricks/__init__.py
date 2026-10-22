@@ -33,11 +33,15 @@ import signal
 import subprocess
 import threading
 import time
+from typing import TYPE_CHECKING
 
 from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
 from watchdog.utils import echo, platform
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
+
+if TYPE_CHECKING:
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
@@ -57,10 +61,10 @@ class Trick(PatternMatchingEventHandler):
   - argument2
   kwargs:
     patterns:
-    - "*.py"
-    - "*.js"
+    - "**/*.py"
+    - "**/*.js"
     ignore_patterns:
-    - "version.py"
+    - "**/version.py"
     ignore_directories: false
 """
 
@@ -179,10 +183,10 @@ class AutoRestartTrick(Trick):
     :param stop_signal:
         Stop the subprocess with this signal (default SIGINT).
     :param kill_after:
-        When stopping, kill the subprocess after the specified timeout in
-        seconds (default 10.0).
+        When stopping, kill the subprocess after the specified timeout
+        (default 10.0).
     :param debounce_interval_seconds:
-        After a file change, wait until the specified interval (in seconds)
+        After a file change, wait until the specified interval
         passes with no file changes, and only then restart (default: 0.0).
     :param restart_on_command_exit:
         Auto-restart the command after it exits (default: True).
@@ -196,8 +200,8 @@ class AutoRestartTrick(Trick):
         ignore_patterns: list[str] | None = None,
         ignore_directories: bool = False,
         stop_signal: signal.Signals | int = signal.SIGINT,
-        kill_after: int = 10,
-        debounce_interval_seconds: int = 0,
+        kill_after: Seconds = 10,
+        debounce_interval_seconds: Seconds = 0,
         restart_on_command_exit: bool = True,
     ):
         if kill_after < 0:
@@ -326,7 +330,10 @@ class AutoRestartTrick(Trick):
 if platform.is_windows():
 
     def kill_process(pid: int, stop_signal: int) -> None:
-        if stop_signal == signal.SIGINT:
+        # SIGBREAK is SIGINT's Windows sibling: `--signal SIGBREAK` (see
+        # watchmedo.py) reaches this function with it, so it must be routed
+        # through the same CTRL_BREAK_EVENT path rather than hard-killed below.
+        if stop_signal in (signal.SIGINT, getattr(signal, "SIGBREAK", None)):
             # `os.kill()` maps every signal but the console control events to
             # `TerminateProcess()`, which delivers nothing: the child is hard
             # killed, so its `atexit`/`finally` cleanup never runs and anything

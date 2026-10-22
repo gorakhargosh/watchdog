@@ -8,13 +8,17 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
-from typing import Callable, Generic, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Generic, TypeVar
+
+if TYPE_CHECKING:
+    from watchdog.utils import Seconds
 
 T = TypeVar("T")
 
 
 class DelayedQueue(Generic[T]):
-    def __init__(self, delay: float) -> None:
+    def __init__(self, delay: Seconds) -> None:
         self.delay_sec = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
@@ -24,7 +28,7 @@ class DelayedQueue(Generic[T]):
     def put(self, element: T, *, delay: bool = False) -> None:
         """Add element to queue."""
         self._lock.acquire()
-        self._queue.append((element, time.time(), delay))
+        self._queue.append((element, time.monotonic(), delay))
         self._not_empty.notify()
         self._lock.release()
 
@@ -54,10 +58,10 @@ class DelayedQueue(Generic[T]):
 
             # wait for delay if required
             if delay:
-                time_left = insert_time + self.delay_sec - time.time()
+                time_left = insert_time + self.delay_sec - time.monotonic()
                 while time_left > 0:
                     time.sleep(time_left)
-                    time_left = insert_time + self.delay_sec - time.time()
+                    time_left = insert_time + self.delay_sec - time.monotonic()
 
             # return element if it's still in the queue
             with self._lock:

@@ -60,7 +60,6 @@ jobs:
             emoji: 🪟
             runs-on: [windows-latest]
         python:
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
@@ -70,14 +69,14 @@ jobs:
           - "3.14t"
           - "3.15"
           - "3.15t"
-          - "pypy-3.9"
+          - "pypy-3.10"
         exclude:
           - os:
               matrix: macos
-            python: "pypy-3.9"
+            python: "pypy-3.10"
           - os:
               matrix: windows
-            python: "pypy-3.9"
+            python: "pypy-3.10"
 
     steps:
       - name: Checkout

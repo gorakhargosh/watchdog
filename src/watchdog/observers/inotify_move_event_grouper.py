@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from typing import TypeAlias
 
     from watchdog.observers.inotify_c import InotifyEvent
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,16 @@ class PathedInotifyEvent(NamedTuple):
     path: bytes
 
 
-GroupedInotifyEvent: TypeAlias = Union[PathedInotifyEvent, tuple[PathedInotifyEvent, PathedInotifyEvent]]
+GroupedInotifyEvent: TypeAlias = PathedInotifyEvent | tuple[PathedInotifyEvent, PathedInotifyEvent]
 
 
 class InotifyMoveEventGrouper:
     """A queue-like class for `Inotify` that holds IN_MOVE_FROM events for
-    `delay` seconds. During this time, IN_MOVED_FROM and IN_MOVED_TO events are
+    `delay`. During this time, IN_MOVED_FROM and IN_MOVED_TO events are
     paired.
     """
 
-    delay = 0.5
+    delay: Seconds = 0.5
 
     def __init__(self) -> None:
         self._queue: DelayedQueue[GroupedInotifyEvent] = DelayedQueue(self.delay)
