@@ -758,7 +758,7 @@ def auto_restart(args: Namespace) -> None:
         ignore_directories=args.ignore_directories,
         stop_signal=stop_signal,
         kill_after=args.kill_after,
-        debounce_interval_seconds=args.debounce_interval,
+        debounce_interval=args.debounce_interval,
         restart_on_command_exit=args.restart_on_command_exit,
     )
     handler.start()

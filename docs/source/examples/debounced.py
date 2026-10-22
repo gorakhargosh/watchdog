@@ -27,7 +27,7 @@ class DebouncedEventHandler(FileSystemEventHandler):
 
 path = sys.argv[1] if len(sys.argv) > 1 else "."
 
-debouncer = EventDebouncer(debounce_interval_seconds=1, events_callback=rebuild)
+debouncer = EventDebouncer(debounce_interval=1, events_callback=rebuild)
 event_handler = DebouncedEventHandler(debouncer)
 observer = Observer()
 observer.schedule(event_handler, path, recursive=True)
