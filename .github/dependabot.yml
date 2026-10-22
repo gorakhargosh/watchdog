@@ -5,3 +5,9 @@ updates:
     directory: /
     schedule:
       interval: daily
+
+  # Python requirements
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
