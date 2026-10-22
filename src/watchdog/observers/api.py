@@ -145,7 +145,8 @@ class EventEmitter(BaseThread):
         super().__init__()
         # bool subclasses int; timeout=True would silently become 1.0s
         if isinstance(timeout, bool):
-            raise TypeError(f"timeout must be a float, not bool (got {timeout!r})")
+            error = f"timeout must be a float, not bool (got {timeout!r})"
+            raise TypeError(error)
         self._event_queue = event_queue
         self._watch = watch
         self._timeout = timeout
@@ -207,7 +208,8 @@ class EventDispatcher(BaseThread):
         super().__init__()
         # bool subclasses int; timeout=True would silently become 1.0s
         if isinstance(timeout, bool):
-            raise TypeError(f"timeout must be a float, not bool (got {timeout!r})")
+            error = f"timeout must be a float, not bool (got {timeout!r})"
+            raise TypeError(error)
         self._event_queue = EventQueue()
         self._timeout = timeout
 
