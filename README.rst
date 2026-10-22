@@ -18,7 +18,7 @@ Python API and shell utilities to monitor file system events.
 
 Browse the documentation_ online.
 
-Works on 3.10+.
+Works on 3.11+.
 
 Example API Usage
 -----------------
@@ -267,7 +267,7 @@ appropriate observer like in the example above, do::
 Dependencies
 ------------
 
-1. Python 3.10 or above.
+1. Python 3.11 or above.
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
 
