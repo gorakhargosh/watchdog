@@ -1,6 +1,6 @@
 eventlet==0.41.3; python_version < "3.13"
 flaky==3.8.1
-pytest==9.0.3
+pytest==9.1.1
 pytest-cov==6.0.0
 pytest-timeout==2.4.0
 ruff==0.7.1
