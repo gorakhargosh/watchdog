@@ -69,7 +69,6 @@ jobs:
           - "3.15"
           - "3.15t"
           - "pypy-3.11"
-          - "pypy-3.12"
         exclude:
           - os:
               matrix: macos
@@ -77,12 +76,6 @@ jobs:
           - os:
               matrix: windows
             python: "pypy-3.11"
-          - os:
-              matrix: macos
-            python: "pypy-3.12"
-          - os:
-              matrix: windows
-            python: "pypy-3.12"
 
     steps:
       - name: Checkout

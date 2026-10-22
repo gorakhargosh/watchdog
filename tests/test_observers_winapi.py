@@ -23,7 +23,7 @@ if not platform.is_windows():
     pytest.skip("Windows only.", allow_module_level=True)
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from typing import Self
 
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
 from watchdog.observers.winapi import (
