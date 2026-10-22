@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 from queue import Empty, Queue
-from typing import Any, Protocol
+from typing import Any, Protocol, Self
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
@@ -277,9 +277,7 @@ class _EventsChecker:
         else:
             self._check_events_without_order(found_events)
 
-    def __enter__(self) -> _EventsChecker:  # noqa: PYI034
-        # This could be annotated to return `Self` but that type is available
-        # only in Python 3.11+.
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:

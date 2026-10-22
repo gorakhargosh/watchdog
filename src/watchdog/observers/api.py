@@ -14,8 +14,7 @@ from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
     import types
-
-    from typing_extensions import Self
+    from typing import Self
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.utils import Seconds

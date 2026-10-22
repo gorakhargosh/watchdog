@@ -8,12 +8,13 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 from watchdog.utils import renamed_attribute
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from watchdog.utils import Seconds
 
 T = TypeVar("T")

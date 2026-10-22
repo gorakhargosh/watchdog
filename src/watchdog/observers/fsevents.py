@@ -105,7 +105,7 @@ class FSEventsEmitter(EventEmitter):
         if src_path == self._absolute_watch_path:
             return False
 
-        if isinstance(event, (FileMovedEvent, DirMovedEvent)):
+        if isinstance(event, FileMovedEvent | DirMovedEvent):
             # when moving something into the watch path we must always take the dirname,
             # otherwise we miss out on `DirMovedEvent`s
             dest_path = os.path.dirname(event.dest_path)

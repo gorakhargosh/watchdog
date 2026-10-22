@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, NamedTuple, Union, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from watchdog.utils.delayed_queue import DelayedQueue
 
