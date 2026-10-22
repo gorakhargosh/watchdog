@@ -247,7 +247,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     # restart the test never asked for. With `n=2` the child exits after ~2s,
     # which is inside the window this test runs in. See #973.
     script = make_dummy_script(tmpdir, n=10)
-    trick = AutoRestartTrick([sys.executable, script], debounce_interval_seconds=0.5)
+    trick = AutoRestartTrick([sys.executable, script], debounce_interval=0.5)
     captured = []
     trick.start()
     assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
@@ -267,6 +267,42 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     # burst was not debounced.
     assert "".join(captured).splitlines(keepends=False).count("+++++ 0") == 3
     assert trick.restart_count == 2
+
+
+def test_auto_restart_debounce_interval_default():
+    assert AutoRestartTrick(["true"]).debounce_interval == 0
+
+
+def test_auto_restart_deprecated_debounce_interval_seconds_argument():
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated") as record:
+        trick = AutoRestartTrick(["true"], debounce_interval_seconds=0.5)
+    assert trick.debounce_interval == 0.5
+    # The warning points at the caller, not at watchdog.
+    assert record[0].filename == __file__
+
+
+def test_auto_restart_debounce_interval_and_deprecated_name_conflict():
+    with pytest.raises(TypeError, match="Cannot pass both"):
+        AutoRestartTrick(["true"], debounce_interval=0.5, debounce_interval_seconds=0.5)
+
+
+def test_auto_restart_deprecated_debounce_interval_seconds_attribute():
+    trick = AutoRestartTrick(["true"], debounce_interval=0.5)
+
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated") as record:
+        assert trick.debounce_interval_seconds == 0.5
+    assert record[0].filename == __file__
+
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated"):
+        trick.debounce_interval_seconds = 2
+    assert trick.debounce_interval == 2
+
+
+def test_auto_restart_negative_debounce_interval():
+    with pytest.raises(ValueError, match="debounce_interval must be non-negative"):
+        AutoRestartTrick(["true"], debounce_interval=-1)
+    with pytest.warns(DeprecationWarning), pytest.raises(ValueError, match="debounce_interval must be non-negative"):
+        AutoRestartTrick(["true"], debounce_interval_seconds=-1)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)

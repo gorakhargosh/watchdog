@@ -53,3 +53,21 @@ def test_delay_ignores_wall_clock_adjustments(monkeypatch, clock_adjustment):
 
     assert queue.get() == "event"
     assert sleeps == [0.75]
+
+
+def test_delay_attribute():
+    queue = DelayedQueue[str](2)
+    assert queue.delay == 2
+
+
+def test_deprecated_delay_sec_attribute():
+    queue = DelayedQueue[str](2)
+
+    with pytest.warns(DeprecationWarning, match="'delay_sec' is deprecated, use 'delay' instead") as record:
+        assert queue.delay_sec == 2
+    # The warning points at the caller, not at watchdog.
+    assert record[0].filename == __file__
+
+    with pytest.warns(DeprecationWarning, match="'delay_sec' is deprecated"):
+        queue.delay_sec = 3
+    assert queue.delay == 3

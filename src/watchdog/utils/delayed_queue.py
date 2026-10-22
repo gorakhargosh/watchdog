@@ -11,6 +11,8 @@ from collections import deque
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Generic, TypeVar
 
+from watchdog.utils import renamed_attribute
+
 if TYPE_CHECKING:
     from watchdog.utils import Seconds
 
@@ -19,11 +21,13 @@ T = TypeVar("T")
 
 class DelayedQueue(Generic[T]):
     def __init__(self, delay: Seconds) -> None:
-        self.delay_sec = delay
+        self.delay = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         self._queue: deque[tuple[T, float, bool]] = deque()
         self._closed = False
+
+    delay_sec = renamed_attribute("delay_sec", "delay")
 
     def put(self, element: T, *, delay: bool = False) -> None:
         """Add element to queue."""
@@ -58,10 +62,10 @@ class DelayedQueue(Generic[T]):
 
             # wait for delay if required
             if delay:
-                time_left = insert_time + self.delay_sec - time.monotonic()
+                time_left = insert_time + self.delay - time.monotonic()
                 while time_left > 0:
                     time.sleep(time_left)
-                    time_left = insert_time + self.delay_sec - time.monotonic()
+                    time_left = insert_time + self.delay - time.monotonic()
 
             # return element if it's still in the queue
             with self._lock:
