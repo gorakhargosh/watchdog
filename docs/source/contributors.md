@@ -49,6 +49,9 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/amprew"><img src="https://avatars.githubusercontent.com/u/20781479?v=4?s=70" width="70px;" alt="Andrew Collins"/><br /><sub><b>Andrew Collins</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=amprew" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Dev-iL"><img src="https://avatars.githubusercontent.com/u/6509619?v=4?s=70" width="70px;" alt="Dev-iL"/><br /><sub><b>Dev-iL</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Dev-iL" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Pitchfork-and-Torch"><img src="https://avatars.githubusercontent.com/u/297513015?v=4?s=70" width="70px;" alt="Jon Bailey"/><br /><sub><b>Jon Bailey</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Pitchfork-and-Torch" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
