@@ -91,6 +91,7 @@ if TYPE_CHECKING:
 
     from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 # Maximum number of events to process.
 MAX_EVENTS = 4096
@@ -388,9 +389,9 @@ class KqueueEmitter(EventEmitter):
     :type watch:
         :class:`watchdog.observers.api.ObservedWatch`
     :param timeout:
-        Read events blocking timeout (in seconds).
+        Read events blocking timeout.
     :type timeout:
-        ``float``
+        ``Seconds``
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
@@ -403,7 +404,7 @@ class KqueueEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         stat: Callable[[str], os.stat_result] = os.stat,
     ) -> None:
@@ -597,25 +598,25 @@ class KqueueEmitter(EventEmitter):
                 yield FileDeletedEvent(src_path)
             yield self._parent_dir_modified(src_path)
 
-    def _read_events(self, timeout: float) -> list[select.kevent]:
+    def _read_events(self, timeout: Seconds) -> list[select.kevent]:
         """Reads events from a call to the blocking
         :meth:`select.kqueue.control()` method.
 
         :param timeout:
             Blocking timeout for reading events.
         :type timeout:
-            ``float`` (seconds)
+            ``Seconds``
         """
         return self._kq.control(self._descriptors.kevents, MAX_EVENTS, timeout)
 
-    def queue_events(self, timeout: float) -> None:
+    def queue_events(self, timeout: Seconds) -> None:
         """Queues events by reading them from a call to the blocking
         :meth:`select.kqueue.control()` method.
 
         :param timeout:
             Blocking timeout for reading events.
         :type timeout:
-            ``float`` (seconds)
+            ``Seconds``
         """
         with self._lock:
             try:
@@ -658,5 +659,5 @@ class KqueueObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(KqueueEmitter, timeout=timeout)

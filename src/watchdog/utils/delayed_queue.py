@@ -9,13 +9,16 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
+
+if TYPE_CHECKING:
+    from watchdog.utils import Seconds
 
 T = TypeVar("T")
 
 
 class DelayedQueue(Generic[T]):
-    def __init__(self, delay: float) -> None:
+    def __init__(self, delay: Seconds) -> None:
         self.delay_sec = delay
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)

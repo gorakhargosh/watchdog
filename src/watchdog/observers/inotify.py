@@ -112,6 +112,7 @@ from watchdog.observers.inotify_move_event_grouper import (
 
 if TYPE_CHECKING:
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 
@@ -387,9 +388,9 @@ class InotifyEmitter(EventEmitter):
     :type watch:
         :class:`watchdog.observers.api.ObservedWatch`
     :param timeout:
-        Read events blocking timeout (in seconds).
+        Read events blocking timeout.
     :type timeout:
-        ``float``
+        ``Seconds``
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
@@ -401,7 +402,7 @@ class InotifyEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         inotify_fd: InotifyFD | None = None,
     ) -> None:
@@ -431,7 +432,7 @@ class InotifyEmitter(EventEmitter):
         if inotify is not None:
             inotify.deactivate()
 
-    def queue_events(self, timeout: float, *, full_events: bool = False) -> None:
+    def queue_events(self, timeout: Seconds, *, full_events: bool = False) -> None:
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
         #
@@ -570,6 +571,6 @@ class InotifyObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
         super().__init__(cls, timeout=timeout)

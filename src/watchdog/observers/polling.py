@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
     from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class PollingEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         stat: Callable[[str], os.stat_result] = os.stat,
         listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
@@ -80,7 +81,7 @@ class PollingEmitter(EventEmitter):
     def on_thread_start(self) -> None:
         self._snapshot = self._take_snapshot()
 
-    def queue_events(self, timeout: float) -> None:
+    def queue_events(self, timeout: Seconds) -> None:
         # We don't want to hit the disk continuously.
         # timeout behaves like an interval for polling emitters.
         if self.stopped_event.wait(timeout):
@@ -153,7 +154,7 @@ class PollingObserver(BaseObserver):
     outage that the OS reports as ``ENOENT`` still looks like a deletion.
     """
 
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(PollingEmitter, timeout=timeout)
 
 
@@ -165,12 +166,12 @@ class PollingObserverVFS(BaseObserver):
         stat: Callable[[str], os.stat_result],
         listdir: Callable[[str | None], Iterator[os.DirEntry]],
         *,
-        polling_interval: int = 1,
+        polling_interval: Seconds = 1,
     ) -> None:
         """:param stat: stat function. See ``os.stat`` for details.
         :param listdir: listdir function. See ``os.scandir`` for details.
-        :type polling_interval: int
-        :param polling_interval: interval in seconds between polling the file system.
+        :type polling_interval: Seconds
+        :param polling_interval: interval between polling the file system.
         """
         emitter_cls = partial(PollingEmitter, stat=stat, listdir=listdir)
         super().__init__(emitter_cls, timeout=polling_interval)  # type: ignore[arg-type]

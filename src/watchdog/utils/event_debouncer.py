@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from watchdog.events import FileSystemEvent
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +25,9 @@ class EventDebouncer(BaseThread):
     events in the order in which they were received.
 
     :param debounce_interval_seconds:
-        The number of seconds to wait before calling the callback.
+        How long to wait before calling the callback.
     :type debounce_interval_seconds:
-        ``int``
+        ``Seconds``
     :param events_callback:
         The callback function to be invoked with the debounced events.
     :type events_callback:
@@ -35,7 +36,7 @@ class EventDebouncer(BaseThread):
 
     def __init__(
         self,
-        debounce_interval_seconds: int,
+        debounce_interval_seconds: Seconds,
         events_callback: Callable[[list[FileSystemEvent]], None],
     ) -> None:
         super().__init__()
