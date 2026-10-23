@@ -22,6 +22,15 @@ Watchdog also includes built-in "tricks" (pre-implemented event handlers). For i
    :language: python
    :linenos:
 
+Observer Context Manager
+------------------------
+Use an observer as a context manager to start it on entry and automatically stop
+and join it on exit, including when an exception interrupts the loop:
+
+.. literalinclude:: examples/context_manager.py
+   :language: python
+   :linenos:
+
 Debouncing Events
 -----------------
 Text editors and build tools can emit several events for a single logical change. Use :class:`watchdog.utils.event_debouncer.EventDebouncer` to collect a burst of events and run an expensive action once the watched directory has been quiet for a short interval:
