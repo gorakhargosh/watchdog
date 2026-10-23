@@ -18,6 +18,7 @@ Changelog
 **Other Changes**
 
 - [core] ``RegexMatchingEventHandler`` no longer matches its regexes against an empty destination path for events that are not moves. Since events became dataclasses, ``hasattr(event, "dest_path")`` is always true, so a regex matching the empty string (e.g. ``^(?!.*\.pyc$).*$``) let every event through, and such an ignore regex dropped every event. ``PatternMatchingEventHandler`` had the same check.
+- [utils] Serialize ``SkipRepeatsQueue`` producers to prevent consecutive duplicates, respecting blocking and timeout limits while acquiring the producer lock. (`#1338 <https://github.com/gorakhargosh/watchdog/pull/1338>`__)
 - [core] ``EventEmitter`` and ``EventDispatcher`` reject a bool ``timeout``. ``bool`` subclasses ``int``, so ``timeout=True`` was stored and treated as ``1.0`` seconds. (`#1287 <https://github.com/gorakhargosh/watchdog/pull/1287>`__)
 - [core] Added the ``watchdog.utils.Seconds`` type alias and used it for the time-duration parameters (``timeout``, ``polling_interval``, ``kill_after``, ...) instead of documenting the unit in each docstring. Duration parameters previously hinted as ``int`` now accept ``float``.
 - [utils] Deprecated the ``debounce_interval_seconds`` argument and attribute of ``EventDebouncer`` and ``AutoRestartTrick`` in favour of ``debounce_interval``, and the ``DelayedQueue.delay_sec`` attribute in favour of ``delay``. The old names still work but emit a ``DeprecationWarning``.
