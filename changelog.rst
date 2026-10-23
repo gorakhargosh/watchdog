@@ -58,6 +58,7 @@ Changelog
 - [watchmedo] The ``AutoRestartTrick`` stop signal is now actually delivered on Windows. The subprocess is started in its own process group and signalled with ``CTRL_BREAK_EVENT``, so it can run cleanup handlers and its descendants are no longer orphaned on every restart. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
 - [watchmedo] ``AutoRestartTrick``'s ``--signal SIGBREAK`` now routes through ``CTRL_BREAK_EVENT`` on Windows too, instead of falling back to the hard kill that skips the child's cleanup handlers. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
 - [polling] A transient ``OSError`` while polling, such as a network share that is briefly unreachable, no longer emits a ``DirDeletedEvent`` for the watched directory and stops the emitter. The error is logged and the next poll tries again, so changes made in the meantime are still reported. Only ``FileNotFoundError`` and ``NotADirectoryError`` are still treated as a deletion. (`#1065 <https://github.com/gorakhargosh/watchdog/issues/1065>`__)
+- [core] ``BaseObserver.start()`` now holds the observer lock while it starts the emitters and the observer thread. A watch scheduled from another thread during ``start()`` could otherwise get an emitter that was never started, so it silently reported no events. (`#1044 <https://github.com/gorakhargosh/watchdog/issues/1044>`__)
 
 - Thanks to our beloved contributors: @BoboTiG, @tybug, @Corentin-pro, @kirkhansen, @JoachimCoenen, @blitztide, @Skeletor-Pirate, @prateek-dagar
 

@@ -149,6 +149,27 @@ def test_schedule_failure_should_not_prevent_future_schedules(observer):
     assert len(observer.emitters) == 1
 
 
+def test_schedule_during_start_should_start_emitter(observer):
+    """A watch scheduled from another thread while start() runs must get a running emitter (#1044)."""
+    observer.schedule(None, "a")
+    (first_emitter,) = observer.emitters
+    scheduler = threading.Thread(target=observer.schedule, args=(None, "b"))
+    original_start = first_emitter.start
+
+    def start_then_schedule():
+        original_start()
+        scheduler.start()
+        # Without the fix, schedule() completes here, before the observer is alive.
+        scheduler.join(timeout=0.5)
+
+    with patch.object(first_emitter, "start", new=start_then_schedule):
+        observer.start()
+    scheduler.join()
+
+    assert len(observer.emitters) == 2
+    assert all(emitter.is_alive() for emitter in observer.emitters)
+
+
 def test_context_manager_starts_observer():
     """Test that context manager starts observer if not already started."""
     obs = BaseObserver(EventEmitter)
