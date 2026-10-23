@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 import os
-import subprocess
-import sys
 from queue import Empty, Queue
 from typing import Any, Protocol, Self
 
@@ -109,32 +107,6 @@ class Helper:
         alive = [emitter.is_alive() for emitter in self.emitters]
         self.emitters = []
         assert alive == [False] * len(alive)
-
-
-def run_isolated_test(path):
-    isolated_test_prefix = os.path.join("tests", "isolated")
-    path = os.path.abspath(os.path.join(isolated_test_prefix, path))
-
-    src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
-    new_env = os.environ.copy()
-    new_env["PYTHONPATH"] = os.pathsep.join([*sys.path, src_dir])
-
-    new_argv = [sys.executable, path]
-
-    p = subprocess.Popen(
-        new_argv,
-        env=new_env,
-    )
-
-    # in case test goes haywire, don't let it run forever
-    timeout = 10
-    try:
-        p.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        p.kill()
-        raise
-
-    assert p.returncode == 0
 
 
 class EventsChecker(Protocol):
