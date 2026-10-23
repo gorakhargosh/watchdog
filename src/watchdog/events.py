@@ -410,7 +410,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
             return
 
         paths = []
-        if hasattr(event, "dest_path"):
+        if event.dest_path:
             paths.append(os.fsdecode(event.dest_path))
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
@@ -495,7 +495,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             return
 
         paths = []
-        if hasattr(event, "dest_path"):
+        if event.dest_path:
             paths.append(os.fsdecode(event.dest_path))
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
