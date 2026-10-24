@@ -585,6 +585,21 @@ def log(args: Namespace) -> None:
             help="Ignore events that occur while command is still being"
             " executed to avoid multiple simultaneous instances.",
         ),
+        argument(
+            "-s",
+            "--shell",
+            "--shell-executable",
+            dest="shell_executable",
+            default=None,
+            help="Path to the shell executable to run the command with (default: system default).",
+        ),
+        argument(
+            "-C",
+            "--cwd",
+            dest="cwd",
+            default=None,
+            help="Working directory in which to execute the command.",
+        ),
         argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
     ],
 )
@@ -613,6 +628,8 @@ def shell_command(args: Namespace) -> None:
         ignore_directories=args.ignore_directories,
         wait_for_process=args.wait_for_process,
         drop_during_process=args.drop_during_process,
+        shell_executable=args.shell_executable,
+        cwd=args.cwd,
     )
     observer = observer_cls(timeout=args.timeout)
     observe_with(observer, handler, args.directories, recursive=args.recursive)
