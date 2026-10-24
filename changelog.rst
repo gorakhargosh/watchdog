@@ -30,6 +30,7 @@ Changelog
 - [utils] Use a monotonic clock for ``DelayedQueue`` delays so system clock adjustments do not stall or prematurely release events. (`#1296 <https://github.com/gorakhargosh/watchdog/pull/1296>`__)
 - [core] Allow scheduling watches on individual files in ``Observer.schedule()``. (`#1034 <https://github.com/gorakhargosh/watchdog/issues/1034>`__)
 - [utils] ``DirectorySnapshotDiff(ignore_device=True)`` now detects moved files and directories when the device ID changes between snapshots.
+- [watchmedo] ``AutoRestartTrick._start_process()`` now checks ``_is_trick_stopping`` under ``_stopping_lock``, matching ``stop()``'s own guard. The unguarded read let a ``_start_process()`` call racing a concurrent ``stop()`` start a fresh ``ProcessWatcher`` that ``stop()`` never captured and so never joined, leaking that thread. (`#1291 <https://github.com/gorakhargosh/watchdog/issues/1291>`__)
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [core] ``remove_handler_for_watch()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one empty ``_handlers`` entry per call. (`#1285 <https://github.com/gorakhargosh/watchdog/pull/1285>`__)
 - [fsevents] Support free-threading and give each emitter its own stream to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
