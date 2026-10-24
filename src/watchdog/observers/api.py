@@ -304,13 +304,16 @@ class BaseObserver(EventDispatcher):
         return self._emitters
 
     def start(self) -> None:
-        for emitter in self._emitters.copy():
-            try:
-                emitter.start()
-            except Exception:
-                self._remove_emitter(emitter)
-                raise
-        super().start()
+        # Hold the lock until the observer is alive, so that a concurrent schedule()
+        # either adds its emitter before the loop below or starts it itself (#1044).
+        with self._lock:
+            for emitter in self._emitters.copy():
+                try:
+                    emitter.start()
+                except Exception:
+                    self._remove_emitter(emitter)
+                    raise
+            super().start()
 
     def __enter__(self) -> Self:
         """Context manager entry. Starts the observer if not already running."""
