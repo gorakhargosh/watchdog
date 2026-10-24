@@ -93,6 +93,10 @@ class ShellCommandTrick(Trick):
     :param drop_during_process:
         Ignore events that occur while command is still being executed
         to avoid multiple simultaneous instances.
+    :param shell_executable:
+        Path to the shell binary to use instead of the system default (e.g. ``/bin/bash``).
+    :param cwd:
+        Working directory in which to execute the command.
     """
 
     def __init__(
@@ -104,7 +108,9 @@ class ShellCommandTrick(Trick):
         ignore_directories: bool = False,
         wait_for_process: bool = False,
         drop_during_process: bool = False,
-    ):
+        shell_executable: str | None = None,
+        cwd: str | None = None,
+    ) -> None:
         super().__init__(
             patterns=patterns,
             ignore_patterns=ignore_patterns,
@@ -113,6 +119,8 @@ class ShellCommandTrick(Trick):
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
+        self.shell_executable = shell_executable
+        self.cwd = cwd
 
         self.process: subprocess.Popen[bytes] | None = None
         self._process_watchers: set[ProcessWatcher] = set()
@@ -147,7 +155,12 @@ class ShellCommandTrick(Trick):
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
-        self.process = subprocess.Popen(command, shell=True)
+        self.process = subprocess.Popen(
+            command,
+            shell=True,
+            executable=self.shell_executable,
+            cwd=self.cwd,
+        )
         if self.wait_for_process:
             self.process.wait()
         else:

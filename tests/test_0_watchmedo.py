@@ -200,6 +200,26 @@ def test_shell_command_subprocess_termination_not_happening_on_file_opened_event
     assert not trick.is_process_running()
 
 
+def test_shell_command_custom_shell_and_cwd():
+    with patch("subprocess.Popen") as mocked_popen:
+        mocked_proc = mocked_popen.return_value
+        mocked_proc.wait.return_value = 0
+        mocked_proc.poll.return_value = 0
+        trick = ShellCommandTrick(
+            "echo test",
+            wait_for_process=True,
+            shell_executable="/bin/bash",
+            cwd="/some/path",
+        )
+        trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
+        mocked_popen.assert_called_once_with(
+            "echo test",
+            shell=True,
+            executable="/bin/bash",
+            cwd="/some/path",
+        )
+
+
 def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
     # FIXME: see issue #949, and find a way to better handle that scenario
     script = make_dummy_script(tmpdir, n=2)
@@ -401,6 +421,13 @@ def test_logger_events_echoed(caplog):
 def test_shell_command_arg_parsing():
     args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'"])
     assert args.command == "'cmd'"
+    assert args.shell_executable is None
+    assert args.cwd is None
+
+    args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'", "-s", "/bin/bash", "-C", "/tmp"])
+    assert args.command == "'cmd'"
+    assert args.shell_executable == "/bin/bash"
+    assert args.cwd == "/tmp"
 
 
 @pytest.mark.parametrize("cmdline", [["auto-restart", "-d", ".", "cmd"], ["log", "."]])
