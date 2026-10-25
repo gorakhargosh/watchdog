@@ -68,7 +68,6 @@ ignore = [
     "PERF203",
     "PGH004",
     "PL",
-    "PT030",
     "PTH",  # TODO?
     "RUF043",
     "S",
