@@ -64,7 +64,6 @@ ignore = [
     "EM102",
     "FIX",
     "ISC001",
-    "LOG015",
     "PERF203",
     "PGH004",
     "PL",
