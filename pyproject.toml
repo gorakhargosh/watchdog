@@ -72,7 +72,6 @@ ignore = [
     "PTH",  # TODO?
     "RUF043",
     "S",
-    "TC006",
     "TD",
     "TRY003",
 ]
