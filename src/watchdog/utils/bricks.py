@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any
 
+_EMPTY = object()
+
 
 class SkipRepeatsQueue(queue.Queue):
     """Thread-safe implementation of an special queue where a
@@ -72,7 +74,7 @@ class SkipRepeatsQueue(queue.Queue):
 
     def __init__(self, maxsize: int = 0) -> None:
         super().__init__(maxsize)
-        self._last_item = None
+        self._last_item = _EMPTY
         self._put_lock = threading.Lock()
 
     def put(self, item: Any, block: bool = True, timeout: float | None = None) -> None:  # noqa: FBT001,FBT002
@@ -113,7 +115,7 @@ class SkipRepeatsQueue(queue.Queue):
             raise queue.Full
 
         try:
-            if self._last_item is None or item != self._last_item:
+            if self._last_item is _EMPTY or item != self._last_item:
                 super().put(item, block, timeout)
         finally:
             self._put_lock.release()
@@ -125,5 +127,5 @@ class SkipRepeatsQueue(queue.Queue):
     def _get(self) -> Any:
         item = super()._get()
         if item is self._last_item:
-            self._last_item = None
+            self._last_item = _EMPTY
         return item

@@ -29,6 +29,25 @@ def test_basic_queue():
     assert q.empty()
 
 
+@pytest.mark.parametrize("item", [None, 0, False, ""])
+def test_consecutive_false_items(item):
+    q = SkipRepeatsQueue()
+    q.put(item)
+    q.put(item)
+    assert q.qsize() == 1
+    assert q.unfinished_tasks == 1
+    assert q.get_nowait() is item
+    q.task_done()
+    q.join()
+    assert q.empty()
+
+    q.put(item)
+    assert q.qsize() == 1
+    assert q.get_nowait() is item
+    q.task_done()
+    q.join()
+
+
 def test_allow_nonconsecutive():
     q = SkipRepeatsQueue()
 
@@ -48,8 +67,8 @@ def test_allow_nonconsecutive():
 def test_put_with_watchdog_events():
     # FileSystemEvent.__ne__() uses the key property without
     # doing any type checking. Since _last_item is set to
-    # None in __init__(), an AttributeError is raised when
-    # FileSystemEvent.__ne__() tries to use None.key
+    # an empty sentinel in __init__(), an AttributeError would be raised when
+    # FileSystemEvent.__ne__() tries to access the sentinel's key.
     queue = SkipRepeatsQueue()
     dummy_file = "dummy.txt"
     event = events.FileCreatedEvent(dummy_file)
