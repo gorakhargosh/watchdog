@@ -211,7 +211,7 @@ def test_context_manager_handles_exceptions():
             assert emitter.is_alive()
             raise ValueError
 
-    with pytest.raises(ValueError, match=".*"):
+    with pytest.raises(ValueError, match=r".*"):
         _raise_in_context()
 
     # Observer should still be stopped even after exception

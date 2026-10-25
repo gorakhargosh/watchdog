@@ -183,25 +183,25 @@ def test_stale_event_does_not_resurrect_an_unscheduled_watch():
 
 def test_event_dispatcher_timeout_rejects_bool():
     """bool subclasses int; timeout=True must not silently become 1.0s."""
-    with pytest.raises(TypeError, match="timeout.*bool"):
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
         EventDispatcher(timeout=True)
-    with pytest.raises(TypeError, match="timeout.*bool"):
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
         EventDispatcher(timeout=False)
 
 
 def test_base_observer_timeout_rejects_bool():
     """BaseObserver forwards timeout to EventDispatcher."""
-    with pytest.raises(TypeError, match="timeout.*bool"):
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
         BaseObserver(EventEmitter, timeout=True)
-    with pytest.raises(TypeError, match="timeout.*bool"):
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
         BaseObserver(EventEmitter, timeout=False)
 
 
 def test_event_emitter_timeout_rejects_bool():
     watch = ObservedWatch("/foobar", recursive=False)
-    with pytest.raises(TypeError, match="timeout.*bool"):
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
         EventEmitter(EventQueue(), watch, timeout=True)
-    with pytest.raises(TypeError, match="timeout.*bool"):
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
         EventEmitter(EventQueue(), watch, timeout=False)
 
 

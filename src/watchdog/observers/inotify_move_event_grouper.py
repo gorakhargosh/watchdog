@@ -72,7 +72,7 @@ class InotifyMoveEventGrouper:
             return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
 
         # Check if move_from is in delayqueue already
-        from_event = cast(PathedInotifyEvent, self._queue.remove(matching_from_event))
+        from_event = cast("PathedInotifyEvent", self._queue.remove(matching_from_event))
         if from_event is None:
             logger.debug("could not find matching move_from event")
 
@@ -85,7 +85,7 @@ class InotifyMoveEventGrouper:
         def matching_from_event(event: GroupedInotifyEvent) -> bool:
             return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
 
-        return cast(PathedInotifyEvent, self._queue.find(matching_from_event))
+        return cast("PathedInotifyEvent", self._queue.find(matching_from_event))
 
     def close(self) -> None:
         """closes the queue"""

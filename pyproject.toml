@@ -64,15 +64,11 @@ ignore = [
     "EM102",
     "FIX",
     "ISC001",
-    "LOG015",
     "PERF203",
     "PGH004",
     "PL",
-    "PT030",
     "PTH",  # TODO?
-    "RUF043",
     "S",
-    "TC006",
     "TD",
     "TRY003",
 ]

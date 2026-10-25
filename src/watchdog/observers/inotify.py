@@ -375,7 +375,7 @@ def _select_event_type(
     is_directory: bool,
 ) -> FileSystemEventCtor:
     """selects the correct FileSystemEvent Type based on `is_directory` and returns it."""
-    return cast(FileSystemEventCtor, dir_event if is_directory else file_event)
+    return cast("FileSystemEventCtor", dir_event if is_directory else file_event)
 
 
 class InotifyEmitter(EventEmitter):

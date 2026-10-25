@@ -321,7 +321,7 @@ def test_auto_restart_deprecated_debounce_interval_seconds_attribute():
 def test_auto_restart_negative_debounce_interval():
     with pytest.raises(ValueError, match="debounce_interval must be non-negative"):
         AutoRestartTrick(["true"], debounce_interval=-1)
-    with pytest.warns(DeprecationWarning), pytest.raises(ValueError, match="debounce_interval must be non-negative"):
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated"), pytest.raises(ValueError, match="debounce_interval must be non-negative"):
         AutoRestartTrick(["true"], debounce_interval_seconds=-1)
 
 
