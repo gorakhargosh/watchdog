@@ -10,7 +10,7 @@ Changelog
 
 **Other Changes**
 
-- xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
+- [core] The ``ShellCommandTrick`` command is now parsed with ``shlex`` and executed without a shell (``shell=False``) by default, preventing shell injection through file names. As a consequence, shell operators (``;``, ``&&``, ``|``, ``>``, ``$(...)``) used in the command are no longer interpreted. On Windows, paths substituted into the command are quoted so that file names containing spaces arrive as a single argument. When no command is set, events are printed directly instead of spawning an ``echo`` subprocess. Passing an explicit ``shell_executable`` keeps the previous behaviour of interpreting the command in that shell. (`#1181 <https://github.com/gorakhargosh/watchdog/issues/1181>`__, `#1163 <https://github.com/gorakhargosh/watchdog/issues/1163>`__)
 
 7.1.0
 ~~~~~
