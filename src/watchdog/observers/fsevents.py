@@ -43,6 +43,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("fsevents")
 
+#: Default seconds the FSEvents API waits after an event before delivering it,
+#: coalescing any further events in that window into the same batch. This has
+#: been the value baked into the stream since it was first created.
+DEFAULT_FSEVENTS_LATENCY: Seconds = 0.01
+
 
 class FSEventsEmitter(EventEmitter):
     """macOS FSEvents Emitter class.
@@ -63,6 +68,14 @@ class FSEventsEmitter(EventEmitter):
         by creating a directory snapshot of the watched path before starting the stream
         as a reference to suppress old events. Warning: This may result in significant
         memory usage in case of a large number of items in the watched path.
+    :param latency:
+        Seconds the FSEvents API waits after an event before delivering it,
+        coalescing any further events in that window into the same batch.
+        Defaults to :data:`DEFAULT_FSEVENTS_LATENCY`. Raising it trades
+        notification delay for fewer duplicate events: a single logical write
+        that arrives as several ``modified`` events at the default latency (an
+        editor saving a file, for instance) is more likely to coalesce into
+        one. Must not be negative.
     :type timeout:
         ``Seconds``
     """
@@ -75,14 +88,19 @@ class FSEventsEmitter(EventEmitter):
         timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         suppress_history: bool = False,
+        latency: Seconds = DEFAULT_FSEVENTS_LATENCY,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
+        if latency < 0:
+            msg = "latency must be a non-negative number"
+            raise ValueError(msg)
         self._fs_view: set[int] = set()
         self.suppress_history = suppress_history
+        self.latency = latency
         self._start_time = 0.0
         self._starting_state: DirectorySnapshot | None = None
         self._lock = threading.Lock()
-        self._stream = _fsevents.Stream([self.watch.path])
+        self._stream = _fsevents.Stream([self.watch.path], latency=latency)
         # Thread._started is set before run(), so native readiness needs its own event.
         self._stream_started = threading.Event()
         self._startup_error: BaseException | None = None
@@ -352,8 +370,23 @@ class FSEventsEmitter(EventEmitter):
 
 
 class FSEventsObserver(BaseObserver):
-    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
-        super().__init__(FSEventsEmitter, timeout=timeout)
+    """macOS FSEvents observer.
+
+    :param timeout:
+        The timeout (in seconds) for the observer to wait on events.
+    :param latency:
+        Seconds the FSEvents API waits after an event before delivering it,
+        applied to every stream this observer creates. See
+        :class:`FSEventsEmitter` for what raising it buys.
+    """
+
+    def __init__(
+        self,
+        *,
+        timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT,
+        latency: Seconds = DEFAULT_FSEVENTS_LATENCY,
+    ) -> None:
+        super().__init__(FSEventsEmitter, timeout=timeout, latency=latency)
 
     def schedule(
         self,

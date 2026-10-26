@@ -31,7 +31,7 @@ import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
 from watchdog.events import FileSystemEvent, FileSystemEventHandler, PatternMatchingEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver, EventQueue, ObservedWatch
-from watchdog.observers.fsevents import FSEventsEmitter
+from watchdog.observers.fsevents import DEFAULT_FSEVENTS_LATENCY, FSEventsEmitter, FSEventsObserver
 
 from .shell import touch
 
@@ -756,3 +756,30 @@ def test_watchdog_recursive(p: P) -> None:
             observer.unschedule(watch)
         observer.stop()
         observer.join(1)
+
+
+def test_fsevents_latency_configuration(p: P) -> None:
+    """The default latency is 0.01 and custom latency is forwarded to emitters and stream."""
+    assert DEFAULT_FSEVENTS_LATENCY == 0.01
+
+    obs_default = FSEventsObserver()
+    obs_default.schedule(FileSystemEventHandler(), p(""), recursive=True)
+    assert [e.latency for e in obs_default.emitters] == [DEFAULT_FSEVENTS_LATENCY]
+
+    obs_custom = FSEventsObserver(latency=0.25)
+    obs_custom.schedule(FileSystemEventHandler(), p(""), recursive=True)
+    assert [e.latency for e in obs_custom.emitters] == [0.25]
+
+    stream = _fsevents.Stream([p("")], latency=0.25)
+    assert stream.latency == 0.25
+
+
+@pytest.mark.parametrize("latency", [-0.01, -1])
+def test_fsevents_negative_latency_is_rejected(p: P, latency: float) -> None:
+    """Both Python and C layers reject negative latency values."""
+    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+        _fsevents.Stream([p("")], latency=latency)
+
+    observer = FSEventsObserver(latency=latency)
+    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+        observer.schedule(FileSystemEventHandler(), p(""), recursive=True)
