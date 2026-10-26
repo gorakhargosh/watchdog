@@ -10,10 +10,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
     FileCreatedEvent,
@@ -24,7 +26,7 @@ from watchdog.events import (
 )
 from watchdog.utils import platform
 
-from .shell import mkdir, mkfile, mv, rm, touch
+from .shell import chmod, mkdir, mkfile, mv, rm, touch
 
 if TYPE_CHECKING:
     from .utils import EventsChecker, P, StartWatching, TestEventQueue
@@ -123,23 +125,48 @@ def test_modify(
     mkfile(p("a"))
     start_watching()
 
-    touch(p("a"))
+    with open(p("a"), "rb+") as f:
+        f.write(b"data")
 
     with events_checker() as ec:
-        if platform.is_darwin():
-            ec.add(FileModifiedEvent, "a")
-        else:
-            if platform.is_linux():
-                ec.add(FileOpenedEvent, "a")
-            ec.add(FileModifiedEvent, "a")
-            if platform.is_linux():
-                ec.add(FileClosedEvent, "a")
-            if not platform.is_windows():
-                ec.add(DirModifiedEvent, ".")
+        if platform.is_linux():
+            ec.add(FileOpenedEvent, "a")
+
+        ec.add(FileModifiedEvent, "a")
+
+        if platform.is_linux():
+            ec.add(FileClosedEvent, "a")
+
+        if not platform.is_windows() and not platform.is_darwin():
+            ec.add(DirModifiedEvent, ".")
+
+
+def test_touch(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    mkfile(p("a"))
+    start_watching()
+
+    # Pass an explicit past timestamp so Windows NTFS ChangeTime (now) > LastModificationTime (1000)
+    # deterministically identifies this as a metadata attribute change without timer race conditions.
+    touch(p("a"), (1000, 1000))
+
+    with events_checker() as ec:
+        if platform.is_linux():
+            ec.add(FileOpenedEvent, "a")
+
+        ec.add(FileAttribEvent, "a")
+
+        if platform.is_linux():
+            ec.add(FileClosedEvent, "a")
+            ec.add(DirModifiedEvent, ".")
 
 
 def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     mkfile(p("a"))
+    # Set initial mtime in the past so Windows NTFS ChangeTime > LastWriteTime
+    # reliably distinguishes this metadata change without sleeping.
+    os.utime(p("a"), (1000, 1000))
     start_watching()
 
     # Note: We use S_IREAD here because chmod on Windows only
@@ -147,7 +174,7 @@ def test_chmod(p: P, event_queue: TestEventQueue, start_watching: StartWatching,
     os.chmod(p("a"), stat.S_IREAD)
 
     with events_checker() as ec:
-        ec.add(FileModifiedEvent, "a")
+        ec.add(FileAttribEvent, "a")
 
     # Reset permissions to allow cleanup.
     os.chmod(p("a"), stat.S_IWRITE)
@@ -391,10 +418,12 @@ def test_recursive_on(
         if platform.is_darwin():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
-            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+            ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
         elif platform.is_windows():
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
-            ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+            # On Windows, touch() updates utime and may emit either FileAttribEvent or
+            # FileModifiedEvent depending on the 15.6ms system timer resolution.
+            ec.allow_extra_events()
         else:
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
@@ -403,7 +432,7 @@ def test_recursive_on(
                 ec.add(FileOpenedEvent, "dir1/dir2/dir3/a")
 
             if not platform.is_bsd():
-                ec.add(FileModifiedEvent, "dir1/dir2/dir3/a")
+                ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
 
             if platform.is_linux():
                 ec.add(FileClosedEvent, "dir1/dir2/dir3/a")
@@ -495,7 +524,7 @@ def test_renaming_top_level_directory(
         if platform.is_windows():
             ec.add(DirMovedEvent, "a", dest_path="a2")
             ec.add(DirMovedEvent, "a/b", dest_path="a2/b")
-            ec.add(DirModifiedEvent, "a2")
+            ec.add(DirAttribEvent, "a2")
         else:
             ec.add(DirMovedEvent, "a", dest_path="a2")
             ec.add(DirModifiedEvent, ".")
@@ -537,7 +566,7 @@ def test_move_nested_subdirectories(
     with events_checker() as ec:
         if platform.is_linux():
             ec.add(FileOpenedEvent, "dir2/dir3/a")
-        ec.add(FileModifiedEvent, "dir2/dir3/a")
+        ec.add(FileAttribEvent, "dir2/dir3/a")
         if platform.is_linux():
             ec.add(FileClosedEvent, "dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir2/dir3")
@@ -556,6 +585,9 @@ def test_move_nested_subdirectories_on_windows(
     mkdir(p("dir1/dir2/dir3"), parents=True)
     mkfile(p("dir1/dir2/dir3", "a"))
     start_watching(path=p(""))
+    # Ensure system clock advances past creation mtime so Windows NTFS sets
+    # LastChangeTime > LastModificationTime, deterministically emitting DirAttribEvent.
+    time.sleep(0.05)
     mv(p("dir1/dir2"), p("dir2"))
 
     with events_checker() as ec:
@@ -563,13 +595,13 @@ def test_move_nested_subdirectories_on_windows(
         ec.add(DirCreatedEvent, "dir2")
         ec.add(DirCreatedEvent, "dir2/dir3")
         ec.add(FileCreatedEvent, "dir2/dir3/a")
-        ec.add(DirModifiedEvent, "dir2")
-        if False:
-            # The following event is not consistently generated.
-            ec.add(DirModifiedEvent, "dir2/dir3")
-        else:
-            # Allow test to pass if above event is present or not
-            ec.allow_extra_events()
+        ec.add(DirAttribEvent, "dir2")
+        # The path of the trailing DirModifiedEvent is not consistent across
+        # environments: CI emits `dir2`, while some native Windows installs
+        # emit `dir2/dir3`. Match any DirModifiedEvent under the moved tree
+        # and tolerate it being absent (see #1206).
+        ec.add(DirModifiedEvent)
+        ec.allow_extra_events()
 
     touch(p("dir2/dir3", "a"))
 
@@ -598,7 +630,7 @@ def test_file_lifecyle(
             ec.add(DirModifiedEvent, ".")
 
             ec.add(FileOpenedEvent, "a")
-            ec.add(FileModifiedEvent, "a")
+            ec.add(FileAttribEvent, "a")
             ec.add(FileClosedEvent, "a")
             ec.add(DirModifiedEvent, ".")
 
@@ -610,6 +642,43 @@ def test_file_lifecyle(
             ec.add(DirModifiedEvent, ".")
         else:
             ec.add(FileCreatedEvent, "a")
-            ec.add(FileModifiedEvent, "a")
+            if platform.is_windows():
+                ec.add(FileModifiedEvent, "a")
+            else:
+                ec.add(FileAttribEvent, "a")
             ec.add(FileMovedEvent, "a", dest_path="b")
             ec.add(FileDeletedEvent, "b")
+
+
+def test_chmod_file(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    mkfile(p("newfile"))
+    os.utime(p("newfile"), (1000, 1000))
+    start_watching()
+
+    chmod(p("newfile"), stat.S_IREAD if platform.is_windows() else 0o777)
+    with events_checker() as ec:
+        ec.add(FileAttribEvent, "newfile")
+
+    if platform.is_windows():
+        # Reset write permissions to allow pytest fixture cleanup on Windows.
+        chmod(p("newfile"), stat.S_IWRITE)
+
+
+def test_chmod_dir(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    mkdir(p("dir1"))
+    os.utime(p("dir1"), (1000, 1000))
+    start_watching()
+
+    chmod(p("dir1"), stat.S_IREAD if platform.is_windows() else 0o777)
+    with events_checker() as ec:
+        ec.add(DirAttribEvent, "dir1")
+        if platform.is_linux():
+            ec.add(DirAttribEvent, "dir1")
+
+    if platform.is_windows():
+        # Reset write permissions to allow pytest fixture cleanup on Windows.
+        chmod(p("dir1"), stat.S_IWRITE)

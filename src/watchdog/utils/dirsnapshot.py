@@ -38,8 +38,8 @@ from stat import S_ISDIR
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-    from typing import Any, Callable
+    from collections.abc import Callable, Iterator
+    from typing import Any
 
 
 class DirectorySnapshotDiff:
@@ -93,53 +93,98 @@ class DirectorySnapshotDiff:
                 created.add(path)
                 deleted.add(path)
 
+        if ignore_device:
+            # Retain each snapshot's canonical path when hard links share an inode.
+            ref_paths = {ref.inode(path)[0]: ref.path(ref.inode(path)) for path in ref.paths}
+            snapshot_paths = {snapshot.inode(path)[0]: snapshot.path(snapshot.inode(path)) for path in snapshot.paths}
+
+            def get_ref_path(uid: tuple[int, int]) -> bytes | str | None:
+                return ref.path(uid) or ref_paths.get(uid[0])
+
+            def get_snapshot_path(uid: tuple[int, int]) -> bytes | str | None:
+                return snapshot.path(uid) or snapshot_paths.get(uid[0])
+
+        else:
+            get_ref_path = ref.path
+            get_snapshot_path = snapshot.path
+
         # find moved paths
         moved: set[tuple[bytes | str, bytes | str]] = set()
         for path in set(deleted):
             inode = ref.inode(path)
-            new_path = snapshot.path(inode)
-            if new_path:
+            new_path = get_snapshot_path(inode)
+            # Only treat this as a move if the inode is now reachable through a
+            # genuinely new path. A symlink (or hard link) shares its target's
+            # inode, so ``new_path`` may still point at the unchanged target,
+            # which is not a move.
+            if new_path and (new_path not in ref.paths or ref.inode(new_path) != inode):
                 # file is not deleted but moved
                 deleted.remove(path)
                 moved.add((path, new_path))
 
         for path in set(created):
             inode = snapshot.inode(path)
-            old_path = ref.path(inode)
-            if old_path:
+            old_path = get_ref_path(inode)
+            # Only treat this as a move if the inode's previous path is really
+            # gone. A symlink (or hard link) shares its target's inode, so
+            # ``old_path`` may still exist with that inode, which means this is a
+            # creation, not a move.
+            if old_path and (old_path not in snapshot.paths or snapshot.inode(old_path) != inode):
                 created.remove(path)
                 moved.add((old_path, path))
 
         # find modified paths
         # first check paths that have not moved
         modified: set[bytes | str] = set()
+        attrib: set[bytes | str] = set()
         for path in ref.paths & snapshot.paths:
-            if get_inode(ref, path) == get_inode(snapshot, path) and (
-                ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path)
-            ):
-                modified.add(path)
+            if get_inode(ref, path) == get_inode(snapshot, path):
+                if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
+                    modified.add(path)
+                if self.is_attrib_modified(ref.stat_info(path), snapshot.stat_info(path)):
+                    attrib.add(path)
 
         for old_path, new_path in moved:
             if ref.mtime(old_path) != snapshot.mtime(new_path) or ref.size(old_path) != snapshot.size(new_path):
                 modified.add(old_path)
+            if self.is_attrib_modified(ref.stat_info(old_path), snapshot.stat_info(new_path)):
+                attrib.add(old_path)
 
         self._dirs_created = [path for path in created if snapshot.isdir(path)]
         self._dirs_deleted = [path for path in deleted if ref.isdir(path)]
         self._dirs_modified = [path for path in modified if ref.isdir(path)]
         self._dirs_moved = [(frm, to) for (frm, to) in moved if ref.isdir(frm)]
+        self._dirs_attrib = [path for path in attrib if ref.isdir(path)]
 
         self._files_created = list(created - set(self._dirs_created))
         self._files_deleted = list(deleted - set(self._dirs_deleted))
         self._files_modified = list(modified - set(self._dirs_modified))
         self._files_moved = list(moved - set(self._dirs_moved))
+        self._files_attrib = list(attrib - set(self._dirs_attrib))
+
+    @staticmethod
+    def is_attrib_modified(ref_stat: os.stat_result, snap_stat: os.stat_result) -> bool:
+        """Determines whether permissions, file attributes, or ownership have changed."""
+        return (
+            # File mode and permission bits (e.g. chmod, read/write/execute bits)
+            getattr(ref_stat, "st_mode", None) != getattr(snap_stat, "st_mode", None)
+            # Windows file attributes bitmask (e.g. attrib +h, readonly, system, archive)
+            or getattr(ref_stat, "st_file_attributes", None) != getattr(snap_stat, "st_file_attributes", None)
+            # Owner user ID (e.g. chown)
+            or getattr(ref_stat, "st_uid", None) != getattr(snap_stat, "st_uid", None)
+            # Owner group ID (e.g. chown, chgrp)
+            or getattr(ref_stat, "st_gid", None) != getattr(snap_stat, "st_gid", None)
+            # macOS & BSD file flags (e.g. chflags immutable, hidden, append)
+            or getattr(ref_stat, "st_flags", None) != getattr(snap_stat, "st_flags", None)
+        )
 
     def __str__(self) -> str:
         return self.__repr__()
 
     def __repr__(self) -> str:
         fmt = (
-            "<{0} files(created={1}, deleted={2}, modified={3}, moved={4}),"
-            " folders(created={5}, deleted={6}, modified={7}, moved={8})>"
+            "<{0} files(created={1}, deleted={2}, modified={3}, moved={4}, attrib={5}),"
+            " folders(created={6}, deleted={7}, modified={8}, moved={9}, attrib={10})>"
         )
         return fmt.format(
             type(self).__name__,
@@ -147,10 +192,12 @@ class DirectorySnapshotDiff:
             len(self._files_deleted),
             len(self._files_modified),
             len(self._files_moved),
+            len(self._files_attrib),
             len(self._dirs_created),
             len(self._dirs_deleted),
             len(self._dirs_modified),
             len(self._dirs_moved),
+            len(self._dirs_attrib),
         )
 
     def __len__(self) -> int:
@@ -181,6 +228,11 @@ class DirectorySnapshotDiff:
         return self._files_moved
 
     @property
+    def files_attrib(self) -> list[bytes | str]:
+        """List of files whose attributes or permissions were modified."""
+        return self._files_attrib
+
+    @property
     def dirs_modified(self) -> list[bytes | str]:
         """List of directories that were modified."""
         return self._dirs_modified
@@ -203,6 +255,11 @@ class DirectorySnapshotDiff:
     def dirs_created(self) -> list[bytes | str]:
         """List of directories that were created."""
         return self._dirs_created
+
+    @property
+    def dirs_attrib(self) -> list[bytes | str]:
+        """List of directories whose attributes or permissions were modified."""
+        return self._dirs_attrib
 
     class ContextManager:
         """Context manager that creates two directory snapshots and a
@@ -369,6 +426,10 @@ class DirectorySnapshot:
     def size(self, path: bytes | str) -> int:
         """Returns the size of the file identified by path."""
         return self._stat_info[path].st_size
+
+    def mode(self, path: bytes | str) -> int:
+        """Returns the mode/permissions for path."""
+        return self._stat_info[path].st_mode
 
     def stat_info(self, path: bytes | str) -> os.stat_result:
         """Returns a stat information object for the specified path from

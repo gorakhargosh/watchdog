@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Callable
-
 import pytest
 
 from watchdog.utils import platform
@@ -11,12 +9,16 @@ if not platform.is_linux():
 
 import os
 import random
+from typing import TYPE_CHECKING
 
 from watchdog.observers.inotify import InotifyWatchGroup
 from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS, InotifyConstants, InotifyFD, Mask
 from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def wait_for_move_event(read_event: Callable[[], GroupedInotifyEvent]) -> GroupedInotifyEvent:

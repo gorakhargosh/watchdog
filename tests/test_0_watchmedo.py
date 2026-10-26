@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
+import signal
 import sys
 import time
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -17,8 +18,9 @@ from yaml.constructor import ConstructorError  # noqa: E402
 from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
-from watchdog.events import FileModifiedEvent, FileOpenedEvent  # noqa: E402
-from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick  # noqa: E402
+from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
+from watchdog.observers.api import BaseObserver  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
 
 
@@ -79,10 +81,25 @@ def wait_for_marker_count(capfd, captured, marker, count, timeout=10):
         time.sleep(0.05)
 
 
+def test_watchmedo_default_patterns_match_absolute_paths(tmpdir):
+    """Regression test for #1212: the default --patterns value must match absolute
+    paths at any depth under the full_match() semantics."""
+
+    from watchdog.utils.patterns import match_any_paths
+
+    watched = os.path.join(tmpdir, "nested", "file.txt")
+    for argv in (["auto-restart", "echo", "hi"], ["shell-command"], ["log"]):
+        args = watchmedo.cli.parse_args(argv)
+        patterns, ignore_patterns = watchmedo.parse_patterns(args.patterns, args.ignore_patterns)
+        assert patterns == ["**"]
+        assert ignore_patterns == []
+        assert match_any_paths([watched], included_patterns=patterns, case_sensitive=False)
+
+
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
-        f.write('import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i, flush=True)\n\ttime.sleep(1)\n' % n)
+        f.write(f'import time\nfor i in range({n}):\n\tprint(f"+++++ {{i}}", flush=True)\n\ttime.sleep(1)\n')
     return script
 
 
@@ -129,6 +146,23 @@ def test_auto_restart_stop_signal_is_delivered(tmpdir, capfd):
     assert "+++++ stopped cleanly" in cap.out
 
 
+@pytest.mark.skipif(not platform.is_windows(), reason="CTRL_BREAK_EVENT routing is Windows-only")
+def test_kill_process_routes_sigbreak_through_ctrl_break_event():
+    """``--signal SIGBREAK`` must be routed like SIGINT, not hard-killed.
+
+    ``watchmedo.py`` turns ``--signal SIGBREAK`` into ``signal.SIGBREAK`` and
+    passes it straight to ``kill_process()``. Before this fix it fell into the
+    ``else`` branch and reached the child through a plain ``os.kill()``, which
+    Windows maps to ``TerminateProcess()`` for anything but the two console
+    control events -- the exact hard kill #1221 asked to avoid. Companion to
+    test_auto_restart_stop_signal_is_delivered above, which covers SIGINT.
+    """
+    with patch("os.kill") as mocked_kill:
+        kill_process(1234, signal.SIGBREAK)
+
+    mocked_kill.assert_called_once_with(1234, signal.CTRL_BREAK_EVENT)
+
+
 def test_shell_command_wait_for_completion(tmpdir, capfd):
     script = make_dummy_script(tmpdir, n=1)
     command = f"{sys.executable} {script}"
@@ -166,6 +200,26 @@ def test_shell_command_subprocess_termination_not_happening_on_file_opened_event
     assert not trick.is_process_running()
 
 
+def test_shell_command_custom_shell_and_cwd():
+    with patch("subprocess.Popen") as mocked_popen:
+        mocked_proc = mocked_popen.return_value
+        mocked_proc.wait.return_value = 0
+        mocked_proc.poll.return_value = 0
+        trick = ShellCommandTrick(
+            "echo test",
+            wait_for_process=True,
+            shell_executable="/bin/bash",
+            cwd="/some/path",
+        )
+        trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
+        mocked_popen.assert_called_once_with(
+            "echo test",
+            shell=True,
+            executable="/bin/bash",
+            cwd="/some/path",
+        )
+
+
 def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
     # FIXME: see issue #949, and find a way to better handle that scenario
     script = make_dummy_script(tmpdir, n=2)
@@ -187,17 +241,18 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
 
     Expect 3 restarts.
     """
-    script = make_dummy_script(tmpdir, n=2)
+    script = make_dummy_script(tmpdir, n=10)
     trick = AutoRestartTrick([sys.executable, script])
+    captured = []
     trick.start()
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
     trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
     trick.on_any_event(FileModifiedEvent("foo/bar2.baz"))
     trick.on_any_event(FileModifiedEvent("foo/bar3.baz"))
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 2), "restart never happened"
     trick.stop()
-    cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count("+++++ 0") >= 2
+    captured.append(capfd.readouterr().out)
+    assert "".join(captured).splitlines(keepends=False).count("+++++ 0") >= 2
     assert trick.restart_count == 3
 
 
@@ -212,7 +267,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     # restart the test never asked for. With `n=2` the child exits after ~2s,
     # which is inside the window this test runs in. See #973.
     script = make_dummy_script(tmpdir, n=10)
-    trick = AutoRestartTrick([sys.executable, script], debounce_interval_seconds=0.5)
+    trick = AutoRestartTrick([sys.executable, script], debounce_interval=0.5)
     captured = []
     trick.start()
     assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
@@ -232,6 +287,42 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     # burst was not debounced.
     assert "".join(captured).splitlines(keepends=False).count("+++++ 0") == 3
     assert trick.restart_count == 2
+
+
+def test_auto_restart_debounce_interval_default():
+    assert AutoRestartTrick(["true"]).debounce_interval == 0
+
+
+def test_auto_restart_deprecated_debounce_interval_seconds_argument():
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated") as record:
+        trick = AutoRestartTrick(["true"], debounce_interval_seconds=0.5)
+    assert trick.debounce_interval == 0.5
+    # The warning points at the caller, not at watchdog.
+    assert record[0].filename == __file__
+
+
+def test_auto_restart_debounce_interval_and_deprecated_name_conflict():
+    with pytest.raises(TypeError, match="Cannot pass both"):
+        AutoRestartTrick(["true"], debounce_interval=0.5, debounce_interval_seconds=0.5)
+
+
+def test_auto_restart_deprecated_debounce_interval_seconds_attribute():
+    trick = AutoRestartTrick(["true"], debounce_interval=0.5)
+
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated") as record:
+        assert trick.debounce_interval_seconds == 0.5
+    assert record[0].filename == __file__
+
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated"):
+        trick.debounce_interval_seconds = 2
+    assert trick.debounce_interval == 2
+
+
+def test_auto_restart_negative_debounce_interval():
+    with pytest.raises(ValueError, match="debounce_interval must be non-negative"):
+        AutoRestartTrick(["true"], debounce_interval=-1)
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated"), pytest.raises(ValueError, match="debounce_interval must be non-negative"):
+        AutoRestartTrick(["true"], debounce_interval_seconds=-1)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
@@ -330,6 +421,13 @@ def test_logger_events_echoed(caplog):
 def test_shell_command_arg_parsing():
     args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'"])
     assert args.command == "'cmd'"
+    assert args.shell_executable is None
+    assert args.cwd is None
+
+    args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'", "-s", "/bin/bash", "-C", "/tmp"])
+    assert args.command == "'cmd'"
+    assert args.shell_executable == "/bin/bash"
+    assert args.cwd == "/tmp"
 
 
 @pytest.mark.parametrize("cmdline", [["auto-restart", "-d", ".", "cmd"], ["log", "."]])
@@ -400,3 +498,21 @@ tricks:
     with patch("time.sleep", mocked_sleep):
         watchmedo.tricks_from(args)
     assert checkpoint
+
+
+def test_observe_with():
+    observer = Mock(spec=BaseObserver)
+    handler = FileSystemEventHandler()
+    # Test multiple paths, with and without trailing slashes, including duplicates
+    pathnames = ["/path/one", "/path/two/", "/path/three", "/path/one"]
+
+    with patch("time.sleep", side_effect=WatchdogShutdownError):
+        watchmedo.observe_with(observer, handler, pathnames, recursive=True)
+
+    assert observer.schedule.call_count == 3
+    observer.schedule.assert_any_call(handler, "/path/one", recursive=True)
+    observer.schedule.assert_any_call(handler, "/path/two/", recursive=True)
+    observer.schedule.assert_any_call(handler, "/path/three", recursive=True)
+    assert observer.start.call_count == 1
+    assert observer.stop.call_count == 1
+    assert observer.join.call_count == 1

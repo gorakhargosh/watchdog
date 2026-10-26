@@ -33,6 +33,7 @@ COPYRIGHT = f"2010-2026, {AUTHOR_NAME}"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.doctest",
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
     "sphinx.ext.ifconfig",
@@ -61,8 +62,12 @@ intersphinx_mapping = {
 #   each only be imported, and therefore documented, on their respective
 #   platform, so at most one of them can ever resolve when building the
 #   documentation on a single machine.
+# * ``Seconds`` (``watchdog.utils.Seconds``) is an alias for ``float``, documented
+#   as data. It is only imported under ``TYPE_CHECKING`` in the modules using it,
+#   and Sphinx only resolves annotation references to classes, not to data.
 nitpick_ignore = [
     ("py:class", "Path"),
+    ("py:class", "Seconds"),
     ("py:meth", "__init__"),
     ("py:class", "watchdog.utils.bricks.SkipRepeatsQueue"),
     ("py:class", "inotify.InotifyObserver"),
@@ -125,7 +130,7 @@ html_theme_options = {
 toc_object_entries_show_parents = "hide"
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "%sdoc" % PROJECT_NAME
+htmlhelp_basename = f"{PROJECT_NAME}doc"
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -135,8 +140,8 @@ htmlhelp_basename = "%sdoc" % PROJECT_NAME
 latex_documents = [
     (
         "index",
-        "%s.tex" % PROJECT_NAME,
-        "%s Documentation" % PROJECT_NAME,
+        f"{PROJECT_NAME}.tex",
+        f"{PROJECT_NAME} Documentation",
         AUTHOR_NAME,
         "manual",
     ),
@@ -147,7 +152,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ("index", PROJECT_NAME, "%s Documentation" % PROJECT_NAME, [AUTHOR_NAME], 1)
+    ("index", PROJECT_NAME, f"{PROJECT_NAME} Documentation", [AUTHOR_NAME], 1)
 ]
 
 

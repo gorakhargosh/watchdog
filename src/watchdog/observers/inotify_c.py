@@ -9,10 +9,11 @@ import select
 import struct
 import threading
 import warnings
+from collections.abc import Callable
 from ctypes import c_char_p, c_int, c_uint32
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import TYPE_CHECKING, Callable, ClassVar, NewType, Protocol, cast
+from typing import TYPE_CHECKING, ClassVar, NewType, Protocol, cast
 
 from watchdog.utils import BaseThread, UnsupportedLibcError
 
@@ -32,16 +33,16 @@ WatchDescriptor = NewType("WatchDescriptor", int)
 Mask = NewType("Mask", int)
 
 inotify_add_watch = cast(
-    Callable[[int, bytes, int], WatchDescriptor],
+    "Callable[[int, bytes, int], WatchDescriptor]",
     ctypes.CFUNCTYPE(c_int, c_int, c_char_p, c_uint32, use_errno=True)(("inotify_add_watch", libc)),
 )
 
 inotify_rm_watch = cast(
-    Callable[[int, WatchDescriptor], int],
+    "Callable[[int, WatchDescriptor], int]",
     ctypes.CFUNCTYPE(c_int, c_int, c_uint32, use_errno=True)(("inotify_rm_watch", libc)),
 )
 
-inotify_init = cast(Callable[[], int], ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc)))
+inotify_init = cast("Callable[[], int]", ctypes.CFUNCTYPE(c_int, use_errno=True)(("inotify_init", libc)))
 
 
 class InotifyConstants:

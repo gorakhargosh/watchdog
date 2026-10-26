@@ -182,6 +182,26 @@ def test_str_regexes():
     assert [r.pattern for r in handler1.regexes] == [g_allowed_str_regexes]
 
 
+def test_dispatch_ignores_empty_dest_path():
+    # Only moved events have a destination; for the others ``dest_path`` is
+    # empty and must not be matched against the regexes.
+    dispatched = []
+
+    class _TestableEventHandler(RegexMatchingEventHandler):
+        def on_any_event(self, event):
+            dispatched.append(event)
+
+    # Accept everything except .pyc files: this regex also matches "".
+    handler = _TestableEventHandler(regexes=[r"^(?!.*\.pyc$).*$"])
+    handler.dispatch(FileModifiedEvent("/path/blah.pyc"))
+    assert dispatched == []
+
+    # Ignore paths without a dot: this regex also matches "".
+    handler = _TestableEventHandler(ignore_regexes=[r"^[^.]*$"])
+    handler.dispatch(FileModifiedEvent("/path/blah.py"))
+    assert dispatched == [FileModifiedEvent("/path/blah.py")]
+
+
 def test_logging_event_handler_dispatch():
     class _TestableEventHandler(LoggingEventHandler):
         def on_any_event(self, event):

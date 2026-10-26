@@ -5,6 +5,7 @@ Watchdog
 |PyPI Status|
 |PyPI Python Versions|
 |GitHub Build Status|
+|Documentation Status|
 |GitHub License|
 
 .. tip::
@@ -15,7 +16,9 @@ Watchdog
 
 Python API and shell utilities to monitor file system events.
 
-Works on 3.9+.
+Browse the documentation_ online.
+
+Works on 3.11+.
 
 Example API Usage
 -----------------
@@ -25,6 +28,7 @@ as command-line arguments and logs events generated:
 
 .. code-block:: python
 
+    import sys
     import time
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
@@ -38,7 +42,9 @@ as command-line arguments and logs events generated:
 
     event_handler = MyEventHandler()
     observer = Observer()
-    observer.schedule(event_handler, ".", recursive=True)
+    paths = sys.argv[1:] if len(sys.argv) > 1 else ["."]
+    for path in paths:
+        observer.schedule(event_handler, path, recursive=True)
     observer.start()
     try:
         while True:
@@ -51,6 +57,7 @@ Alternatively, you can use the observer as a context manager for cleaner code:
 
 .. code-block:: python
 
+    import sys
     import time
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
@@ -64,11 +71,19 @@ Alternatively, you can use the observer as a context manager for cleaner code:
 
     event_handler = MyEventHandler()
     observer = Observer()
-    observer.schedule(event_handler, ".", recursive=True)
+    paths = sys.argv[1:] if len(sys.argv) > 1 else ["."]
+    for path in paths:
+        observer.schedule(event_handler, path, recursive=True)
 
     with observer:
         while True:
             time.sleep(1)
+
+To run the script, pass the directories you want to monitor as command-line arguments (defaults to the current directory if omitted):
+
+.. code-block:: bash
+
+    python script.py dir1 dir2
 
 
 Shell Utilities
@@ -252,7 +267,7 @@ appropriate observer like in the example above, do::
 Dependencies
 ------------
 
-1. Python 3.9 or above.
+1. Python 3.11 or above.
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
 
@@ -301,7 +316,7 @@ to do:
 .. _source code: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
 .. _Apache License, version 2.0: https://www.apache.org/licenses/LICENSE-2.0
-.. _documentation: https://python-watchdog.readthedocs.io/
+.. _documentation: https://python-watchdog.readthedocs.io/en/latest/
 .. _stackoverflow: https://stackoverflow.com/questions/tagged/python-watchdog
 .. _repository: https://github.com/gorakhargosh/watchdog
 .. _issue tracker: https://github.com/gorakhargosh/watchdog/issues
@@ -331,6 +346,8 @@ to do:
    :target: https://pypi.python.org/pypi/watchdog/
 .. |Github Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
    :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
+.. |Documentation Status| image:: https://img.shields.io/readthedocs/python-watchdog.svg
+   :target: https://python-watchdog.readthedocs.io/en/latest/
 .. |GitHub License| image:: https://img.shields.io/github/license/gorakhargosh/watchdog.svg
    :target: https://github.com/gorakhargosh/watchdog/blob/master/LICENSE
 .. |Patreon| image:: https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white

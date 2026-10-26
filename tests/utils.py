@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import dataclasses
 import os
-import subprocess
-import sys
 from queue import Empty, Queue
-from typing import Any, Protocol
+from typing import Any, Protocol, Self
 
 from watchdog.events import FileSystemEvent
 from watchdog.observers.api import EventEmitter, ObservedWatch
@@ -109,32 +107,6 @@ class Helper:
         alive = [emitter.is_alive() for emitter in self.emitters]
         self.emitters = []
         assert alive == [False] * len(alive)
-
-
-def run_isolated_test(path):
-    isolated_test_prefix = os.path.join("tests", "isolated")
-    path = os.path.abspath(os.path.join(isolated_test_prefix, path))
-
-    src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
-    new_env = os.environ.copy()
-    new_env["PYTHONPATH"] = os.pathsep.join([*sys.path, src_dir])
-
-    new_argv = [sys.executable, path]
-
-    p = subprocess.Popen(
-        new_argv,
-        env=new_env,
-    )
-
-    # in case test goes haywire, don't let it run forever
-    timeout = 10
-    try:
-        p.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        p.kill()
-        raise
-
-    assert p.returncode == 0
 
 
 class EventsChecker(Protocol):
@@ -248,7 +220,7 @@ class _EventsChecker:
         if not self._allow_extra:
             # we need exactly the number of expected events
             assert len(found_events) == len(self.expected_events), "wrong number of events"
-        for event, expected_event in zip(found_events, self.expected_events):
+        for event, expected_event in zip(found_events, self.expected_events, strict=False):
             assert self._match_event(event, expected_event), "did not find expected event"
 
     def check_events(self, timeout: float = 2) -> None:
@@ -277,9 +249,7 @@ class _EventsChecker:
         else:
             self._check_events_without_order(found_events)
 
-    def __enter__(self) -> _EventsChecker:  # noqa: PYI034
-        # This could be annotated to return `Self` but that type is available
-        # only in Python 3.11+.
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:

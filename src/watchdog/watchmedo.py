@@ -22,7 +22,7 @@ from watchdog.version import VERSION_STRING
 
 if TYPE_CHECKING:
     from argparse import Namespace, _SubParsersAction
-    from typing import Callable
+    from collections.abc import Callable
 
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import ObserverType
@@ -70,7 +70,7 @@ LICENSE in the source code for more information."""
 cli = ArgumentParser(epilog=epilog, formatter_class=HelpFormatter)
 cli.add_argument("-V", "--version", action="version", version=VERSION_STRING)
 subparsers = cli.add_subparsers(dest="top_command", title="subcommands")
-command_parsers = {}
+command_parsers: dict[str, ArgumentParser] = {}
 
 Argument = tuple[list[str], Any]
 
@@ -404,8 +404,8 @@ def tricks_generate_yaml(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -536,8 +536,8 @@ def log(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -585,6 +585,21 @@ def log(args: Namespace) -> None:
             help="Ignore events that occur while command is still being"
             " executed to avoid multiple simultaneous instances.",
         ),
+        argument(
+            "-s",
+            "--shell",
+            "--shell-executable",
+            dest="shell_executable",
+            default=None,
+            help="Path to the shell executable to run the command with (default: system default).",
+        ),
+        argument(
+            "-C",
+            "--cwd",
+            dest="cwd",
+            default=None,
+            help="Working directory in which to execute the command.",
+        ),
         argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
     ],
 )
@@ -613,6 +628,8 @@ def shell_command(args: Namespace) -> None:
         ignore_directories=args.ignore_directories,
         wait_for_process=args.wait_for_process,
         drop_during_process=args.drop_during_process,
+        shell_executable=args.shell_executable,
+        cwd=args.cwd,
     )
     observer = observer_cls(timeout=args.timeout)
     observe_with(observer, handler, args.directories, recursive=args.recursive)
@@ -645,8 +662,8 @@ def shell_command(args: Namespace) -> None:
             "--pattern",
             "--patterns",
             dest="patterns",
-            default="*",
-            help="Matches event paths with these patterns (separated by ;).",
+            default="**",
+            help="Matches event paths with these glob patterns (separated by ;), e.g. **/*.py",
         ),
         argument(
             "-i",
@@ -758,7 +775,7 @@ def auto_restart(args: Namespace) -> None:
         ignore_directories=args.ignore_directories,
         stop_signal=stop_signal,
         kill_after=args.kill_after,
-        debounce_interval_seconds=args.debounce_interval,
+        debounce_interval=args.debounce_interval,
         restart_on_command_exit=args.restart_on_command_exit,
     )
     handler.start()

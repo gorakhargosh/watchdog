@@ -30,6 +30,14 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: FileAttribEvent
+   :members:
+   :show-inheritance:
+
+.. autoclass:: DirAttribEvent
+   :members:
+   :show-inheritance:
+
 .. autoclass:: FileCreatedEvent
    :members:
    :show-inheritance:
@@ -99,6 +107,7 @@ EVENT_TYPE_MODIFIED = "modified"
 EVENT_TYPE_CLOSED = "closed"
 EVENT_TYPE_CLOSED_NO_WRITE = "closed_no_write"
 EVENT_TYPE_OPENED = "opened"
+EVENT_TYPE_ATTRIB = "attrib"
 
 
 @dataclass(unsafe_hash=True)
@@ -143,6 +152,18 @@ class FileModifiedEvent(FileSystemEvent):
     """File system event representing file modification on the file system."""
 
     event_type = EVENT_TYPE_MODIFIED
+
+
+class FileAttribEvent(FileSystemEvent):
+    """File system event representing file metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), BSD, and Windows (via
+    ``ReadDirectoryChangesExW`` on Windows 10 1709+ / Server 2016+; older versions
+    or unsupported network shares fall back to ``ReadDirectoryChangesW`` where
+    ``FileModifiedEvent`` is emitted instead).
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
 
 
 class FileCreatedEvent(FileSystemEvent):
@@ -196,6 +217,19 @@ class DirModifiedEvent(FileSystemEvent):
     """File system event representing directory modification on the file system."""
 
     event_type = EVENT_TYPE_MODIFIED
+    is_directory = True
+
+
+class DirAttribEvent(FileSystemEvent):
+    """File system event representing directory metadata modification on the file system.
+
+    Emitted on Linux (inotify), macOS (FSEvents/kqueue), BSD, and Windows (via
+    ``ReadDirectoryChangesExW`` on Windows 10 1709+ / Server 2016+; older versions
+    or unsupported network shares fall back to ``ReadDirectoryChangesW`` where
+    ``DirModifiedEvent`` is emitted instead).
+    """
+
+    event_type = EVENT_TYPE_ATTRIB
     is_directory = True
 
 
@@ -271,6 +305,15 @@ class FileSystemEventHandler:
             :class:`watchdog.events.DirModifiedEvent` or :class:`watchdog.events.FileModifiedEvent`
         """
 
+    def on_attrib(self, event: DirAttribEvent | FileAttribEvent) -> None:
+        """Called when a file or directory metadata is modified.
+
+        :param event:
+            Event representing file/directory metadata modification.
+        :type event:
+            :class:`watchdog.events.DirAttribEvent` or :class:`watchdog.events.FileAttribEvent`
+        """
+
     def on_closed(self, event: FileClosedEvent) -> None:
         """Called when a file opened for writing is closed.
 
@@ -307,7 +350,7 @@ class FileSystemEventHandler:
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """Matches given patterns with file paths associated with occurring events.
-    Uses pathlib's `PurePath.match()` method. `patterns` and `ignore_patterns`
+    Uses pathlib's `PurePath.full_match()` method. `patterns` and `ignore_patterns`
     are expected to be a list of strings.
     """
 
@@ -367,7 +410,7 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
             return
 
         paths = []
-        if hasattr(event, "dest_path"):
+        if event.dest_path:
             paths.append(os.fsdecode(event.dest_path))
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
@@ -452,7 +495,7 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             return
 
         paths = []
-        if hasattr(event, "dest_path"):
+        if event.dest_path:
             paths.append(os.fsdecode(event.dest_path))
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
@@ -494,6 +537,12 @@ class LoggingEventHandler(FileSystemEventHandler):
 
         what = "directory" if event.is_directory else "file"
         self.logger.info("Modified %s: %s", what, event.src_path)
+
+    def on_attrib(self, event: DirAttribEvent | FileAttribEvent) -> None:
+        super().on_attrib(event)
+
+        what = "directory" if event.is_directory else "file"
+        self.logger.info("Attrib %s: %s", what, event.src_path)
 
     def on_closed(self, event: FileClosedEvent) -> None:
         super().on_closed(event)
