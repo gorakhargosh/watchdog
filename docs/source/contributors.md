@@ -54,6 +54,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/CLCK0622"><img src="https://avatars.githubusercontent.com/u/36215258?v=4?s=70" width="70px;" alt="Kevin Zhong"/><br /><sub><b>Kevin Zhong</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=CLCK0622" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Enesuygurs"><img src="https://avatars.githubusercontent.com/u/54417817?v=4?s=70" width="70px;" alt="Enes Uygur"/><br /><sub><b>Enes Uygur</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Enesuygurs" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/galafis"><img src="https://avatars.githubusercontent.com/u/33261275?v=4?s=70" width="70px;" alt="Gabriel Demetrios Lafis"/><br /><sub><b>Gabriel Demetrios Lafis</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=galafis" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/vaibhav8a"><img src="https://avatars.githubusercontent.com/u/173471846?v=4?s=70" width="70px;" alt="Vaibhav Srivastava"/><br /><sub><b>Vaibhav Srivastava</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=vaibhav8a" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
