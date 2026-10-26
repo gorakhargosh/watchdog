@@ -17,6 +17,7 @@ Changelog
 
 **Other Changes**
 
+- [fsevents] Added the ``latency`` keyword argument to ``FSEventsEmitter`` and ``FSEventsObserver`` (defaulting to ``watchdog.observers.fsevents.DEFAULT_FSEVENTS_LATENCY``), exposing the FSEvents stream latency previously hard-coded at 10 ms. Raising it coalesces duplicate events. (`#835 <https://github.com/gorakhargosh/watchdog/issues/835>`__)
 - [tricks] Allow configuring ``shell_executable`` and ``cwd`` for ``ShellCommandTrick`` and ``watchmedo shell-command``. (`#921 <https://github.com/gorakhargosh/watchdog/issues/921>`__)
 - [tests] Remove the ``eventlet`` tests and test dependency.
 - [core] ``RegexMatchingEventHandler`` no longer matches its regexes against an empty destination path for events that are not moves. Since events became dataclasses, ``hasattr(event, "dest_path")`` is always true, so a regex matching the empty string (e.g. ``^(?!.*\.pyc$).*$``) let every event through, and such an ignore regex dropped every event. ``PatternMatchingEventHandler`` had the same check.

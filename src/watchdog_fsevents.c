@@ -26,6 +26,10 @@
 /* Other information. */
 #define MODULE_NAME  "_watchdog_fsevents"
 
+/* Seconds the FSEvents API waits after an event before delivering it,
+ * coalescing further events in that window into the same batch. */
+#define DEFAULT_STREAM_LATENCY 0.01
+
 /**
  * NativeEvent type so that we don't need to expose the FSEvents constants to Python land
  */
@@ -331,6 +335,7 @@ typedef struct {
     CFRunLoopRef      run_loop;
     CFArrayRef        paths;
     PyObject         *callback;
+    CFAbsoluteTime    latency;
 } StreamObject;
 
 
@@ -455,9 +460,14 @@ done:
 static PyObject *
 Stream_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"paths", NULL};
+    static char *kwlist[] = {"paths", "latency", NULL};
     PyObject *py_paths = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!:Stream", kwlist, &PyList_Type, &py_paths)) {
+    double stream_latency = DEFAULT_STREAM_LATENCY;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!|d:Stream", kwlist, &PyList_Type, &py_paths, &stream_latency)) {
+        return NULL;
+    }
+    if (stream_latency < 0) {
+        PyErr_SetString(PyExc_ValueError, "latency must be a non-negative number");
         return NULL;
     }
     CFArrayRef paths = paths_to_cf_array(py_paths);
@@ -481,6 +491,7 @@ Stream_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->run_loop = NULL;
     self->paths = paths;
     self->callback = NULL;
+    self->latency = (CFAbsoluteTime)stream_latency;
     return (PyObject *)self;
 }
 
@@ -540,7 +551,7 @@ Stream_run(StreamObject *self, PyObject *args, PyObject *kwds)
                                                       &stream_context,
                                                       self->paths,
                                                       kFSEventStreamEventIdSinceNow,
-                                                      0.01,
+                                                      self->latency,
                                                       kFSEventStreamCreateFlagNoDefer
                                                       | kFSEventStreamCreateFlagFileEvents
                                                       | kFSEventStreamCreateFlagWatchRoot
@@ -595,6 +606,19 @@ Stream_stop(StreamObject *self, PyObject *unused)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+Stream_latency(PyObject *instance, void *closure)
+{
+    UNUSED(closure);
+    StreamObject *self = (StreamObject *)instance;
+    return PyFloat_FromDouble((double)self->latency);
+}
+
+static PyGetSetDef Stream_getset[] = {
+    {"latency", Stream_latency, NULL, "Stream latency in seconds", NULL},
+    {NULL, NULL, NULL, NULL, NULL},
+};
+
 static PyMethodDef Stream_methods[] = {
     {"run",  (PyCFunction)Stream_run,  METH_VARARGS | METH_KEYWORDS, Stream_run__doc__},
     {"stop", (PyCFunction)Stream_stop, METH_NOARGS, Stream_stop__doc__},
@@ -611,6 +635,7 @@ static PyTypeObject StreamType = {
     .tp_new = Stream_new,
     .tp_dealloc = (destructor)Stream_dealloc,
     .tp_methods = Stream_methods,
+    .tp_getset = Stream_getset,
 };
 
 

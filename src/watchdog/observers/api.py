@@ -14,7 +14,7 @@ from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
     import types
-    from typing import Self
+    from typing import Any, Self
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.utils import Seconds
@@ -261,11 +261,21 @@ class BaseObserver(EventDispatcher):
         The timeout for the observer to wait on events.
     :type timeout:
         ``Seconds``
+    :param kwargs:
+        Extra keyword arguments forwarded to every emitter this observer
+        constructs, for platform-specific emitter options.
     """
 
-    def __init__(self, emitter_class: type[EventEmitter], *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(
+        self,
+        emitter_class: type[EventEmitter],
+        *,
+        timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(timeout=timeout)
         self._emitter_class = emitter_class
+        self._emitter_kwargs = kwargs
         self._lock = threading.RLock()
         self._watches: set[ObservedWatch] = set()
         self._handlers: defaultdict[ObservedWatch, set[FileSystemEventHandler]] = defaultdict(set)
@@ -374,7 +384,13 @@ class BaseObserver(EventDispatcher):
 
             # If we don't have an emitter for this watch already, create it.
             if watch not in self._emitter_for_watch:
-                emitter = self._emitter_class(self.event_queue, watch, timeout=self.timeout, event_filter=event_filter)
+                emitter = self._emitter_class(
+                    self.event_queue,
+                    watch,
+                    timeout=self.timeout,
+                    event_filter=event_filter,
+                    **self._emitter_kwargs,
+                )
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
