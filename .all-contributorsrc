@@ -370,6 +370,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "ivg",
+      "name": "Ivan Gotovchits",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2336698?v=4",
+      "profile": "https://github.com/ivg",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
