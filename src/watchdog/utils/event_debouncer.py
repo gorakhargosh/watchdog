@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import TYPE_CHECKING, overload
 
 from watchdog.utils import BaseThread, renamed_attribute, resolve_renamed_argument
@@ -92,23 +93,35 @@ class EventDebouncer(BaseThread):
             super().stop()
             self._cond.notify()
 
+    def time_to_flush(self, started: float) -> bool:
+        return time.monotonic() - started > self.debounce_interval
+
     def run(self) -> None:
         """Runs the event loop that waits for incoming filesystem events and triggers
         the callback once the debounce interval has passed."""
         with self._cond:
-            while True:
+            while self.should_keep_running():
                 # Wait for first event (or shutdown).
-                self._cond.wait()
-
-                if self.debounce_interval:
-                    # Wait for additional events (or shutdown) until the debounce interval passes.
-                    while self.should_keep_running():
-                        if not self._cond.wait(timeout=self.debounce_interval):
-                            break
+                while self.should_keep_running() and not self._events:
+                    self._cond.wait()
 
                 if not self.should_keep_running():
                     break
 
+                if self.debounce_interval:
+                    started = time.monotonic()
+                    while self.should_keep_running():
+                        timed_out = not self._cond.wait(timeout=self.debounce_interval)
+                        if timed_out or self.time_to_flush(started):
+                            break
+
+                if self._events:
+                    events = self._events
+                    self._events = []
+                    self.events_callback(events)
+
+            # Send any events accrued before leaving
+            if self._events:
                 events = self._events
                 self._events = []
                 self.events_callback(events)
