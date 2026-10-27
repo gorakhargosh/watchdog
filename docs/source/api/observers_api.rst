@@ -29,4 +29,5 @@
 
     .. autoclass:: BaseObserver
        :members:
+       :special-members: __enter__, __exit__
        :show-inheritance:
