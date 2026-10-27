@@ -13,6 +13,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    IgnorePolicy,
     LoggingEventHandler,
     RegexMatchingEventHandler,
 )
@@ -247,3 +248,59 @@ def test_logging_event_handler_dispatch():
     handler = _TestableEventHandler()
     for event in all_events:
         handler.dispatch(event)
+
+
+def test_ignore_policy():
+    handler1 = RegexMatchingEventHandler(regexes=g_allowed_regexes, ignore_regexes=g_ignore_regexes)
+    assert handler1.ignore_policy == IgnorePolicy.ANY
+
+    handler2 = RegexMatchingEventHandler(
+        regexes=g_allowed_regexes,
+        ignore_regexes=g_ignore_regexes,
+        ignore_policy=IgnorePolicy.ALL,
+    )
+    assert handler2.ignore_policy == IgnorePolicy.ALL
+
+    handler3 = RegexMatchingEventHandler(
+        regexes=g_allowed_regexes,
+        ignore_regexes=g_ignore_regexes,
+        ignore_policy="all",
+    )
+    assert handler3.ignore_policy == IgnorePolicy.ALL
+
+
+def test_regex_cross_boundary_moves():
+    """
+    By default (IgnorePolicy.ANY), cross-boundary moves are dropped.
+    With IgnorePolicy.ALL, they are dispatched if one path matches regexes.
+    """
+    events_collected = []
+
+    # Strict (default):
+    handler = RegexMatchingEventHandler(
+        regexes=[r".*\.txt$"],
+        ignore_regexes=[r".*\.tmp$"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    handler.dispatch(FileMovedEvent("/path/test.txt", "/path/test.tmp"))
+    handler.dispatch(FileMovedEvent("/path/test.tmp", "/path/test.txt"))
+    assert events_collected == []
+
+    # Permissive:
+    events_collected.clear()
+    permissive_handler = RegexMatchingEventHandler(
+        regexes=[r".*\.txt$"],
+        ignore_regexes=[r".*\.tmp$"],
+        ignore_policy=IgnorePolicy.ALL,
+    )
+    permissive_handler.on_any_event = lambda e: events_collected.append(e)
+
+    e1 = FileMovedEvent("/path/test.txt", "/path/test.tmp")
+    permissive_handler.dispatch(e1)
+    assert events_collected == [e1]
+
+    events_collected.clear()
+    e2 = FileMovedEvent("/path/test.tmp", "/path/test.txt")
+    permissive_handler.dispatch(e2)
+    assert events_collected == [e2]
