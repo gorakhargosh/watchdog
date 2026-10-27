@@ -37,3 +37,11 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Auto-Restart / Live-Reload
+--------------------------
+During development, it is often useful to automatically restart a long-running process whenever source files change. The following example watches a directory for Python file changes and restarts the configured subprocess when a change is detected:
+
+.. literalinclude:: examples/auto_restart.py
+   :language: python
+   :linenos:
