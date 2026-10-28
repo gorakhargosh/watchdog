@@ -102,7 +102,7 @@ import logging
 import os.path
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Literal
 
 from watchdog.utils.patterns import match_any_paths
@@ -358,7 +358,7 @@ class FileSystemEventHandler:
         """
 
 
-class IgnorePolicy(str, Enum):
+class IgnorePolicy(StrEnum):
     """Policy for ignoring multi-path events (such as file moves or renames)."""
 
     ANY = "any"
