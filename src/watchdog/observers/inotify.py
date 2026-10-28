@@ -68,7 +68,6 @@ Some extremely useful articles and documentation:
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
 import threading
@@ -343,10 +342,15 @@ class InotifyWatchGroup(WatchCallback):
         :param path:
             Path to monitor
         """
-        with contextlib.suppress(OSError):
+        try:
             wd = self._inotify_fd.add_callback(path, self.event_mask, self._callback, self._id)
             self._active_callbacks_by_path[path] = wd
             self._active_callbacks_by_watch[wd] = path
+        except OSError:
+            # Descendants may disappear or become inaccessible during recursive
+            # registration, but a failure to watch the root must reach the caller.
+            if path == self.path:
+                raise
 
     def _remove_callbacks(self, wds: list[WatchDescriptor]) -> None:
         """removes callbacks for the given paths.

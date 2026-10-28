@@ -17,6 +17,7 @@ Changelog
 
 **Other Changes**
 
+- [inotify] Do not suppress registration errors for the requested root path. A missing root now raises ``FileNotFoundError`` from ``observer.start()``, or from ``observer.schedule()`` when already running. Recursive descendant failures remain tolerated. (`#1157 <https://github.com/gorakhargosh/watchdog/issues/1157>`__)
 - [utils] Fix ``EventDebouncer`` starvation on high frequency events and ensure pending events are delivered upon stop. (`#998 <https://github.com/gorakhargosh/watchdog/pull/998>`__)
 - [core] Do not retain an event handler when ``Observer.schedule()`` fails to create or start its emitter.
 - [fsevents] Added the ``latency`` keyword argument to ``FSEventsEmitter`` and ``FSEventsObserver`` (defaulting to ``watchdog.observers.fsevents.DEFAULT_FSEVENTS_LATENCY``), exposing the FSEvents stream latency previously hard-coded at 10 ms. Raising it coalesces duplicate events. (`#835 <https://github.com/gorakhargosh/watchdog/issues/835>`__)
