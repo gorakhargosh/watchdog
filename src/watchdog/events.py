@@ -359,10 +359,13 @@ class FileSystemEventHandler:
 
 
 class IgnorePolicy(str, Enum):
-    """Policy for ignoring multi-path events (such as file moves/renames)."""
+    """Policy for ignoring multi-path events (such as file moves or renames)."""
 
     ANY = "any"
+    """Drops the event if any path matches the ignore rules (strict mode, default)."""
+
     ALL = "all"
+    """Drops the event only if all paths match the ignore rules (permissive mode)."""
 
 
 class PathMatchingEventHandler(FileSystemEventHandler):
@@ -374,9 +377,10 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
     :param ignore_policy:
-        Policy for multi-path events (e.g. moves/renames). ``IgnorePolicy.ANY``
-        (default) drops the event if any path matches the ignore rules;
-        ``IgnorePolicy.ALL`` drops it only if all paths match.
+        Policy for multi-path events (e.g. moves/renames). Defaults to
+        :attr:`~watchdog.events.IgnorePolicy.ANY`.
+    :type ignore_policy:
+        :class:`~watchdog.events.IgnorePolicy` | str
     """
 
     def __init__(
@@ -405,9 +409,7 @@ class PathMatchingEventHandler(FileSystemEventHandler):
 
     @property
     def ignore_policy(self) -> IgnorePolicy:
-        """``IgnorePolicy.ANY`` if an event is dropped when any of its paths match
-        the ignore rules; ``IgnorePolicy.ALL`` if all paths must match.
-        """
+        """Return the ignore policy."""
         return self._ignore_policy
 
     def is_ignored(self, path: str) -> bool:
@@ -419,7 +421,7 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         raise NotImplementedError
 
     def _validate_rules(self) -> None:
-        """Hook to validate rules on dispatch."""
+        """Hook to validate matching and ignore rules."""
 
     def dispatch(self, event: FileSystemEvent) -> None:
         """Dispatches events to the appropriate methods.
@@ -438,14 +440,11 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         if event.src_path:
             paths.append(os.fsdecode(event.src_path))
 
-        self._validate_rules()
-
         if self.ignore_policy == IgnorePolicy.ANY:
             if any(self.is_ignored(p) for p in paths):
                 return
-        else:
-            if paths and all(self.is_ignored(p) for p in paths):
-                return
+        elif all(self.is_ignored(p) for p in paths):
+            return
 
         if any(self.is_included(p) for p in paths):
             super().dispatch(event)
@@ -466,9 +465,10 @@ class PatternMatchingEventHandler(PathMatchingEventHandler):
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
     :param ignore_policy:
-        Policy for multi-path events (e.g. moves/renames). ``IgnorePolicy.ANY``
-        (default) drops the event if any path matches ``ignore_patterns``;
-        ``IgnorePolicy.ALL`` drops it only if all paths match.
+        Policy for multi-path events (e.g. moves/renames). Defaults to
+        :attr:`~watchdog.events.IgnorePolicy.ANY`.
+    :type ignore_policy:
+        :class:`~watchdog.events.IgnorePolicy` | str
     """
 
     def __init__(
@@ -488,6 +488,7 @@ class PatternMatchingEventHandler(PathMatchingEventHandler):
 
         self._patterns = patterns
         self._ignore_patterns = ignore_patterns
+        self._validate_rules()
 
     @property
     def patterns(self) -> list[str] | None:
@@ -545,9 +546,10 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
         ``True`` if path names should be matched sensitive to case; ``False``
         otherwise.
     :param ignore_policy:
-        Policy for multi-path events (e.g. moves/renames). ``IgnorePolicy.ANY``
-        (default) drops the event if any path matches ``ignore_regexes``;
-        ``IgnorePolicy.ALL`` drops it only if all paths match.
+        Policy for multi-path events (e.g. moves/renames). Defaults to
+        :attr:`~watchdog.events.IgnorePolicy.ANY`.
+    :type ignore_policy:
+        :class:`~watchdog.events.IgnorePolicy` | str
     """
 
     def __init__(
@@ -574,6 +576,7 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
         flags = 0 if case_sensitive else re.IGNORECASE
         self._regexes = [re.compile(r, flags) for r in regexes]
         self._ignore_regexes = [re.compile(r, flags) for r in ignore_regexes]
+        self._validate_rules()
 
     @property
     def regexes(self) -> list[re.Pattern[str]]:
@@ -590,6 +593,15 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
 
     def is_included(self, path: str) -> bool:
         return any(r.match(path) for r in self.regexes)
+
+    def _validate_rules(self) -> None:
+        if self._ignore_regexes:
+            included = {r.pattern if self.case_sensitive else r.pattern.lower() for r in self._regexes}
+            excluded = {r.pattern if self.case_sensitive else r.pattern.lower() for r in self._ignore_regexes}
+            common_regexes = included & excluded
+            if common_regexes:
+                error = f"conflicting regexes `{common_regexes}` included and excluded"
+                raise ValueError(error)
 
 
 class LoggingEventHandler(FileSystemEventHandler):

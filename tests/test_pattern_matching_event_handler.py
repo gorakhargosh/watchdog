@@ -218,23 +218,20 @@ def test_moved_to_ignored_hidden_path():
     assert len(events_collected) == 0, "Event should be suppressed when dest_path matches an ignore pattern"
 
 
-def test_ignore_policy() -> None:
-    handler1 = PatternMatchingEventHandler(patterns=g_allowed_patterns, ignore_patterns=g_ignore_patterns)
-    assert handler1.ignore_policy == IgnorePolicy.ANY
-
-    handler2 = PatternMatchingEventHandler(
-        patterns=g_allowed_patterns,
-        ignore_patterns=g_ignore_patterns,
-        ignore_policy=IgnorePolicy.ALL,
-    )
-    assert handler2.ignore_policy == IgnorePolicy.ALL
-
-    handler3 = PatternMatchingEventHandler(
-        patterns=g_allowed_patterns,
-        ignore_patterns=g_ignore_patterns,
-        ignore_policy="all",
-    )
-    assert handler3.ignore_policy == IgnorePolicy.ALL
+@pytest.mark.parametrize(
+    ("policy", "expected"),
+    [
+        (None, IgnorePolicy.ANY),
+        (IgnorePolicy.ANY, IgnorePolicy.ANY),
+        ("any", IgnorePolicy.ANY),
+        (IgnorePolicy.ALL, IgnorePolicy.ALL),
+        ("all", IgnorePolicy.ALL),
+    ],
+)
+def test_ignore_policy(policy: IgnorePolicy | str | None, expected: IgnorePolicy) -> None:
+    kwargs = {} if policy is None else {"ignore_policy": policy}
+    handler = PatternMatchingEventHandler(patterns=g_allowed_patterns, ignore_patterns=g_ignore_patterns, **kwargs)
+    assert handler.ignore_policy == expected
 
 
 def test_rename_from_ignored_pattern() -> None:
@@ -258,16 +255,15 @@ def test_rename_from_ignored_pattern() -> None:
     ("patterns", "ignore_patterns", "case_sensitive"),
     [(["*.py"], ["*.py"], True), (["*.py"], ["*.PY"], False), (None, ["**"], True)],
 )
-def test_conflicting_patterns_dispatch(
+def test_conflicting_patterns(
     patterns: list[str] | None, ignore_patterns: list[str] | None, *, case_sensitive: bool
 ) -> None:
-    handler = PatternMatchingEventHandler(
-        patterns=patterns,
-        ignore_patterns=ignore_patterns,
-        case_sensitive=case_sensitive,
-    )
     with pytest.raises(ValueError, match="conflicting patterns"):
-        handler.dispatch(FileModifiedEvent("/path/test.py"))
+        PatternMatchingEventHandler(
+            patterns=patterns,
+            ignore_patterns=ignore_patterns,
+            case_sensitive=case_sensitive,
+        )
 
 
 def test_rename_cross_boundary_permissive() -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from watchdog.events import (
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
@@ -250,26 +252,23 @@ def test_logging_event_handler_dispatch():
         handler.dispatch(event)
 
 
-def test_ignore_policy():
-    handler1 = RegexMatchingEventHandler(regexes=g_allowed_regexes, ignore_regexes=g_ignore_regexes)
-    assert handler1.ignore_policy == IgnorePolicy.ANY
-
-    handler2 = RegexMatchingEventHandler(
-        regexes=g_allowed_regexes,
-        ignore_regexes=g_ignore_regexes,
-        ignore_policy=IgnorePolicy.ALL,
-    )
-    assert handler2.ignore_policy == IgnorePolicy.ALL
-
-    handler3 = RegexMatchingEventHandler(
-        regexes=g_allowed_regexes,
-        ignore_regexes=g_ignore_regexes,
-        ignore_policy="all",
-    )
-    assert handler3.ignore_policy == IgnorePolicy.ALL
+@pytest.mark.parametrize(
+    ("policy", "expected"),
+    [
+        (None, IgnorePolicy.ANY),
+        (IgnorePolicy.ANY, IgnorePolicy.ANY),
+        ("any", IgnorePolicy.ANY),
+        (IgnorePolicy.ALL, IgnorePolicy.ALL),
+        ("all", IgnorePolicy.ALL),
+    ],
+)
+def test_ignore_policy(policy: IgnorePolicy | str | None, expected: IgnorePolicy) -> None:
+    kwargs = {} if policy is None else {"ignore_policy": policy}
+    handler = RegexMatchingEventHandler(regexes=g_allowed_regexes, ignore_regexes=g_ignore_regexes, **kwargs)
+    assert handler.ignore_policy == expected
 
 
-def test_regex_cross_boundary_moves():
+def test_regex_cross_boundary_moves() -> None:
     """
     By default (IgnorePolicy.ANY), cross-boundary moves are dropped.
     With IgnorePolicy.ALL, they are dispatched if one path matches regexes.
@@ -304,3 +303,18 @@ def test_regex_cross_boundary_moves():
     e2 = FileMovedEvent("/path/test.tmp", "/path/test.txt")
     permissive_handler.dispatch(e2)
     assert events_collected == [e2]
+
+
+@pytest.mark.parametrize(
+    ("regexes", "ignore_regexes", "case_sensitive"),
+    [(r".*\.py", [r".*\.py"], True), ([r".*\.py"], [r".*\.PY"], False), (None, [r".*"], True)],
+)
+def test_conflicting_regexes(
+    regexes: list[str] | str | None, ignore_regexes: list[str] | None, *, case_sensitive: bool
+) -> None:
+    with pytest.raises(ValueError, match="conflicting regexes"):
+        RegexMatchingEventHandler(
+            regexes=regexes,
+            ignore_regexes=ignore_regexes,
+            case_sensitive=case_sensitive,
+        )
