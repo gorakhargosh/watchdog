@@ -603,6 +603,9 @@ def test_move_nested_subdirectories_on_windows(
         ec.add(DirModifiedEvent)
         ec.allow_extra_events()
 
+    # Ensure system clock advances past creation mtime so Windows NTFS sets
+    # LastModificationTime >= LastChangeTime, deterministically emitting FileModifiedEvent.
+    time.sleep(0.05)
     touch(p("dir2/dir3", "a"))
 
     with events_checker() as ec:
@@ -616,6 +619,10 @@ def test_file_lifecyle(
     start_watching()
 
     mkfile(p("a"))
+    if platform.is_windows():
+        # Ensure system clock advances past creation mtime so Windows NTFS sets
+        # LastModificationTime >= LastChangeTime, deterministically emitting FileModifiedEvent.
+        time.sleep(0.05)
     touch(p("a"))
     mv(p("a"), p("b"))
     rm(p("b"))

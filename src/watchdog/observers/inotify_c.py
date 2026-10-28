@@ -9,7 +9,6 @@ import select
 import struct
 import threading
 import warnings
-from collections.abc import Callable
 from ctypes import c_char_p, c_int, c_uint32
 from dataclasses import dataclass, field
 from functools import reduce
@@ -18,7 +17,7 @@ from typing import TYPE_CHECKING, ClassVar, NewType, Protocol, cast
 from watchdog.utils import BaseThread, UnsupportedLibcError
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Sequence
+    from collections.abc import Callable, Generator, Sequence
 
 logger = logging.getLogger(__name__)
 

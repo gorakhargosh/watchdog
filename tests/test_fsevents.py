@@ -347,7 +347,9 @@ def test_two_observers_on_same_path(p: P) -> None:  # for issue 919
     try:
         sleep(0.2)
         touch(os.path.join(input_dir, "test.txt"))
-        sleep(0.5)
+        deadline = time.time() + 5.0
+        while time.time() < deadline and (not received1 or not received2):
+            sleep(0.05)
         assert observer.is_alive()
         assert observer2.is_alive()
         assert len(received1) >= 1
