@@ -406,6 +406,15 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "Alex0AI",
+      "name": "Alex0AI",
+      "avatar_url": "https://avatars.githubusercontent.com/u/206435355?v=4",
+      "profile": "https://github.com/Alex0AI",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
