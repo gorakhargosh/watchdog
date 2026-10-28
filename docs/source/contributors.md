@@ -61,6 +61,7 @@
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/newchannelid432-code"><img src="https://avatars.githubusercontent.com/u/273202551?v=4?s=70" width="70px;" alt="Muhamed Fazal"/><br /><sub><b>Muhamed Fazal</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=newchannelid432-code" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Joelbit-io"><img src="https://avatars.githubusercontent.com/u/252291901?v=4?s=70" width="70px;" alt="Joel "/><br /><sub><b>Joel </b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Joelbit-io" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Alex0AI"><img src="https://avatars.githubusercontent.com/u/206435355?v=4?s=70" width="70px;" alt="Alex0AI"/><br /><sub><b>Alex0AI</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Alex0AI" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
