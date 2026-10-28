@@ -56,6 +56,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/galafis"><img src="https://avatars.githubusercontent.com/u/33261275?v=4?s=70" width="70px;" alt="Gabriel Demetrios Lafis"/><br /><sub><b>Gabriel Demetrios Lafis</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=galafis" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/vaibhav8a"><img src="https://avatars.githubusercontent.com/u/173471846?v=4?s=70" width="70px;" alt="Vaibhav Srivastava"/><br /><sub><b>Vaibhav Srivastava</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=vaibhav8a" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ivg"><img src="https://avatars.githubusercontent.com/u/2336698?v=4?s=70" width="70px;" alt="Ivan Gotovchits"/><br /><sub><b>Ivan Gotovchits</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=ivg" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Aschenbath"><img src="https://avatars.githubusercontent.com/u/184111764?v=4?s=70" width="70px;" alt="Nash Aschenbath"/><br /><sub><b>Nash Aschenbath</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Aschenbath" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
