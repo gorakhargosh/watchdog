@@ -222,17 +222,18 @@ def test_shell_command_custom_shell_and_cwd():
 
 def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
     # FIXME: see issue #949, and find a way to better handle that scenario
-    script = make_dummy_script(tmpdir, n=2)
+    script = make_dummy_script(tmpdir, n=10)
     trick = AutoRestartTrick([sys.executable, script])
+    captured = []
     trick.start()
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
     trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
     trick.on_any_event(FileOpenedEvent("foo/bar2.baz"))
     trick.on_any_event(FileOpenedEvent("foo/bar3.baz"))
     time.sleep(1)
     trick.stop()
-    cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count("+++++ 0") == 1
+    captured.append(capfd.readouterr().out)
+    assert "".join(captured).splitlines(keepends=False).count("+++++ 0") == 1
     assert trick.restart_count == 0
 
 

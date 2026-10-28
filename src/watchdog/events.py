@@ -73,6 +73,10 @@ Event Handler Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: PathMatchingEventHandler
+   :members:
+   :show-inheritance:
+
 .. autoclass:: PatternMatchingEventHandler
    :members:
    :show-inheritance:
@@ -85,6 +89,11 @@ Event Handler Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: IgnorePolicy
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 """
 
 from __future__ import annotations
@@ -93,7 +102,8 @@ import logging
 import os.path
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from enum import Enum
+from typing import TYPE_CHECKING, Literal
 
 from watchdog.utils.patterns import match_any_paths
 
@@ -348,10 +358,117 @@ class FileSystemEventHandler:
         """
 
 
-class PatternMatchingEventHandler(FileSystemEventHandler):
+class IgnorePolicy(str, Enum):
+    """Policy for ignoring multi-path events (such as file moves or renames)."""
+
+    ANY = "any"
+    """Drops the event if any path matches the ignore rules (strict mode, default)."""
+
+    ALL = "all"
+    """Drops the event only if all paths match the ignore rules (permissive mode)."""
+
+
+class PathMatchingEventHandler(FileSystemEventHandler):
+    """Base class for event handlers matching paths against patterns or regexes.
+
+    :param ignore_directories:
+        ``True`` if directories should be ignored; ``False`` otherwise.
+    :param case_sensitive:
+        ``True`` if path names should be matched sensitive to case; ``False``
+        otherwise.
+    :param ignore_policy:
+        Policy for multi-path events (e.g. moves/renames). Defaults to
+        :attr:`~watchdog.events.IgnorePolicy.ANY`.
+    :type ignore_policy:
+        :class:`~watchdog.events.IgnorePolicy` | str
+    """
+
+    def __init__(
+        self,
+        *,
+        ignore_directories: bool = False,
+        case_sensitive: bool = False,
+        ignore_policy: IgnorePolicy | Literal["any", "all"] = IgnorePolicy.ANY,
+    ) -> None:
+        super().__init__()
+        self._ignore_directories = ignore_directories
+        self._case_sensitive = case_sensitive
+        self._ignore_policy = IgnorePolicy(ignore_policy)
+
+    @property
+    def ignore_directories(self) -> bool:
+        """``True`` if directories should be ignored; ``False`` otherwise."""
+        return self._ignore_directories
+
+    @property
+    def case_sensitive(self) -> bool:
+        """``True`` if path names should be matched sensitive to case; ``False``
+        otherwise.
+        """
+        return self._case_sensitive
+
+    @property
+    def ignore_policy(self) -> IgnorePolicy:
+        """Return the ignore policy."""
+        return self._ignore_policy
+
+    def is_ignored(self, path: str) -> bool:
+        """Return True if path matches ignore criteria."""
+        raise NotImplementedError
+
+    def is_included(self, path: str) -> bool:
+        """Return True if path matches include criteria."""
+        raise NotImplementedError
+
+    def _validate_rules(self) -> None:
+        """Hook to validate matching and ignore rules."""
+
+    def dispatch(self, event: FileSystemEvent) -> None:
+        """Dispatches events to the appropriate methods.
+
+        :param event:
+            The event object representing the file system event.
+        :type event:
+            :class:`watchdog.events.FileSystemEvent`
+        """
+        if self.ignore_directories and event.is_directory:
+            return
+
+        paths = []
+        if event.dest_path:
+            paths.append(os.fsdecode(event.dest_path))
+        if event.src_path:
+            paths.append(os.fsdecode(event.src_path))
+
+        if self.ignore_policy == IgnorePolicy.ANY:
+            if any(self.is_ignored(p) for p in paths):
+                return
+        elif all(self.is_ignored(p) for p in paths):
+            return
+
+        if any(self.is_included(p) for p in paths):
+            super().dispatch(event)
+
+
+class PatternMatchingEventHandler(PathMatchingEventHandler):
     """Matches given patterns with file paths associated with occurring events.
     Uses pathlib's `PurePath.full_match()` method. `patterns` and `ignore_patterns`
     are expected to be a list of strings.
+
+    :param patterns:
+        Patterns to allow matching event paths.
+    :param ignore_patterns:
+        Patterns to ignore matching event paths.
+    :param ignore_directories:
+        ``True`` if directories should be ignored; ``False`` otherwise.
+    :param case_sensitive:
+        ``True`` if path names should be matched sensitive to case; ``False``
+        otherwise.
+    :param ignore_policy:
+        Policy for multi-path events (e.g. moves/renames). Defaults to
+        :attr:`~watchdog.events.IgnorePolicy.ANY`.
+    :type ignore_policy:
+        :class:`~watchdog.events.IgnorePolicy` | str
     """
 
     def __init__(
@@ -361,72 +478,78 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         ignore_patterns: list[str] | None = None,
         ignore_directories: bool = False,
         case_sensitive: bool = False,
-    ):
-        super().__init__()
+        ignore_policy: IgnorePolicy | Literal["any", "all"] = IgnorePolicy.ANY,
+    ) -> None:
+        super().__init__(
+            ignore_directories=ignore_directories,
+            case_sensitive=case_sensitive,
+            ignore_policy=ignore_policy,
+        )
 
         self._patterns = patterns
         self._ignore_patterns = ignore_patterns
-        self._ignore_directories = ignore_directories
-        self._case_sensitive = case_sensitive
+        self._validate_rules()
 
     @property
     def patterns(self) -> list[str] | None:
-        """(Read-only)
-        Patterns to allow matching event paths.
-        """
+        """Patterns to allow matching event paths."""
         return self._patterns
 
     @property
     def ignore_patterns(self) -> list[str] | None:
-        """(Read-only)
-        Patterns to ignore matching event paths.
-        """
+        """Patterns to ignore matching event paths."""
         return self._ignore_patterns
 
-    @property
-    def ignore_directories(self) -> bool:
-        """(Read-only)
-        ``True`` if directories should be ignored; ``False`` otherwise.
-        """
-        return self._ignore_directories
+    def is_ignored(self, path: str) -> bool:
+        return bool(
+            self.ignore_patterns
+            and match_any_paths(
+                [path],
+                included_patterns=self.ignore_patterns,
+                case_sensitive=self.case_sensitive,
+            )
+        )
 
-    @property
-    def case_sensitive(self) -> bool:
-        """(Read-only)
-        ``True`` if path names should be matched sensitive to case; ``False``
-        otherwise.
-        """
-        return self._case_sensitive
+    def is_included(self, path: str) -> bool:
+        return bool(
+            match_any_paths(
+                [path],
+                included_patterns=self.patterns,
+                case_sensitive=self.case_sensitive,
+            )
+        )
 
-    def dispatch(self, event: FileSystemEvent) -> None:
-        """Dispatches events to the appropriate methods.
-
-        :param event:
-            The event object representing the file system event.
-        :type event:
-            :class:`watchdog.events.FileSystemEvent`
-        """
-        if self.ignore_directories and event.is_directory:
-            return
-
-        paths = []
-        if event.dest_path:
-            paths.append(os.fsdecode(event.dest_path))
-        if event.src_path:
-            paths.append(os.fsdecode(event.src_path))
-
-        if match_any_paths(
-            paths,
-            included_patterns=self.patterns,
-            excluded_patterns=self.ignore_patterns,
-            case_sensitive=self.case_sensitive,
-        ):
-            super().dispatch(event)
+    def _validate_rules(self) -> None:
+        if self.ignore_patterns:
+            included = set(["**"] if self.patterns is None else self.patterns)
+            excluded = set(self.ignore_patterns)
+            if not self.case_sensitive:
+                included = {p.lower() for p in included}
+                excluded = {p.lower() for p in excluded}
+            common_patterns = included & excluded
+            if common_patterns:
+                error = f"conflicting patterns `{common_patterns}` included and excluded"
+                raise ValueError(error)
 
 
-class RegexMatchingEventHandler(FileSystemEventHandler):
+class RegexMatchingEventHandler(PathMatchingEventHandler):
     """Matches given regexes with file paths associated with occurring events.
     Uses the `re` module.
+
+    :param regexes:
+        Regexes to allow matching event paths.
+    :param ignore_regexes:
+        Regexes to ignore matching event paths.
+    :param ignore_directories:
+        ``True`` if directories should be ignored; ``False`` otherwise.
+    :param case_sensitive:
+        ``True`` if path names should be matched sensitive to case; ``False``
+        otherwise.
+    :param ignore_policy:
+        Policy for multi-path events (e.g. moves/renames). Defaults to
+        :attr:`~watchdog.events.IgnorePolicy.ANY`.
+    :type ignore_policy:
+        :class:`~watchdog.events.IgnorePolicy` | str
     """
 
     def __init__(
@@ -436,8 +559,13 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         ignore_regexes: list[str] | None = None,
         ignore_directories: bool = False,
         case_sensitive: bool = False,
-    ):
-        super().__init__()
+        ignore_policy: IgnorePolicy | Literal["any", "all"] = IgnorePolicy.ANY,
+    ) -> None:
+        super().__init__(
+            ignore_directories=ignore_directories,
+            case_sensitive=case_sensitive,
+            ignore_policy=ignore_policy,
+        )
 
         if regexes is None:
             regexes = [r".*"]
@@ -445,66 +573,35 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
             regexes = [regexes]
         if ignore_regexes is None:
             ignore_regexes = []
-        if case_sensitive:
-            self._regexes = [re.compile(r) for r in regexes]
-            self._ignore_regexes = [re.compile(r) for r in ignore_regexes]
-        else:
-            self._regexes = [re.compile(r, re.IGNORECASE) for r in regexes]
-            self._ignore_regexes = [re.compile(r, re.IGNORECASE) for r in ignore_regexes]
-        self._ignore_directories = ignore_directories
-        self._case_sensitive = case_sensitive
+        flags = 0 if case_sensitive else re.IGNORECASE
+        self._regexes = [re.compile(r, flags) for r in regexes]
+        self._ignore_regexes = [re.compile(r, flags) for r in ignore_regexes]
+        self._validate_rules()
 
     @property
     def regexes(self) -> list[re.Pattern[str]]:
-        """(Read-only)
-        Regexes to allow matching event paths.
-        """
+        """Regexes to allow matching event paths."""
         return self._regexes
 
     @property
     def ignore_regexes(self) -> list[re.Pattern[str]]:
-        """(Read-only)
-        Regexes to ignore matching event paths.
-        """
+        """Regexes to ignore matching event paths."""
         return self._ignore_regexes
 
-    @property
-    def ignore_directories(self) -> bool:
-        """(Read-only)
-        ``True`` if directories should be ignored; ``False`` otherwise.
-        """
-        return self._ignore_directories
+    def is_ignored(self, path: str) -> bool:
+        return any(r.match(path) for r in self.ignore_regexes)
 
-    @property
-    def case_sensitive(self) -> bool:
-        """(Read-only)
-        ``True`` if path names should be matched sensitive to case; ``False``
-        otherwise.
-        """
-        return self._case_sensitive
+    def is_included(self, path: str) -> bool:
+        return any(r.match(path) for r in self.regexes)
 
-    def dispatch(self, event: FileSystemEvent) -> None:
-        """Dispatches events to the appropriate methods.
-
-        :param event:
-            The event object representing the file system event.
-        :type event:
-            :class:`watchdog.events.FileSystemEvent`
-        """
-        if self.ignore_directories and event.is_directory:
-            return
-
-        paths = []
-        if event.dest_path:
-            paths.append(os.fsdecode(event.dest_path))
-        if event.src_path:
-            paths.append(os.fsdecode(event.src_path))
-
-        if any(r.match(p) for r in self.ignore_regexes for p in paths):
-            return
-
-        if any(r.match(p) for r in self.regexes for p in paths):
-            super().dispatch(event)
+    def _validate_rules(self) -> None:
+        if self._ignore_regexes:
+            included = {r.pattern if self.case_sensitive else r.pattern.lower() for r in self._regexes}
+            excluded = {r.pattern if self.case_sensitive else r.pattern.lower() for r in self._ignore_regexes}
+            common_regexes = included & excluded
+            if common_regexes:
+                error = f"conflicting regexes `{common_regexes}` included and excluded"
+                raise ValueError(error)
 
 
 class LoggingEventHandler(FileSystemEventHandler):

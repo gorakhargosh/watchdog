@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from watchdog.events import (
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
@@ -13,6 +15,8 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    FileSystemEvent,
+    IgnorePolicy,
     PatternMatchingEventHandler,
 )
 from watchdog.utils.patterns import filter_paths
@@ -173,3 +177,124 @@ def test_patterns():
         ignore_directories=True,
     )
     assert handler1.patterns == g_allowed_patterns
+
+
+def test_rename_to_ignored_pattern():
+    """
+    Regression test for #412.
+    Renaming a file to an extension in ignore_patterns should suppress the event,
+    even though the source path matches patterns.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**/*.txt"],
+        ignore_patterns=["**/*.tmp"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    # Rename test.txt -> test.tmp: dest_path is .tmp (ignored) -> should be suppressed
+    handler.dispatch(FileMovedEvent("/path/test.txt", "/path/test.tmp"))
+    assert len(events_collected) == 0, "Event should be suppressed when dest_path matches ignore_patterns"
+
+
+def test_moved_to_ignored_hidden_path():
+    """
+    Regression test for #423: moved events whose destination path matches
+    *any* ignore pattern should be suppressed, even when the source path
+    alone matches the included patterns.  This mimics the original #423
+    scenario where hidden-file patterns were not checked before dispatch.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**"],
+        ignore_patterns=["**/.*/**", "**/.*"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    # Move a visible file into a hidden directory -> should be suppressed
+    handler.dispatch(FileMovedEvent("/path/visible.txt", "/path/.hidden/config.txt"))
+    assert len(events_collected) == 0, "Event should be suppressed when dest_path matches an ignore pattern"
+
+
+@pytest.mark.parametrize(
+    ("policy", "expected"),
+    [
+        (None, IgnorePolicy.ANY),
+        (IgnorePolicy.ANY, IgnorePolicy.ANY),
+        ("any", IgnorePolicy.ANY),
+        (IgnorePolicy.ALL, IgnorePolicy.ALL),
+        ("all", IgnorePolicy.ALL),
+    ],
+)
+def test_ignore_policy(policy: IgnorePolicy | str | None, expected: IgnorePolicy) -> None:
+    kwargs = {} if policy is None else {"ignore_policy": policy}
+    handler = PatternMatchingEventHandler(patterns=g_allowed_patterns, ignore_patterns=g_ignore_patterns, **kwargs)
+    assert handler.ignore_policy == expected
+
+
+def test_rename_from_ignored_pattern() -> None:
+    """
+    Moving a file from an ignored pattern to an included pattern should be suppressed,
+    matching RegexMatchingEventHandler behavior.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**/*.txt"],
+        ignore_patterns=["**/*.tmp"],
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    handler.dispatch(FileMovedEvent("/path/test.tmp", "/path/test.txt"))
+    assert len(events_collected) == 0, "Event should be suppressed when src_path matches ignore_patterns"
+
+
+@pytest.mark.parametrize(
+    ("patterns", "ignore_patterns", "case_sensitive"),
+    [(["*.py"], ["*.py"], True), (["*.py"], ["*.PY"], False), (None, ["**"], True)],
+)
+def test_conflicting_patterns(
+    patterns: list[str] | None, ignore_patterns: list[str] | None, *, case_sensitive: bool
+) -> None:
+    with pytest.raises(ValueError, match="conflicting patterns"):
+        PatternMatchingEventHandler(
+            patterns=patterns,
+            ignore_patterns=ignore_patterns,
+            case_sensitive=case_sensitive,
+        )
+
+
+def test_rename_cross_boundary_permissive() -> None:
+    """
+    With ignore_policy=IgnorePolicy.ALL, cross-boundary moves should be dispatched if one path
+    is not ignored and matches patterns. Moves between two ignored paths should be dropped.
+    """
+    events_collected: list[FileSystemEvent] = []
+
+    handler = PatternMatchingEventHandler(
+        patterns=["**/*.txt"],
+        ignore_patterns=["**/*.tmp"],
+        ignore_policy=IgnorePolicy.ALL,
+    )
+    handler.on_any_event = lambda e: events_collected.append(e)
+
+    # Renaming into ignored extension: dest_path is .tmp, but src_path is .txt (included) -> dispatched
+    e1 = FileMovedEvent("/path/test.txt", "/path/test.tmp")
+    handler.dispatch(e1)
+    assert events_collected == [e1]
+
+    events_collected.clear()
+
+    # Renaming out of ignored extension: src_path is .tmp, but dest_path is .txt (included) -> dispatched
+    e2 = FileMovedEvent("/path/test.tmp", "/path/test.txt")
+    handler.dispatch(e2)
+    assert events_collected == [e2]
+
+    events_collected.clear()
+
+    # Renaming between two ignored paths: both match ignore_patterns -> dropped
+    e3 = FileMovedEvent("/path/a.tmp", "/path/b.tmp")
+    handler.dispatch(e3)
+    assert events_collected == []
