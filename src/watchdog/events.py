@@ -453,7 +453,12 @@ class PathMatchingEventHandler(FileSystemEventHandler):
 class PatternMatchingEventHandler(PathMatchingEventHandler):
     """Matches given patterns with file paths associated with occurring events.
     Uses pathlib's `PurePath.full_match()` method. `patterns` and `ignore_patterns`
-    are expected to be a list of strings.
+    are expected to be a list of strings following standard glob syntax.
+
+    Patterns follow standard glob semantics where ``*`` matches any characters,
+    ``?`` matches a single character, and ``[...]`` denotes a character class.
+    To match literal special characters like ``[``, use standard glob escapes
+    such as ``[[]`` or :func:`glob.escape`.
 
     :param patterns:
         Patterns to allow matching event paths.
