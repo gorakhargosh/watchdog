@@ -17,6 +17,7 @@ Changelog
 
 **Other Changes**
 
+- [utils] Make ``SkipRepeatsQueue.put()`` and ``put_nowait()`` reject duplicate items after ``shutdown()`` on Python 3.13+.
 - [inotify] Do not suppress registration errors for the requested root path. A missing root now raises ``FileNotFoundError`` from ``observer.start()``, or from ``observer.schedule()`` when already running. Recursive descendant failures remain tolerated. (`#1157 <https://github.com/gorakhargosh/watchdog/issues/1157>`__)
 - [utils] Fix ``EventDebouncer`` starvation on high frequency events and ensure pending events are delivered upon stop. (`#998 <https://github.com/gorakhargosh/watchdog/pull/998>`__)
 - [core] Added the ``ignore_policy`` argument to ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler`` to configure multi-path event filtering (moves/renames). ``PatternMatchingEventHandler`` is now strict by default, aligning with ``RegexMatchingEventHandler``. (`#412 <https://github.com/gorakhargosh/watchdog/issues/412>`__, `#423 <https://github.com/gorakhargosh/watchdog/issues/423>`__)

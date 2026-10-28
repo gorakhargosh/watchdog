@@ -115,7 +115,11 @@ class SkipRepeatsQueue(queue.Queue):
             raise queue.Full
 
         try:
-            if self._last_item is _EMPTY or item != self._last_item:
+            with self.mutex:
+                # Let the base queue reject all puts after shutdown, including
+                # duplicates. Read shutdown and duplicate state atomically.
+                should_put = getattr(self, "is_shutdown", False) or self._last_item is _EMPTY or item != self._last_item
+            if should_put:
                 super().put(item, block, timeout)
         finally:
             self._put_lock.release()
