@@ -16,6 +16,7 @@ import resource
 import select
 import struct
 import threading
+import time
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -140,7 +141,7 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
     with mock1, mock2, mock3, mock4, mock5, mock6, mock7, mock8:
         try:
             try:
-                start_watching(path=p(""))
+                emitter = start_watching(path=p(""))
                 with buf_lock:
                     inotify_fd.buf = inotify_fd_buf
                 # Watchdog Events
@@ -151,6 +152,15 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
                     event = event_queue.get(timeout=5)[0]
                     assert isinstance(event, DirModifiedEvent)
                     assert event.src_path == p("").rstrip(os.path.sep)
+
+                # Wait for InotifyFD to process the remaining synthetic IN_DELETE_SELF
+                # and IN_IGNORED events for wd=2 and wd=3 before closing the helper.
+                deadline = time.time() + 5.0
+                while time.time() < deadline:
+                    with emitter._lock:  # noqa: SLF001
+                        if 2 not in emitter._active_callbacks_by_watch and 3 not in emitter._active_callbacks_by_watch:  # noqa: SLF001
+                            break
+                    time.sleep(0.01)
             finally:
                 helper.close()
         finally:
