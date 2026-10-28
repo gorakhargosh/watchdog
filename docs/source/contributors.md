@@ -58,6 +58,9 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ivg"><img src="https://avatars.githubusercontent.com/u/2336698?v=4?s=70" width="70px;" alt="Ivan Gotovchits"/><br /><sub><b>Ivan Gotovchits</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=ivg" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Aschenbath"><img src="https://avatars.githubusercontent.com/u/184111764?v=4?s=70" width="70px;" alt="Nash Aschenbath"/><br /><sub><b>Nash Aschenbath</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Aschenbath" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/newchannelid432-code"><img src="https://avatars.githubusercontent.com/u/273202551?v=4?s=70" width="70px;" alt="Muhamed Fazal"/><br /><sub><b>Muhamed Fazal</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=newchannelid432-code" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
