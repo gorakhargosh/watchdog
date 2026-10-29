@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os.path
 import platform
 import threading
@@ -26,6 +27,9 @@ if TYPE_CHECKING:
     from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch
     from watchdog.utils import Seconds
+
+
+logger = logging.getLogger(__name__)
 
 
 class WindowsApiEmitter(EventEmitter):
@@ -108,6 +112,11 @@ class WindowsApiEmitter(EventEmitter):
             elif winapi_event.is_removed_self:
                 self.queue_event(DirDeletedEvent(self.watch.path))
                 should_stop = True
+            elif winapi_event.is_overflow:
+                logger.warning(
+                    "Some file system events were lost due to a buffer overflow while watching %s",
+                    self.watch.path,
+                )
         if should_stop:
             # watched directory was deleted, stop observer threads
             self.stop()
