@@ -35,6 +35,13 @@ jobs:
       - name: Run linters
         run: python -m tox -q -e types,lint
 
+      - name: Verify code formatting
+        run: |
+          if ! git diff --quiet docs/source/examples src tests; then
+            echo "::error::Code requires formatting or lint fixes. Run 'tox -e lint' locally and commit the changes."
+            exit 1
+          fi
+
       - name: Build the documentation
         run: python -m tox -q -e docs
 

@@ -141,9 +141,7 @@ def test_modify(
             ec.add(DirModifiedEvent, ".")
 
 
-def test_touch(
-    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
-) -> None:
+def test_touch(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     mkfile(p("a"))
     start_watching()
 
