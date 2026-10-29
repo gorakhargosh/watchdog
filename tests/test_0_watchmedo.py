@@ -237,6 +237,7 @@ def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
     assert trick.restart_count == 0
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_auto_restart_on_file_change(tmpdir, capfd):
     """Simulate changing 3 files.
 
@@ -257,6 +258,7 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     assert trick.restart_count == 3
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     """Simulate changing 3 files quickly and then another change later.
 

@@ -30,7 +30,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: python -m pip install tox
+        run: python -m pip install tox tox-uv
 
       - name: Run linters
         run: python -m tox -q -e types,lint
@@ -46,7 +46,7 @@ jobs:
         run: python -m tox -q -e docs
 
   tox:
-    name: ${{ matrix.tox.name }} ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
+    name: ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
     runs-on: ${{ matrix.os.runs-on }}
     if: "!startsWith(github.head_ref, 'all-contributors/') && !startsWith(github.event.pull_request.title, 'docs:')"
     timeout-minutes: 15
@@ -96,7 +96,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: python -m pip install tox
+        run: python -m pip install tox tox-uv
 
       - name: Run tests
         run: python -m tox -q -e py

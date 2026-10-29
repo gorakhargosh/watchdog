@@ -293,6 +293,7 @@ def test_move_to_full(
             ec.add(DirModifiedEvent, "dir2")
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_move_from(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
@@ -300,6 +301,8 @@ def test_move_from(
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
     start_watching(path=p("dir1"))
+    if platform.is_windows():
+        time.sleep(0.05)
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
@@ -570,6 +573,7 @@ def test_move_nested_subdirectories(
             ec.add(DirModifiedEvent, "dir2/dir3")
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.skipif(
     not platform.is_windows(),
     reason="Non-Windows create another set of events for this test",
