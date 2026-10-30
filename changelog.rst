@@ -17,6 +17,7 @@ Changelog
 
 **Other Changes**
 
+- [watchmedo] Show file system events by default in ``watchmedo log``. (`#913 <https://github.com/gorakhargosh/watchdog/issues/913>`__)
 - [utils] Make ``SkipRepeatsQueue.put()`` and ``put_nowait()`` reject duplicate items after ``shutdown()`` on Python 3.13+.
 - [inotify] Do not suppress registration errors for the requested root path. A missing root now raises ``FileNotFoundError`` from ``observer.start()``, or from ``observer.schedule()`` when already running. Recursive descendant failures remain tolerated. (`#1157 <https://github.com/gorakhargosh/watchdog/issues/1157>`__)
 - [utils] Fix ``EventDebouncer`` starvation on high frequency events and ensure pending events are delivered upon stop. (`#998 <https://github.com/gorakhargosh/watchdog/pull/998>`__)
