@@ -6,7 +6,7 @@ Changelog
 7.0.0
 ~~~~~
 
-2026-11-01 • `full history <https://github.com/gorakhargosh/watchdog/compare/v6.0.0...v7.0.0>`__
+2026-10-31 • `full history <https://github.com/gorakhargosh/watchdog/compare/v6.0.0...v7.0.0>`__
 
 **Breaking Changes**
 
