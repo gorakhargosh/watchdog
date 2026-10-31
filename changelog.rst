@@ -48,6 +48,8 @@ Changelog
 - [docs] ``FileSystemEvent`` no longer claims to be immutable; its fields stay writable and the hash is derived from them, so mutating an event held in a dict or set strands it there. (`#1240 <https://github.com/gorakhargosh/watchdog/issues/1240>`__)
 - [docs] Note that ``FileClosedEvent``, ``FileClosedNoWriteEvent`` and ``FileOpenedEvent``, and their ``on_closed()``, ``on_closed_no_write()`` and ``on_opened()`` handlers, are emitted only by ``InotifyObserver`` on Linux. (`#1235 <https://github.com/gorakhargosh/watchdog/pull/1235>`__)
 - [windows] Event file names are decoded as UTF-16LE, so a name starting with U+FEFF or U+FFFE no longer reports the wrong path. (`#1228 <https://github.com/gorakhargosh/watchdog/pull/1228>`__)
+- [windows] Deleting the observed directory is now detected reliably instead of
+  reporting every ``ReadDirectoryChangesW`` failure as a deletion. (`#1154 <https://github.com/gorakhargosh/watchdog/issues/1154>`__)
 - [windows] Changing only the case of a name no longer emits a deletion event on top of the move event. (`#752 <https://github.com/gorakhargosh/watchdog/issues/752>`__)
 - [bsd] Do not let a ``PermissionError`` raised while registering a kevent kill the emitter thread. (`#1115 <https://github.com/gorakhargosh/watchdog/issues/1115>`__)
 - [core] Add context manager support to ``Observer`` class. The observer can now be used with a ``with`` statement for automatic start/stop management. (`#1090 <https://github.com/gorakhargosh/watchdog/pull/1149>`__)

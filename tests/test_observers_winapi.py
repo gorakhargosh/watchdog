@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import ctypes
 import os
 import os.path
+import shutil
 import stat
 import struct
 import threading
 from queue import Empty, Queue
 from time import sleep
 from typing import TYPE_CHECKING
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
@@ -37,6 +40,7 @@ from watchdog.observers.winapi import (
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
     _generate_observed_path_deleted_event,
+    _is_observed_path_deleted,
     _parse_event_buffer,
     _parse_extended_event_buffer,
 )
@@ -217,6 +221,40 @@ def test_queue_events_locks_reader_access():
     emitter.queue_events(0)
 
     assert locked.is_set()
+
+
+def test_is_observed_path_deleted(tmp_path):
+    assert not _is_observed_path_deleted(str(tmp_path))
+    shutil.rmtree(str(tmp_path))
+    assert _is_observed_path_deleted(str(tmp_path))
+
+
+def test_run_inner_treats_no_error_code_as_benign(tmp_path):
+    # ReadDirectoryChangesW can fail with GetLastError()==0 (e.g. a CancelIoEx
+    # race while stopping). Such a "no error" failure must not crash the reader
+    # thread, which previously re-raised it as OSError: [WinError 0].
+    reader = DirectoryChangeReader(str(tmp_path), recursive=True)
+    reader._extended = False  # noqa: SLF001 -- force the legacy ReadDirectoryChangesW path
+    event_buffer = ctypes.create_string_buffer(1024)
+    nbytes = ctypes.c_ulong()
+    with mock.patch("watchdog.observers.winapi.ReadDirectoryChangesW", side_effect=ctypes.WinError(0)):
+        reader._run_inner(object(), event_buffer, nbytes)  # noqa: SLF001
+
+
+def test_run_inner_still_raises_real_errors(tmp_path):
+    # A genuine failure is re-raised when the observed path still exists.
+    reader = DirectoryChangeReader(str(tmp_path), recursive=True)
+    reader._extended = False  # noqa: SLF001 -- force the legacy ReadDirectoryChangesW path
+    event_buffer = ctypes.create_string_buffer(1024)
+    nbytes = ctypes.c_ulong()
+    with (
+        mock.patch(
+            "watchdog.observers.winapi.ReadDirectoryChangesW",
+            side_effect=ctypes.WinError(5),
+        ),
+        pytest.raises(OSError, match="WinError 5"),
+    ):
+        reader._run_inner(object(), event_buffer, nbytes)  # noqa: SLF001
 
 
 def test_drop_case_only_rename_deletions():
