@@ -40,7 +40,6 @@ Changelog
 - [inotify] Keep watching newly created subdirectories when recursive watches filter out creation events. (`#990 <https://github.com/gorakhargosh/watchdog/issues/990>`__)
 - [inotify] Reduce number of created inotify instance. (`#1099 <https://github.com/gorakhargosh/watchdog/pull/1099>`__)
 - [inotify] Snapshot the watch group before the blocking read in ``InotifyEmitter.queue_events()`` so stopping the emitter cannot raise ``AttributeError`` on a cleared ``self._inotify``.
-- [inotify] Do not suppress registration errors for the requested root path. A missing root now raises ``FileNotFoundError`` from ``observer.start()``, or from ``observer.schedule()`` when already running. Recursive descendant failures remain tolerated. (`#1157 <https://github.com/gorakhargosh/watchdog/issues/1157>`__)
 - [fsevents] Added the ``latency`` keyword argument to ``FSEventsEmitter`` and ``FSEventsObserver`` (defaulting to ``watchdog.observers.fsevents.DEFAULT_FSEVENTS_LATENCY``), exposing the FSEvents stream latency previously hard-coded at 10 ms. Raising it coalesces duplicate events. (`#835 <https://github.com/gorakhargosh/watchdog/issues/835>`__)
 - [fsevents] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
 - [fsevents] Support free-threading and give each emitter its own stream and run loop to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
@@ -65,8 +64,6 @@ Changelog
 - [utils] Make ``SkipRepeatsQueue.put()`` and ``put_nowait()`` reject duplicate items after ``shutdown()`` on Python 3.13+.
 - [utils] Serialize ``SkipRepeatsQueue`` producers to prevent consecutive duplicates, respecting blocking and timeout limits while acquiring the producer lock. (`#1338 <https://github.com/gorakhargosh/watchdog/pull/1338>`__)
 - [utils] Use a monotonic clock for ``DelayedQueue`` delays so system clock adjustments do not stall or prematurely release events. (`#1296 <https://github.com/gorakhargosh/watchdog/pull/1296>`__)
-- [utils] Make ``SkipRepeatsQueue.put()`` and ``put_nowait()`` reject duplicate items after ``shutdown()`` on Python 3.13+.
-- [utils] Fix ``EventDebouncer`` starvation on high frequency events and ensure pending events are delivered upon stop. (`#998 <https://github.com/gorakhargosh/watchdog/pull/998>`__)
 - [tricks] Allow configuring ``shell_executable`` and ``cwd`` for ``ShellCommandTrick`` and ``watchmedo shell-command``. (`#921 <https://github.com/gorakhargosh/watchdog/issues/921>`__)
 - [watchmedo] Support running watchmedo via ``python -m watchdog``. (`#1162 <https://github.com/gorakhargosh/watchdog/pull/1162>`__)
 - [watchmedo] The ``AutoRestartTrick`` stop signal is now actually delivered on Windows. The subprocess is started in its own process group and signalled with ``CTRL_BREAK_EVENT``, so it can run cleanup handlers and its descendants are no longer orphaned on every restart. (`#1221 <https://github.com/gorakhargosh/watchdog/issues/1221>`__)
