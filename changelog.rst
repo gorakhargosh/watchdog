@@ -3,6 +3,21 @@
 Changelog
 ---------
 
+7.0.1-dev
+~~~~~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.0.0...HEAD>`__
+
+**Breaking Changes**
+
+- 
+
+**Other Changes**
+
+- 
+
+- Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @
+
 7.0.0
 ~~~~~
 
