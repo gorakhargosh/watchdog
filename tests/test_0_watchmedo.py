@@ -424,6 +424,22 @@ def test_logger_events_echoed(caplog):
     ]
 
 
+@pytest.mark.parametrize(("verbosity", "events_logged"), [([], True), (["--quiet"], False), (["--verbose"], True)])
+def test_log_events_at_cli_verbosity(caplog, monkeypatch, verbosity, events_logged):
+    args = watchmedo.cli.parse_args(["log", *verbosity, "."])
+    args.func = lambda args: LoggerTrick().on_any_event(FileOpenedEvent("foo/bar.baz"))
+    monkeypatch.setattr(watchmedo.cli, "parse_args", lambda: args)
+
+    with caplog.at_level(logging.DEBUG, logger="watchdog"):
+        assert watchmedo.main() == 0
+
+    records = [record.getMessage().strip() for record in caplog.records]
+    expected = [
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
+    assert records == (expected if events_logged else [])
+
+
 def test_shell_command_arg_parsing():
     args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'"])
     assert args.command == "'cmd'"
@@ -436,11 +452,22 @@ def test_shell_command_arg_parsing():
     assert args.cwd == "/tmp"
 
 
-@pytest.mark.parametrize("cmdline", [["auto-restart", "-d", ".", "cmd"], ["log", "."]])
+@pytest.mark.parametrize(
+    ("cmdline", "default_log_level"),
+    [
+        (["auto-restart", "-d", ".", "cmd"], "WARNING"),
+        (["shell-command", "."], "WARNING"),
+        (["tricks-from", "tricks.yaml"], "WARNING"),
+        (["tricks", "tricks.yaml"], "WARNING"),
+        (["tricks-generate-yaml"], "WARNING"),
+        (["generate-tricks-yaml"], "WARNING"),
+        (["log", "."], "INFO"),
+    ],
+)
 @pytest.mark.parametrize(
     "verbosity",
     [
-        ([], "WARNING"),
+        ([], None),
         (["-q"], "ERROR"),
         (["--quiet"], "ERROR"),
         (["-v"], "INFO"),
@@ -450,12 +477,12 @@ def test_shell_command_arg_parsing():
         (["--verbose", "-v"], "DEBUG"),
     ],
 )
-def test_valid_verbosity(cmdline, verbosity):
+def test_valid_verbosity(cmdline, default_log_level, verbosity):
     (verbosity_cmdline_args, expected_log_level) = verbosity
     cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
     args = watchmedo.cli.parse_args(cmd)
     log_level = watchmedo._get_log_level_from_args(args)  # noqa: SLF001
-    assert log_level == expected_log_level
+    assert log_level == (expected_log_level or default_log_level)
 
 
 @pytest.mark.parametrize("cmdline", [["auto-restart", "-d", ".", "cmd"], ["log", "."]])
