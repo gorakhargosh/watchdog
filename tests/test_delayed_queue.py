@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from time import time
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -11,22 +11,27 @@ from watchdog.utils.delayed_queue import DelayedQueue
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_delayed_get():
-    q = DelayedQueue[str](2)
+    delay = 2
+    q = DelayedQueue[str](delay)
     q.put("", delay=True)
-    inserted = time()
+    inserted = time.monotonic()
     q.get()
-    elapsed = time() - inserted
-    # 2.10 instead of 2.05 for slow macOS slaves on Travis
-    assert 2.10 > elapsed > 1.99
+    elapsed = time.monotonic() - inserted
+    # The lower bound is what proves the delay was honoured. The upper bound
+    # only has to catch a doubled delay or a blocking get(), so leave it
+    # generous: CI runs with `pytest -n auto`, and a worker can be descheduled
+    # for a moment right after `sleep()` returns. Wall-clock time is not
+    # suitable here, the queue itself relies on the monotonic clock.
+    assert delay - 0.01 < elapsed < delay * 1.5
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
 def test_nondelayed_get():
     q = DelayedQueue[str](2)
     q.put("")
-    inserted = time()
+    inserted = time.monotonic()
     q.get()
-    elapsed = time() - inserted
+    elapsed = time.monotonic() - inserted
     # Far less than 1 second
     assert elapsed < 1
 
