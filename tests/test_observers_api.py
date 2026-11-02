@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from threading import Event
 
 import pytest
 
-from watchdog.events import FileModifiedEvent, FileMovedEvent, FileOpenedEvent, LoggingEventHandler
+from watchdog.events import (
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileOpenedEvent,
+    FileSystemEventHandler,
+    LoggingEventHandler,
+)
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 
 
@@ -321,3 +328,30 @@ def test_symlinked_directory_not_treated_as_file(tmp_path: Path):
     watch_follow = ObservedWatch(link_dir, recursive=True, follow_symlink=True)
     assert not watch_follow.is_file
     assert watch_follow.is_recursive
+
+
+def test_schedule_defers_emitter_start() -> None:
+    """Scheduling a watch must be non-blocking and not invoke emitter initialization before observer.start().
+
+    See https://github.com/gorakhargosh/watchdog/issues/96
+    """
+    started = Event()
+
+    class CustomEmitter(EventEmitter):
+        def on_thread_start(self) -> None:
+            started.set()
+
+    observer = BaseObserver(CustomEmitter)
+    watch = observer.schedule(FileSystemEventHandler(), "/path/to/watch", recursive=True)
+
+    assert not started.is_set(), "Emitter must not execute on_thread_start during schedule()"
+    assert not observer.is_alive(), "Observer thread must not be running before start()"
+    assert len(observer.emitters) == 1
+    assert next(iter(observer.emitters)).watch == watch
+
+    observer.start()
+    try:
+        assert started.wait(timeout=2.0), "Emitter on_thread_start must be called upon observer.start()"
+    finally:
+        observer.stop()
+        observer.join()
