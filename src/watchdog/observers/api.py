@@ -313,14 +313,14 @@ class BaseObserver(EventDispatcher):
         """Returns event emitter created by this observer."""
         return self._emitters
 
-    def start(self) -> None:
+    def on_thread_start(self) -> None:
+        """Start all scheduled emitters before the observer thread begins dispatching."""
         for emitter in self._emitters.copy():
             try:
                 emitter.start()
             except Exception:
                 self._remove_emitter(emitter)
                 raise
-        super().start()
 
     def __enter__(self) -> Self:
         """Context manager entry. Starts the observer if not already running."""
