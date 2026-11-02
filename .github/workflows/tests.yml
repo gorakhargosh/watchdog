@@ -19,12 +19,26 @@ jobs:
   quality:
     name: 🧑‍🏭 Quality & Docs
     runs-on: ubuntu-latest
+    outputs:
+      examples_changed: ${{ steps.detect.outputs.examples_changed }}
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Detect example changes
+        id: detect
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          if [ -n "$BASE_SHA" ] && git diff --name-only "$BASE_SHA" HEAD | grep -q '^docs/source/examples/'; then
+            echo "examples_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "examples_changed=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
           cache: pip
@@ -48,7 +62,8 @@ jobs:
   tox:
     name: ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
     runs-on: ${{ matrix.os.runs-on }}
-    if: "!startsWith(github.head_ref, 'all-contributors/') && !startsWith(github.event.pull_request.title, 'docs:')"
+    needs: quality
+    if: "!startsWith(github.head_ref, 'all-contributors/') && (!startsWith(github.event.pull_request.title, 'docs:') || needs.quality.outputs.examples_changed == 'true')"
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -86,10 +101,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
           allow-prereleases: true
