@@ -32,6 +32,8 @@ Changelog
 
 **Other Changes**
 
+- [core] Stop and release all emitters when observer startup fails, including emitters started before the failure. Watches can be rescheduled before retrying startup.
+
 - Add support for Python 3.15 (`#1226 <https://github.com/gorakhargosh/watchdog/issues/1226>`__)
 - [core] Add context manager support to ``Observer`` class. The observer can now be used with a ``with`` statement for automatic start/stop management. (`#1090 <https://github.com/gorakhargosh/watchdog/pull/1149>`__)
 - [core] Add support for the ``follow_symlink`` keyword argument to ``ObservedWatch``. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
