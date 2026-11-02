@@ -14,7 +14,7 @@ Changelog
 
 **Other Changes**
 
-- [inotify] Reconcile recursive watches after the kernel reports an inotify queue overflow so subsequent filesystem changes are observed.
+- [inotify] Reconcile recursive watches after the kernel reports an inotify queue overflow so subsequent filesystem changes are observed. (`#654 <https://github.com/gorakhargosh/watchdog/pull/654>`__)
 
 - Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @
 

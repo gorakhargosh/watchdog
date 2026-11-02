@@ -217,12 +217,12 @@ class InotifyWatchGroup(WatchCallback):
             self._move_event_grouper.discard_pending_events()
             if not self.is_recursive:
                 return
-            logger.warning("Inotify queue overflowed; reconciling recursive watches below %s", self.path)
+            logger.warning("Inotify queue overflowed; reconciling recursive watches below %r", self.path)
             self._remove_callbacks(list(self._active_callbacks_by_watch))
             try:
                 self._add_all_callbacks(self.path)
             except OSError:
-                logger.exception("Unable to rebuild recursive inotify watches below %s", self.path)
+                logger.exception("Unable to rebuild recursive inotify watches below %r", self.path)
 
     def on_event(self, event: InotifyEvent) -> None:
         """called for every event for each watch this callback is registered at."""
