@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 class SingleFileEventHandler(PatternMatchingEventHandler):
     def on_any_event(self, event: FileSystemEvent) -> None:
-        logging.info(event)
+        logging.info(event)  # noqa: LOG015
 
 
 watched_directory = sys.argv[1]
