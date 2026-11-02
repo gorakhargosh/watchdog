@@ -45,6 +45,11 @@ class DelayedQueue(Generic[T]):
         self._not_empty.notify()
         self._not_empty.release()
 
+    def clear(self) -> None:
+        """Discard all queued elements."""
+        with self._lock:
+            self._queue.clear()
+
     def get(self) -> T | None:
         """Remove and return an element from the queue, or this queue has been
         closed raise the Closed exception.

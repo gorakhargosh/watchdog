@@ -415,6 +415,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "alexruperez",
+      "name": "Alex Rupérez",
+      "avatar_url": "https://avatars.githubusercontent.com/u/297950?v=4",
+      "profile": "http://alexruperez.com/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

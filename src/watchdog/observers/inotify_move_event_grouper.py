@@ -87,6 +87,10 @@ class InotifyMoveEventGrouper:
 
         return cast("PathedInotifyEvent", self._queue.find(matching_from_event))
 
+    def discard_pending_events(self) -> None:
+        """Discard events whose ordering is no longer trustworthy."""
+        self._queue.clear()
+
     def close(self) -> None:
         """closes the queue"""
         self._queue.close()
