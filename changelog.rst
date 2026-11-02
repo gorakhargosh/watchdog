@@ -16,6 +16,7 @@ Changelog
 
 - [inotify] Reconcile recursive watches after the kernel reports an inotify queue overflow so subsequent filesystem changes are observed. (`#654 <https://github.com/gorakhargosh/watchdog/pull/654>`__)
 - [inotify] Watch directories moved into a recursively watched directory from outside of it, so that changes inside them are reported. (`#1094 <https://github.com/gorakhargosh/watchdog/issues/1094>`__)
+- [observers] Align ``BaseObserver`` with ``BaseThread`` by using ``on_thread_start()`` instead of overriding ``start()``. (`#286 <https://github.com/gorakhargosh/watchdog/issues/286>`__)
 
 - Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @
 
