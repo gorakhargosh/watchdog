@@ -232,7 +232,9 @@ def test_event_equality(p: P) -> None:
 
 def test_read_events_preserves_queue_overflow() -> None:
     inotify_fd = object.__new__(InotifyFD)
-    inotify_fd._read_event_buffer = lambda _size: struct_inotify(-1, InotifyConstants.IN_Q_OVERFLOW)  # type: ignore[method-assign]
+    inotify_fd._read_event_buffer = lambda _size: (  # type: ignore[method-assign]
+        struct_inotify(-1, Mask(0)) + struct_inotify(-1, InotifyConstants.IN_Q_OVERFLOW)
+    )
 
     events = inotify_fd.read_events()
 

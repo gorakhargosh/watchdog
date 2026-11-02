@@ -378,6 +378,8 @@ class InotifyFD(BaseThread):
         return [
             InotifyEvent(wd, mask, cookie, name)
             for wd, mask, cookie, name in InotifyFD._parse_event_buffer(event_buffer)
+            # The kernel reports IN_Q_OVERFLOW with wd=-1. Other global events remain ignored.
+            if wd != -1 or mask & InotifyConstants.IN_Q_OVERFLOW
         ]
 
     # Non-synchronized methods.
