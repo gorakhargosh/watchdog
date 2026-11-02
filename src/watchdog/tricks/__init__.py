@@ -33,11 +33,15 @@ import signal
 import subprocess
 import threading
 import time
+from typing import TYPE_CHECKING
 
 from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
-from watchdog.utils import echo, platform
+from watchdog.utils import echo, platform, renamed_attribute, resolve_renamed_argument
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
+
+if TYPE_CHECKING:
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
@@ -57,10 +61,10 @@ class Trick(PatternMatchingEventHandler):
   - argument2
   kwargs:
     patterns:
-    - "*.py"
-    - "*.js"
+    - "**/*.py"
+    - "**/*.js"
     ignore_patterns:
-    - "version.py"
+    - "**/version.py"
     ignore_directories: false
 """
 
@@ -89,6 +93,10 @@ class ShellCommandTrick(Trick):
     :param drop_during_process:
         Ignore events that occur while command is still being executed
         to avoid multiple simultaneous instances.
+    :param shell_executable:
+        Path to the shell binary to use instead of the system default (e.g. ``/bin/bash``).
+    :param cwd:
+        Working directory in which to execute the command.
     """
 
     def __init__(
@@ -100,7 +108,9 @@ class ShellCommandTrick(Trick):
         ignore_directories: bool = False,
         wait_for_process: bool = False,
         drop_during_process: bool = False,
-    ):
+        shell_executable: str | None = None,
+        cwd: str | None = None,
+    ) -> None:
         super().__init__(
             patterns=patterns,
             ignore_patterns=ignore_patterns,
@@ -109,6 +119,8 @@ class ShellCommandTrick(Trick):
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
         self.drop_during_process = drop_during_process
+        self.shell_executable = shell_executable
+        self.cwd = cwd
 
         self.process: subprocess.Popen[bytes] | None = None
         self._process_watchers: set[ProcessWatcher] = set()
@@ -143,7 +155,12 @@ class ShellCommandTrick(Trick):
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
-        self.process = subprocess.Popen(command, shell=True)
+        self.process = subprocess.Popen(
+            command,
+            shell=True,
+            executable=self.shell_executable,
+            cwd=self.cwd,
+        )
         if self.wait_for_process:
             self.process.wait()
         else:
@@ -179,13 +196,15 @@ class AutoRestartTrick(Trick):
     :param stop_signal:
         Stop the subprocess with this signal (default SIGINT).
     :param kill_after:
-        When stopping, kill the subprocess after the specified timeout in
-        seconds (default 10.0).
-    :param debounce_interval_seconds:
-        After a file change, wait until the specified interval (in seconds)
+        When stopping, kill the subprocess after the specified timeout
+        (default 10.0).
+    :param debounce_interval:
+        After a file change, wait until the specified interval
         passes with no file changes, and only then restart (default: 0.0).
     :param restart_on_command_exit:
         Auto-restart the command after it exits (default: True).
+    :param debounce_interval_seconds:
+        Deprecated, use ``debounce_interval`` instead.
     """
 
     def __init__(
@@ -196,15 +215,23 @@ class AutoRestartTrick(Trick):
         ignore_patterns: list[str] | None = None,
         ignore_directories: bool = False,
         stop_signal: signal.Signals | int = signal.SIGINT,
-        kill_after: int = 10,
-        debounce_interval_seconds: int = 0,
+        kill_after: Seconds = 10,
+        debounce_interval: Seconds | None = None,
         restart_on_command_exit: bool = True,
+        debounce_interval_seconds: Seconds | None = None,
     ):
+        debounce_interval = resolve_renamed_argument(
+            "debounce_interval_seconds",
+            debounce_interval_seconds,
+            "debounce_interval",
+            debounce_interval,
+            default=0,
+        )
         if kill_after < 0:
             error = "kill_after must be non-negative."
             raise ValueError(error)
-        if debounce_interval_seconds < 0:
-            error = "debounce_interval_seconds must be non-negative."
+        if debounce_interval < 0:
+            error = "debounce_interval must be non-negative."
             raise ValueError(error)
 
         super().__init__(
@@ -216,7 +243,7 @@ class AutoRestartTrick(Trick):
         self.command = command
         self.stop_signal = stop_signal.value if isinstance(stop_signal, signal.Signals) else stop_signal
         self.kill_after = kill_after
-        self.debounce_interval_seconds = debounce_interval_seconds
+        self.debounce_interval = debounce_interval
         self.restart_on_command_exit = restart_on_command_exit
 
         self.process: subprocess.Popen[bytes] | None = None
@@ -228,10 +255,12 @@ class AutoRestartTrick(Trick):
         self._is_trick_stopping = False
         self._stopping_lock = threading.RLock()
 
+    debounce_interval_seconds = renamed_attribute("debounce_interval_seconds", "debounce_interval")
+
     def start(self) -> None:
-        if self.debounce_interval_seconds:
+        if self.debounce_interval:
             self.event_debouncer = EventDebouncer(
-                debounce_interval_seconds=self.debounce_interval_seconds,
+                debounce_interval=self.debounce_interval,
                 events_callback=lambda events: self._restart_process(),
             )
             self.event_debouncer.start()
@@ -326,7 +355,10 @@ class AutoRestartTrick(Trick):
 if platform.is_windows():
 
     def kill_process(pid: int, stop_signal: int) -> None:
-        if stop_signal == signal.SIGINT:
+        # SIGBREAK is SIGINT's Windows sibling: `--signal SIGBREAK` (see
+        # watchmedo.py) reaches this function with it, so it must be routed
+        # through the same CTRL_BREAK_EVENT path rather than hard-killed below.
+        if stop_signal in (signal.SIGINT, getattr(signal, "SIGBREAK", None)):
             # `os.kill()` maps every signal but the console control events to
             # `TerminateProcess()`, which delivers nothing: the child is hard
             # killed, so its `atexit`/`finally` cleanup never runs and anything

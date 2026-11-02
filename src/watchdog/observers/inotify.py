@@ -68,7 +68,6 @@ Some extremely useful articles and documentation:
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
 import threading
@@ -76,10 +75,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, cast
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
     FileCreatedEvent,
@@ -110,6 +111,7 @@ from watchdog.observers.inotify_move_event_grouper import (
 
 if TYPE_CHECKING:
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +208,21 @@ class InotifyWatchGroup(WatchCallback):
             if not self.is_active:
                 return
             self._remove_watch_internally(wd)
+
+    def on_queue_overflow(self) -> None:
+        """Rebuild recursive watches after the kernel drops events."""
+        with self._lock:
+            if not self.is_active:
+                return
+            self._move_event_grouper.discard_pending_events()
+            if not self.is_recursive:
+                return
+            logger.warning("Inotify queue overflowed; reconciling recursive watches below %r", self.path)
+            self._remove_callbacks(list(self._active_callbacks_by_watch))
+            try:
+                self._add_all_callbacks(self.path)
+            except OSError:
+                logger.exception("Unable to rebuild recursive inotify watches below %r", self.path)
 
     def on_event(self, event: InotifyEvent) -> None:
         """called for every event for each watch this callback is registered at."""
@@ -340,10 +357,15 @@ class InotifyWatchGroup(WatchCallback):
         :param path:
             Path to monitor
         """
-        with contextlib.suppress(OSError):
+        try:
             wd = self._inotify_fd.add_callback(path, self.event_mask, self._callback, self._id)
             self._active_callbacks_by_path[path] = wd
             self._active_callbacks_by_watch[wd] = path
+        except OSError:
+            # Descendants may disappear or become inaccessible during recursive
+            # registration, but a failure to watch the root must reach the caller.
+            if path == self.path:
+                raise
 
     def _remove_callbacks(self, wds: list[WatchDescriptor]) -> None:
         """removes callbacks for the given paths.
@@ -372,7 +394,7 @@ def _select_event_type(
     is_directory: bool,
 ) -> FileSystemEventCtor:
     """selects the correct FileSystemEvent Type based on `is_directory` and returns it."""
-    return cast(FileSystemEventCtor, dir_event if is_directory else file_event)
+    return cast("FileSystemEventCtor", dir_event if is_directory else file_event)
 
 
 class InotifyEmitter(EventEmitter):
@@ -385,9 +407,9 @@ class InotifyEmitter(EventEmitter):
     :type watch:
         :class:`watchdog.observers.api.ObservedWatch`
     :param timeout:
-        Read events blocking timeout (in seconds).
+        Read events blocking timeout.
     :type timeout:
-        ``float``
+        ``Seconds``
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
@@ -399,7 +421,7 @@ class InotifyEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         inotify_fd: InotifyFD | None = None,
     ) -> None:
@@ -420,22 +442,33 @@ class InotifyEmitter(EventEmitter):
         )
 
     def on_thread_stop(self) -> None:
-        if self._inotify is not None:
-            self._inotify.deactivate()
-            self._inotify = None
+        # Drop the published reference first so concurrent queue_events() calls
+        # see a stopped emitter. deactivate() must not run under self._lock:
+        # queue_events() may be blocked in read_event(), and deactivate() is
+        # what unblocks that wait.
+        inotify = self._inotify
+        self._inotify = None
+        if inotify is not None:
+            inotify.deactivate()
 
-    def queue_events(self, timeout: float, *, full_events: bool = False) -> None:
+    def queue_events(self, timeout: Seconds, *, full_events: bool = False) -> None:
         # If "full_events" is true, then the method will report unmatched move events as separate events
         # This behavior is by default only called by a InotifyFullEmitter
-        if self._inotify is None:
+        #
+        # Snapshot the watch group before the blocking read. Holding only a
+        # local reference means on_thread_stop() can null self._inotify and
+        # close the queue without this method raising AttributeError.
+        with self._lock:
+            inotify = self._inotify
+        if inotify is None:
             logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+            return
+        event = inotify.read_event()
+        if event is None:
             return
         with self._lock:
             if self._inotify is None:
                 logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
-                return
-            event = self._inotify.read_event()
-            if event is None:
                 return
             self.build_and_queue_event(event)
 
@@ -467,7 +500,10 @@ class InotifyEmitter(EventEmitter):
                 if event.ev.is_directory and self.watch.is_recursive:
                     for sub_created_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_created_event)
-            elif event.ev.is_attrib or event.ev.is_modify:
+            elif event.ev.is_attrib:
+                cls = _select_event_type(DirAttribEvent, FileAttribEvent, is_directory=event.ev.is_directory)
+                self.queue_event(cls(src_path))
+            elif event.ev.is_modify:
                 cls = _select_event_type(DirModifiedEvent, FileModifiedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
             elif event.ev.is_delete or (event.ev.is_moved_from and not full_events):
@@ -506,6 +542,9 @@ class InotifyEmitter(EventEmitter):
 
         # Always listen to delete self
         event_mask = InotifyConstants.IN_DELETE_SELF
+        if self.watch.is_recursive:
+            # New directories need watches even when creation events are filtered.
+            event_mask = Mask(event_mask | InotifyConstants.IN_CREATE)
 
         for cls in self._event_filter:
             if cls in {DirMovedEvent, FileMovedEvent}:
@@ -551,6 +590,6 @@ class InotifyObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
         super().__init__(cls, timeout=timeout)

@@ -9,11 +9,12 @@ from watchdog.observers import Observer
 from watchdog.utils.event_debouncer import EventDebouncer
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def rebuild(events: list[FileSystemEvent]) -> None:
     """Run an expensive action once after a burst of file changes."""
-    logging.info("Rebuilding after %d filesystem events", len(events))
+    logger.info("Rebuilding after %d filesystem events", len(events))
 
 
 class DebouncedEventHandler(FileSystemEventHandler):
@@ -27,7 +28,7 @@ class DebouncedEventHandler(FileSystemEventHandler):
 
 path = sys.argv[1] if len(sys.argv) > 1 else "."
 
-debouncer = EventDebouncer(debounce_interval_seconds=1, events_callback=rebuild)
+debouncer = EventDebouncer(debounce_interval=1, events_callback=rebuild)
 event_handler = DebouncedEventHandler(debouncer)
 observer = Observer()
 observer.schedule(event_handler, path, recursive=True)

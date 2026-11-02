@@ -44,10 +44,11 @@ from watchdog.utils import UnsupportedLibcError, platform
 
 if TYPE_CHECKING:
     from watchdog.observers.api import BaseObserver
+    from watchdog.utils import Seconds
 
 
 class ObserverType(Protocol):
-    def __call__(self, *, timeout: float = ...) -> BaseObserver: ...
+    def __call__(self, *, timeout: Seconds = ...) -> BaseObserver: ...
 
 
 def _get_observer_cls() -> ObserverType:

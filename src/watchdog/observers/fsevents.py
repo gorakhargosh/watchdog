@@ -17,10 +17,12 @@ from typing import TYPE_CHECKING
 import _watchdog_fsevents as _fsevents
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -36,9 +38,15 @@ if TYPE_CHECKING:
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 
 logger = logging.getLogger("fsevents")
+
+#: Default seconds the FSEvents API waits after an event before delivering it,
+#: coalescing any further events in that window into the same batch. This has
+#: been the value baked into the stream since it was first created.
+DEFAULT_FSEVENTS_LATENCY: Seconds = 0.01
 
 
 class FSEventsEmitter(EventEmitter):
@@ -51,7 +59,7 @@ class FSEventsEmitter(EventEmitter):
     :type watch:
         :class:`watchdog.observers.api.ObservedWatch`
     :param timeout:
-        Read events blocking timeout (in seconds).
+        Read events blocking timeout.
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :param suppress_history:
@@ -60,8 +68,16 @@ class FSEventsEmitter(EventEmitter):
         by creating a directory snapshot of the watched path before starting the stream
         as a reference to suppress old events. Warning: This may result in significant
         memory usage in case of a large number of items in the watched path.
+    :param latency:
+        Seconds the FSEvents API waits after an event before delivering it,
+        coalescing any further events in that window into the same batch.
+        Defaults to :data:`DEFAULT_FSEVENTS_LATENCY`. Raising it trades
+        notification delay for fewer duplicate events: a single logical write
+        that arrives as several ``modified`` events at the default latency (an
+        editor saving a file, for instance) is more likely to coalesce into
+        one. Must not be negative.
     :type timeout:
-        ``float``
+        ``Seconds``
     """
 
     def __init__(
@@ -69,21 +85,29 @@ class FSEventsEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
         suppress_history: bool = False,
+        latency: Seconds = DEFAULT_FSEVENTS_LATENCY,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
+        if latency < 0:
+            msg = "latency must be a non-negative number"
+            raise ValueError(msg)
         self._fs_view: set[int] = set()
         self.suppress_history = suppress_history
+        self.latency = latency
         self._start_time = 0.0
         self._starting_state: DirectorySnapshot | None = None
         self._lock = threading.Lock()
+        self._stream = _fsevents.Stream([self.watch.path], latency=latency)
+        # Thread._started is set before run(), so native readiness needs its own event.
+        self._stream_started = threading.Event()
+        self._startup_error: BaseException | None = None
         self._absolute_watch_path = os.path.realpath(os.path.abspath(os.path.expanduser(self.watch.path)))
 
     def on_thread_stop(self) -> None:
-        _fsevents.remove_watch(self.watch)
-        _fsevents.stop(self)
+        self._stream.stop()
 
     def queue_event(self, event: FileSystemEvent) -> None:
         # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
@@ -99,7 +123,7 @@ class FSEventsEmitter(EventEmitter):
         if src_path == self._absolute_watch_path:
             return False
 
-        if isinstance(event, (FileMovedEvent, DirMovedEvent)):
+        if isinstance(event, FileMovedEvent | DirMovedEvent):
             # when moving something into the watch path we must always take the dirname,
             # otherwise we miss out on `DirMovedEvent`s
             dest_path = os.path.dirname(event.dest_path)
@@ -120,6 +144,10 @@ class FSEventsEmitter(EventEmitter):
 
     def _queue_modified_event(self, event: FileSystemEvent, src_path: bytes | str, dirname: bytes | str) -> None:
         cls = DirModifiedEvent if event.is_directory else FileModifiedEvent
+        self.queue_event(cls(src_path))
+
+    def _queue_attrib_event(self, event: FileSystemEvent, src_path: bytes | str, dirname: bytes | str) -> None:
+        cls = DirAttribEvent if event.is_directory else FileAttribEvent
         self.queue_event(cls(src_path))
 
     def _queue_renamed_event(
@@ -158,7 +186,7 @@ class FSEventsEmitter(EventEmitter):
         """Returns True if the event indicates a change in metadata."""
         return event.is_inode_meta_mod or event.is_xattr_mod or event.is_owner_change
 
-    def queue_events(self, timeout: float, events: list[_fsevents.NativeEvent]) -> None:  # type: ignore[override]
+    def queue_events(self, timeout: Seconds, events: list[_fsevents.NativeEvent]) -> None:  # type: ignore[override]
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
                 flags = ", ".join(attr for attr in dir(event) if getattr(event, attr) is True)
@@ -209,8 +237,10 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or self._is_meta_mod(event):
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
+                elif self._is_meta_mod(event):
+                    self._queue_attrib_event(event, src_path, src_dirname)
 
                 self._queue_deleted_event(event, src_path, src_dirname)
                 self._fs_view.discard(event.inode)
@@ -221,8 +251,10 @@ class FSEventsEmitter(EventEmitter):
 
                 self._fs_view.add(event.inode)
 
-                if event.is_modified or self._is_meta_mod(event):
+                if event.is_modified:
                     self._queue_modified_event(event, src_path, src_dirname)
+                elif self._is_meta_mod(event):
+                    self._queue_attrib_event(event, src_path, src_dirname)
 
                 if event.is_renamed:
                     # Check if we have a corresponding destination event in the watched path.
@@ -248,8 +280,10 @@ class FSEventsEmitter(EventEmitter):
 
                         events.remove(dst_event)
 
-                        if dst_event.is_modified or self._is_meta_mod(dst_event):
+                        if dst_event.is_modified:
                             self._queue_modified_event(dst_event, dst_path, dst_dirname)
+                        elif self._is_meta_mod(dst_event):
+                            self._queue_attrib_event(dst_event, dst_path, dst_dirname)
 
                         if dst_event.is_removed:
                             self._queue_deleted_event(dst_event, dst_path, dst_dirname)
@@ -295,21 +329,35 @@ class FSEventsEmitter(EventEmitter):
         try:
             events = [
                 cls(path, inode, event_flags, event_id)
-                for path, inode, event_flags, event_id in zip(paths, inodes, flags, ids)
+                for path, inode, event_flags, event_id in zip(paths, inodes, flags, ids, strict=False)
             ]
             with self._lock:
                 self.queue_events(self.timeout, events)
         except Exception:
             logger.exception("Unhandled exception in fsevents callback")
 
+    def start(self) -> None:
+        super().start()
+        self._stream_started.wait()
+        error = self._startup_error
+        self._startup_error = None
+        if error is not None:
+            self.join()
+            raise error
+
     def run(self) -> None:
-        self.pathnames = [self.watch.path]
         self._start_time = time.monotonic()
         try:
-            _fsevents.add_watch(self, self.watch, self.events_callback, self.pathnames)
-            _fsevents.read_events(self)
-        except Exception:
-            logger.exception("Unhandled exception in FSEventsEmitter")
+            self._stream.run(self.events_callback, self._stream_started.set)
+        except BaseException as error:
+            if not self._stream_started.is_set():
+                self._startup_error = error
+            elif isinstance(error, Exception):
+                logger.exception("Unhandled exception in FSEventsEmitter")
+            else:
+                raise
+        finally:
+            self._stream_started.set()
 
     def on_thread_start(self) -> None:
         if self.suppress_history:
@@ -322,8 +370,23 @@ class FSEventsEmitter(EventEmitter):
 
 
 class FSEventsObserver(BaseObserver):
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
-        super().__init__(FSEventsEmitter, timeout=timeout)
+    """macOS FSEvents observer.
+
+    :param timeout:
+        The timeout (in seconds) for the observer to wait on events.
+    :param latency:
+        Seconds the FSEvents API waits after an event before delivering it,
+        applied to every stream this observer creates. See
+        :class:`FSEventsEmitter` for what raising it buys.
+    """
+
+    def __init__(
+        self,
+        *,
+        timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT,
+        latency: Seconds = DEFAULT_FSEVENTS_LATENCY,
+    ) -> None:
+        super().__init__(FSEventsEmitter, timeout=timeout, latency=latency)
 
     def schedule(
         self,

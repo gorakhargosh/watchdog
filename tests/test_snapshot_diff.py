@@ -3,13 +3,16 @@ from __future__ import annotations
 import errno
 import os
 import pickle
+import stat
 import time
 from unittest.mock import patch
+
+import pytest
 
 from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
-from .shell import mkdir, mv, rm, touch
+from .shell import chmod, mkdir, mv, rm, symlink, touch
 
 
 def wait():
@@ -87,6 +90,35 @@ def test_move_replace(p):
     diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
     assert diff.files_moved == [(p("dir1", "a"), p("dir2", "b"))]
     assert diff.files_deleted == [p("dir2", "b")]
+    assert diff.files_created == []
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_create_symlink_to_existing_file(p):
+    # A new symlink shares its target's inode (the default stat follows symlinks),
+    # so it must not be mistaken for a move of the still-present target. See #1110.
+    mkdir(p("dir"))
+    touch(p("dir", "a"))
+    ref = DirectorySnapshot(p(""))
+    symlink("a", p("dir", "a.link"))
+    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
+    assert diff.files_created == [p("dir", "a.link")]
+    assert diff.files_moved == []
+    assert diff.files_deleted == []
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_delete_symlink_to_existing_file(p):
+    # Removing a symlink whose target remains must be reported as a deletion, not
+    # a move onto the target that keeps the shared inode. See #1110.
+    mkdir(p("dir"))
+    touch(p("dir", "a"))
+    symlink("a", p("dir", "a.link"))
+    ref = DirectorySnapshot(p(""))
+    rm(p("dir", "a.link"))
+    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
+    assert diff.files_deleted == [p("dir", "a.link")]
+    assert diff.files_moved == []
     assert diff.files_created == []
 
 
@@ -202,7 +234,68 @@ def test_ignore_device(p):
         assert diff_without_device.files_created == []
 
 
-def test_empty_snapshot(p):
+def stat_with_changed_device(path):
+    # Change the device ID while preserving the fields used by DirectorySnapshot.
+    stat = os.stat(path)
+    values = list(stat)
+    values[2] += 1
+    return os.stat_result(values, {"st_atime": stat.st_atime, "st_mtime": stat.st_mtime, "st_ctime": stat.st_ctime})
+
+
+@pytest.mark.parametrize("is_directory", [False, True])
+@pytest.mark.parametrize("modified", [False, True])
+@pytest.mark.parametrize("ignore_device", [False, True])
+def test_move_with_changed_device(p, is_directory, modified, ignore_device):
+    source = p("before")
+    destination = p("after")
+    if is_directory:
+        mkdir(source)
+    else:
+        touch(source)
+    os.utime(source, (1000, 1000))
+    ref = DirectorySnapshot(p(""))
+    mv(source, destination)
+    os.utime(destination, (1000, 1010 if modified else 1000))
+
+    snapshot = DirectorySnapshot(p(""), stat=stat_with_changed_device)
+    diff = DirectorySnapshotDiff(ref, snapshot, ignore_device=ignore_device)
+    kind = "dirs" if is_directory else "files"
+    if ignore_device:
+        assert getattr(diff, f"{kind}_moved") == [(source, destination)]
+        assert getattr(diff, f"{kind}_deleted") == []
+        assert getattr(diff, f"{kind}_created") == []
+        assert (source in getattr(diff, f"{kind}_modified")) == modified
+    else:
+        assert getattr(diff, f"{kind}_moved") == []
+        assert source in getattr(diff, f"{kind}_deleted")
+        assert destination in getattr(diff, f"{kind}_created")
+
+
+def test_ignore_device_preserves_hard_link_moves(p):
+    touch(p("a"))
+    try:
+        os.link(p("a"), p("b"))
+    except OSError as e:
+        pytest.skip(f"Hard links are unavailable: {e}")
+
+    def listdir(path):
+        with os.scandir(path) as entries:
+            yield from sorted(entries, key=lambda entry: entry.name)
+
+    ref = DirectorySnapshot(p(""))
+    mv(p("a"), p("c"))
+    snapshot = DirectorySnapshot(p(""), listdir=listdir)
+    expected = DirectorySnapshotDiff(ref, snapshot)
+    changed = DirectorySnapshot(p(""), stat=stat_with_changed_device, listdir=listdir)
+    diff = DirectorySnapshotDiff(ref, changed, ignore_device=True)
+    assert set(diff.files_moved) == set(expected.files_moved)
+    assert diff.files_created == expected.files_created
+    assert diff.files_deleted == expected.files_deleted
+
+
+@pytest.mark.parametrize("ignore_device", [False, True])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_empty_snapshot(p, ignore_device, reverse):
     # Create a file and declare a DirectorySnapshot and a EmptyDirectorySnapshot.
     # When we make the diff, although both objects were declared with the same items on
     # the directory, the file and directories created BEFORE the DirectorySnapshot will
@@ -214,7 +307,32 @@ def test_empty_snapshot(p):
     empty = EmptyDirectorySnapshot()
     assert repr(empty) == "{}"
 
-    diff = DirectorySnapshotDiff(empty, ref)
+    diff = (
+        DirectorySnapshotDiff(ref, empty, ignore_device=ignore_device)
+        if reverse
+        else DirectorySnapshotDiff(empty, ref, ignore_device=ignore_device)
+    )
     assert len(diff) == 4
-    assert diff.files_created == [p("a")]
-    assert sorted(diff.dirs_created) == sorted([p(""), p("b"), p("b", "c")])
+    kind = "deleted" if reverse else "created"
+    assert getattr(diff, f"files_{kind}") == [p("a")]
+    assert sorted(getattr(diff, f"dirs_{kind}")) == sorted([p(""), p("b"), p("b", "c")])
+
+
+def test_attrib_on_chmod(p):
+    touch(p("a"))
+    mkdir(p("dir1"))
+    ref = DirectorySnapshot(p(""))
+    mode = stat.S_IREAD if platform.is_windows() else 0o777
+    chmod(p("a"), mode)
+    chmod(p("dir1"), mode)
+    new_snapshot = DirectorySnapshot(p(""))
+    diff = DirectorySnapshotDiff(ref, new_snapshot)
+    try:
+        assert diff.files_attrib == [p("a")]
+        assert diff.dirs_attrib == [p("dir1")]
+        assert diff.files_modified == []
+        assert diff.dirs_modified == []
+        assert new_snapshot.mode(p("a")) == os.stat(p("a")).st_mode
+    finally:
+        chmod(p("a"), stat.S_IWRITE if platform.is_windows() else 0o644)
+        chmod(p("dir1"), stat.S_IWRITE if platform.is_windows() else 0o755)
