@@ -64,6 +64,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Alex0AI"><img src="https://avatars.githubusercontent.com/u/206435355?v=4?s=70" width="70px;" alt="Alex0AI"/><br /><sub><b>Alex0AI</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Alex0AI" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://alexruperez.com/"><img src="https://avatars.githubusercontent.com/u/297950?v=4?s=70" width="70px;" alt="Alex Rupérez"/><br /><sub><b>Alex Rupérez</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=alexruperez" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://www.hit.edu.cn/"><img src="https://avatars.githubusercontent.com/u/266078689?v=4?s=70" width="70px;" alt="Yang Fan"/><br /><sub><b>Yang Fan</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=yangfan-yf-yf" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/PDGGK"><img src="https://avatars.githubusercontent.com/u/99155080?v=4?s=70" width="70px;" alt="ZIHAN DAI"/><br /><sub><b>ZIHAN DAI</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=PDGGK" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
