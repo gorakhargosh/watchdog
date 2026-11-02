@@ -169,6 +169,10 @@ class WatchCallback(Protocol):
         This is the case when the watched object is deleted."""
         ...
 
+    def on_queue_overflow(self) -> None:
+        """Called when the kernel inotify queue overflows."""
+        ...
+
 
 @dataclass
 class Watch:
@@ -332,6 +336,20 @@ class InotifyFD(BaseThread):
                 callback.on_watch_deleted(wd)
 
     def handle_event(self, event: InotifyEvent) -> None:
+        if event.is_queue_overflow:
+            with self._lock:
+                overflow_callbacks = tuple(
+                    {
+                        id(callback): callback
+                        for watch in self._watch_for_wd.values()
+                        for callback in watch.callbacks.values()
+                    }.values()
+                )
+            logger.warning("Inotify queue overflowed; filesystem events were lost")
+            for callback in overflow_callbacks:
+                callback.on_queue_overflow()
+            return
+
         with self._lock:
             if event.is_ignored:
                 # Clean up book-keeping for deleted watches.
@@ -360,7 +378,8 @@ class InotifyFD(BaseThread):
         return [
             InotifyEvent(wd, mask, cookie, name)
             for wd, mask, cookie, name in InotifyFD._parse_event_buffer(event_buffer)
-            if wd != -1
+            # The kernel reports IN_Q_OVERFLOW with wd=-1. Other global events remain ignored.
+            if wd != -1 or mask & InotifyConstants.IN_Q_OVERFLOW
         ]
 
     # Non-synchronized methods.
@@ -604,6 +623,10 @@ class InotifyEvent:
     @property
     def is_ignored(self) -> bool:
         return self.mask & InotifyConstants.IN_IGNORED > 0
+
+    @property
+    def is_queue_overflow(self) -> bool:
+        return self.mask & InotifyConstants.IN_Q_OVERFLOW > 0
 
     @property
     def is_directory(self) -> bool:
