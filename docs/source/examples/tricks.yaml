@@ -1,21 +1,10 @@
 tricks:
 - watchdog.tricks.LoggerTrick:
     patterns: ["**/*.py", "**/*.js"]
-- watchmedo_webtricks.GoogleClosureTrick:
-    patterns: ['**/*.js']
-    hash_names: true
-    mappings_format: json                  # json|yaml|python
-    mappings_module: app/javascript_mappings
-    suffix: .min.js
-    compilation_level: advanced            # simple|advanced
-    source_directory: app/static/js/
-    destination_directory: app/public/js/
-    files:
-      index-page:
-      - app/static/js/vendor/jquery.js
-      - app/static/js/base.js
-      - app/static/js/index-page.js
-      about-page:
-      - app/static/js/vendor/jquery.js
-      - app/static/js/base.js
-      - app/static/js/about-page.js
+- watchdog.tricks.ShellCommandTrick:
+    patterns: ["**/*.py"]
+    shell_command: "echo 'file changed: ${watch_src_path}'"
+    wait_for_process: true
+- watchdog.tricks.AutoRestartTrick:
+    command: ["python", "-m", "http.server"]
+    patterns: ["**/*.html", "**/*.css", "**/*.js"]
