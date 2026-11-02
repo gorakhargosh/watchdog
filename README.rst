@@ -5,6 +5,7 @@ Watchdog
 |PyPI Status|
 |PyPI Python Versions|
 |GitHub Build Status|
+|Documentation Status|
 |GitHub License|
 
 .. tip::
@@ -15,7 +16,9 @@ Watchdog
 
 Python API and shell utilities to monitor file system events.
 
-Works on 3.10+.
+Browse the documentation_ online.
+
+Works on 3.11+.
 
 Example API Usage
 -----------------
@@ -264,7 +267,7 @@ appropriate observer like in the example above, do::
 Dependencies
 ------------
 
-1. Python 3.10 or above.
+1. Python 3.11 or above.
 2. XCode_ (only on macOS when installing from sources)
 3. PyYAML_ (only for ``watchmedo``)
 
@@ -343,6 +346,8 @@ to do:
    :target: https://pypi.python.org/pypi/watchdog/
 .. |Github Build Status| image:: https://github.com/gorakhargosh/watchdog/workflows/Tests/badge.svg
    :target: https://github.com/gorakhargosh/watchdog/actions?query=workflow%3ATests
+.. |Documentation Status| image:: https://img.shields.io/readthedocs/python-watchdog.svg
+   :target: https://python-watchdog.readthedocs.io/en/latest/
 .. |GitHub License| image:: https://img.shields.io/github/license/gorakhargosh/watchdog.svg
    :target: https://github.com/gorakhargosh/watchdog/blob/master/LICENSE
 .. |Patreon| image:: https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white

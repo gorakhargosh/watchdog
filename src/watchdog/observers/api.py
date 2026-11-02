@@ -14,13 +14,13 @@ from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
     import types
-
-    from typing_extensions import Self
+    from typing import Any, Self
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.utils import Seconds
 
-DEFAULT_EMITTER_TIMEOUT = 1.0  # in seconds
-DEFAULT_OBSERVER_TIMEOUT = 1.0  # in seconds
+DEFAULT_EMITTER_TIMEOUT: Seconds = 1.0
+DEFAULT_OBSERVER_TIMEOUT: Seconds = 1.0
 
 
 class EventQueue(SkipRepeatsQueue):
@@ -124,9 +124,9 @@ class EventEmitter(BaseThread):
     :type watch:
         :class:`ObservedWatch`
     :param timeout:
-        Timeout (in seconds) between successive attempts at reading events.
+        Timeout between successive attempts at reading events.
     :type timeout:
-        ``float``
+        ``Seconds``
     :param event_filter:
         Collection of event types to emit, or None for no filtering (default).
     :type event_filter:
@@ -138,17 +138,21 @@ class EventEmitter(BaseThread):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__()
+        # bool subclasses int; timeout=True would silently become 1.0s
+        if isinstance(timeout, bool):
+            error = f"timeout must be a float, not bool (got {timeout!r})"
+            raise TypeError(error)
         self._event_queue = event_queue
         self._watch = watch
         self._timeout = timeout
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
 
     @property
-    def timeout(self) -> float:
+    def timeout(self) -> Seconds:
         """Blocking timeout for reading events."""
         return self._timeout
 
@@ -169,15 +173,15 @@ class EventEmitter(BaseThread):
         if self._event_filter is None or any(isinstance(event, cls) for cls in self._event_filter):
             self._event_queue.put((event, self.watch))
 
-    def queue_events(self, timeout: float) -> None:
+    def queue_events(self, timeout: Seconds) -> None:
         """Override this method to populate the event queue with events
         per interval period.
 
         :param timeout:
-            Timeout (in seconds) between successive attempts at
+            Timeout between successive attempts at
             reading events.
         :type timeout:
-            ``float``
+            ``Seconds``
         """
 
     def run(self) -> None:
@@ -190,22 +194,26 @@ class EventDispatcher(BaseThread):
     that dispatch events from an event queue to appropriate event handlers.
 
     :param timeout:
-        Timeout value (in seconds) passed to emitters
+        Timeout value passed to emitters
         constructions in the child class BaseObserver.
     :type timeout:
-        ``float``
+        ``Seconds``
     """
 
     stop_event = object()
     """Event inserted into the queue to signal a requested stop."""
 
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__()
+        # bool subclasses int; timeout=True would silently become 1.0s
+        if isinstance(timeout, bool):
+            error = f"timeout must be a float, not bool (got {timeout!r})"
+            raise TypeError(error)
         self._event_queue = EventQueue()
         self._timeout = timeout
 
     @property
-    def timeout(self) -> float:
+    def timeout(self) -> Seconds:
         """Timeout value to construct emitters with."""
         return self._timeout
 
@@ -250,14 +258,24 @@ class BaseObserver(EventDispatcher):
     :type emitter_class:
         ``type[EventEmitter]``
     :param timeout:
-        The timeout (in seconds) for the observer to wait on events.
+        The timeout for the observer to wait on events.
     :type timeout:
-        ``float``
+        ``Seconds``
+    :param kwargs:
+        Extra keyword arguments forwarded to every emitter this observer
+        constructs, for platform-specific emitter options.
     """
 
-    def __init__(self, emitter_class: type[EventEmitter], *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(
+        self,
+        emitter_class: type[EventEmitter],
+        *,
+        timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(timeout=timeout)
         self._emitter_class = emitter_class
+        self._emitter_kwargs = kwargs
         self._lock = threading.RLock()
         self._watches: set[ObservedWatch] = set()
         self._handlers: defaultdict[ObservedWatch, set[FileSystemEventHandler]] = defaultdict(set)
@@ -295,14 +313,14 @@ class BaseObserver(EventDispatcher):
         """Returns event emitter created by this observer."""
         return self._emitters
 
-    def start(self) -> None:
+    def on_thread_start(self) -> None:
+        """Start all scheduled emitters before the observer thread begins dispatching."""
         for emitter in self._emitters.copy():
             try:
                 emitter.start()
             except Exception:
                 self._remove_emitter(emitter)
                 raise
-        super().start()
 
     def __enter__(self) -> Self:
         """Context manager entry. Starts the observer if not already running."""
@@ -362,14 +380,20 @@ class BaseObserver(EventDispatcher):
         """
         with self._lock:
             watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
-            self._add_handler_for_watch(event_handler, watch)
 
             # If we don't have an emitter for this watch already, create it.
             if watch not in self._emitter_for_watch:
-                emitter = self._emitter_class(self.event_queue, watch, timeout=self.timeout, event_filter=event_filter)
+                emitter = self._emitter_class(
+                    self.event_queue,
+                    watch,
+                    timeout=self.timeout,
+                    event_filter=event_filter,
+                    **self._emitter_kwargs,
+                )
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
+            self._add_handler_for_watch(event_handler, watch)
             self._watches.add(watch)
         return watch
 

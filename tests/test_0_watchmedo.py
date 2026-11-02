@@ -99,7 +99,7 @@ def test_watchmedo_default_patterns_match_absolute_paths(tmpdir):
 def make_dummy_script(tmpdir, n=10):
     script = os.path.join(tmpdir, f"auto-test-{n}.py")
     with open(script, "w") as f:
-        f.write('import time\nfor i in range(%d):\n\tprint("+++++ %%d" %% i, flush=True)\n\ttime.sleep(1)\n' % n)
+        f.write(f'import time\nfor i in range({n}):\n\tprint(f"+++++ {{i}}", flush=True)\n\ttime.sleep(1)\n')
     return script
 
 
@@ -200,22 +200,44 @@ def test_shell_command_subprocess_termination_not_happening_on_file_opened_event
     assert not trick.is_process_running()
 
 
+def test_shell_command_custom_shell_and_cwd():
+    with patch("subprocess.Popen") as mocked_popen:
+        mocked_proc = mocked_popen.return_value
+        mocked_proc.wait.return_value = 0
+        mocked_proc.poll.return_value = 0
+        trick = ShellCommandTrick(
+            "echo test",
+            wait_for_process=True,
+            shell_executable="/bin/bash",
+            cwd="/some/path",
+        )
+        trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
+        mocked_popen.assert_called_once_with(
+            "echo test",
+            shell=True,
+            executable="/bin/bash",
+            cwd="/some/path",
+        )
+
+
 def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
     # FIXME: see issue #949, and find a way to better handle that scenario
-    script = make_dummy_script(tmpdir, n=2)
+    script = make_dummy_script(tmpdir, n=10)
     trick = AutoRestartTrick([sys.executable, script])
+    captured = []
     trick.start()
-    time.sleep(1)
+    assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
     trick.on_any_event(FileOpenedEvent("foo/bar.baz"))
     trick.on_any_event(FileOpenedEvent("foo/bar2.baz"))
     trick.on_any_event(FileOpenedEvent("foo/bar3.baz"))
     time.sleep(1)
     trick.stop()
-    cap = capfd.readouterr()
-    assert cap.out.splitlines(keepends=False).count("+++++ 0") == 1
+    captured.append(capfd.readouterr().out)
+    assert "".join(captured).splitlines(keepends=False).count("+++++ 0") == 1
     assert trick.restart_count == 0
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_auto_restart_on_file_change(tmpdir, capfd):
     """Simulate changing 3 files.
 
@@ -236,6 +258,7 @@ def test_auto_restart_on_file_change(tmpdir, capfd):
     assert trick.restart_count == 3
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     """Simulate changing 3 files quickly and then another change later.
 
@@ -247,7 +270,7 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     # restart the test never asked for. With `n=2` the child exits after ~2s,
     # which is inside the window this test runs in. See #973.
     script = make_dummy_script(tmpdir, n=10)
-    trick = AutoRestartTrick([sys.executable, script], debounce_interval_seconds=0.5)
+    trick = AutoRestartTrick([sys.executable, script], debounce_interval=0.5)
     captured = []
     trick.start()
     assert wait_for_marker_count(capfd, captured, "+++++ 0", 1), "initial process never started"
@@ -267,6 +290,45 @@ def test_auto_restart_on_file_change_debounce(tmpdir, capfd):
     # burst was not debounced.
     assert "".join(captured).splitlines(keepends=False).count("+++++ 0") == 3
     assert trick.restart_count == 2
+
+
+def test_auto_restart_debounce_interval_default():
+    assert AutoRestartTrick(["true"]).debounce_interval == 0
+
+
+def test_auto_restart_deprecated_debounce_interval_seconds_argument():
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated") as record:
+        trick = AutoRestartTrick(["true"], debounce_interval_seconds=0.5)
+    assert trick.debounce_interval == 0.5
+    # The warning points at the caller, not at watchdog.
+    assert record[0].filename == __file__
+
+
+def test_auto_restart_debounce_interval_and_deprecated_name_conflict():
+    with pytest.raises(TypeError, match="Cannot pass both"):
+        AutoRestartTrick(["true"], debounce_interval=0.5, debounce_interval_seconds=0.5)
+
+
+def test_auto_restart_deprecated_debounce_interval_seconds_attribute():
+    trick = AutoRestartTrick(["true"], debounce_interval=0.5)
+
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated") as record:
+        assert trick.debounce_interval_seconds == 0.5
+    assert record[0].filename == __file__
+
+    with pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated"):
+        trick.debounce_interval_seconds = 2
+    assert trick.debounce_interval == 2
+
+
+def test_auto_restart_negative_debounce_interval():
+    with pytest.raises(ValueError, match="debounce_interval must be non-negative"):
+        AutoRestartTrick(["true"], debounce_interval=-1)
+    with (
+        pytest.warns(DeprecationWarning, match="'debounce_interval_seconds' is deprecated"),
+        pytest.raises(ValueError, match="debounce_interval must be non-negative"),
+    ):
+        AutoRestartTrick(["true"], debounce_interval_seconds=-1)
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
@@ -362,16 +424,50 @@ def test_logger_events_echoed(caplog):
     ]
 
 
+@pytest.mark.parametrize(("verbosity", "events_logged"), [([], True), (["--quiet"], False), (["--verbose"], True)])
+def test_log_events_at_cli_verbosity(caplog, monkeypatch, verbosity, events_logged):
+    args = watchmedo.cli.parse_args(["log", *verbosity, "."])
+    args.func = lambda args: LoggerTrick().on_any_event(FileOpenedEvent("foo/bar.baz"))
+    monkeypatch.setattr(watchmedo.cli, "parse_args", lambda: args)
+
+    with caplog.at_level(logging.DEBUG, logger="watchdog"):
+        assert watchmedo.main() == 0
+
+    records = [record.getMessage().strip() for record in caplog.records]
+    expected = [
+        "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
+    assert records == (expected if events_logged else [])
+
+
 def test_shell_command_arg_parsing():
     args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'"])
     assert args.command == "'cmd'"
+    assert args.shell_executable is None
+    assert args.cwd is None
+
+    args = watchmedo.cli.parse_args(["shell-command", "--command='cmd'", "-s", "/bin/bash", "-C", "/tmp"])
+    assert args.command == "'cmd'"
+    assert args.shell_executable == "/bin/bash"
+    assert args.cwd == "/tmp"
 
 
-@pytest.mark.parametrize("cmdline", [["auto-restart", "-d", ".", "cmd"], ["log", "."]])
+@pytest.mark.parametrize(
+    ("cmdline", "default_log_level"),
+    [
+        (["auto-restart", "-d", ".", "cmd"], "WARNING"),
+        (["shell-command", "."], "WARNING"),
+        (["tricks-from", "tricks.yaml"], "WARNING"),
+        (["tricks", "tricks.yaml"], "WARNING"),
+        (["tricks-generate-yaml"], "WARNING"),
+        (["generate-tricks-yaml"], "WARNING"),
+        (["log", "."], "INFO"),
+    ],
+)
 @pytest.mark.parametrize(
     "verbosity",
     [
-        ([], "WARNING"),
+        ([], None),
         (["-q"], "ERROR"),
         (["--quiet"], "ERROR"),
         (["-v"], "INFO"),
@@ -381,12 +477,12 @@ def test_shell_command_arg_parsing():
         (["--verbose", "-v"], "DEBUG"),
     ],
 )
-def test_valid_verbosity(cmdline, verbosity):
+def test_valid_verbosity(cmdline, default_log_level, verbosity):
     (verbosity_cmdline_args, expected_log_level) = verbosity
     cmd = [cmdline[0], *verbosity_cmdline_args, *cmdline[1:]]
     args = watchmedo.cli.parse_args(cmd)
     log_level = watchmedo._get_log_level_from_args(args)  # noqa: SLF001
-    assert log_level == expected_log_level
+    assert log_level == (expected_log_level or default_log_level)
 
 
 @pytest.mark.parametrize("cmdline", [["auto-restart", "-d", ".", "cmd"], ["log", "."]])

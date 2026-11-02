@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from threading import Event
 
 import pytest
 
-from watchdog.events import FileModifiedEvent, FileMovedEvent, FileOpenedEvent, LoggingEventHandler
+from watchdog.events import (
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileOpenedEvent,
+    FileSystemEventHandler,
+    LoggingEventHandler,
+)
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 
 
@@ -181,6 +188,30 @@ def test_stale_event_does_not_resurrect_an_unscheduled_watch():
     assert watch not in observer._handlers  # noqa: SLF001
 
 
+def test_event_dispatcher_timeout_rejects_bool():
+    """bool subclasses int; timeout=True must not silently become 1.0s."""
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
+        EventDispatcher(timeout=True)
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
+        EventDispatcher(timeout=False)
+
+
+def test_base_observer_timeout_rejects_bool():
+    """BaseObserver forwards timeout to EventDispatcher."""
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
+        BaseObserver(EventEmitter, timeout=True)
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
+        BaseObserver(EventEmitter, timeout=False)
+
+
+def test_event_emitter_timeout_rejects_bool():
+    watch = ObservedWatch("/foobar", recursive=False)
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
+        EventEmitter(EventQueue(), watch, timeout=True)
+    with pytest.raises(TypeError, match=r"timeout.*bool"):
+        EventEmitter(EventQueue(), watch, timeout=False)
+
+
 def test_remove_handler_for_watch_does_not_resurrect_unscheduled_watch():
     """remove_handler_for_watch() must not resurrect a watch removed by unschedule().
 
@@ -297,3 +328,30 @@ def test_symlinked_directory_not_treated_as_file(tmp_path: Path):
     watch_follow = ObservedWatch(link_dir, recursive=True, follow_symlink=True)
     assert not watch_follow.is_file
     assert watch_follow.is_recursive
+
+
+def test_schedule_defers_emitter_start() -> None:
+    """Scheduling a watch must be non-blocking and not invoke emitter initialization before observer.start().
+
+    See https://github.com/gorakhargosh/watchdog/issues/96
+    """
+    started = Event()
+
+    class CustomEmitter(EventEmitter):
+        def on_thread_start(self) -> None:
+            started.set()
+
+    observer = BaseObserver(CustomEmitter)
+    watch = observer.schedule(FileSystemEventHandler(), "/path/to/watch", recursive=True)
+
+    assert not started.is_set(), "Emitter must not execute on_thread_start during schedule()"
+    assert not observer.is_alive(), "Observer thread must not be running before start()"
+    assert len(observer.emitters) == 1
+    assert next(iter(observer.emitters)).watch == watch
+
+    observer.start()
+    try:
+        assert started.wait(timeout=2.0), "Emitter on_thread_start must be called upon observer.start()"
+    finally:
+        observer.stop()
+        observer.join()

@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import os
 import pickle
+import stat
 import time
 from unittest.mock import patch
 
@@ -11,7 +12,7 @@ import pytest
 from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
-from .shell import mkdir, mv, rm, symlink, touch
+from .shell import chmod, mkdir, mv, rm, symlink, touch
 
 
 def wait():
@@ -315,3 +316,23 @@ def test_empty_snapshot(p, ignore_device, reverse):
     kind = "deleted" if reverse else "created"
     assert getattr(diff, f"files_{kind}") == [p("a")]
     assert sorted(getattr(diff, f"dirs_{kind}")) == sorted([p(""), p("b"), p("b", "c")])
+
+
+def test_attrib_on_chmod(p):
+    touch(p("a"))
+    mkdir(p("dir1"))
+    ref = DirectorySnapshot(p(""))
+    mode = stat.S_IREAD if platform.is_windows() else 0o777
+    chmod(p("a"), mode)
+    chmod(p("dir1"), mode)
+    new_snapshot = DirectorySnapshot(p(""))
+    diff = DirectorySnapshotDiff(ref, new_snapshot)
+    try:
+        assert diff.files_attrib == [p("a")]
+        assert diff.dirs_attrib == [p("dir1")]
+        assert diff.files_modified == []
+        assert diff.dirs_modified == []
+        assert new_snapshot.mode(p("a")) == os.stat(p("a")).st_mode
+    finally:
+        chmod(p("a"), stat.S_IWRITE if platform.is_windows() else 0o644)
+        chmod(p("dir1"), stat.S_IWRITE if platform.is_windows() else 0o755)

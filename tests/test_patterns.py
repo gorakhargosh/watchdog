@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import glob
+
 import pytest
 
 from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
@@ -12,6 +14,16 @@ from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
         ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, True, False),
         ("/users/gorakhargosh/", {"*.py"}, {"*.txt"}, False, False),
         ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, False, ValueError),
+        # Character classes (e.g. [0-9])
+        ("/users/gorakhargosh/file3.py", {"**/file[0-9].py"}, set(), True, True),
+        ("/users/gorakhargosh/filea.py", {"**/file[0-9].py"}, set(), True, False),
+        # Literal brackets escaped using standard glob/fnmatch [[] syntax (see #991)
+        ("/users/gorakhargosh/[test].txt", {"**/[[]test].txt"}, set(), True, True),
+        ("/users/gorakhargosh/t.txt", {"**/[[]test].txt"}, set(), True, False),
+        # Literal brackets escaped using glob.escape()
+        ("/users/gorakhargosh/[test].txt", {f"**/{glob.escape('[test].txt')}"}, set(), True, True),
+        # Complex adjacent/nested brackets escaped using glob.escape()
+        ("/users/gorakhargosh/[[file]][][].txt", {f"**/{glob.escape('[[file]][][].txt')}"}, set(), True, True),
     ],
 )
 def test_match_path(raw_path, included_patterns, excluded_patterns, case_sensitive, expected):

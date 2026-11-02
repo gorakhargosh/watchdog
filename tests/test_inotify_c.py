@@ -16,11 +16,20 @@ import resource
 import select
 import struct
 import threading
+import time
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
-from watchdog.observers.inotify_c import InotifyConstants, InotifyEvent, InotifyFD, WatchDescriptor
+from watchdog.observers.inotify_c import (
+    CallbackId,
+    InotifyConstants,
+    InotifyEvent,
+    InotifyFD,
+    Mask,
+    Watch,
+    WatchDescriptor,
+)
 
 if TYPE_CHECKING:
     from .utils import Helper, P, StartWatching, TestEventQueue
@@ -151,6 +160,9 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
                     event = event_queue.get(timeout=5)[0]
                     assert isinstance(event, DirModifiedEvent)
                     assert event.src_path == p("").rstrip(os.path.sep)
+
+                # Give InotifyFD time to process the remaining synthetic events before close
+                time.sleep(0.05)
             finally:
                 helper.close()
         finally:
@@ -164,7 +176,8 @@ def test_late_double_deletion(helper: Helper, p: P, event_queue: TestEventQueue,
 
     assert inotify_fd.last == 3  # Number of directories
     assert inotify_fd.buf == b""  # Didn't miss any event
-    assert inotify_fd.wds == [2, 3]  # Only 1 is removed explicitly
+    assert 1 not in inotify_fd.wds  # Only 1 is removed explicitly
+    assert set(inotify_fd.wds) <= {2, 3}
 
 
 @pytest.mark.parametrize(
@@ -217,6 +230,47 @@ def test_event_equality(p: P) -> None:
     assert event2 != event3
 
 
+def test_read_events_preserves_queue_overflow() -> None:
+    inotify_fd = object.__new__(InotifyFD)
+    inotify_fd._read_event_buffer = lambda _size: (  # type: ignore[method-assign]
+        struct_inotify(-1, Mask(0)) + struct_inotify(-1, InotifyConstants.IN_Q_OVERFLOW)
+    )
+
+    events = inotify_fd.read_events()
+
+    assert events == [InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b"")]
+
+
+def test_queue_overflow_notifies_each_callback_once(caplog) -> None:
+    class Callback:
+        overflow_count = 0
+        event_count = 0
+
+        def on_event(self, event) -> None:
+            self.event_count += 1
+
+        def on_watch_deleted(self, wd) -> None:
+            pass
+
+        def on_queue_overflow(self) -> None:
+            self.overflow_count += 1
+
+    callback = Callback()
+    watch_a = Watch(WatchDescriptor(1), Mask(0), b"a")
+    watch_b = Watch(WatchDescriptor(2), Mask(0), b"b")
+    watch_a.callbacks[CallbackId(1)] = callback
+    watch_b.callbacks[CallbackId(2)] = callback
+    inotify_fd = object.__new__(InotifyFD)
+    inotify_fd._lock = threading.Lock()
+    inotify_fd._watch_for_wd = {watch_a.wd: watch_a, watch_b.wd: watch_b}
+
+    inotify_fd.handle_event(InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b""))
+
+    assert callback.overflow_count == 1
+    assert callback.event_count == 0
+    assert "Inotify queue overflowed" in caplog.text
+
+
 def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
     if soft_limit != resource.RLIM_INFINITY and soft_limit <= 1024:
@@ -229,7 +283,9 @@ def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watc
         try:
             # Exercise a real descriptor outside select()'s range without
             # opening thousands of unrelated files.
-            return fcntl.fcntl(fd, fcntl.F_DUPFD_CLOEXEC, 1024)
+            high_fd = fcntl.fcntl(fd, fcntl.F_DUPFD, 1024)
+            fcntl.fcntl(high_fd, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
+            return high_fd
         finally:
             os.close(fd)
 

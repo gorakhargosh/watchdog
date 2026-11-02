@@ -14,4 +14,4 @@ python:
       path: .
       extra_requirements:
         - watchmedo
-    - requirements: requirements-tests.txt
+    - requirements: requirements-docs.txt

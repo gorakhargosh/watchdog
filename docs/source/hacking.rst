@@ -65,7 +65,7 @@ Make sure your virtual environment is active, then install the testing and devel
 
 .. code:: bash
 
-    (venv)$ python -m pip install -r requirements-tests.txt
+    (venv)$ python -m pip install -r requirements-dev.txt
 
 To run style and formatting checks:
 
@@ -105,6 +105,6 @@ To build the documentation locally:
     (venv)$ uvx tox -e docs
 
 .. note::
-   If you are using `uv` to manage your environment, you can use `uv pip install -r requirements-tests.txt` instead of standard `pip` to avoid externally-managed environment errors. Additionally, `tox` is not included in `requirements-tests.txt` to keep the testing dependency lightweight; running via `uvx tox` is the recommended way if `tox` is not installed globally.
+   If you are using `uv` to manage your environment, you can use `uv pip install -r requirements-dev.txt` instead of standard `pip` to avoid externally-managed environment errors. Additionally, `tox` is not included in `requirements-dev.txt` to keep the environment lightweight; running via `uvx tox` is the recommended way if `tox` is not installed globally.
 
 🚀 **Happy hacking!** We are excited to see what you build.

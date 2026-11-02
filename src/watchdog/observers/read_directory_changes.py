@@ -25,6 +25,7 @@ from watchdog.observers.winapi import DirectoryChangeReader
 if TYPE_CHECKING:
     from watchdog.events import FileSystemEvent
     from watchdog.observers.api import EventQueue, ObservedWatch
+    from watchdog.utils import Seconds
 
 
 class WindowsApiEmitter(EventEmitter):
@@ -37,7 +38,7 @@ class WindowsApiEmitter(EventEmitter):
         event_queue: EventQueue,
         watch: ObservedWatch,
         *,
-        timeout: float = DEFAULT_EMITTER_TIMEOUT,
+        timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
@@ -70,7 +71,7 @@ class WindowsApiEmitter(EventEmitter):
         if reader is not None:
             reader.stop()
 
-    def queue_events(self, timeout: float) -> None:
+    def queue_events(self, timeout: Seconds) -> None:
         with self._lock:
             reader = self._reader
         if reader is None:
@@ -117,5 +118,5 @@ class WindowsApiObserver(BaseObserver):
     calls to event handlers.
     """
 
-    def __init__(self, *, timeout: float = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
         super().__init__(WindowsApiEmitter, timeout=timeout)

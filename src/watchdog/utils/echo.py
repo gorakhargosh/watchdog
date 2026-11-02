@@ -30,7 +30,8 @@ import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from collections.abc import Callable
+    from typing import Any
 
 
 def format_arg_value(arg_val: tuple[str, tuple[Any, ...]]) -> str:
@@ -51,13 +52,13 @@ def echo(fn: Callable, write: Callable[[str], int | None] = sys.stdout.write) ->
     argcount = code.co_argcount
     argnames = code.co_varnames[:argcount]
     fn_defaults: tuple[Any] = fn.__defaults__ or ()
-    argdefs = dict(list(zip(argnames[-len(fn_defaults) :], fn_defaults)))
+    argdefs = dict(list(zip(argnames[-len(fn_defaults) :], fn_defaults, strict=False)))
 
     @functools.wraps(fn)
     def wrapped(*v: Any, **k: Any) -> Callable:
         # Collect function arguments by chaining together positional,
         # defaulted, extra positional and keyword arguments.
-        positional = list(map(format_arg_value, list(zip(argnames, v))))
+        positional = list(map(format_arg_value, list(zip(argnames, v, strict=False))))
         defaulted = [format_arg_value((a, argdefs[a])) for a in argnames[len(v) :] if a not in k]
         nameless = list(map(repr, v[argcount:]))
         keyword = list(map(format_arg_value, list(k.items())))

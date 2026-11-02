@@ -11,15 +11,16 @@ from watchdog.events import FileCreatedEvent, FileModifiedEvent, PatternMatching
 from watchdog.observers import Observer
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def report_result(path: str, future: Future[object]) -> None:
     try:
         future.result()
     except json.JSONDecodeError as error:
-        logging.warning("Invalid JSON in %s: %s", path, error)
+        logger.warning("Invalid JSON in %s: %s", path, error)
     else:
-        logging.info("Valid JSON: %s", path)
+        logger.info("Valid JSON: %s", path)
 
 
 class JsonValidator(PatternMatchingEventHandler):
@@ -31,7 +32,7 @@ class JsonValidator(PatternMatchingEventHandler):
         try:
             contents = Path(path).read_text(encoding="utf-8")
         except (OSError, UnicodeError):
-            logging.exception("Could not read %s", path)
+            logger.exception("Could not read %s", path)
             return
 
         future = self.executor.submit(json.loads, contents)

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Callable
-
 import pytest
 
 from watchdog.utils import platform
@@ -11,12 +9,16 @@ if not platform.is_linux():
 
 import os
 import random
+from typing import TYPE_CHECKING, cast
 
 from watchdog.observers.inotify import InotifyWatchGroup
 from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS, InotifyConstants, InotifyFD, Mask
 from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def wait_for_move_event(read_event: Callable[[], GroupedInotifyEvent]) -> GroupedInotifyEvent:
@@ -246,3 +248,35 @@ def test_watch_groups_are_independent(p):
     inotify_root.deactivate()
     inotify_a.deactivate()
     cleanup()
+
+
+def test_queue_overflow_rebuilds_recursive_watches(p, caplog):
+    class FakeInotifyFD:
+        def __init__(self) -> None:
+            self.next_wd = 0
+            self.removed = []
+
+        def add_callback(self, path, mask, callback, id_):
+            self.next_wd += 1
+            return self.next_wd
+
+        def remove_callbacks(self, callbacks) -> None:
+            self.removed.extend(callbacks)
+
+    mkdir(p("root"))
+    fake_fd = FakeInotifyFD()
+    inotify = InotifyWatchGroup(
+        cast("InotifyFD", fake_fd), p("root").encode(), is_recursive=True, event_mask=WATCHDOG_ALL_EVENTS
+    )
+    mkdir(p("root", "missed", "child"), parents=True)
+
+    inotify.on_queue_overflow()
+
+    assert fake_fd.removed
+    assert set(inotify._active_callbacks_by_path) == {  # noqa: SLF001
+        p("root").encode(),
+        p("root", "missed").encode(),
+        p("root", "missed", "child").encode(),
+    }
+    assert "reconciling recursive watches" in caplog.text
+    inotify.deactivate()
