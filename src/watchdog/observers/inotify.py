@@ -251,11 +251,15 @@ class InotifyWatchGroup(WatchCallback):
             elif event.is_moved_to:
                 move_src_path = self._source_for_move(event.cookie)
                 move_dst_path = src_path
-                if move_src_path is not None:
-                    self._move_watches(move_src_path, move_dst_path)
-                elif event.is_directory and self.is_recursive:
-                    # Moved in from outside the watched tree: watch it like a created directory
+                source_was_watched = move_src_path is not None and self._move_watches(move_src_path, move_dst_path)
+                if event.is_directory and self.is_recursive and not source_was_watched:
+                    # The source may have been seen before its watch was registered.
                     self._add_all_callbacks(src_path)
+                    if move_src_path is not None:
+                        for sub_event in self._recursive_simulate(src_path):
+                            sub_src_path = self._build_event_source_path(sub_event)
+                            if sub_src_path is not None:
+                                self._move_event_grouper.put_event(PathedInotifyEvent(sub_event, sub_src_path))
             elif event.is_create and event.is_directory and self.is_recursive:
                 self._add_all_callbacks(src_path)
 
@@ -313,8 +317,8 @@ class InotifyWatchGroup(WatchCallback):
             return None
         return os.path.join(watched_path, event.name) if event.name else watched_path  # avoid trailing slash
 
-    def _move_watches(self, move_src_path: bytes, move_dst_path: bytes) -> None:
-        """moves all watches that are inside the directory move_src_path to move_dst_path"""
+    def _move_watches(self, move_src_path: bytes, move_dst_path: bytes) -> bool:
+        """Move all watches in the source tree and return whether the source was watched."""
         moved_watch = self._active_callbacks_by_path.pop(move_src_path, None)
         if moved_watch is not None:
             self._active_callbacks_by_watch[moved_watch] = move_dst_path
@@ -328,6 +332,8 @@ class InotifyWatchGroup(WatchCallback):
                     path = path.replace(move_src_path, move_dst_path, 1)
                     self._active_callbacks_by_watch[wd] = path
                     self._active_callbacks_by_path[path] = wd
+            return True
+        return False
 
     def _add_all_callbacks(self, path: bytes) -> None:
         """Adds a watch (optionally recursively) for the given directory path
