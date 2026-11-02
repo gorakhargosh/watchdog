@@ -209,6 +209,21 @@ class InotifyWatchGroup(WatchCallback):
                 return
             self._remove_watch_internally(wd)
 
+    def on_queue_overflow(self) -> None:
+        """Rebuild recursive watches after the kernel drops events."""
+        with self._lock:
+            if not self.is_active:
+                return
+            self._move_event_grouper.discard_pending_events()
+            if not self.is_recursive:
+                return
+            logger.warning("Inotify queue overflowed; reconciling recursive watches below %s", self.path)
+            self._remove_callbacks(list(self._active_callbacks_by_watch))
+            try:
+                self._add_all_callbacks(self.path)
+            except OSError:
+                logger.exception("Unable to rebuild recursive inotify watches below %s", self.path)
+
     def on_event(self, event: InotifyEvent) -> None:
         """called for every event for each watch this callback is registered at."""
         with self._lock:

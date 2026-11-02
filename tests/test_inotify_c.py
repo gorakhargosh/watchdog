@@ -21,7 +21,15 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
-from watchdog.observers.inotify_c import InotifyConstants, InotifyEvent, InotifyFD, WatchDescriptor
+from watchdog.observers.inotify_c import (
+    CallbackId,
+    InotifyConstants,
+    InotifyEvent,
+    InotifyFD,
+    Mask,
+    Watch,
+    WatchDescriptor,
+)
 
 if TYPE_CHECKING:
     from .utils import Helper, P, StartWatching, TestEventQueue
@@ -220,6 +228,45 @@ def test_event_equality(p: P) -> None:
     assert event1 == event2
     assert event1 != event3
     assert event2 != event3
+
+
+def test_read_events_preserves_queue_overflow() -> None:
+    inotify_fd = object.__new__(InotifyFD)
+    inotify_fd._read_event_buffer = lambda _size: struct_inotify(-1, InotifyConstants.IN_Q_OVERFLOW)  # type: ignore[method-assign]
+
+    events = inotify_fd.read_events()
+
+    assert events == [InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b"")]
+
+
+def test_queue_overflow_notifies_each_callback_once(caplog) -> None:
+    class Callback:
+        overflow_count = 0
+        event_count = 0
+
+        def on_event(self, event) -> None:
+            self.event_count += 1
+
+        def on_watch_deleted(self, wd) -> None:
+            pass
+
+        def on_queue_overflow(self) -> None:
+            self.overflow_count += 1
+
+    callback = Callback()
+    watch_a = Watch(WatchDescriptor(1), Mask(0), b"a")
+    watch_b = Watch(WatchDescriptor(2), Mask(0), b"b")
+    watch_a.callbacks[CallbackId(1)] = callback
+    watch_b.callbacks[CallbackId(2)] = callback
+    inotify_fd = object.__new__(InotifyFD)
+    inotify_fd._lock = threading.Lock()
+    inotify_fd._watch_for_wd = {watch_a.wd: watch_a, watch_b.wd: watch_b}
+
+    inotify_fd.handle_event(InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b""))
+
+    assert callback.overflow_count == 1
+    assert callback.event_count == 0
+    assert "Inotify queue overflowed" in caplog.text
 
 
 def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
