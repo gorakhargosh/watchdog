@@ -6,11 +6,12 @@ from watchdog.events import FileSystemEvent, PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class SingleFileEventHandler(PatternMatchingEventHandler):
     def on_any_event(self, event: FileSystemEvent) -> None:
-        logging.info(event)  # noqa: LOG015
+        logger.info(event)
 
 
 watched_directory = sys.argv[1]

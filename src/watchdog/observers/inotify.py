@@ -277,17 +277,19 @@ class InotifyWatchGroup(WatchCallback):
         # This will handle: mkdir -p foobar/blah/bar; touch foobar/afile
         events = []
         for root, dirnames, filenames in os.walk(src_path, followlinks=self.follow_symlink):
+            wd_root = self._active_callbacks_by_path.get(root)
+            if wd_root is None:
+                # Not watched: it could not be, or it appeared after the watches were added (e.g. a copy
+                # still in progress) and its own queued IN_CREATE event will watch it and report its content
+                continue
+
             for dirname in dirnames:
-                full_path = os.path.join(root, dirname)
-                wd_dir = self._active_callbacks_by_path[os.path.dirname(full_path)]
                 mask = Mask(InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR)
-                events.append(InotifyEvent(wd_dir, mask, 0, dirname))
+                events.append(InotifyEvent(wd_root, mask, 0, dirname))
 
             for filename in filenames:
-                full_path = os.path.join(root, filename)
-                wd_parent_dir = self._active_callbacks_by_path[os.path.dirname(full_path)]
                 mask = InotifyConstants.IN_CREATE
-                events.append(InotifyEvent(wd_parent_dir, mask, 0, filename))
+                events.append(InotifyEvent(wd_root, mask, 0, filename))
         return events
 
     def deactivate(self) -> None:

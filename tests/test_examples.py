@@ -30,7 +30,7 @@ def test_example(script_path: str, tmp_path: Path) -> None:
 
     if Path(script_path).name == "single_file.py":
         event = FileModifiedEvent(str(watched_directory / "example.txt"))
-        with patch("logging.info") as log:
+        with patch.object(module.logger, "info") as log:
             module.event_handler.dispatch(event)
         log.assert_called_once_with(event)
 
