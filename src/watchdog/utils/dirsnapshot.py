@@ -108,6 +108,19 @@ class DirectorySnapshotDiff:
             get_ref_path = ref.path
             get_snapshot_path = snapshot.path
 
+        def is_same_entry(ref_path: bytes | str, new_path: bytes | str) -> bool:
+            # An inode match alone does not prove a move: when a file is
+            # deleted and an unrelated new file is created quickly, the file
+            # system may hand the freed inode to the new file, which would
+            # otherwise be misreported as a move of the deleted file (and the
+            # creation would be lost). A rename preserves the entry itself,
+            # and modifying it afterwards changes at most one of its size and
+            # modification time in the common cases (a touch changes only the
+            # mtime, an in-place rewrite keeps the size). A new file that
+            # merely reuses the inode matches neither, so it is reported as
+            # a creation plus a deletion instead of a move.
+            return ref.size(ref_path) == snapshot.size(new_path) or ref.mtime(ref_path) == snapshot.mtime(new_path)
+
         # find moved paths
         moved: set[tuple[bytes | str, bytes | str]] = set()
         for path in set(deleted):
@@ -117,7 +130,11 @@ class DirectorySnapshotDiff:
             # genuinely new path. A symlink (or hard link) shares its target's
             # inode, so ``new_path`` may still point at the unchanged target,
             # which is not a move.
-            if new_path and (new_path not in ref.paths or ref.inode(new_path) != inode):
+            if (
+                new_path
+                and (new_path not in ref.paths or ref.inode(new_path) != inode)
+                and is_same_entry(path, new_path)
+            ):
                 # file is not deleted but moved
                 deleted.remove(path)
                 moved.add((path, new_path))
@@ -129,7 +146,11 @@ class DirectorySnapshotDiff:
             # gone. A symlink (or hard link) shares its target's inode, so
             # ``old_path`` may still exist with that inode, which means this is a
             # creation, not a move.
-            if old_path and (old_path not in snapshot.paths or snapshot.inode(old_path) != inode):
+            if (
+                old_path
+                and (old_path not in snapshot.paths or snapshot.inode(old_path) != inode)
+                and is_same_entry(old_path, path)
+            ):
                 created.remove(path)
                 moved.add((old_path, path))
 

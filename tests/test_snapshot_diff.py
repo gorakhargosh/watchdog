@@ -336,3 +336,49 @@ def test_attrib_on_chmod(p):
     finally:
         chmod(p("a"), stat.S_IWRITE if platform.is_windows() else 0o644)
         chmod(p("dir1"), stat.S_IWRITE if platform.is_windows() else 0o755)
+
+
+class _FakeDirEntry:
+    def __init__(self, name):
+        self.name = name
+
+
+def _fake_snapshot(root, entries):
+    """Build a :class:`DirectorySnapshot` from injected stat/listdir functions.
+
+    ``entries`` maps a file name to ``(inode, size, mtime)``. No real file
+    system is involved, which makes inode reuse deterministic.
+    """
+    stats = {root: os.stat_result((stat.S_IFDIR | 0o755, 1, 1, 1, 0, 0, 0, 0, 0, 0))}
+    for name, (inode, size, mtime) in entries.items():
+        stats[os.path.join(root, name)] = os.stat_result(
+            (stat.S_IFREG | 0o644, inode, 1, 1, 0, 0, size, mtime, mtime, mtime)
+        )
+
+    def fake_listdir(path):
+        return [_FakeDirEntry(name) for name in entries] if path == root else []
+
+    return DirectorySnapshot(root, recursive=False, stat=stats.__getitem__, listdir=fake_listdir)
+
+
+def test_inode_reuse_is_not_a_move(p):
+    # A file is deleted and an unrelated new file reuses its inode, with a
+    # different size and mtime: this must be reported as a deletion plus a
+    # creation, not as a move, otherwise the creation is lost.
+    ref = _fake_snapshot(p(""), {"87": (42, 10, 1000)})
+    snapshot = _fake_snapshot(p(""), {"83.processed": (42, 20, 2000)})
+    diff = DirectorySnapshotDiff(ref, snapshot)
+    assert diff.files_moved == []
+    assert diff.files_deleted == [p("87")]
+    assert diff.files_created == [p("83.processed")]
+
+
+def test_move_detection_with_fake_stat(p):
+    # A genuine rename keeps the inode, size and mtime, and is still
+    # detected as a move.
+    ref = _fake_snapshot(p(""), {"a": (7, 10, 1000)})
+    snapshot = _fake_snapshot(p(""), {"b": (7, 10, 1000)})
+    diff = DirectorySnapshotDiff(ref, snapshot)
+    assert diff.files_moved == [(p("a"), p("b"))]
+    assert diff.files_created == []
+    assert diff.files_deleted == []
