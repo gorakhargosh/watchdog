@@ -12,8 +12,8 @@ from watchdog.utils import platform
 if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
-from watchdog.events import DirCreatedEvent, FileDeletedEvent, FileMovedEvent, FileSystemEventHandler
-from watchdog.observers.inotify import InotifyObserver
+from watchdog.events import DirCreatedEvent, FileCreatedEvent, FileDeletedEvent, FileMovedEvent, FileSystemEventHandler
+from watchdog.observers.inotify import InotifyObserver, InotifyWatchGroup
 from watchdog.observers.inotify_c import InotifyFD
 
 
@@ -114,6 +114,49 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         observer.stop()
         if observer.is_alive():
             observer.join(timeout=5)
+        assert not observer.is_alive()
+
+
+def test_new_directory_filled_while_its_watches_are_added(tmp_path, monkeypatch):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    tree = tmp_path / "tree"
+    late = tree / "late"
+    add_all_callbacks = InotifyWatchGroup._add_all_callbacks  # noqa: SLF001
+
+    def add_all_callbacks_then_copy_more(self, path):
+        add_all_callbacks(self, path)
+        if path == os.fsencode(tree):
+            # Like `cp -r` still copying: this appears after the watches for the new tree were added
+            (late / "nested").mkdir(parents=True)
+            (late / "file").touch()
+
+    monkeypatch.setattr(InotifyWatchGroup, "_add_all_callbacks", add_all_callbacks_then_copy_more)
+    observer = InotifyObserver()
+    observer.schedule(
+        Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileCreatedEvent, FileDeletedEvent]
+    )
+    try:
+        observer.start()
+        tree.mkdir()
+
+        expected = {DirCreatedEvent(str(late / "nested")), FileCreatedEvent(str(late / "file"))}
+        while expected:
+            expected.discard(events.get(timeout=5))
+
+        # The late directory is watched too
+        marker = late / "nested" / "marker"
+        marker.touch()
+        marker.unlink()
+        while events.get(timeout=5) != FileDeletedEvent(str(marker)):
+            pass
+    finally:
+        observer.stop()
+        observer.join(timeout=5)
         assert not observer.is_alive()
 
 
