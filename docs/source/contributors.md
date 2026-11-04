@@ -67,6 +67,9 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/PDGGK"><img src="https://avatars.githubusercontent.com/u/99155080?v=4?s=70" width="70px;" alt="ZIHAN DAI"/><br /><sub><b>ZIHAN DAI</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=PDGGK" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://monosans.ru/"><img src="https://avatars.githubusercontent.com/u/76561516?v=4?s=70" width="70px;" alt="Almaz"/><br /><sub><b>Almaz</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=monosans" title="Code">💻</a></td>
     </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/taltal-beep"><img src="https://avatars.githubusercontent.com/u/228741870?v=4?s=70" width="70px;" alt="Ariel Even"/><br /><sub><b>Ariel Even</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=taltal-beep" title="Code">💻</a></td>
+    </tr>
   </tbody>
 </table>
 
