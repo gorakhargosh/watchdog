@@ -355,3 +355,42 @@ def test_schedule_defers_emitter_start() -> None:
     finally:
         observer.stop()
         observer.join()
+
+
+def test_schedule_without_handler():
+    """A watch can be scheduled with no handler and gain one later (#1039)."""
+    observer = BaseObserver(EventEmitter)
+
+    watch = observer.schedule(None, "/foobar", recursive=True)
+    assert len(observer.emitters) == 1
+
+    received = []
+
+    class RecordingHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            received.append(event)
+
+    # Events are dispatched to nobody, without error, while handler-less.
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+    observer.start()
+    time.sleep(1)
+    assert received == []
+
+    # Once a handler is attached, it receives the watch's events.
+    handler = RecordingHandler()
+    observer.add_handler_for_watch(handler, watch)
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+    time.sleep(1)
+    assert len(received) == 1
+
+    observer.unschedule(watch)
+    observer.stop()
+    observer.join()
+
+
+def test_unschedule_watch_that_never_had_a_handler():
+    """Unscheduling a handler-less watch must not raise a KeyError."""
+    observer = BaseObserver(EventEmitter)
+    watch = observer.schedule(None, "/foobar", recursive=True)
+    observer.unschedule(watch)
+    assert len(observer.emitters) == 0

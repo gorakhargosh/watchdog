@@ -341,7 +341,7 @@ class BaseObserver(EventDispatcher):
 
     def schedule(
         self,
-        event_handler: FileSystemEventHandler,
+        event_handler: FileSystemEventHandler | None,
         path: str | Path,
         *,
         recursive: bool = False,
@@ -354,9 +354,12 @@ class BaseObserver(EventDispatcher):
         :param event_handler:
             An event handler instance that has appropriate event handling
             methods which will be called by the observer in response to
-            file system events.
+            file system events, or `None` to create the watch without any
+            handler for now. Handlers can be attached to the returned watch
+            later with :meth:`add_handler_for_watch`; until then, events for
+            the watch are simply not delivered anywhere.
         :type event_handler:
-            :class:`watchdog.events.FileSystemEventHandler` or a subclass
+            :class:`watchdog.events.FileSystemEventHandler` or a subclass, or `None`
         :param path:
             Directory or file path that will be monitored.
         :type path:
@@ -393,7 +396,8 @@ class BaseObserver(EventDispatcher):
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)
-            self._add_handler_for_watch(event_handler, watch)
+            if event_handler is not None:
+                self._add_handler_for_watch(event_handler, watch)
             self._watches.add(watch)
         return watch
 
@@ -447,7 +451,8 @@ class BaseObserver(EventDispatcher):
         """
         with self._lock:
             emitter = self._emitter_for_watch[watch]
-            del self._handlers[watch]
+            # A watch scheduled without a handler has no entry to delete.
+            self._handlers.pop(watch, None)
             self._remove_emitter(emitter)
             self._watches.remove(watch)
 
