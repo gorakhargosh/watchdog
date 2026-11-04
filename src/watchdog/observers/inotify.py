@@ -595,6 +595,12 @@ class InotifyObserver(BaseObserver):
     """
 
     def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
-        InotifyFD.get_instance()
+        self._inotify_fd = InotifyFD()
+        self._inotify_fd.start()
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
-        super().__init__(cls, timeout=timeout)
+        super().__init__(cls, timeout=timeout, inotify_fd=self._inotify_fd)
+
+    def on_thread_stop(self) -> None:
+        super().on_thread_stop()
+        self._inotify_fd.stop()
+        self._inotify_fd.join()

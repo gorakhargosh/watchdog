@@ -40,6 +40,26 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+def test_inotify_fd_instances_are_independent() -> None:
+    inotify_fds = []
+    try:
+        for _ in range(2):
+            inotify_fd = InotifyFD()
+            inotify_fds.append(inotify_fd)
+            inotify_fd.start()
+
+        first, second = inotify_fds
+        assert first is not second
+        assert first._inotify_fd != second._inotify_fd  # noqa: SLF001
+        assert all(inotify_fd.is_alive() for inotify_fd in inotify_fds)
+    finally:
+        for inotify_fd in inotify_fds:
+            inotify_fd.stop()
+        for inotify_fd in inotify_fds:
+            inotify_fd.join(timeout=5)
+        assert all(not inotify_fd.is_alive() for inotify_fd in inotify_fds)
+
+
 def test_import_with_exhausted_inotify_instances() -> None:
     code = """
 import ctypes
