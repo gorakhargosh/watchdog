@@ -3,27 +3,23 @@
 Changelog
 ---------
 
-7.0.1-dev
-~~~~~~~~~
+7.1.0
+~~~~~
 
-202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.0.0...HEAD>`__
-
-**Breaking Changes**
-
-- 
+2026-11-04 • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.0.0...v7.1.0>`__
 
 **Other Changes**
 
+- [fsevents] Fix building the extension on PyPy 3.12 by updating the bundled ``pythoncapi_compat.h``. (`#1397 <https://github.com/gorakhargosh/watchdog/issues/1397>`__)
 - [inotify] Create the inotify instance lazily so observer and polling imports succeed when the inotify instance limit is reached. (`#1389 <https://github.com/gorakhargosh/watchdog/issues/1389>`__)
 - [inotify] Reconcile recursively watched directories renamed before their source watch was registered, and simulate existing descendants so their initial changes are reported. (`#1383 <https://github.com/gorakhargosh/watchdog/pull/1383>`__)
 - [inotify] Reconcile recursive watches after the kernel reports an inotify queue overflow so subsequent filesystem changes are observed. (`#654 <https://github.com/gorakhargosh/watchdog/pull/654>`__)
 - [inotify] Watch directories moved into a recursively watched directory from outside of it, so that changes inside them are reported. (`#1094 <https://github.com/gorakhargosh/watchdog/issues/1094>`__)
-- [observers] Align ``BaseObserver`` with ``BaseThread`` by using ``on_thread_start()`` instead of overriding ``start()``. (`#286 <https://github.com/gorakhargosh/watchdog/issues/286>`__)
 - [inotify] Fix the inotify thread dying with a ``KeyError`` when a directory tree is copied or extracted into a recursively watched directory, which stopped all inotify observers in the process. (`#1388 <https://github.com/gorakhargosh/watchdog/pull/1388>`__)
-- [fsevents] Fix building the extension on PyPy 3.12 by updating the bundled ``pythoncapi_compat.h``. (`#1397 <https://github.com/gorakhargosh/watchdog/issues/1397>`__)
+- [observers] Align ``BaseObserver`` with ``BaseThread`` by using ``on_thread_start()`` instead of overriding ``start()``. (`#286 <https://github.com/gorakhargosh/watchdog/issues/286>`__)
 - [watchmedo] Fix ``watchmedo generate-tricks-yaml`` output so that ``watchmedo tricks`` can load it: trick options are now nested under the trick name instead of under unsupported ``args``/``kwargs`` keys. (`#1403 <https://github.com/gorakhargosh/watchdog/pull/1403>`__)
 
-- Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @monosans, @taltal-beep, @
+- Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @monosans, @taltal-beep, @Aschenbath, @yangfan-yf-yf, @alexruperez, @PDGGK, @Skeletor-Pirate
 
 7.0.0
 ~~~~~
