@@ -390,7 +390,7 @@ class FSEventsObserver(BaseObserver):
 
     def schedule(
         self,
-        event_handler: FileSystemEventHandler,
+        event_handler: FileSystemEventHandler | None,
         path: str | Path,
         *,
         recursive: bool = False,
