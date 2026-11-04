@@ -29,6 +29,7 @@ import contextlib
 import functools
 import logging
 import os
+import shlex
 import signal
 import subprocess
 import threading
@@ -77,11 +78,35 @@ class LoggerTrick(Trick):
         pass
 
 
+def _build_command_argv(command_template: str, context: dict[str, str]) -> list[str]:
+    """Build an argv list from a command template, without a shell.
+
+    The template is split into words first and the event values are
+    substituted afterwards, token by token. A crafted file name therefore
+    stays inside its own argument: it cannot inject shell syntax (CWE-78),
+    no matter how the template quotes the placeholders -- with a shell,
+    even double-quoting ``${watch_src_path}`` still allows ``$(...)``
+    command substitution through.
+    """
+    from string import Template
+
+    return [Template(token).safe_substitute(**context) for token in shlex.split(command_template)]
+
+
 class ShellCommandTrick(Trick):
-    """Executes shell commands in response to matched events.
+    """Executes commands in response to matched events.
+
+    The command is executed without a shell: the template is split into
+    words and the event values (``${watch_src_path}``, ``${watch_dest_path}``,
+    ``${watch_event_type}`` and ``${watch_object}``) are substituted into the
+    resulting tokens, so file names containing spaces or shell metacharacters
+    are passed as a single, literal argument. Shell features such as pipes,
+    redirection and ``&&`` are therefore not available in the template; use
+    a script or an explicit shell invocation (``sh -c ...``) if they are
+    needed.
 
     :param shell_command:
-        The shell command to execute.
+        The command to execute.
     :param patterns:
         Matches event paths with these patterns.
     :param ignore_patterns:
@@ -94,7 +119,8 @@ class ShellCommandTrick(Trick):
         Ignore events that occur while command is still being executed
         to avoid multiple simultaneous instances.
     :param shell_executable:
-        Path to the shell binary to use instead of the system default (e.g. ``/bin/bash``).
+        Path to the executable to run in place of the command's first word,
+        instead of resolving it through the ``PATH``.
     :param cwd:
         Working directory in which to execute the command.
     """
@@ -130,8 +156,6 @@ class ShellCommandTrick(Trick):
             # FIXME: see issue #949, and find a way to better handle that scenario
             return
 
-        from string import Template
-
         if self.drop_during_process and self.is_process_running():
             return
 
@@ -154,10 +178,8 @@ class ShellCommandTrick(Trick):
                 context["watch_dest_path"] = event.dest_path
             command = self.shell_command
 
-        command = Template(command).safe_substitute(**context)
         self.process = subprocess.Popen(
-            command,
-            shell=True,
+            _build_command_argv(command, context),
             executable=self.shell_executable,
             cwd=self.cwd,
         )
