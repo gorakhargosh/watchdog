@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import errno
+import inspect
 import logging
 import os
 import os.path
@@ -215,6 +216,22 @@ def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *
     for trick in tricks:
         for name, value in trick.items():
             trick_cls = load_class(name)
+            if "source_directory" not in value:
+                try:
+                    parameters = inspect.signature(trick_cls).parameters.values()
+                except (TypeError, ValueError):
+                    pass
+                else:
+                    if any(
+                        parameter.kind == inspect.Parameter.VAR_KEYWORD
+                        or (
+                            parameter.name == "source_directory"
+                            and parameter.kind
+                            in {inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY}
+                        )
+                        for parameter in parameters
+                    ):
+                        value = {**value, "source_directory": pathname}
             handler = trick_cls(**value)
             trick_pathname = getattr(handler, "source_directory", None) or pathname
             observer.schedule(handler, trick_pathname, recursive=recursive)

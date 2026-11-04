@@ -20,7 +20,7 @@ from yaml.scanner import ScannerError  # noqa: E402
 from watchdog import watchmedo  # noqa: E402
 from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
 from watchdog.observers.api import BaseObserver  # noqa: E402
-from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, Trick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
 
 
@@ -549,3 +549,103 @@ def test_observe_with():
     assert observer.start.call_count == 1
     assert observer.stop.call_count == 1
     assert observer.join.call_count == 1
+
+
+def test_schedule_tricks_source_directory(tmp_path):
+    class InspectingTrick(Trick):
+        def __init__(self, *, source_directory=None):
+            super().__init__(source_directory=source_directory)
+            self.received_source_directory = source_directory
+            self.initial_files = os.listdir(self.source_directory)
+
+    (tmp_path / "existing.txt").touch()
+    pathname = str(tmp_path)
+    observer = Mock(spec=BaseObserver)
+    with patch("watchdog.watchmedo.load_class", return_value=InspectingTrick):
+        watchmedo.schedule_tricks(observer, [{"custom.InspectingTrick": {}}], pathname, recursive=True)
+
+    handler = observer.schedule.call_args.args[0]
+    assert isinstance(handler, InspectingTrick)
+    assert handler.received_source_directory == pathname
+    assert handler.initial_files == ["existing.txt"]
+    observer.schedule.assert_called_once_with(handler, pathname, recursive=True)
+
+
+@pytest.mark.parametrize("source_directory", [None, "/legacy/directory"])
+def test_schedule_tricks_without_source_directory_parameter(source_directory):
+    class LegacyHandler(FileSystemEventHandler):
+        def __init__(self, *, message):
+            self.message = message
+            if source_directory is not None:
+                self.source_directory = source_directory
+
+    observer = Mock(spec=BaseObserver)
+    pathname = "/watched/directory"
+    with patch("watchdog.watchmedo.load_class", return_value=LegacyHandler):
+        watchmedo.schedule_tricks(
+            observer, [{"custom.LegacyHandler": {"message": "legacy"}}], pathname, recursive=False
+        )
+
+    handler = observer.schedule.call_args.args[0]
+    assert isinstance(handler, LegacyHandler)
+    assert handler.message == "legacy"
+    observer.schedule.assert_called_once_with(handler, source_directory or pathname, recursive=False)
+
+
+@pytest.mark.parametrize("source_directory", ["/configured/directory", None, ""])
+def test_schedule_tricks_configured_source_directory(source_directory):
+    class RecordingTrick(Trick):
+        def __init__(self, *, source_directory=None):
+            super().__init__(source_directory=source_directory)
+            self.received_source_directory = source_directory
+
+    observer = Mock(spec=BaseObserver)
+    pathname = "/watched/directory"
+    options = {"source_directory": source_directory}
+    with patch("watchdog.watchmedo.load_class", return_value=RecordingTrick):
+        watchmedo.schedule_tricks(observer, [{"custom.RecordingTrick": options}], pathname, recursive=True)
+
+    handler = observer.schedule.call_args.args[0]
+    assert handler.received_source_directory == source_directory
+    assert handler.source_directory == source_directory
+    assert options == {"source_directory": source_directory}
+    observer.schedule.assert_called_once_with(handler, source_directory or pathname, recursive=True)
+
+
+def test_schedule_tricks_source_directory_with_kwargs():
+    class KwargsTrick(Trick):
+        def __init__(self, **kwargs):
+            self.received_source_directory = kwargs["source_directory"]
+            super().__init__(**kwargs)
+
+    observer = Mock(spec=BaseObserver)
+    pathname = "/watched/directory"
+    with patch("watchdog.watchmedo.load_class", return_value=KwargsTrick):
+        watchmedo.schedule_tricks(observer, [{"custom.KwargsTrick": {}}], pathname, recursive=False)
+
+    handler = observer.schedule.call_args.args[0]
+    assert handler.received_source_directory == pathname
+    assert handler.source_directory == pathname
+    observer.schedule.assert_called_once_with(handler, pathname, recursive=False)
+
+
+@pytest.mark.parametrize(
+    ("trick_cls", "options"),
+    [
+        (LoggerTrick, {}),
+        (ShellCommandTrick, {"shell_command": "echo hello"}),
+        (AutoRestartTrick, {"command": ["echo", "hello"]}),
+    ],
+)
+def test_schedule_tricks_builtin_source_directory(trick_cls, options):
+    observer = Mock(spec=BaseObserver)
+    tricks = [{f"watchdog.tricks.{trick_cls.__name__}": options}]
+    for pathname in ["/path/one", "/path/two"]:
+        watchmedo.schedule_tricks(observer, tricks, pathname, recursive=True)
+
+        handler = observer.schedule.call_args.args[0]
+        assert isinstance(handler, trick_cls)
+        assert handler.source_directory == pathname
+        observer.schedule.assert_called_with(handler, pathname, recursive=True)
+    assert observer.schedule.call_count == 2
+    assert "source_directory" not in options

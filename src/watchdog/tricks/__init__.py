@@ -33,9 +33,15 @@ import signal
 import subprocess
 import threading
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
-from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
+from watchdog.events import (
+    EVENT_TYPE_CLOSED_NO_WRITE,
+    EVENT_TYPE_OPENED,
+    FileSystemEvent,
+    IgnorePolicy,
+    PatternMatchingEventHandler,
+)
 from watchdog.utils import echo, platform, renamed_attribute, resolve_renamed_argument
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
@@ -48,7 +54,30 @@ echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
 
 
 class Trick(PatternMatchingEventHandler):
-    """Your tricks should subclass this class."""
+    """Your tricks should subclass this class.
+
+    :param source_directory:
+        The directory to watch, available during initialization.
+    """
+
+    def __init__(
+        self,
+        *,
+        patterns: list[str] | None = None,
+        ignore_patterns: list[str] | None = None,
+        ignore_directories: bool = False,
+        case_sensitive: bool = False,
+        ignore_policy: IgnorePolicy | Literal["any", "all"] = IgnorePolicy.ANY,
+        source_directory: str | None = None,
+    ) -> None:
+        super().__init__(
+            patterns=patterns,
+            ignore_patterns=ignore_patterns,
+            ignore_directories=ignore_directories,
+            case_sensitive=case_sensitive,
+            ignore_policy=ignore_policy,
+        )
+        self.source_directory = source_directory
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}>"
@@ -110,11 +139,13 @@ class ShellCommandTrick(Trick):
         drop_during_process: bool = False,
         shell_executable: str | None = None,
         cwd: str | None = None,
+        source_directory: str | None = None,
     ) -> None:
         super().__init__(
             patterns=patterns,
             ignore_patterns=ignore_patterns,
             ignore_directories=ignore_directories,
+            source_directory=source_directory,
         )
         self.shell_command = shell_command
         self.wait_for_process = wait_for_process
@@ -219,6 +250,7 @@ class AutoRestartTrick(Trick):
         debounce_interval: Seconds | None = None,
         restart_on_command_exit: bool = True,
         debounce_interval_seconds: Seconds | None = None,
+        source_directory: str | None = None,
     ):
         debounce_interval = resolve_renamed_argument(
             "debounce_interval_seconds",
@@ -238,6 +270,7 @@ class AutoRestartTrick(Trick):
             patterns=patterns,
             ignore_patterns=ignore_patterns,
             ignore_directories=ignore_directories,
+            source_directory=source_directory,
         )
 
         self.command = command
