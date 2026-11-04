@@ -218,15 +218,12 @@ class InotifyFD(BaseThread):
     Watches are created and removed as needed.
     """
 
-    # InotifyFD is a singleton for now.
+    # get_instance() returns a shared instance; direct construction creates independent instances.
     _instance: ClassVar[InotifyFD | None] = None
     _global_lock: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self) -> None:
         super().__init__()
-        if hasattr(self, "is_initialized"):
-            return  # do not initialize the singleton twice.
-        self.is_initialized = True
 
         # The file descriptor associated with the inotify instance.
         self._inotify_fd: int = self._create_inotify_fd()
@@ -256,9 +253,9 @@ class InotifyFD(BaseThread):
 
     @classmethod
     def get_instance(cls) -> InotifyFD:
-        """Use this class method to get a running InotifyFD instance."""
+        """Use this class method to get the shared running InotifyFD instance."""
         with cls._global_lock:
-            # enforce that InotifyFD is a singleton.
+            # Create and start the shared instance only once.
             if cls._instance is None:
                 cls._instance = InotifyFD()
                 cls._instance.start()
@@ -547,10 +544,6 @@ class InotifyFD(BaseThread):
             name = event_buffer[i + 16 : i + 16 + length].rstrip(b"\0")
             i += 16 + length
             yield wd, mask, cookie, name
-
-
-# creates global InotifyFD instance NOW, (only necessary for unit tests) todo find better solution
-InotifyFD.get_instance()
 
 
 @dataclass(unsafe_hash=True, frozen=True)

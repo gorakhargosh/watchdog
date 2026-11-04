@@ -8,6 +8,8 @@ from functools import partial
 
 import pytest
 
+from watchdog.utils import platform
+
 from .utils import EventsChecker, ExpectEvent, Helper, P, StartWatching, TestEventQueue
 
 
@@ -18,6 +20,24 @@ def p(tmpdir, *args):
     with the provided arguments.
     """
     return partial(os.path.join, tmpdir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _inotify_instance():
+    """Manage the shared inotify reader outside per-test thread leak checks."""
+    if not platform.is_linux():
+        yield
+        return
+
+    from watchdog.observers.inotify_c import InotifyFD
+
+    inotify_fd = InotifyFD.get_instance()
+    try:
+        yield
+    finally:
+        inotify_fd.stop()
+        inotify_fd.join(5)
+        assert not inotify_fd.is_alive()
 
 
 @pytest.fixture(autouse=True)

@@ -17,6 +17,65 @@ from watchdog.observers.inotify import InotifyObserver, InotifyWatchGroup
 from watchdog.observers.inotify_c import InotifyFD
 
 
+def test_observer_does_not_initialize_shared_inotify_fd(monkeypatch):
+    # monkeypatch restores the session fixture's shared instance after the test.
+    monkeypatch.setattr(InotifyFD, "_instance", None)
+    observer = InotifyObserver()
+    try:
+        assert InotifyFD._instance is None  # noqa: SLF001
+    finally:
+        observer.stop()
+
+
+def test_observers_have_independent_inotify_fds():
+    observers = []
+    try:
+        observers.extend(InotifyObserver() for _ in range(2))
+
+        first, second = (observer._inotify_fd for observer in observers)  # noqa: SLF001
+        assert first is not second
+        assert first._inotify_fd != second._inotify_fd  # noqa: SLF001
+        assert first.is_alive()
+        assert second.is_alive()
+
+        observers[0].stop()
+        assert not first.is_alive()
+        assert second.is_alive()
+    finally:
+        for observer in observers:
+            observer.stop()
+        assert all(not observer._inotify_fd.is_alive() for observer in observers)  # noqa: SLF001
+
+
+@pytest.mark.parametrize("generate_full_events", [True, False])
+def test_observer_delivers_created_events(tmp_path, generate_full_events):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_created(self, event):
+            events.put(event)
+
+    observer = InotifyObserver(generate_full_events=generate_full_events)
+    directories = [tmp_path / "first", tmp_path / "second"]
+    try:
+        for directory in directories:
+            directory.mkdir()
+            observer.schedule(Handler(), directory)
+        assert all(emitter._inotify_fd is observer._inotify_fd for emitter in observer.emitters)  # noqa: SLF001
+        observer.start()
+
+        for directory in directories:
+            marker = directory / "marker"
+            marker.touch()
+            assert events.get(timeout=5) == FileCreatedEvent(str(marker))
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
+        assert not observer._inotify_fd.is_alive()  # noqa: SLF001
+
+
 @pytest.mark.parametrize("recursive", [True, False])
 @pytest.mark.parametrize("running", [True, False])
 def test_missing_root_raises_and_can_be_retried(tmp_path, recursive, running):
@@ -80,7 +139,8 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         skipped.mkdir()
         watched.mkdir()
 
-    inotify_fd = InotifyFD.get_instance()
+    observer = InotifyObserver()
+    inotify_fd = observer._inotify_fd  # noqa: SLF001
     add_callback = inotify_fd.add_callback
     registration_attempted = Event()
 
@@ -91,7 +151,6 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         return add_callback(path, *args, **kwargs)
 
     monkeypatch.setattr(inotify_fd, "add_callback", add_callback_with_error)
-    observer = InotifyObserver()
     observer.schedule(Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileDeletedEvent])
     try:
         observer.start()
