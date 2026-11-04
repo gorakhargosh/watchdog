@@ -442,6 +442,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "monosans",
+      "name": "Almaz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/76561516?v=4",
+      "profile": "https://monosans.ru/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
