@@ -18,7 +18,7 @@ from yaml.constructor import ConstructorError  # noqa: E402
 from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
-from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
+from watchdog.events import FileCreatedEvent, FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
 from watchdog.observers.api import BaseObserver  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
@@ -213,8 +213,7 @@ def test_shell_command_custom_shell_and_cwd():
         )
         trick.on_any_event(FileModifiedEvent("foo/bar.baz"))
         mocked_popen.assert_called_once_with(
-            "echo test",
-            shell=True,
+            ["echo", "test"],
             executable="/bin/bash",
             cwd="/some/path",
         )
@@ -549,3 +548,40 @@ def test_observe_with():
     assert observer.start.call_count == 1
     assert observer.stop.call_count == 1
     assert observer.join.call_count == 1
+
+
+def _make_argv_recorder(tmp_path):
+    """A script that writes its first argument to the file named by its second."""
+    script = tmp_path / "record_argv.py"
+    script.write_text(
+        "import sys\nwith open(sys.argv[2], 'w') as f:\n    f.write(sys.argv[1])\n"
+    )
+    return script
+
+
+def test_shell_command_does_not_execute_substituted_command_substitution(tmp_path):
+    """A crafted file name must not inject shell commands (issues #1163, #1181)."""
+    script = _make_argv_recorder(tmp_path)
+    marker = tmp_path / "pwned"
+    crafted = f"$(touch {marker})"
+    output = tmp_path / "out.txt"
+    trick = ShellCommandTrick(
+        f'{sys.executable} {script} "${{watch_src_path}}" {output}',
+        wait_for_process=True,
+    )
+    trick.on_any_event(FileCreatedEvent(crafted))
+    assert not marker.exists()
+    # The name arrives as one literal argument, even though the template
+    # wrapped the placeholder in double quotes.
+    assert output.read_text() == crafted
+
+
+def test_shell_command_passes_paths_with_spaces_as_one_argument(tmp_path):
+    script = _make_argv_recorder(tmp_path)
+    output = tmp_path / "out.txt"
+    trick = ShellCommandTrick(
+        f"{sys.executable} {script} ${{watch_src_path}} {output}",
+        wait_for_process=True,
+    )
+    trick.on_any_event(FileCreatedEvent("/some/dir/with space.txt"))
+    assert output.read_text() == "/some/dir/with space.txt"

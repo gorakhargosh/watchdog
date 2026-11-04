@@ -10,7 +10,7 @@ Changelog
 
 **Breaking Changes**
 
-- 
+- [watchmedo] ``ShellCommandTrick`` no longer executes its command through a shell. The command template is split into words and the event values are substituted into the resulting argument list, which closes a shell command injection vulnerability (CWE-78) where a crafted file name (for example containing ``$(...)``) was executed, even when the template double-quoted the substitution. Shell features such as pipes, redirection and ``&&`` are no longer available in the template; invoke a script or ``sh -c ...`` explicitly if they are needed. The ``shell_executable`` argument now names the executable run in place of the command's first word. (`#1163 <https://github.com/gorakhargosh/watchdog/issues/1163>`__, `#1181 <https://github.com/gorakhargosh/watchdog/issues/1181>`__)
 
 **Other Changes**
 
