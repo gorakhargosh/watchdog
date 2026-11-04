@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from threading import Event
@@ -118,6 +119,66 @@ def test_event_dispatcher():
     time.sleep(1)
     event_dispatcher.stop()
     event_dispatcher.join()
+
+
+def test_dispatch_events_continues_after_handler_exception(caplog):
+    first_event = FileModifiedEvent("/foobar/first")
+    second_event = FileModifiedEvent("/foobar/second")
+
+    class Handler(FileSystemEventHandler):
+        def __init__(self):
+            self.events = []
+
+        def on_modified(self, event):
+            self.events.append(event)
+            if self is failing_handler and event is first_event:
+                raise RuntimeError("handler failed")
+
+    observer = BaseObserver(EventEmitter)
+    handler1 = Handler()
+    handler2 = Handler()
+    watch = observer.schedule(handler1, "/foobar", recursive=True)
+    observer.add_handler_for_watch(handler2, watch)
+    # Handlers are stored in a set; ensure the failure happens before the other dispatch.
+    failing_handler = next(iter(observer._handlers[watch]))  # noqa: SLF001
+
+    with caplog.at_level(logging.ERROR, logger="watchdog.observers.api"):
+        observer.event_queue.put((first_event, watch))
+        observer.dispatch_events(observer.event_queue)
+
+        assert handler1.events == [first_event]
+        assert handler2.events == [first_event]
+        assert observer.event_queue.unfinished_tasks == 0
+
+        observer.event_queue.put((second_event, watch))
+        observer.dispatch_events(observer.event_queue)
+
+    assert handler1.events == [first_event, second_event]
+    assert handler2.events == [first_event, second_event]
+    assert observer.event_queue.unfinished_tasks == 0
+    assert len(caplog.records) == 1
+    record = caplog.records[0]
+    assert record.name == "watchdog.observers.api"
+    assert record.levelno == logging.ERROR
+    assert "Error dispatching event" in record.getMessage()
+    assert record.exc_info is not None
+    assert isinstance(record.exc_info[1], RuntimeError)
+
+
+@pytest.mark.parametrize("exception", [KeyboardInterrupt, SystemExit])
+def test_dispatch_events_propagates_base_exception(exception):
+    class Handler(FileSystemEventHandler):
+        def on_modified(self, event):
+            raise exception("handler interrupted")
+
+    observer = BaseObserver(EventEmitter)
+    watch = observer.schedule(Handler(), "/foobar", recursive=True)
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+
+    with pytest.raises(exception, match="handler interrupted"):
+        observer.dispatch_events(observer.event_queue)
+
+    assert observer.event_queue.unfinished_tasks == 0
 
 
 def test_observer_basic():
@@ -311,6 +372,7 @@ def test_single_file_dispatch_events(tmp_path: Path):
     observer.dispatch_events(observer.event_queue)
 
     assert events == [mod_event, move_event]
+    assert observer.event_queue.unfinished_tasks == 0
 
 
 def test_symlinked_directory_not_treated_as_file(tmp_path: Path):
