@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from watchdog.events import FileSystemMovedEvent
+from watchdog.events import DirCreatedEvent, FileCreatedEvent, FileSystemMovedEvent
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
@@ -250,6 +250,35 @@ class EventDispatcher(BaseThread):
                 continue
 
 
+def _queue_created_events_for_existing(emitter: EventEmitter, watch: ObservedWatch) -> None:
+    """Queue created events for everything that already exists under ``watch``.
+
+    Called before the emitter starts, so the synthesized events are queued
+    ahead of any event the emitter produces itself. An entry created while
+    the scan runs may be reported twice (once here, once by the emitter) or
+    not at all; that race is inherent to any scan-on-startup approach.
+    """
+    root = os.fspath(watch.path)
+    if os.path.isfile(root):
+        emitter.queue_event(FileCreatedEvent(root))
+        return
+    if not os.path.isdir(root):
+        return
+    if watch.is_recursive:
+        for dirpath, dirnames, filenames in os.walk(root):
+            for name in dirnames:
+                emitter.queue_event(DirCreatedEvent(os.path.join(dirpath, name)))
+            for name in filenames:
+                emitter.queue_event(FileCreatedEvent(os.path.join(dirpath, name)))
+    else:
+        with contextlib.suppress(OSError):
+            names = os.listdir(root)
+            for name in names:
+                full_path = os.path.join(root, name)
+                event_class = DirCreatedEvent if os.path.isdir(full_path) else FileCreatedEvent
+                emitter.queue_event(event_class(full_path))
+
+
 class BaseObserver(EventDispatcher):
     """Base observer.
 
@@ -347,6 +376,7 @@ class BaseObserver(EventDispatcher):
         recursive: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
         follow_symlink: bool = False,
+        emit_created_for_existing: bool = False,
     ) -> ObservedWatch:
         """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
@@ -374,6 +404,15 @@ class BaseObserver(EventDispatcher):
             ``True`` if symlinks should be followed; ``False`` otherwise.
         :type follow_symlink:
             ``bool``
+        :param emit_created_for_existing:
+            ``True`` to queue a created event for every file and directory
+            that already exists under ``path`` when the watch is created;
+            ``False`` (the default) to only report changes made after
+            watching starts. The events are queued before the emitter
+            starts, so handlers receive them ahead of any live event for
+            this watch.
+        :type emit_created_for_existing:
+            ``bool``
         :return:
             An :class:`ObservedWatch` object instance representing
             a watch.
@@ -390,6 +429,8 @@ class BaseObserver(EventDispatcher):
                     event_filter=event_filter,
                     **self._emitter_kwargs,
                 )
+                if emit_created_for_existing:
+                    _queue_created_events_for_existing(emitter, watch)
                 if self.is_alive():
                     emitter.start()
                 self._add_emitter(emitter)

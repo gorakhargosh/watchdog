@@ -7,6 +7,8 @@ from threading import Event
 import pytest
 
 from watchdog.events import (
+    DirCreatedEvent,
+    FileCreatedEvent,
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
@@ -355,3 +357,74 @@ def test_schedule_defers_emitter_start() -> None:
     finally:
         observer.stop()
         observer.join()
+
+
+def _queued_events(observer):
+    events = []
+    while observer.event_queue.qsize():
+        event, _watch = observer.event_queue.get_nowait()
+        events.append(event)
+    return events
+
+
+def test_schedule_emit_created_for_existing(tmp_path):
+    (tmp_path / "a.txt").write_text("a")
+    sub = tmp_path / "sub"
+    sub.mkdir()
+    (sub / "b.txt").write_text("b")
+
+    observer = BaseObserver(EventEmitter)
+    observer.schedule(LoggingEventHandler(), tmp_path, recursive=True, emit_created_for_existing=True)
+
+    created = {(type(event), event.src_path) for event in _queued_events(observer)}
+    assert created == {
+        (FileCreatedEvent, str(tmp_path / "a.txt")),
+        (DirCreatedEvent, str(sub)),
+        (FileCreatedEvent, str(sub / "b.txt")),
+    }
+
+
+def test_schedule_emit_created_for_existing_defaults_to_off(tmp_path):
+    (tmp_path / "a.txt").write_text("a")
+
+    observer = BaseObserver(EventEmitter)
+    observer.schedule(LoggingEventHandler(), tmp_path, recursive=True)
+
+    assert _queued_events(observer) == []
+
+
+def test_schedule_emit_created_for_existing_not_recursive(tmp_path):
+    (tmp_path / "a.txt").write_text("a")
+    sub = tmp_path / "sub"
+    sub.mkdir()
+    (sub / "b.txt").write_text("b")
+
+    observer = BaseObserver(EventEmitter)
+    observer.schedule(LoggingEventHandler(), tmp_path, emit_created_for_existing=True)
+
+    assert {event.src_path for event in _queued_events(observer)} == {str(tmp_path / "a.txt"), str(sub)}
+
+
+def test_schedule_emit_created_for_existing_single_file(tmp_path):
+    target = tmp_path / "a.txt"
+    target.write_text("a")
+
+    observer = BaseObserver(EventEmitter)
+    observer.schedule(LoggingEventHandler(), target, emit_created_for_existing=True)
+
+    events = _queued_events(observer)
+    assert len(events) == 1
+    assert isinstance(events[0], FileCreatedEvent)
+    assert events[0].src_path == str(target)
+
+
+def test_schedule_emit_created_for_existing_respects_event_filter(tmp_path):
+    (tmp_path / "a.txt").write_text("a")
+    (tmp_path / "sub").mkdir()
+
+    observer = BaseObserver(EventEmitter)
+    observer.schedule(
+        LoggingEventHandler(), tmp_path, event_filter=[FileCreatedEvent], emit_created_for_existing=True
+    )
+
+    assert [type(event) for event in _queued_events(observer)] == [FileCreatedEvent]

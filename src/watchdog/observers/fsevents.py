@@ -396,6 +396,7 @@ class FSEventsObserver(BaseObserver):
         recursive: bool = False,
         follow_symlink: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
+        emit_created_for_existing: bool = False,
     ) -> ObservedWatch:
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
@@ -403,5 +404,10 @@ class FSEventsObserver(BaseObserver):
             path = unicodedata.normalize("NFC", path)
 
         return super().schedule(
-            event_handler, path, recursive=recursive, follow_symlink=follow_symlink, event_filter=event_filter
+            event_handler,
+            path,
+            recursive=recursive,
+            follow_symlink=follow_symlink,
+            event_filter=event_filter,
+            emit_created_for_existing=emit_created_for_existing,
         )
