@@ -8,19 +8,30 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from watchdog.events import FileSystemMovedEvent
+from watchdog.events import FileSystemEventHandler, FileSystemMovedEvent
 from watchdog.utils import BaseThread
 from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
     import types
+    from collections.abc import Callable
     from typing import Any, Self
 
-    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.events import FileSystemEvent
     from watchdog.utils import Seconds
 
 DEFAULT_EMITTER_TIMEOUT: Seconds = 1.0
 DEFAULT_OBSERVER_TIMEOUT: Seconds = 1.0
+
+
+class _CallableEventHandler(FileSystemEventHandler):
+    """Adapts a callable to the event handler dispatch interface."""
+
+    def __init__(self, callback: Callable[[FileSystemEvent], None]) -> None:
+        self._callback = callback
+
+    def on_any_event(self, event: FileSystemEvent) -> None:
+        self._callback(event)
 
 
 class EventQueue(SkipRepeatsQueue):
@@ -341,22 +352,24 @@ class BaseObserver(EventDispatcher):
 
     def schedule(
         self,
-        event_handler: FileSystemEventHandler,
+        event_handler: FileSystemEventHandler | Callable[[FileSystemEvent], None],
         path: str | Path,
         *,
         recursive: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
         follow_symlink: bool = False,
     ) -> ObservedWatch:
-        """Schedules watching a path and calls appropriate methods specified
-        in the given event handler in response to file system events.
+        """Schedules watching a path and dispatches file system events to
+        the given event handler or callable.
 
         :param event_handler:
             An event handler instance that has appropriate event handling
             methods which will be called by the observer in response to
-            file system events.
+            file system events, or a callable accepting a single
+            :class:`watchdog.events.FileSystemEvent` argument.
         :type event_handler:
-            :class:`watchdog.events.FileSystemEventHandler` or a subclass
+            :class:`watchdog.events.FileSystemEventHandler` or
+            ``Callable[[FileSystemEvent], None]``
         :param path:
             Directory or file path that will be monitored.
         :type path:
@@ -378,6 +391,9 @@ class BaseObserver(EventDispatcher):
             An :class:`ObservedWatch` object instance representing
             a watch.
         """
+        if not isinstance(event_handler, FileSystemEventHandler) and callable(event_handler):
+            event_handler = _CallableEventHandler(event_handler)
+
         with self._lock:
             watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
 

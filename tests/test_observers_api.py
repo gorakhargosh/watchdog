@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from queue import Queue
 from threading import Event
 
 import pytest
@@ -12,8 +13,11 @@ from watchdog.events import (
     FileOpenedEvent,
     FileSystemEventHandler,
     LoggingEventHandler,
+    PatternMatchingEventHandler,
+    RegexMatchingEventHandler,
 )
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
+from watchdog.tricks import Trick
 
 
 def test_observer_constructor():
@@ -141,6 +145,109 @@ def test_observer_basic():
     observer.unschedule_all()
     observer.stop()
     observer.join()
+
+
+@pytest.mark.parametrize("bound_method", [False, True])
+def test_schedule_callable_event_handler(bound_method):
+    events = Queue()
+
+    def on_event(event):
+        events.put(event)
+
+    observer = BaseObserver(EventEmitter)
+    handler = events.put if bound_method else on_event
+    observer.schedule(handler, "/foobar", recursive=True)
+    (emitter,) = observer.emitters
+    event = FileModifiedEvent("/foobar/file")
+    emitter.queue_event(event)
+
+    observer.dispatch_events(observer.event_queue)
+
+    assert events.get_nowait() is event
+    assert events.empty()
+
+
+def test_unschedule_callable_event_handler():
+    events = []
+
+    def on_event(event):
+        events.append(event)
+
+    observer = BaseObserver(EventEmitter)
+    watch = observer.schedule(on_event, "/foobar", recursive=True)
+    event = FileModifiedEvent("/foobar/file")
+    observer.event_queue.put((event, watch))
+    observer.dispatch_events(observer.event_queue)
+    assert events == [event]
+
+    # An event queued before unschedule() must not reach the callable afterwards.
+    observer.event_queue.put((event, watch))
+    observer.unschedule(watch)
+    observer.dispatch_events(observer.event_queue)
+
+    assert events == [event]
+    assert not observer.emitters
+
+
+def test_schedule_same_callable_on_two_watches():
+    events = []
+
+    def on_event(event):
+        events.append(event)
+
+    observer = BaseObserver(EventEmitter)
+    watch1 = observer.schedule(on_event, "/foo", recursive=True)
+    watch2 = observer.schedule(on_event, "/bar", recursive=True)
+    event1 = FileModifiedEvent("/foo/file")
+    event2 = FileModifiedEvent("/bar/file")
+    observer.event_queue.put((event1, watch1))
+    observer.event_queue.put((event2, watch2))
+    observer.dispatch_events(observer.event_queue)
+    observer.dispatch_events(observer.event_queue)
+    assert events == [event1, event2]
+
+    observer.event_queue.put((event1, watch1))
+    observer.event_queue.put((event2, watch2))
+    observer.unschedule(watch1)
+    observer.dispatch_events(observer.event_queue)
+    observer.dispatch_events(observer.event_queue)
+
+    assert events == [event1, event2, event2]
+    assert len(observer.emitters) == 1
+
+
+@pytest.mark.parametrize(
+    "handler_class",
+    [FileSystemEventHandler, PatternMatchingEventHandler, RegexMatchingEventHandler, LoggingEventHandler, Trick],
+)
+def test_schedule_handler_instance(handler_class):
+    any_events = []
+    modified_events = []
+
+    class Handler(handler_class):
+        def __call__(self, event):
+            pytest.fail("Handler instances must use dispatch() even when callable")
+
+        def on_any_event(self, event):
+            any_events.append(event)
+
+        def on_modified(self, event):
+            modified_events.append(event)
+
+    observer = BaseObserver(EventEmitter)
+    handler = Handler()
+    watch = observer.schedule(handler, "/foobar", recursive=True)
+    event = FileModifiedEvent("/foobar/file")
+    observer.event_queue.put((event, watch))
+    observer.dispatch_events(observer.event_queue)
+
+    assert any_events == [event]
+    assert modified_events == [event]
+    observer.remove_handler_for_watch(handler, watch)
+    observer.event_queue.put((event, watch))
+    observer.dispatch_events(observer.event_queue)
+    assert any_events == [event]
+    assert modified_events == [event]
 
 
 def test_observer_marks_every_queued_item_done():
