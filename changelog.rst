@@ -19,8 +19,9 @@ Changelog
 - [inotify] Watch directories moved into a recursively watched directory from outside of it, so that changes inside them are reported. (`#1094 <https://github.com/gorakhargosh/watchdog/issues/1094>`__)
 - [observers] Align ``BaseObserver`` with ``BaseThread`` by using ``on_thread_start()`` instead of overriding ``start()``. (`#286 <https://github.com/gorakhargosh/watchdog/issues/286>`__)
 - [inotify] Fix the inotify thread dying with a ``KeyError`` when a directory tree is copied or extracted into a recursively watched directory, which stopped all inotify observers in the process. (`#1388 <https://github.com/gorakhargosh/watchdog/pull/1388>`__)
+- [fsevents] Fix building the extension on PyPy 3.12 by updating the bundled ``pythoncapi_compat.h``. (`#1397 <https://github.com/gorakhargosh/watchdog/issues/1397>`__)
 
-- Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @
+- Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @monosans, @
 
 7.0.0
 ~~~~~
