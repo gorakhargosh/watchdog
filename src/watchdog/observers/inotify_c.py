@@ -549,10 +549,6 @@ class InotifyFD(BaseThread):
             yield wd, mask, cookie, name
 
 
-# creates global InotifyFD instance NOW, (only necessary for unit tests) todo find better solution
-InotifyFD.get_instance()
-
-
 @dataclass(unsafe_hash=True, frozen=True)
 class InotifyEvent:
     """Inotify event struct wrapper."""
