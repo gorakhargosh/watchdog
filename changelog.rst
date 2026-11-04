@@ -21,8 +21,9 @@ Changelog
 - [observers] Align ``BaseObserver`` with ``BaseThread`` by using ``on_thread_start()`` instead of overriding ``start()``. (`#286 <https://github.com/gorakhargosh/watchdog/issues/286>`__)
 - [inotify] Fix the inotify thread dying with a ``KeyError`` when a directory tree is copied or extracted into a recursively watched directory, which stopped all inotify observers in the process. (`#1388 <https://github.com/gorakhargosh/watchdog/pull/1388>`__)
 - [fsevents] Fix building the extension on PyPy 3.12 by updating the bundled ``pythoncapi_compat.h``. (`#1397 <https://github.com/gorakhargosh/watchdog/issues/1397>`__)
+- [watchmedo] Fix ``watchmedo generate-tricks-yaml`` output so that ``watchmedo tricks`` can load it: trick options are now nested under the trick name instead of under unsupported ``args``/``kwargs`` keys. (`#1403 <https://github.com/gorakhargosh/watchdog/pull/1403>`__)
 
-- Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @monosans, @
+- Thanks to our beloved contributors: @BoboTiG, @prateek-dagar, @monosans, @taltal-beep, @
 
 7.0.0
 ~~~~~
