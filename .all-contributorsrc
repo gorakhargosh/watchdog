@@ -451,6 +451,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "taltal-beep",
+      "name": "Ariel Even",
+      "avatar_url": "https://avatars.githubusercontent.com/u/228741870?v=4",
+      "profile": "https://github.com/taltal-beep",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
