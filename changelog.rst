@@ -10,7 +10,7 @@ Changelog
 
 **Other Changes**
 
-- xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
+- [windows] ``_is_observed_path_deleted()`` no longer compares the NT volume path returned by ``GetFinalPathNameByHandleW()`` with the original Python path, which never matched and made every ``ReadDirectoryChangesW()`` failure look like the observed directory had been deleted. The path is now checked with ``os.path.isdir()`` over a short settle window. A failure with no error code set (``GetLastError() == 0``, e.g. a ``CancelIoEx`` race while stopping) is treated as benign instead of crashing the reader thread. (`#1154 <https://github.com/gorakhargosh/watchdog/issues/1154>`__)
 
 7.1.0
 ~~~~~

@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
+import os
 import queue
 import threading
 from ctypes.wintypes import BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPWSTR
 from dataclasses import dataclass
 from functools import reduce
+from time import monotonic, sleep
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -373,12 +375,25 @@ def _parse_extended_event_buffer(read_buffer: bytes) -> list[tuple[int, str, boo
 
 
 def _is_observed_path_deleted(handle: HANDLE, path: str) -> bool:
-    # Comparison of observed path and actual path, returned by
-    # GetFinalPathNameByHandleW. If directory moved to the trash bin, or
-    # deleted, actual path will not be equal to observed path.
-    buff = ctypes.create_unicode_buffer(PATH_BUFFER_SIZE)
-    GetFinalPathNameByHandleW(handle, buff, PATH_BUFFER_SIZE, VOLUME_NAME_NT)
-    return buff.value != path
+    # ``GetFinalPathNameByHandleW`` with ``VOLUME_NAME_NT`` returns an NT
+    # volume path (e.g. ``\Device\HarddiskVolume2\...``), which never equals
+    # the Python path the user passed (e.g. ``C:\Users\...``), so comparing
+    # the two always reported the observed path as deleted.
+    #
+    # Ask the filesystem instead, allowing for a short settle window: a
+    # just-deleted directory can still be reported as present for ~50-100 ms
+    # on Windows 11. A bounded poll is used instead of a single fixed sleep so
+    # that a slow filesystem is not misread as a deletion: the path is only
+    # considered deleted once it has been consistently absent for the whole
+    # window. ``sleep`` and ``monotonic`` are bound locally so tests that
+    # control the delay patch ``watchdog.observers.winapi.sleep`` (and
+    # ``watchdog.observers.winapi.monotonic``) rather than ``time.sleep``.
+    deadline = monotonic() + 0.5
+    while monotonic() < deadline:
+        if os.path.isdir(path):
+            return False
+        sleep(0.05)
+    return True
 
 
 def _generate_observed_path_deleted_event(*, extended: bool = False) -> bytes:
@@ -583,6 +598,10 @@ class DirectoryChangeReader:
             buf = event_buffer.raw[: nbytes.value]
         except OSError as e:
             if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
+                return
+            if e.winerror == 0:  # type: ignore[attr-defined]
+                # ReadDirectoryChangesW failed with no error set (e.g. a
+                # CancelIoEx race while stopping). There is nothing to surface.
                 return
             if _is_observed_path_deleted(handle, self._path):
                 # Handle the case when the root path is deleted
