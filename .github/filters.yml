@@ -1,0 +1,57 @@
+# Linux: inotify backend implementation and tests
+linux:
+  - "**/*inotify*"
+
+# macOS: fsevents, kqueue, C headers, and setup.py packaging
+macos:
+  - "**/*fsevents*"
+  - "**/*kqueue*"
+  - "src/pythoncapi_compat.h"
+  - "setup.py"
+
+# Windows: winapi, directory changes, and batch scripts
+windows:
+  - "**/*winapi*"
+  - "**/*read_directory_changes*"
+  - "tools/watchmedo.bat"
+
+# Watchmedo: CLI tool, tricks, and dedicated tests
+watchmedo:
+  - "src/watchdog/watchmedo.py"
+  - "src/watchdog/tricks/**"
+  - "tests/test_0_watchmedo.py"
+
+# Examples: documentation examples and example tests
+examples:
+  - "docs/source/examples/**"
+  - "tests/test_examples.py"
+
+# Core: shared library code, cross-platform tests, and CI/project configurations
+core:
+  - "src/watchdog/__init__.py"
+  - "src/watchdog/__main__.py"
+  - "src/watchdog/events.py"
+  - "src/watchdog/py.typed"
+  - "src/watchdog/version.py"
+  - "src/watchdog/observers/__init__.py"
+  - "src/watchdog/observers/api.py"
+  - "src/watchdog/observers/polling.py"
+  - "src/watchdog/utils/**"
+  - "tox.ini"
+  - "requirements-*.txt"
+  - ".github/workflows/**"
+  - ".github/filters.yml"
+  - "tests/**"
+  - "!**/*inotify*"
+  - "!**/*fsevents*"
+  - "!**/*kqueue*"
+  - "!**/*winapi*"
+  - "!tests/test_0_watchmedo.py"
+  - "!tests/test_examples.py"
+
+# Test detection: used to check if a PR touches test files only
+tests:
+  - "tests/**"
+
+not_tests:
+  - "!tests/**"
