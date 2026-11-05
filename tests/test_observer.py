@@ -8,10 +8,26 @@ from unittest.mock import Mock, patch
 import pytest
 
 from watchdog.events import FileModifiedEvent, FileSystemEventHandler
+from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver, EventEmitter
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+
+@pytest.mark.parametrize("generate_full_events", [False, True])
+def test_observer_accepts_generate_full_events(tmp_path, generate_full_events):
+    observer = Observer(timeout=0.25, generate_full_events=generate_full_events)
+    try:
+        observer.schedule(FileSystemEventHandler(), tmp_path)
+        with observer:
+            assert observer.timeout == 0.25
+            assert all(emitter.is_alive() for emitter in observer.emitters)
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
 
 
 @pytest.fixture

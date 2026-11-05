@@ -3,6 +3,13 @@
 Changelog
 ---------
 
+Unreleased
+~~~~~~~~~~
+
+**Other Changes**
+
+- [observers] Expose and document ``Observer(generate_full_events=True)`` to preserve inotify move events across watch boundaries; other backends accept and ignore the option. Forward ``InotifyEmitter.queue_events()``'s ``full_events`` argument to event construction. (`#1094 <https://github.com/gorakhargosh/watchdog/issues/1094>`__)
+
 7.1.0
 ~~~~~
 

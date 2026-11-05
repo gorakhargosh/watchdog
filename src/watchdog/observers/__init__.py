@@ -13,6 +13,12 @@ Classes
 Observer thread that schedules watching directories and dispatches
 calls to event handlers.
 
+Pass ``generate_full_events=True`` to :class:`Observer` to report moves across
+a watched directory's boundary as move events when using inotify. The unknown
+source or destination path is an empty string. The default is ``False``, which
+reports these moves as created or deleted events. Other backends selected by
+:class:`Observer` accept this option but ignore it.
+
 You can also import platform specific classes directly and use it instead
 of :class:`Observer`.  Here is a list of implemented observer classes.:
 
@@ -48,7 +54,7 @@ if TYPE_CHECKING:
 
 
 class ObserverType(Protocol):
-    def __call__(self, *, timeout: Seconds = ...) -> BaseObserver: ...
+    def __call__(self, *, timeout: Seconds = ..., generate_full_events: bool = ...) -> BaseObserver: ...
 
 
 def _get_observer_cls() -> ObserverType:

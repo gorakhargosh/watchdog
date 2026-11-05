@@ -116,7 +116,11 @@ class WindowsApiEmitter(EventEmitter):
 class WindowsApiObserver(BaseObserver):
     """Observer thread that schedules watching directories and dispatches
     calls to event handlers.
+
+    :param generate_full_events:
+        Accepted for compatibility with :class:`watchdog.observers.Observer`;
+        only affects the inotify backend and is ignored here.
     """
 
-    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
         super().__init__(WindowsApiEmitter, timeout=timeout)

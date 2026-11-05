@@ -174,9 +174,13 @@ class PollingObserver(BaseObserver):
     unreachable, is logged once and the next poll tries again. Changes made
     in the meantime are reported once the directory can be read again. An
     outage that the OS reports as ``ENOENT`` still looks like a deletion.
+
+    :param generate_full_events:
+        Accepted for compatibility with :class:`watchdog.observers.Observer`;
+        only affects the inotify backend and is ignored here.
     """
 
-    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
+    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
         super().__init__(PollingEmitter, timeout=timeout)
 
 

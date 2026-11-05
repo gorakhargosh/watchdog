@@ -474,7 +474,7 @@ class InotifyEmitter(EventEmitter):
             if self._inotify is None:
                 logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
                 return
-            self.build_and_queue_event(event)
+            self.build_and_queue_event(event, full_events=full_events)
 
     def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = False) -> None:
         """called for every event for each watch this callback is registered at."""
@@ -582,8 +582,11 @@ class InotifyEmitter(EventEmitter):
 
 class InotifyFullEmitter(InotifyEmitter):
     """inotify(7)-based event emitter. By default, this class produces move events even if they are not matched
-    Such move events will have a ``None`` value for the unmatched part.
+    Such move events will have an empty string for the unmatched part.
     """
+
+    def queue_events(self, timeout: Seconds, *, full_events: bool = True) -> None:
+        super().queue_events(timeout, full_events=full_events)
 
     def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = True) -> None:
         super().build_and_queue_event(event, full_events=full_events)
@@ -592,6 +595,15 @@ class InotifyFullEmitter(InotifyEmitter):
 class InotifyObserver(BaseObserver):
     """Observer thread that schedules watching directories and dispatches
     calls to event handlers.
+
+    :param timeout:
+        The timeout for the observer to wait on events.
+    :param generate_full_events:
+        If ``True``, report unmatched moves as :class:`~watchdog.events.FileMovedEvent`
+        or :class:`~watchdog.events.DirMovedEvent`, with an empty string for the
+        unknown source or destination path. If ``False`` (the default), report
+        moves into the watch as created events and moves out as deleted events.
+        Also available through :class:`watchdog.observers.Observer`.
     """
 
     def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:

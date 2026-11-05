@@ -378,6 +378,9 @@ class FSEventsObserver(BaseObserver):
         Seconds the FSEvents API waits after an event before delivering it,
         applied to every stream this observer creates. See
         :class:`FSEventsEmitter` for what raising it buys.
+    :param generate_full_events:
+        Accepted for compatibility with :class:`watchdog.observers.Observer`;
+        only affects the inotify backend and is ignored here.
     """
 
     def __init__(
@@ -385,6 +388,7 @@ class FSEventsObserver(BaseObserver):
         *,
         timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT,
         latency: Seconds = DEFAULT_FSEVENTS_LATENCY,
+        generate_full_events: bool = False,
     ) -> None:
         super().__init__(FSEventsEmitter, timeout=timeout, latency=latency)
 
