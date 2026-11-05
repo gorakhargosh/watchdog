@@ -54,4 +54,5 @@ tests:
   - "tests/**"
 
 not_tests:
+  - "**"
   - "!tests/**"

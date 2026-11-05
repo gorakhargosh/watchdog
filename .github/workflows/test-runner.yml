@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   test:
-    name: 🐍 Python ${{ inputs.python }}
+    # name: 🐍 Python ${{ inputs.python }}
     runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 15
     steps:

@@ -53,12 +53,17 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          predicate-quantifier: "some-with-excludes"
           filters: .github/filters.yml
           list-files: shell
 
   quality:
     name: 🧑‍🏭 Quality & Docs
     runs-on: ubuntu-latest
+    if: |
+      !startsWith(github.head_ref, 'all-contributors/') &&
+      !contains(github.event.pull_request.title, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[skip ci]')
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
