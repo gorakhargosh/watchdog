@@ -18,7 +18,7 @@ from yaml.constructor import ConstructorError  # noqa: E402
 from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
-from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
+from watchdog.events import FileModifiedEvent, FileMovedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
 from watchdog.observers.api import BaseObserver  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
@@ -218,6 +218,65 @@ def test_shell_command_custom_shell_and_cwd():
             executable="/bin/bash",
             cwd="/some/path",
         )
+
+
+@pytest.mark.skipif(
+    platform.is_windows(),
+    reason="POSIX-specific: tests shell metacharacter handling",
+)
+def test_shell_command_subprocess_injection_not_executed(tmpdir):
+    # Regression test: a file name containing shell metacharacters must not be
+    # interpreted as a command (see #1163 and #1181).
+    marker = tmpdir.join("pwned.txt")
+    src_path = str(tmpdir.join(f"$(touch {marker})"))
+    command = f'{sys.executable} -c "import sys; sys.exit(0)" ${{watch_src_path}}'
+    trick = ShellCommandTrick(command, wait_for_process=True)
+    trick.on_any_event(FileModifiedEvent(src_path))
+    assert not marker.check()
+    assert trick.process.returncode == 0
+
+
+@pytest.mark.skipif(
+    not platform.is_windows(),
+    reason="Windows-specific: verifies spaced paths survive shlex.split(posix=False)",
+)
+def test_shell_command_windows_path_with_spaces_is_single_argument(tmpdir, capfd):
+    # Regression test: on Windows the substituted path must be quoted before
+    # ``shlex.split(posix=False)``, which splits on spaces but preserves
+    # backslashes. Without the quotes, ``C:\Users\me\My Documents\a.txt`` is
+    # torn into two argv tokens.
+    src_path = str(tmpdir.join("My Documents\\a.txt"))
+    command = f'{sys.executable} -c "import sys; print(sys.argv[1])" ${{watch_src_path}}'
+    trick = ShellCommandTrick(command, wait_for_process=True)
+    trick.on_any_event(FileModifiedEvent(src_path))
+    captured = capfd.readouterr()
+    assert captured.out.strip() == src_path
+
+
+@pytest.mark.skipif(
+    platform.is_windows(),
+    reason="POSIX-specific: tests single-argument path handling",
+)
+def test_shell_command_path_with_spaces_is_single_argument(tmpdir):
+    output = tmpdir.join("arg.txt")
+    src_path = str(tmpdir.join("file with spaces.txt"))
+    command = f"{sys.executable} -c \"import sys; open('{output}', 'w').write(sys.argv[1])\" ${{watch_src_path}}"
+    trick = ShellCommandTrick(command, wait_for_process=True)
+    trick.on_any_event(FileModifiedEvent(src_path))
+    assert output.read() == src_path
+
+
+def test_shell_command_none_prints_event(tmpdir, capfd):
+    src = os.path.join(str(tmpdir), "foo.py")
+    trick = ShellCommandTrick(None)
+    trick.on_any_event(FileModifiedEvent(src))
+    captured = capfd.readouterr()
+    assert f"modified file {src}" in captured.out
+
+    dest = os.path.join(str(tmpdir), "bar.py")
+    trick.on_any_event(FileMovedEvent(src, dest))
+    captured = capfd.readouterr()
+    assert f"moved file from {src} to {dest}" in captured.out
 
 
 def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
