@@ -15,6 +15,48 @@ from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff,
 from .shell import chmod, mkdir, mv, rm, symlink, touch
 
 
+@pytest.mark.parametrize("recursive", [False, True])
+def test_directory_filter_prunes_traversal(tmp_path, recursive):
+    for name in ("keep", "skip"):
+        (tmp_path / name / "child").mkdir(parents=True)
+        (tmp_path / name / "file").touch()
+    calls, scans = [], []
+
+    def directory_filter(path):
+        assert isinstance(path, str)
+        calls.append(path)
+        return path != str(tmp_path / "skip")
+
+    def listdir(path):
+        scans.append(path)
+        return os.scandir(path)
+
+    snapshot = DirectorySnapshot(str(tmp_path), recursive=recursive, directory_filter=directory_filter, listdir=listdir)
+    expected = {str(tmp_path), str(tmp_path / "keep"), str(tmp_path / "skip")}
+    if recursive:
+        expected.update({str(tmp_path / "keep" / "child"), str(tmp_path / "keep" / "file")})
+    assert snapshot.paths == expected
+    assert str(tmp_path / "skip") not in scans
+    assert str(tmp_path) not in calls
+    assert str(tmp_path / "skip" / "child") not in calls
+    if not recursive:
+        assert not calls
+
+
+@pytest.mark.parametrize("as_bytes", [False, True])
+def test_directory_filter_receives_absolute_strings(tmp_path, monkeypatch, as_bytes):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "root" / "child").mkdir(parents=True)
+    calls = []
+
+    def directory_filter(path):
+        calls.append(path)
+        return True
+
+    DirectorySnapshot(b"root" if as_bytes else "root", directory_filter=directory_filter)
+    assert calls == [str(tmp_path / "root" / "child")]
+
+
 def wait():
     """
     Wait long enough for file/folder mtime to change. This is needed

@@ -29,6 +29,29 @@ from watchdog.utils.dirsnapshot import EmptyDirectorySnapshot
 
 from .shell import chmod, mkdir, msize, mv, rm, touch
 
+
+def test_directory_filter_new_and_moved_subtrees(tmp_path, event_queue):
+    def directory_filter(path):
+        return os.path.basename(path) != "skip"
+
+    watch = ObservedWatch(str(tmp_path), recursive=True, directory_filter=directory_filter)
+    emitter = Emitter(event_queue, watch)
+    emitter.on_thread_start()
+    for name in ("keep", "skip"):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "file").touch()
+    emitter.queue_events(0)
+    events = {event for event, _ in list(event_queue.queue)}
+    assert FileCreatedEvent(str(tmp_path / "keep" / "file")) in events
+    assert FileCreatedEvent(str(tmp_path / "skip" / "file")) not in events
+
+    (tmp_path / "skip").rename(tmp_path / "included")
+    (tmp_path / "keep").rename(tmp_path / "skip")
+    emitter.queue_events(0)
+    assert str(tmp_path / "included" / "file") in emitter._snapshot.paths  # noqa: SLF001
+    assert str(tmp_path / "skip" / "file") not in emitter._snapshot.paths  # noqa: SLF001
+
+
 SLEEP_TIME = 0.5
 
 

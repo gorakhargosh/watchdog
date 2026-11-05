@@ -331,3 +331,79 @@ def test_queue_overflow_rebuilds_recursive_watches(p, caplog):
     }
     assert "reconciling recursive watches" in caplog.text
     inotify.deactivate()
+
+
+@pytest.mark.parametrize("discovery", ["initial", "created", "moved", "overflow"])
+def test_directory_filter_prunes_kernel_watches(tmp_path, discovery):
+    class FakeInotifyFD:
+        def __init__(self):
+            self.paths = {}
+            self.next_wd = 0
+
+        def add_callback(self, path, mask, callback, id_):
+            self.next_wd += 1
+            self.paths[self.next_wd] = path
+            return self.next_wd
+
+        def remove_callbacks(self, callbacks):
+            for wd, _ in callbacks:
+                self.paths.pop(wd)
+
+    def make_tree():
+        for name in ("keep", "skip"):
+            (tmp_path / "tree" / name / "child").mkdir(parents=True)
+            (tmp_path / "tree" / name / "file").touch()
+
+    calls = []
+
+    def directory_filter(path):
+        assert isinstance(path, str)
+        calls.append(path)
+        return os.path.basename(path) != "skip"
+
+    if discovery == "initial":
+        make_tree()
+    fd = FakeInotifyFD()
+    group = InotifyWatchGroup(
+        cast("InotifyFD", fd), os.fsencode(tmp_path), is_recursive=True, directory_filter=directory_filter
+    )
+    try:
+        if discovery != "initial":
+            make_tree()
+            if discovery == "overflow":
+                group.on_queue_overflow()
+            else:
+                kind = InotifyConstants.IN_CREATE if discovery == "created" else InotifyConstants.IN_MOVED_TO
+                group.on_event(InotifyEvent(1, Mask(kind | InotifyConstants.IN_ISDIR), 0, b"tree"))
+        assert set(fd.paths.values()) == {
+            os.fsencode(tmp_path),
+            os.fsencode(tmp_path / "tree"),
+            os.fsencode(tmp_path / "tree" / "keep"),
+            os.fsencode(tmp_path / "tree" / "keep" / "child"),
+        }
+        assert str(tmp_path) not in calls
+        assert str(tmp_path / "tree" / "skip" / "child") not in calls
+        root_wd = next(wd for wd, path in fd.paths.items() if path == os.fsencode(tmp_path))
+
+        # Rename across the filter boundary in both directions. Old watches
+        # must be released even though the kernel follows the same inode.
+        (tmp_path / "tree").rename(tmp_path / "skip")
+        group.on_event(
+            InotifyEvent(root_wd, Mask(InotifyConstants.IN_MOVED_FROM | InotifyConstants.IN_ISDIR), 1, b"tree")
+        )
+        group.on_event(
+            InotifyEvent(root_wd, Mask(InotifyConstants.IN_MOVED_TO | InotifyConstants.IN_ISDIR), 1, b"skip")
+        )
+        assert set(fd.paths.values()) == {os.fsencode(tmp_path)}
+        (tmp_path / "skip").rename(tmp_path / "included")
+        group.on_event(
+            InotifyEvent(root_wd, Mask(InotifyConstants.IN_MOVED_FROM | InotifyConstants.IN_ISDIR), 2, b"skip")
+        )
+        group.on_event(
+            InotifyEvent(root_wd, Mask(InotifyConstants.IN_MOVED_TO | InotifyConstants.IN_ISDIR), 2, b"included")
+        )
+        assert os.fsencode(tmp_path / "included" / "keep" / "child") in fd.paths.values()
+        assert os.fsencode(tmp_path / "included" / "skip") not in fd.paths.values()
+    finally:
+        group.deactivate()
+    assert not fd.paths

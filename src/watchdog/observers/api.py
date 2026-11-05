@@ -14,6 +14,7 @@ from watchdog.utils.bricks import SkipRepeatsQueue
 
 if TYPE_CHECKING:
     import types
+    from collections.abc import Callable
     from typing import Any, Self
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
@@ -56,6 +57,8 @@ class ObservedWatch:
         ``True`` if symlinks are followed; ``False`` otherwise.
     :type follow_symlink:
         ``bool``
+    :param directory_filter:
+        Optional callback controlling descent into subdirectories. See :meth:`BaseObserver.schedule`.
     """
 
     def __init__(
@@ -65,10 +68,12 @@ class ObservedWatch:
         recursive: bool,
         event_filter: list[type[FileSystemEvent]] | None = None,
         follow_symlink: bool = False,
+        directory_filter: Callable[[str], bool] | None = None,
     ):
         raw_path = str(path) if isinstance(path, Path) else path
         self.raw_path = raw_path
         self.follow_symlink = follow_symlink
+        self.directory_filter = directory_filter
         self.event_filter = frozenset(event_filter) if event_filter is not None else None
 
         self.is_file = os.path.isfile(raw_path)
@@ -84,9 +89,18 @@ class ObservedWatch:
             self.is_recursive = recursive
 
     @property
-    def key(self) -> tuple[str, bool, frozenset[type[FileSystemEvent]] | None, bool]:
-        """A tuple key identifying the watch (raw_path, recursive, event_filter, follow_symlink)."""
-        return self.raw_path, self.is_recursive, self.event_filter, self.follow_symlink
+    def key(
+        self,
+    ) -> (
+        tuple[str, bool, frozenset[type[FileSystemEvent]] | None, bool]
+        | tuple[str, bool, frozenset[type[FileSystemEvent]] | None, bool, int]
+    ):
+        """Identify a watch, including the directory filter's identity.
+
+        Identity also permits callable objects that are not hashable.
+        """
+        key = self.raw_path, self.is_recursive, self.event_filter, self.follow_symlink
+        return key if self.directory_filter is None else (*key, id(self.directory_filter))
 
     def __eq__(self, watch: object) -> bool:
         if not isinstance(watch, ObservedWatch):
@@ -133,6 +147,9 @@ class EventEmitter(BaseThread):
         Iterable[:class:`watchdog.events.FileSystemEvent`] | None
     """
 
+    supports_directory_filter = False
+    """Whether this emitter can prune recursive directory watches."""
+
     def __init__(
         self,
         event_queue: EventQueue,
@@ -142,6 +159,8 @@ class EventEmitter(BaseThread):
         event_filter: list[type[FileSystemEvent]] | None = None,
     ) -> None:
         super().__init__()
+        if watch.is_recursive and watch.directory_filter is not None and not self.supports_directory_filter:
+            raise NotImplementedError(f"{type(self).__name__} does not support directory_filter; use PollingObserver")
         # bool subclasses int; timeout=True would silently become 1.0s
         if isinstance(timeout, bool):
             error = f"timeout must be a float, not bool (got {timeout!r})"
@@ -347,6 +366,7 @@ class BaseObserver(EventDispatcher):
         recursive: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
         follow_symlink: bool = False,
+        directory_filter: Callable[[str], bool] | None = None,
     ) -> ObservedWatch:
         """Schedules watching a path and calls appropriate methods specified
         in the given event handler in response to file system events.
@@ -374,12 +394,37 @@ class BaseObserver(EventDispatcher):
             ``True`` if symlinks should be followed; ``False`` otherwise.
         :type follow_symlink:
             ``bool``
+        :param directory_filter:
+            Optional callable receiving each subdirectory's absolute path as a ``str``.
+            Return ``True`` to watch its contents, or ``False`` to prune its
+            entire subtree. The root is always watched and is not passed to
+            the callback. Events for a rejected directory itself may still
+            be reported by its parent.
+            Ignored for non-recursive and single-file watches. Defaults to
+            ``None`` (watch all subdirectories).
+
+            The callback runs during initial traversal and when directories
+            are discovered or renamed, including from background threads.
+            It must be fast, must not raise, and should return a stable result
+            for a given path; changing its state does not reschedule watches.
+            Supported by inotify, polling (including VFS), and kqueue.
+            FSEvents and Windows delegate recursion to the OS and raise
+            ``NotImplementedError`` for this option on recursive watches;
+            use :class:`watchdog.observers.polling.PollingObserver` instead.
+        :type directory_filter:
+            Callable[[str], bool] | None
         :return:
             An :class:`ObservedWatch` object instance representing
             a watch.
         """
         with self._lock:
-            watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
+            watch = ObservedWatch(
+                path,
+                recursive=recursive,
+                event_filter=event_filter,
+                follow_symlink=follow_symlink,
+                directory_filter=directory_filter,
+            )
 
             # If we don't have an emitter for this watch already, create it.
             if watch not in self._emitter_for_watch:

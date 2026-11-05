@@ -34,6 +34,7 @@ from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIM
 from watchdog.utils.dirsnapshot import DirectorySnapshot
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
@@ -396,6 +397,7 @@ class FSEventsObserver(BaseObserver):
         recursive: bool = False,
         follow_symlink: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
+        directory_filter: Callable[[str], bool] | None = None,
     ) -> ObservedWatch:
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
@@ -403,5 +405,10 @@ class FSEventsObserver(BaseObserver):
             path = unicodedata.normalize("NFC", path)
 
         return super().schedule(
-            event_handler, path, recursive=recursive, follow_symlink=follow_symlink, event_filter=event_filter
+            event_handler,
+            path,
+            recursive=recursive,
+            follow_symlink=follow_symlink,
+            event_filter=event_filter,
+            directory_filter=directory_filter,
         )

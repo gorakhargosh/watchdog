@@ -19,6 +19,34 @@ from watchdog.observers.api import EventQueue, ObservedWatch
 from watchdog.observers.kqueue import KqueueEmitter
 
 
+def test_directory_filter_prunes_descriptors(tmp_path):
+    for name in ("keep", "skip"):
+        (tmp_path / name / "child").mkdir(parents=True)
+        (tmp_path / name / "file").touch()
+    watch = ObservedWatch(str(tmp_path), recursive=True, directory_filter=lambda path: os.path.basename(path) != "skip")
+    emitter = KqueueEmitter(EventQueue(), watch)
+    try:
+        assert set(emitter._descriptors.paths) == {  # noqa: SLF001
+            str(tmp_path),
+            str(tmp_path / "keep"),
+            str(tmp_path / "keep" / "child"),
+            str(tmp_path / "keep" / "file"),
+        }
+        # Register the initial kevents before making changes.
+        emitter.queue_events(0)
+        (tmp_path / "skip").rename(tmp_path / "included")
+        (tmp_path / "keep").rename(tmp_path / "skip")
+        emitter.queue_events(1)
+        assert set(emitter._descriptors.paths) == {  # noqa: SLF001
+            str(tmp_path),
+            str(tmp_path / "included"),
+            str(tmp_path / "included" / "child"),
+            str(tmp_path / "included" / "file"),
+        }
+    finally:
+        emitter.on_thread_stop()
+
+
 @pytest.mark.parametrize("err", [errno.EACCES, errno.EPERM])
 def test_register_kevent_ignores_permission_errors(tmpdir, err):
     """A file we are not allowed to open must not kill the emitter thread.
