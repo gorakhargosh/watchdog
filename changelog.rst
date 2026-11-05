@@ -3,6 +3,15 @@
 Changelog
 ---------
 
+7.1.1-dev
+~~~~~~~~~
+
+2026-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.0...HEAD>`__
+
+**Other Changes**
+
+- xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
+
 7.1.0
 ~~~~~
 
