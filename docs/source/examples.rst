@@ -47,3 +47,12 @@ A common task is to keep a busy directory (such as a ``Downloads`` folder) tidy 
 .. literalinclude:: examples/file_organizer.py
    :language: python
    :linenos:
+
+Process Pre-Existing Files on Startup
+-------------------------------------
+Observers only trigger events for changes occurring while they are actively running. To process files that already exist in a directory before starting the live observer, you can diff an :class:`watchdog.utils.dirsnapshot.EmptyDirectorySnapshot` against a :class:`watchdog.utils.dirsnapshot.DirectorySnapshot` and replay the created events:
+
+.. literalinclude:: examples/pre_existing_files.py
+   :language: python
+   :linenos:
+
