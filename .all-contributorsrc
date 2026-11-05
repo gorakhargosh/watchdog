@@ -442,6 +442,24 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "monosans",
+      "name": "Almaz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/76561516?v=4",
+      "profile": "https://monosans.ru/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "taltal-beep",
+      "name": "Ariel Even",
+      "avatar_url": "https://avatars.githubusercontent.com/u/228741870?v=4",
+      "profile": "https://github.com/taltal-beep",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
