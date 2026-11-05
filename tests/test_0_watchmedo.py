@@ -533,6 +533,23 @@ tricks:
     assert checkpoint
 
 
+def test_generated_tricks_yaml_can_be_loaded(tmp_path, capsys):
+    tricks_file = tmp_path / "tricks.yaml"
+    args = watchmedo.cli.parse_args(["generate-tricks-yaml", "watchdog.tricks.LoggerTrick"])
+    watchmedo.tricks_generate_yaml(args)
+    tricks_file.write_text(capsys.readouterr().out)
+
+    config = watchmedo.load_config(str(tricks_file))
+    observer = Mock(spec=BaseObserver)
+    watchmedo.schedule_tricks(observer, config["tricks"], str(tmp_path), recursive=True)
+
+    assert observer.schedule.call_count == 1
+    handler = observer.schedule.call_args[0][0]
+    assert isinstance(handler, LoggerTrick)
+    assert handler.patterns == ["**/*.py", "**/*.js"]
+    assert handler.ignore_patterns == ["**/version.py"]
+
+
 def test_observe_with():
     observer = Mock(spec=BaseObserver)
     handler = FileSystemEventHandler()

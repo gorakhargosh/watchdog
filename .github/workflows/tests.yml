@@ -78,9 +78,6 @@ jobs:
           - "pypy-3.11"
         exclude:
           - os:
-              matrix: macos
-            python: "pypy-3.11"
-          - os:
               matrix: windows
             python: "pypy-3.11"
 

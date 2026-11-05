@@ -15,6 +15,8 @@ import os
 import resource
 import select
 import struct
+import subprocess
+import sys
 import threading
 import time
 from typing import TYPE_CHECKING
@@ -36,6 +38,92 @@ if TYPE_CHECKING:
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+def test_inotify_fd_instances_are_independent() -> None:
+    inotify_fds = []
+    try:
+        for _ in range(2):
+            inotify_fd = InotifyFD()
+            inotify_fds.append(inotify_fd)
+            inotify_fd.start()
+
+        first, second = inotify_fds
+        assert first is not second
+        assert first._inotify_fd != second._inotify_fd  # noqa: SLF001
+        assert all(inotify_fd.is_alive() for inotify_fd in inotify_fds)
+    finally:
+        for inotify_fd in inotify_fds:
+            inotify_fd.stop()
+        for inotify_fd in inotify_fds:
+            inotify_fd.join(timeout=5)
+        assert all(not inotify_fd.is_alive() for inotify_fd in inotify_fds)
+
+
+def test_import_with_exhausted_inotify_instances() -> None:
+    code = """
+import ctypes
+import errno
+import os
+import resource
+import sys
+
+libc = ctypes.CDLL(None, use_errno=True)
+inotify_init = libc.inotify_init
+inotify_init.argtypes = []
+inotify_init.restype = ctypes.c_int
+
+# Keep descriptors available for imports and bound resource use on hosts with
+# unusually high inotify limits.
+soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+max_attempts = 16384
+if soft_limit != resource.RLIM_INFINITY:
+    max_attempts = min(max_attempts, max(0, soft_limit - 64))
+
+fds = []
+try:
+    for _ in range(max_attempts):
+        fd = inotify_init()
+        if fd == -1:
+            error = ctypes.get_errno()
+            if error != errno.EMFILE:
+                print(f"SKIP: inotify_init failed with errno {error}")
+                sys.exit(77)
+            break
+        fds.append(fd)
+    else:
+        print("SKIP: could not exhaust inotify instances with descriptors reserved for imports")
+        sys.exit(77)
+
+    from watchdog.observers.polling import PollingObserver
+    import watchdog.observers
+    from watchdog.observers.inotify import InotifyObserver
+    from watchdog.observers.inotify_c import InotifyFD
+
+    assert watchdog.observers.Observer is InotifyObserver
+    assert InotifyFD._instance is None
+    assert not PollingObserver().is_alive()
+    try:
+        InotifyObserver()
+    except OSError as error:
+        assert error.errno == errno.EMFILE, error
+        assert "inotify instance limit reached" in str(error), error
+    else:
+        raise AssertionError("InotifyObserver did not raise OSError")
+    print("imports succeeded; InotifyObserver raised EMFILE")
+finally:
+    for fd in fds:
+        os.close(fd)
+"""
+    # Propagate pytest's source path when watchdog is not installed.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=env, check=False, timeout=30
+    )
+    if result.returncode == 77 and result.stdout.startswith("SKIP: "):
+        pytest.skip(result.stdout.strip())
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert result.stdout.strip() == "imports succeeded; InotifyObserver raised EMFILE"
 
 
 def struct_inotify(wd, mask, cookie=0, length=0, name=b"") -> bytes:
@@ -289,7 +377,7 @@ def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watc
         finally:
             os.close(fd)
 
-    # The normal singleton is created at import time, before this test runs.
+    # Isolate the high descriptor from the shared singleton used by other tests.
     with (
         patch.object(InotifyFD, "_create_inotify_fd", side_effect=create_high_fd) as create_fd,
         patch.object(InotifyFD, "_instance", new=None),
