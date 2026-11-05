@@ -250,6 +250,9 @@ class AutoRestartTrick(Trick):
         self._is_process_stopping = False
         self._is_trick_stopping = False
         self._stopping_lock = threading.RLock()
+        # Watchers stopped by a restart are joined by `stop()`, wherever the
+        # restart ran from (see #1291).
+        self._watchers_to_join: list[ProcessWatcher] = []
 
     debounce_interval_seconds = renamed_attribute("debounce_interval_seconds", "debounce_interval")
 
@@ -269,33 +272,50 @@ class AutoRestartTrick(Trick):
                 return
             self._is_trick_stopping = True
 
-        process_watcher = self.process_watcher
+        # Stop the debouncer outside the stopping lock: its thread invokes
+        # `_restart_process()` while holding its own condition, so acquiring
+        # both locks in the opposite order here could deadlock.
         if self.event_debouncer is not None:
             self.event_debouncer.stop()
-        self._stop_process()
 
-        # Don't leak threads: Wait for background threads to stop.
+        with self._stopping_lock:
+            # `_restart_process()` holds this lock for its whole body and
+            # re-checks the stopping flag under it, so no restart can be in
+            # flight here and no watcher can be created after this point.
+            self._stop_process()
+            watchers_to_join = self._watchers_to_join
+            self._watchers_to_join = []
+
+        # Don't leak threads: Wait for background threads to stop. Joining
+        # outside the lock is required, as a watcher thread may be waiting for
+        # it after a restart was refused.
         if self.event_debouncer is not None:
             self.event_debouncer.join()
-        if process_watcher is not None:
+        for process_watcher in watchers_to_join:
             process_watcher.join()
 
     def _start_process(self) -> None:
-        if self._is_trick_stopping:
-            return
+        # Holding the stopping lock across the check and the launch is what
+        # makes `stop()` and a concurrent restart mutually exclusive. Without
+        # it, `_restart_process()` could pass the check below, then `stop()`
+        # would run to completion, and only afterwards would the replacement
+        # process and watcher appear -- never stopped, never joined (#1291).
+        with self._stopping_lock:
+            if self._is_trick_stopping:
+                return
 
-        # Put the child in its own process group so `kill_process()` can reach
-        # the whole tree. POSIX uses `setsid()`, which Windows does not have;
-        # Windows uses the `CREATE_NEW_PROCESS_GROUP` creation flag, which is
-        # `0` (i.e. no-op) elsewhere.
-        self.process = subprocess.Popen(
-            self.command,
-            preexec_fn=getattr(os, "setsid", None),
-            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
-        )
-        if self.restart_on_command_exit:
-            self.process_watcher = ProcessWatcher(self.process, self._restart_process)
-            self.process_watcher.start()
+            # Put the child in its own process group so `kill_process()` can reach
+            # the whole tree. POSIX uses `setsid()`, which Windows does not have;
+            # Windows uses the `CREATE_NEW_PROCESS_GROUP` creation flag, which is
+            # `0` (i.e. no-op) elsewhere.
+            self.process = subprocess.Popen(
+                self.command,
+                preexec_fn=getattr(os, "setsid", None),
+                creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+            )
+            if self.restart_on_command_exit:
+                self.process_watcher = ProcessWatcher(self.process, self._restart_process)
+                self.process_watcher.start()
 
     def _stop_process(self) -> None:
         # Ensure the body of the function is not run in parallel in different threads.
@@ -307,6 +327,8 @@ class AutoRestartTrick(Trick):
         try:
             if self.process_watcher is not None:
                 self.process_watcher.stop()
+                # Callers hold `_stopping_lock`, which also protects this list.
+                self._watchers_to_join.append(self.process_watcher)
                 self.process_watcher = None
 
             if self.process is not None:
@@ -341,11 +363,18 @@ class AutoRestartTrick(Trick):
             self._restart_process()
 
     def _restart_process(self) -> None:
-        if self._is_trick_stopping:
-            return
-        self._stop_process()
-        self._start_process()
-        self.restart_count += 1
+        # The whole restart is atomic with respect to `stop()`: holding the
+        # lock here means `stop()` either sees the replacement process and
+        # watcher, or refuses the restart, but never misses one in between.
+        with self._stopping_lock:
+            if self._is_trick_stopping:
+                return
+            self._stop_process()
+            self._start_process()
+            # Keep the join backlog bounded in long-running sessions: whatever
+            # already exited needs no `join()` anymore.
+            self._watchers_to_join = [watcher for watcher in self._watchers_to_join if watcher.is_alive()]
+            self.restart_count += 1
 
 
 if platform.is_windows():

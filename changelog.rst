@@ -10,7 +10,7 @@ Changelog
 
 **Other Changes**
 
-- xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
+- [watchmedo] ``AutoRestartTrick.stop()`` now waits for an in-flight restart and joins the ``ProcessWatcher`` it actually stopped, so a restart racing with the stop can no longer leave a watcher thread and its subprocess running. (`#1291 <https://github.com/gorakhargosh/watchdog/issues/1291>`__)
 
 7.1.0
 ~~~~~

@@ -3,7 +3,9 @@ from __future__ import annotations
 import logging
 import os
 import signal
+import subprocess
 import sys
+import threading
 import time
 from unittest.mock import Mock, patch
 
@@ -22,6 +24,7 @@ from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventH
 from watchdog.observers.api import BaseObserver  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
+from watchdog.utils.process_watcher import ProcessWatcher  # noqa: E402
 
 
 def test_load_config_valid(tmpdir):
@@ -362,6 +365,78 @@ def test_auto_restart_subprocess_termination(tmpdir, capfd, restart_on_command_e
     else:
         assert cap.out.splitlines(keepends=False).count("+++++ 0") == 1
         assert trick.restart_count == 0
+
+
+def test_auto_restart_stop_does_not_leak_watcher_started_during_restart(tmpdir, monkeypatch):
+    """A restart racing with ``stop()`` must not outlive the trick.
+
+    ``_restart_process()`` is called on the watcher thread when
+    ``restart_on_command_exit`` is set. If ``stop()`` runs while a restart is
+    between its stopping-flag check and the creation of the replacement
+    ``ProcessWatcher``, the new process and watcher used to be created after
+    ``stop()`` had already joined the watcher it knew about, leaking both.
+    See #1291.
+    """
+    script = make_dummy_script(tmpdir, n=30)
+    trick = AutoRestartTrick([sys.executable, script])
+
+    created_watchers = []
+    real_process_watcher = ProcessWatcher
+
+    class RecordingProcessWatcher(real_process_watcher):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            created_watchers.append(self)
+
+    monkeypatch.setattr("watchdog.tricks.ProcessWatcher", RecordingProcessWatcher)
+
+    real_popen = subprocess.Popen
+    entered_popen = threading.Event()
+    release_popen = threading.Event()
+    block_next_popen = False
+
+    def blocking_popen(*args, **kwargs):
+        if block_next_popen:
+            entered_popen.set()
+            if not release_popen.wait(timeout=10):
+                msg = "the test never released the blocked Popen()"
+                raise AssertionError(msg)
+        return real_popen(*args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", blocking_popen)
+
+    trick.start()
+    block_next_popen = True
+
+    restarter = threading.Thread(
+        target=trick.on_any_event,
+        args=(FileModifiedEvent("foo/bar.baz"),),
+        name="racing-restart",
+    )
+    restarter.start()
+    assert entered_popen.wait(timeout=10), "the restart never reached Popen()"
+
+    stopper = threading.Thread(target=trick.stop, name="stopper")
+    stopper.start()
+    release_popen.set()
+    stopper.join(timeout=10)
+    restarter.join(timeout=10)
+
+    try:
+        assert not restarter.is_alive()
+        assert not stopper.is_alive()
+        assert trick.restart_count == 1
+        assert trick.process is None
+        assert trick.process_watcher is None
+        # The leaked watcher thread is what the macOS teardown in #1291 caught.
+        assert len(created_watchers) == 2
+        assert all(not watcher.is_alive() for watcher in created_watchers)
+    finally:
+        if trick.process is not None:
+            kill_process(trick.process.pid, 9)
+        if trick.process_watcher is not None:
+            trick.process_watcher.stop()
+            trick.process_watcher.join()
 
 
 def test_auto_restart_arg_parsing_basic():
