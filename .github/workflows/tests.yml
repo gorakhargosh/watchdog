@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 # No job requires write access to the GITHUB_TOKEN; checkout only needs contents: read.
@@ -77,9 +77,6 @@ jobs:
           - "3.15t"
           - "pypy-3.11"
         exclude:
-          - os:
-              matrix: macos
-            python: "pypy-3.11"
           - os:
               matrix: windows
             python: "pypy-3.11"

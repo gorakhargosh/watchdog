@@ -59,6 +59,8 @@ jobs:
         run: python -m cibuildwheel
         env:
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
+          CIBW_BUILD: "cp* pp311-* pp312-*"
+          CIBW_ENABLE: "pypy"
       - name: Artifacts list
         run: ls -l wheelhouse
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

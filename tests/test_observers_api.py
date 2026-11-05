@@ -423,8 +423,6 @@ def test_schedule_emit_created_for_existing_respects_event_filter(tmp_path):
     (tmp_path / "sub").mkdir()
 
     observer = BaseObserver(EventEmitter)
-    observer.schedule(
-        LoggingEventHandler(), tmp_path, event_filter=[FileCreatedEvent], emit_created_for_existing=True
-    )
+    observer.schedule(LoggingEventHandler(), tmp_path, event_filter=[FileCreatedEvent], emit_created_for_existing=True)
 
     assert [type(event) for event in _queued_events(observer)] == [FileCreatedEvent]

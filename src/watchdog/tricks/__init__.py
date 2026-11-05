@@ -56,10 +56,6 @@ class Trick(PatternMatchingEventHandler):
     @classmethod
     def generate_yaml(cls) -> str:
         return f"""- {cls.__module__}.{cls.__name__}:
-  args:
-  - argument1
-  - argument2
-  kwargs:
     patterns:
     - "**/*.py"
     - "**/*.js"
