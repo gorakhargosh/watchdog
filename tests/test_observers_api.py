@@ -142,7 +142,7 @@ def test_dispatch_events_continues_after_handler_exception(caplog):
     # Handlers are stored in a set; ensure the failure happens before the other dispatch.
     failing_handler = next(iter(observer._handlers[watch]))  # noqa: SLF001
 
-    with caplog.at_level(logging.ERROR, logger="watchdog.observers.api"):
+    with caplog.at_level(logging.ERROR, logger="watchdog.events"):
         observer.event_queue.put((first_event, watch))
         observer.dispatch_events(observer.event_queue)
 
@@ -158,11 +158,89 @@ def test_dispatch_events_continues_after_handler_exception(caplog):
     assert observer.event_queue.unfinished_tasks == 0
     assert len(caplog.records) == 1
     record = caplog.records[0]
-    assert record.name == "watchdog.observers.api"
+    assert record.name == "watchdog.events"
     assert record.levelno == logging.ERROR
     assert "Error dispatching event" in record.getMessage()
     assert record.exc_info is not None
     assert isinstance(record.exc_info[1], RuntimeError)
+
+
+@pytest.mark.parametrize("hook_raises", [False, True])
+def test_dispatch_events_calls_exception_hook_and_continues(caplog, hook_raises):
+    first_event = FileModifiedEvent("/foobar/first")
+    second_event = FileModifiedEvent("/foobar/second")
+    failure = RuntimeError("handler failed")
+    errors = []
+
+    class Handler(FileSystemEventHandler):
+        def __init__(self):
+            self.events = []
+
+        def on_modified(self, event):
+            self.events.append(event)
+            if self is failing_handler and event is first_event:
+                raise failure
+
+        def on_exception(self, event, exc):
+            errors.append((event, exc))
+            if hook_raises:
+                raise ValueError("hook failed")
+
+    observer = BaseObserver(EventEmitter)
+    handler1, handler2 = Handler(), Handler()
+    watch = observer.schedule(handler1, "/foobar")
+    observer.add_handler_for_watch(handler2, watch)
+    failing_handler = next(iter(observer._handlers[watch]))  # noqa: SLF001
+
+    for event in (first_event, second_event):
+        observer.event_queue.put((event, watch))
+        observer.dispatch_events(observer.event_queue)
+
+    assert errors == [(first_event, failure)]
+    assert handler1.events == handler2.events == [first_event, second_event]
+    assert observer.event_queue.unfinished_tasks == 0
+    if hook_raises:
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert "Error handling exception" in record.getMessage()
+        assert isinstance(record.exc_info[1], ValueError)
+        assert record.exc_info[1].__context__ is failure
+    else:
+        assert not caplog.records
+
+
+@pytest.mark.parametrize("exception", [KeyboardInterrupt, SystemExit])
+def test_dispatch_events_propagates_exception_hook_base_exception(exception):
+    class Handler(FileSystemEventHandler):
+        def on_modified(self, event):
+            raise RuntimeError("handler failed")
+
+        def on_exception(self, event, exc):
+            raise exception("hook interrupted")
+
+    observer = BaseObserver(EventEmitter)
+    watch = observer.schedule(Handler(), "/foobar")
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+
+    with pytest.raises(exception, match="hook interrupted"):
+        observer.dispatch_events(observer.event_queue)
+
+    assert observer.event_queue.unfinished_tasks == 0
+
+
+def test_dispatch_events_logs_for_handler_without_exception_hook(caplog):
+    class Handler:
+        def dispatch(self, event):
+            raise RuntimeError("legacy handler failed")
+
+    observer = BaseObserver(EventEmitter)
+    watch = observer.schedule(Handler(), "/foobar")
+    observer.event_queue.put((FileModifiedEvent("/foobar"), watch))
+    observer.dispatch_events(observer.event_queue)
+
+    assert observer.event_queue.unfinished_tasks == 0
+    assert len(caplog.records) == 1
+    assert isinstance(caplog.records[0].exc_info[1], RuntimeError)
 
 
 @pytest.mark.parametrize("exception", [KeyboardInterrupt, SystemExit])
