@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Callable
-
 import pytest
 
 from watchdog.utils import platform
@@ -11,12 +9,16 @@ if not platform.is_linux():
 
 import os
 import random
+from typing import TYPE_CHECKING, cast
 
 from watchdog.observers.inotify import InotifyWatchGroup
-from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS, InotifyConstants, InotifyFD, Mask
+from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS, InotifyConstants, InotifyEvent, InotifyFD, Mask
 from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def wait_for_move_event(read_event: Callable[[], GroupedInotifyEvent]) -> GroupedInotifyEvent:
@@ -246,3 +248,86 @@ def test_watch_groups_are_independent(p):
     inotify_root.deactivate()
     inotify_a.deactivate()
     cleanup()
+
+
+def test_move_to_reconciles_renamed_directory_without_source_watch(p):
+    class FakeInotifyFD:
+        def __init__(self) -> None:
+            self.next_wd = 0
+
+        def add_callback(self, path, mask, callback, id_):
+            if not os.path.isdir(path):
+                raise FileNotFoundError(path)
+            self.next_wd += 1
+            return self.next_wd
+
+        def remove_callbacks(self, callbacks) -> None:
+            pass
+
+    mkdir(p("root"))
+    temporary_path = p("root", ".::TMPNAME:D:test")
+    final_path = p("root", "20261102")
+    mkdir(temporary_path)
+    os.rename(temporary_path, final_path)
+    touch(p("root", "20261102", "recording.mp4"))
+
+    fake_fd = FakeInotifyFD()
+    inotify = InotifyWatchGroup(
+        cast("InotifyFD", fake_fd), p("root").encode(), is_recursive=True, event_mask=WATCHDOG_ALL_EVENTS
+    )
+    root_wd = inotify._active_callbacks_by_path[p("root").encode()]  # noqa: SLF001
+
+    # The directory was renamed before the queued create event was handled, so
+    # registering its source path fails. The paired move must recover the
+    # destination watch and synthesize the file already written into it.
+    inotify.on_event(
+        InotifyEvent(root_wd, Mask(InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR), 0, b".::TMPNAME:D:test")
+    )
+    inotify.on_event(
+        InotifyEvent(root_wd, Mask(InotifyConstants.IN_MOVED_FROM | InotifyConstants.IN_ISDIR), 1, b".::TMPNAME:D:test")
+    )
+    inotify.on_event(
+        InotifyEvent(root_wd, Mask(InotifyConstants.IN_MOVED_TO | InotifyConstants.IN_ISDIR), 1, b"20261102")
+    )
+
+    assert final_path.encode() in inotify._active_callbacks_by_path  # noqa: SLF001
+    events = [inotify.read_event() for _ in range(3)]
+    assert any(
+        isinstance(event, PathedInotifyEvent)
+        and event.path == p("root", "20261102", "recording.mp4").encode()
+        and event.ev.mask == InotifyConstants.IN_CREATE
+        for event in events
+    )
+    inotify.deactivate()
+
+
+def test_queue_overflow_rebuilds_recursive_watches(p, caplog):
+    class FakeInotifyFD:
+        def __init__(self) -> None:
+            self.next_wd = 0
+            self.removed = []
+
+        def add_callback(self, path, mask, callback, id_):
+            self.next_wd += 1
+            return self.next_wd
+
+        def remove_callbacks(self, callbacks) -> None:
+            self.removed.extend(callbacks)
+
+    mkdir(p("root"))
+    fake_fd = FakeInotifyFD()
+    inotify = InotifyWatchGroup(
+        cast("InotifyFD", fake_fd), p("root").encode(), is_recursive=True, event_mask=WATCHDOG_ALL_EVENTS
+    )
+    mkdir(p("root", "missed", "child"), parents=True)
+
+    inotify.on_queue_overflow()
+
+    assert fake_fd.removed
+    assert set(inotify._active_callbacks_by_path) == {  # noqa: SLF001
+        p("root").encode(),
+        p("root", "missed").encode(),
+        p("root", "missed", "child").encode(),
+    }
+    assert "reconciling recursive watches" in caplog.text
+    inotify.deactivate()

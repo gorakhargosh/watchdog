@@ -23,6 +23,7 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger(__name__)
 
 #: Map a file extension to the subfolder it should be moved into.
 CATEGORIES = {
@@ -56,7 +57,7 @@ class FileOrganizerHandler(FileSystemEventHandler):
             target = target_dir / f"{source.stem}_{counter}{source.suffix}"
             counter += 1
         shutil.move(str(source), str(target))
-        logging.info("Moved %s -> %s", source.name, target)
+        logger.info("Moved %s -> %s", source.name, target)
 
 
 path = sys.argv[1] if len(sys.argv) > 1 else "."

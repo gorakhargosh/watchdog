@@ -1,0 +1,3 @@
+sphinx==9.0.4
+sphinx-copybutton==0.5.2
+sphinx-book-theme==1.4.0

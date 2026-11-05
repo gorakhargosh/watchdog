@@ -18,6 +18,7 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 
 class LabeledEventHandler(FileSystemEventHandler):
@@ -25,7 +26,7 @@ class LabeledEventHandler(FileSystemEventHandler):
         self.label = label
 
     def on_any_event(self, event: FileSystemEvent) -> None:
-        logging.info("[%s] %s", self.label, event)
+        logger.info("[%s] %s", self.label, event)
 
 
 paths = sys.argv[1:] or ["."]

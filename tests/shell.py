@@ -13,6 +13,10 @@ import os.path
 import shutil
 import tempfile
 import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def cd(path):
@@ -99,6 +103,11 @@ def msize(path):
     with open(path, "w") as w:
         w.write("0")
     os.utime(path, (0, 0))
+
+
+def chmod(path: str | Path, mode: int) -> None:
+    """Change file mode bits."""
+    os.chmod(path, mode)
 
 
 def mount_tmpfs(path):

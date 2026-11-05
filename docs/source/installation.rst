@@ -4,7 +4,7 @@
 
 Installation
 ============
-|project_name| requires 3.9+ to work. See a list of :ref:`installation-dependencies`.
+|project_name| requires 3.11+ to work. See a list of :ref:`installation-dependencies`.
 
 Installing from PyPI using pip
 ------------------------------
@@ -81,6 +81,12 @@ supported:
 Linux 2.6+
     Linux kernel version 2.6 and later come with an API called inotify_
     that programs can use to monitor file system events.
+
+    The root directory must exist when its watch is started. A missing root
+    raises ``FileNotFoundError`` from ``observer.start()``, or from
+    ``observer.schedule()`` if the observer is already running. Recursive watches
+    still tolerate registration errors for subdirectories, which may disappear
+    or become inaccessible while watches are being added.
 
     .. NOTE:: On most systems the maximum number of watches that can be
               created per user is limited to ``8192``. |project_name| needs one
