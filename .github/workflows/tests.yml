@@ -4,15 +4,6 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - ".all-contributorsrc"
-      - "**/*.inc"
-      - "**/*.md"
-      - "**/*.rst"
-      - "AUTHORS"
-      - "COPYING"
-      - "LICENSE"
-      - "docs/source/conf.py"
   pull_request:
   workflow_dispatch:
 
