@@ -3,6 +3,11 @@
 Changelog
 ---------
 
+Unreleased
+~~~~~~~~~~
+
+- [polling] Detect content changes in readable sysfs files under ``/sys/`` even when their size and modification time stay unchanged. (`#938 <https://github.com/gorakhargosh/watchdog/issues/938>`__)
+
 7.1.0
 ~~~~~
 
