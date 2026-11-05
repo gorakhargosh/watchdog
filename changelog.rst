@@ -3,6 +3,13 @@
 Changelog
 ---------
 
+Unreleased
+~~~~~~~~~~
+
+**Other Changes**
+
+- [observers] Add the ``directory_filter`` keyword to ``schedule()`` to prune recursive watches on inotify, polling, and kqueue. FSEvents and Windows reject this option because their native recursion cannot prune subdirectories; use polling instead. (`#790 <https://github.com/gorakhargosh/watchdog/issues/790>`__)
+
 7.1.0
 ~~~~~
 

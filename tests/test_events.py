@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import tempfile
 
+import pytest
+
 from watchdog.events import (
     EVENT_TYPE_ATTRIB,
     EVENT_TYPE_CLOSED,
@@ -26,6 +28,7 @@ from watchdog.events import (
     FileMovedEvent,
     FileOpenedEvent,
     FileSystemEventHandler,
+    generate_sub_created_events,
     generate_sub_moved_events,
 )
 
@@ -296,3 +299,32 @@ def test_attrib_event_dispatch():
     attrib_event = FileAttribEvent("/path/to/file")
     handler.dispatch(attrib_event)
     assert attrib_called == attrib_event
+
+
+# Tests for the subtree helpers also guard against synthetic events leaking
+# from paths that the native emitter deliberately did not watch.
+@pytest.mark.parametrize("moved", [False, True])
+@pytest.mark.parametrize("as_bytes", [False, True])
+def test_directory_filter_synthetic_events(tmp_path, moved, as_bytes):
+    for name in ("keep", "skip"):
+        (tmp_path / name / "child").mkdir(parents=True)
+        (tmp_path / name / "file").touch()
+    root = os.fsencode(tmp_path) if as_bytes else str(tmp_path)
+
+    def directory_filter(path):
+        assert isinstance(path, str)
+        return os.path.basename(path) != "skip"
+
+    if moved:
+        events = list(generate_sub_moved_events(root, root, directory_filter=directory_filter))
+    else:
+        events = list(generate_sub_created_events(root, directory_filter=directory_filter))
+    paths = {os.fsdecode(event.dest_path if moved else event.src_path) for event in events}
+    assert paths == {
+        str(tmp_path / "keep"),
+        str(tmp_path / "skip"),
+        str(tmp_path / "keep" / "child"),
+        str(tmp_path / "keep" / "file"),
+    }
+    assert not list(generate_sub_created_events(root, directory_filter=lambda path: False))
+    assert not list(generate_sub_moved_events(root, root, directory_filter=lambda path: False))

@@ -57,6 +57,8 @@ class PollingEmitter(EventEmitter):
     system changes.
     """
 
+    supports_directory_filter = True
+
     def __init__(
         self,
         event_queue: EventQueue,
@@ -76,6 +78,7 @@ class PollingEmitter(EventEmitter):
             recursive=self.watch.is_recursive,
             stat=stat,
             listdir=listdir,
+            directory_filter=self.watch.directory_filter,
         )
 
     def on_thread_start(self) -> None:

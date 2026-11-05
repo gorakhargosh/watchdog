@@ -349,6 +349,10 @@ class DirectorySnapshot:
         for every entry in the directory tree.
     :param listdir:
         Use custom listdir function. For details see ``os.scandir``.
+    :param directory_filter:
+        Optional callback receiving absolute subdirectory paths as strings. A false result keeps
+        the directory entry but excludes its contents and descendants.
+        The root is always included. Ignored when ``recursive`` is false.
     """
 
     def __init__(
@@ -358,10 +362,12 @@ class DirectorySnapshot:
         recursive: bool = True,
         stat: Callable[[str], os.stat_result] = os.stat,
         listdir: Callable[[str | None], Iterator[os.DirEntry]] = os.scandir,
+        directory_filter: Callable[[str], bool] | None = None,
     ) -> None:
         self.recursive = recursive
         self.stat = stat
         self.listdir = listdir
+        self.directory_filter = directory_filter
 
         self._stat_info: dict[bytes | str, os.stat_result] = {}
         self._inode_to_path: dict[tuple[int, int], bytes | str] = {}
@@ -397,9 +403,12 @@ class DirectorySnapshot:
 
         if self.recursive:
             for path, st in entries:
+                if not S_ISDIR(st.st_mode) or (
+                    self.directory_filter is not None and not self.directory_filter(os.path.abspath(os.fsdecode(path)))
+                ):
+                    continue
                 with contextlib.suppress(PermissionError):
-                    if S_ISDIR(st.st_mode):
-                        yield from self.walk(path)
+                    yield from self.walk(path)
 
     @property
     def paths(self) -> set[bytes | str]:

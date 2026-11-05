@@ -108,7 +108,7 @@ from typing import TYPE_CHECKING, Literal
 from watchdog.utils.patterns import match_any_paths
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
 EVENT_TYPE_MOVED = "moved"
 EVENT_TYPE_DELETED = "deleted"
@@ -665,6 +665,8 @@ class LoggingEventHandler(FileSystemEventHandler):
 def generate_sub_moved_events(
     src_dir_path: bytes | str,
     dest_dir_path: bytes | str,
+    *,
+    directory_filter: Callable[[str], bool] | None = None,
 ) -> Generator[DirMovedEvent | FileMovedEvent]:
     """Generates an event list of :class:`DirMovedEvent` and
     :class:`FileMovedEvent` objects for all the files and directories within
@@ -674,36 +676,60 @@ def generate_sub_moved_events(
         The source path of the moved directory.
     :param dest_dir_path:
         The destination path of the moved directory.
+    :param directory_filter:
+        Optional callback controlling descent, including into the destination directory.
     :returns:
         An iterable of file system events of type :class:`DirMovedEvent` and
         :class:`FileMovedEvent`.
     """
+    if directory_filter is not None and not directory_filter(os.path.abspath(os.fsdecode(dest_dir_path))):
+        return
     for root, directories, filenames in os.walk(dest_dir_path):  # type: ignore[type-var]
         for directory in directories:
             full_path = os.path.join(root, directory)  # type: ignore[call-overload]
             renamed_path = src_dir_path + full_path[len(dest_dir_path) :] if src_dir_path else ""
             yield DirMovedEvent(renamed_path, full_path, is_synthetic=True)
+        if directory_filter is not None:
+            directories[:] = [
+                name
+                for name in directories
+                if directory_filter(os.path.abspath(os.fsdecode(os.path.join(root, name))))  # type: ignore[call-overload]
+            ]
         for filename in filenames:
             full_path = os.path.join(root, filename)  # type: ignore[call-overload]
             renamed_path = src_dir_path + full_path[len(dest_dir_path) :] if src_dir_path else ""
             yield FileMovedEvent(renamed_path, full_path, is_synthetic=True)
 
 
-def generate_sub_created_events(src_dir_path: bytes | str) -> Generator[DirCreatedEvent | FileCreatedEvent]:
+def generate_sub_created_events(
+    src_dir_path: bytes | str,
+    *,
+    directory_filter: Callable[[str], bool] | None = None,
+) -> Generator[DirCreatedEvent | FileCreatedEvent]:
     """Generates an event list of :class:`DirCreatedEvent` and
     :class:`FileCreatedEvent` objects for all the files and directories within
     the given moved directory that were moved along with the directory.
 
     :param src_dir_path:
         The source path of the created directory.
+    :param directory_filter:
+        Optional callback controlling descent, including into the created directory.
     :returns:
         An iterable of file system events of type :class:`DirCreatedEvent` and
         :class:`FileCreatedEvent`.
     """
+    if directory_filter is not None and not directory_filter(os.path.abspath(os.fsdecode(src_dir_path))):
+        return
     for root, directories, filenames in os.walk(src_dir_path):  # type: ignore[type-var]
         for directory in directories:
             full_path = os.path.join(root, directory)  # type: ignore[call-overload]
             yield DirCreatedEvent(full_path, is_synthetic=True)
+        if directory_filter is not None:
+            directories[:] = [
+                name
+                for name in directories
+                if directory_filter(os.path.abspath(os.fsdecode(os.path.join(root, name))))  # type: ignore[call-overload]
+            ]
         for filename in filenames:
             full_path = os.path.join(root, filename)  # type: ignore[call-overload]
             yield FileCreatedEvent(full_path, is_synthetic=True)

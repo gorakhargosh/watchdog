@@ -399,6 +399,8 @@ class KqueueEmitter(EventEmitter):
     :param stat: stat function. See ``os.stat`` for details.
     """
 
+    supports_directory_filter = True
+
     def __init__(
         self,
         event_queue: EventQueue,
@@ -421,7 +423,14 @@ class KqueueEmitter(EventEmitter):
             cls._register_kevent(path, is_directory=S_ISDIR(stat_info.st_mode))
             return stat_info
 
-        self._snapshot = DirectorySnapshot(watch.path, recursive=watch.is_recursive, stat=custom_stat)
+        try:
+            self._snapshot = DirectorySnapshot(
+                watch.path, recursive=watch.is_recursive, stat=custom_stat, directory_filter=watch.directory_filter
+            )
+        except Exception:
+            self._descriptors.clear()
+            self._kq.close()
+            raise
 
     def _register_kevent(self, path: bytes | str, *, is_directory: bool) -> None:
         """Registers a kevent descriptor for the given path.
@@ -433,6 +442,14 @@ class KqueueEmitter(EventEmitter):
         :type is_directory:
             ``bool``
         """
+        if (
+            is_directory
+            and self.watch.is_recursive
+            and self.watch.directory_filter is not None
+            and absolute_path(path) != absolute_path(self.watch.path)
+            and not self.watch.directory_filter(os.path.abspath(os.fsdecode(path)))
+        ):
+            return
         try:
             self._descriptors.add(path, is_directory=is_directory)
         except OSError as e:
@@ -587,7 +604,7 @@ class KqueueEmitter(EventEmitter):
                 # all by itself? Check this and then enable this code
                 # only if it doesn't already.
                 # A: It doesn't. So I've enabled this block.
-                yield from generate_sub_moved_events(src_path, dest_path)
+                yield from generate_sub_moved_events(src_path, dest_path, directory_filter=self.watch.directory_filter)
         else:
             # If the new snapshot does not have an inode for the
             # old path, we haven't found the new name. Therefore,
@@ -626,7 +643,11 @@ class KqueueEmitter(EventEmitter):
 
                 # Take a fresh snapshot of the directory and update the
                 # saved snapshot.
-                new_snapshot = DirectorySnapshot(self.watch.path, recursive=self.watch.is_recursive)
+                new_snapshot = DirectorySnapshot(
+                    self.watch.path,
+                    recursive=self.watch.is_recursive,
+                    directory_filter=self.watch.directory_filter,
+                )
                 ref_snapshot = self._snapshot
                 self._snapshot = new_snapshot
                 diff_events = new_snapshot - ref_snapshot
@@ -642,6 +663,18 @@ class KqueueEmitter(EventEmitter):
                 for kev in event_list:
                     for event in self._gen_kqueue_events(kev, ref_snapshot, new_snapshot):
                         self.queue_event(event)
+
+                if self.watch.is_recursive and self.watch.directory_filter is not None:
+                    # Descendants do not necessarily receive rename kevents.
+                    # Reconcile descriptors when a rename changes the filter
+                    # result, including directories that were not watched.
+                    paths = {absolute_path(path) for path in new_snapshot.paths}
+                    for path in self._descriptors.paths:
+                        if path not in paths:
+                            self._unregister_kevent(path)
+                    for path in new_snapshot.paths:
+                        if path not in self._descriptors:
+                            self._register_kevent(path, is_directory=new_snapshot.isdir(path))
 
             except OSError as e:
                 if e.errno != errno.EBADF:

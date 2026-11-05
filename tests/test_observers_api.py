@@ -14,6 +14,57 @@ from watchdog.events import (
     LoggingEventHandler,
 )
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
+from watchdog.observers.polling import PollingEmitter
+
+
+def test_schedule_directory_filter_identity(tmp_path):
+    class Filter:
+        __hash__ = None
+
+        def __call__(self, path):
+            return True
+
+    observer = BaseObserver(PollingEmitter)
+    handler = FileSystemEventHandler()
+    first_filter, second_filter = Filter(), Filter()
+    first = observer.schedule(handler, tmp_path, recursive=True, directory_filter=first_filter)
+    same = observer.schedule(handler, tmp_path, recursive=True, directory_filter=first_filter)
+    second = observer.schedule(handler, tmp_path, recursive=True, directory_filter=second_filter)
+    unfiltered = observer.schedule(handler, tmp_path, recursive=True)
+    assert unfiltered.key == (str(tmp_path), True, None, False)
+    assert first == same
+    assert len({first, same, second, unfiltered}) == 3
+    assert len(observer.emitters) == 3
+    assert first.directory_filter is first_filter
+    observer.unschedule(first)
+    assert len(observer.emitters) == 2
+    observer.unschedule_all()
+
+
+def test_schedule_directory_filter_unsupported(tmp_path):
+    observer = BaseObserver(EventEmitter)
+    with pytest.raises(NotImplementedError, match="directory_filter"):
+        observer.schedule(FileSystemEventHandler(), tmp_path, recursive=True, directory_filter=lambda path: True)
+    assert not observer.emitters
+    assert not observer._handlers  # noqa: SLF001
+
+
+@pytest.mark.parametrize("recursive", [False, True])
+def test_schedule_directory_filter_does_not_enable_recursion(tmp_path, recursive):
+    target = tmp_path
+    if recursive:
+        target = tmp_path / "file"
+        target.touch()
+
+    def unexpected(path):
+        pytest.fail("Non-recursive and single-file watches must not call the directory filter")
+
+    observer = BaseObserver(PollingEmitter)
+    watch = observer.schedule(FileSystemEventHandler(), target, recursive=recursive, directory_filter=unexpected)
+    assert not watch.is_recursive
+    for emitter in observer.emitters:
+        emitter.on_thread_start()
+    observer.unschedule_all()
 
 
 def test_observer_constructor():
