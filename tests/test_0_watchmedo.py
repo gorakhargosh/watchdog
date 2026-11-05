@@ -571,25 +571,43 @@ def test_schedule_tricks_source_directory(tmp_path):
     observer.schedule.assert_called_once_with(handler, pathname, recursive=True)
 
 
-@pytest.mark.parametrize("source_directory", [None, "/legacy/directory"])
-def test_schedule_tricks_without_source_directory_parameter(source_directory):
-    class LegacyHandler(FileSystemEventHandler):
+def test_schedule_tricks_requires_source_directory_keyword():
+    class NarrowTrick(Trick):
         def __init__(self, *, message):
+            super().__init__()
             self.message = message
-            if source_directory is not None:
-                self.source_directory = source_directory
+
+    observer = Mock(spec=BaseObserver)
+    options = {"message": "hello"}
+    with (
+        patch("watchdog.watchmedo.load_class", return_value=NarrowTrick),
+        pytest.raises(TypeError, match="unexpected keyword argument 'source_directory'"),
+    ):
+        watchmedo.schedule_tricks(observer, [{"custom.NarrowTrick": options}], "/watched/directory", recursive=False)
+
+    observer.schedule.assert_not_called()
+    assert options == {"message": "hello"}
+
+
+def test_schedule_tricks_constructor_type_error_is_not_retried():
+    error = TypeError("constructor failed")
+    initialize = Mock(side_effect=error)
+
+    class BrokenTrick(Trick):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            initialize(self.source_directory)
 
     observer = Mock(spec=BaseObserver)
     pathname = "/watched/directory"
-    with patch("watchdog.watchmedo.load_class", return_value=LegacyHandler):
-        watchmedo.schedule_tricks(
-            observer, [{"custom.LegacyHandler": {"message": "legacy"}}], pathname, recursive=False
-        )
+    options = {}
+    with patch("watchdog.watchmedo.load_class", return_value=BrokenTrick), pytest.raises(TypeError) as exc:
+        watchmedo.schedule_tricks(observer, [{"custom.BrokenTrick": options}], pathname, recursive=False)
 
-    handler = observer.schedule.call_args.args[0]
-    assert isinstance(handler, LegacyHandler)
-    assert handler.message == "legacy"
-    observer.schedule.assert_called_once_with(handler, source_directory or pathname, recursive=False)
+    assert exc.value is error
+    initialize.assert_called_once_with(pathname)
+    observer.schedule.assert_not_called()
+    assert options == {}
 
 
 @pytest.mark.parametrize("source_directory", ["/configured/directory", None, ""])
@@ -627,6 +645,21 @@ def test_schedule_tricks_source_directory_with_kwargs():
     assert handler.received_source_directory == pathname
     assert handler.source_directory == pathname
     observer.schedule.assert_called_once_with(handler, pathname, recursive=False)
+
+
+@pytest.mark.filterwarnings("error::DeprecationWarning")
+@pytest.mark.parametrize(
+    ("trick_cls", "options"),
+    [
+        (Trick, {}),
+        (LoggerTrick, {}),
+        (ShellCommandTrick, {"shell_command": "echo hello"}),
+        (AutoRestartTrick, {"command": ["echo", "hello"]}),
+    ],
+)
+def test_tricks_source_directory_is_optional(trick_cls, options):
+    assert trick_cls(**options).source_directory is None
+    assert trick_cls(source_directory=None, **options).source_directory is None
 
 
 @pytest.mark.parametrize(

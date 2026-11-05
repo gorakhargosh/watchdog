@@ -56,8 +56,15 @@ echo_events = functools.partial(echo.echo, write=lambda msg: logger.info(msg))
 class Trick(PatternMatchingEventHandler):
     """Your tricks should subclass this class.
 
+    Custom constructors used by ``watchmedo`` must accept ``source_directory``
+    explicitly or through ``**kwargs`` and forward it to ``super().__init__()``
+    to make it available as ``self.source_directory``.
+
     :param source_directory:
-        The directory to watch, available during initialization.
+        The directory to watch, available during initialization. Defaults to
+        ``None`` for direct instantiation. ``watchmedo`` supplies the watched
+        pathname unless the trick configuration specifies this argument.
+        ``None`` or an empty string uses the default watch path when scheduled.
     """
 
     def __init__(
