@@ -10,6 +10,8 @@ Changelog
 
 **Other Changes**
 
+- [observers] Add an ``emit_created_for_existing`` argument to ``BaseObserver.schedule()`` to optionally receive created events for the files and directories that already exist when watching starts. (`#1010 <https://github.com/gorakhargosh/watchdog/issues/1010>`__)
+
 - xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
 
 7.1.0
