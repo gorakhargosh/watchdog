@@ -47,6 +47,179 @@ def emitter(event_queue, p):
     em.join(5)
 
 
+@pytest.fixture
+def sysfs_file(tmp_path, monkeypatch):
+    if not platform.is_linux():
+        pytest.skip("sysfs polling is Linux-specific")
+    directory = tmp_path / "sysfs"
+    directory.mkdir()
+    path = directory / "rx_bytes"
+    path.write_bytes(b"100\n")
+
+    # Model sysfs without requiring it on the test machine. Resolve symlinks
+    # normally, then map this temporary directory into /sys.
+    realpath = os.path.realpath
+
+    def sysfs_realpath(path, **kwargs):
+        resolved = realpath(path, **kwargs)
+        if resolved == str(directory):
+            return "/sys/devices/watchdog-test"
+        prefix = str(directory) + os.sep
+        if resolved.startswith(prefix):
+            return "/sys/devices/watchdog-test/" + resolved[len(prefix) :]
+        return resolved
+
+    monkeypatch.setattr(os.path, "realpath", sysfs_realpath)
+    return path
+
+
+def change_sysfs_file(path):
+    before = path.stat()
+    path.write_bytes(b"200\n")
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    after = path.stat()
+    assert (before.st_ino, before.st_size, before.st_mtime_ns) == (
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+    )
+
+
+@pytest.mark.parametrize("use_bytes", [False, True])
+@pytest.mark.parametrize("use_symlink", [False, True])
+def test_sysfs_content_change(sysfs_file, tmp_path, event_queue, use_bytes, use_symlink):
+    watched = sysfs_file.parent
+    if use_symlink:
+        watched = tmp_path / "link"
+        watched.symlink_to(sysfs_file.parent, target_is_directory=True)
+    path = os.fsencode(watched) if use_bytes else str(watched)
+    expected_path = os.path.join(path, b"rx_bytes" if use_bytes else "rx_bytes")
+    watch = ObservedWatch(path, recursive=True)
+    emitter = Emitter(event_queue, watch)
+    emitter.on_thread_start()
+    emitter.queue_events(0)
+    assert event_queue.empty()
+
+    change_sysfs_file(sysfs_file)
+    emitter.queue_events(0)
+    assert event_queue.get_nowait() == (FileModifiedEvent(expected_path), watch)
+    assert event_queue.empty()
+
+    emitter.queue_events(0)
+    assert event_queue.empty()
+
+
+@pytest.mark.parametrize("error", [errno.EACCES, errno.EIO, errno.ENOENT])
+def test_sysfs_read_error(sysfs_file, event_queue, monkeypatch, error):
+    watch = ObservedWatch(str(sysfs_file.parent), recursive=True)
+    emitter = Emitter(event_queue, watch)
+    emitter.on_thread_start()
+
+    def unreadable(*args, **kwargs):
+        raise OSError(error, os.strerror(error))
+
+    with monkeypatch.context() as patch:
+        patch.setattr("watchdog.observers.polling.open", unreadable, raising=False)
+        change_sysfs_file(sysfs_file)
+        emitter.queue_events(0)
+        assert event_queue.empty()
+        assert emitter.should_keep_running()
+
+    # A temporary read failure must not discard the last readable value.
+    emitter.queue_events(0)
+    assert event_queue.get_nowait() == (FileModifiedEvent(str(sysfs_file)), watch)
+    assert event_queue.empty()
+
+
+def test_sysfs_metadata_and_content_change(sysfs_file, event_queue):
+    watch = ObservedWatch(str(sysfs_file.parent), recursive=True)
+    emitter = Emitter(event_queue, watch)
+    emitter.on_thread_start()
+    sysfs_file.write_bytes(b"20000\n")
+    emitter.queue_events(0)
+    assert event_queue.get_nowait() == (FileModifiedEvent(str(sysfs_file)), watch)
+    assert event_queue.empty()
+
+
+@pytest.mark.parametrize("custom_fs", [None, "stat", "listdir"])
+def test_polling_does_not_read_other_files(sysfs_file, tmp_path, event_queue, monkeypatch, custom_fs):
+    path = sysfs_file
+    kwargs = {}
+    if custom_fs == "stat":
+        kwargs["stat"] = lambda path: os.stat(path)
+    elif custom_fs == "listdir":
+        kwargs["listdir"] = lambda path: os.scandir(path)
+    else:
+        directory = tmp_path / "ordinary"
+        directory.mkdir()
+        path = directory / "rx_bytes"
+        path.write_bytes(b"100\n")
+    watch = ObservedWatch(str(path.parent), recursive=True)
+
+    def unexpected_read(*args, **kwargs):
+        pytest.fail("Polling must not read ordinary files or custom filesystems")
+
+    monkeypatch.setattr("watchdog.observers.polling.open", unexpected_read, raising=False)
+    emitter = Emitter(event_queue, watch, **kwargs)
+    emitter.on_thread_start()
+    path.write_bytes(b"20000\n")
+    emitter.queue_events(0)
+    assert event_queue.get_nowait() == (FileModifiedEvent(str(path)), watch)
+    assert event_queue.empty()
+
+
+def test_sysfs_initial_read_error(sysfs_file, event_queue, monkeypatch):
+    watch = ObservedWatch(str(sysfs_file.parent), recursive=True)
+    emitter = Emitter(event_queue, watch)
+
+    def unreadable(*args, **kwargs):
+        raise PermissionError
+
+    with monkeypatch.context() as patch:
+        patch.setattr("watchdog.observers.polling.open", unreadable, raising=False)
+        emitter.on_thread_start()
+        emitter.queue_events(0)
+        assert event_queue.empty()
+
+    emitter.queue_events(0)
+    assert event_queue.empty()
+    change_sysfs_file(sysfs_file)
+    emitter.queue_events(0)
+    assert event_queue.get_nowait() == (FileModifiedEvent(str(sysfs_file)), watch)
+    assert event_queue.empty()
+
+
+def test_sysfs_replaced_file(sysfs_file, tmp_path, event_queue):
+    watch = ObservedWatch(str(sysfs_file.parent), recursive=True)
+    emitter = Emitter(event_queue, watch, event_filter=[FileCreatedEvent, FileDeletedEvent, FileModifiedEvent])
+    emitter.on_thread_start()
+    replacement = tmp_path / "replacement"
+    replacement.write_bytes(b"200\n")
+    assert replacement.stat().st_ino != sysfs_file.stat().st_ino
+    replacement.replace(sysfs_file)
+    emitter.queue_events(0)
+    assert {event_queue.get_nowait()[0], event_queue.get_nowait()[0]} == {
+        FileCreatedEvent(str(sysfs_file)),
+        FileDeletedEvent(str(sysfs_file)),
+    }
+    assert event_queue.empty()
+
+
+def test_sysfs_does_not_read_special_files(sysfs_file, event_queue, monkeypatch):
+    sysfs_file.unlink()
+    os.mkfifo(sysfs_file)
+
+    def unexpected_read(*args, **kwargs):
+        pytest.fail("Polling must not open special files or directories")
+
+    monkeypatch.setattr("watchdog.observers.polling.open", unexpected_read, raising=False)
+    watch = ObservedWatch(str(sysfs_file.parent), recursive=True)
+    emitter = Emitter(event_queue, watch)
+    emitter.on_thread_start()
+    emitter.queue_events(0)
+    assert event_queue.empty()
+
+
 @pytest.mark.flaky(max_runs=3, min_passes=1)
 def test___init__(p, event_queue, emitter):
     sleep(SLEEP_TIME)

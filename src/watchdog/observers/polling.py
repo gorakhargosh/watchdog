@@ -21,10 +21,12 @@ Classes
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import threading
 from functools import partial
+from stat import S_ISREG
 from typing import TYPE_CHECKING
 
 from watchdog.events import (
@@ -40,6 +42,7 @@ from watchdog.events import (
     FileMovedEvent,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
+from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import DirectorySnapshot, DirectorySnapshotDiff, EmptyDirectorySnapshot
 
 if TYPE_CHECKING:
@@ -71,6 +74,8 @@ class PollingEmitter(EventEmitter):
         self._snapshot: DirectorySnapshot = EmptyDirectorySnapshot()
         self._lock = threading.Lock()
         self._snapshot_failing = False
+        self._poll_sysfs = platform.is_linux() and stat is os.stat and listdir is os.scandir
+        self._sysfs_contents: dict[bytes | str, bytes] = {}
         self._take_snapshot: Callable[[], DirectorySnapshot] = lambda: DirectorySnapshot(
             self.watch.path,
             recursive=self.watch.is_recursive,
@@ -85,6 +90,28 @@ class PollingEmitter(EventEmitter):
         """
 
         self._snapshot = self._take_snapshot()
+        self._sysfs_contents = self._read_sysfs_contents(self._snapshot)
+
+    def _read_sysfs_contents(self, snapshot: DirectorySnapshot) -> dict[bytes | str, bytes]:
+        contents: dict[bytes | str, bytes] = {}
+        if not self._poll_sysfs:
+            return contents
+        root = os.path.realpath(os.fsdecode(self.watch.path))
+        if root != "/sys" and not root.startswith("/sys/"):
+            return contents
+
+        for path in snapshot.paths:
+            if not S_ISREG(snapshot.mode(path)) or not os.path.realpath(os.fsdecode(path)).startswith("/sys/"):
+                continue
+            try:
+                with open(path, "rb") as file:
+                    contents[path] = hashlib.file_digest(file, "sha256").digest()
+            except OSError:
+                # Attributes may be unreadable or disappear between stat and
+                # open. Retain the last readable value only for the same file.
+                if path in self._sysfs_contents and self._snapshot.inode(path) == snapshot.inode(path):
+                    contents[path] = self._sysfs_contents[path]
+        return contents
 
     def queue_events(self, timeout: Seconds) -> None:
         """Wait ``timeout`` seconds, then queue events for any changes.
@@ -136,7 +163,17 @@ class PollingEmitter(EventEmitter):
                 logger.info("Snapshot of %r succeeded again, resuming", self.watch.path)
 
             events = DirectorySnapshotDiff(self._snapshot, new_snapshot)
+            # sysfs attributes can change without updating their size or mtime.
+            new_contents = self._read_sysfs_contents(new_snapshot)
+            for path in self._sysfs_contents.keys() & new_contents.keys():
+                if (
+                    self._snapshot.inode(path) == new_snapshot.inode(path)
+                    and self._sysfs_contents[path] != new_contents[path]
+                    and path not in events.files_modified
+                ):
+                    events.files_modified.append(path)
             self._snapshot = new_snapshot
+            self._sysfs_contents = new_contents
 
             # Files.
             for src_path in events.files_deleted:
@@ -166,6 +203,13 @@ class PollingEmitter(EventEmitter):
 class PollingObserver(BaseObserver):
     """Platform-independent observer that polls a directory to detect file
     system changes.
+
+    On Linux, watches rooted at ``/sys`` or below (including symlinks resolving
+    there) also compare the contents of readable regular files under ``/sys/``,
+    since sysfs attributes may keep the same size and modification time when
+    their values change. This reads those files on every poll; unreadable
+    attributes are retried on the next poll. Other watches and custom
+    filesystems use stat information only.
 
     If a poll fails because the watched directory no longer exists
     (``FileNotFoundError`` or ``NotADirectoryError``), a
