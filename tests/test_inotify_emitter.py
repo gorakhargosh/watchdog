@@ -4,6 +4,7 @@ import errno
 import os
 from queue import Queue
 from threading import Event
+from unittest.mock import Mock
 
 import pytest
 
@@ -12,9 +13,100 @@ from watchdog.utils import platform
 if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
-from watchdog.events import DirCreatedEvent, FileCreatedEvent, FileDeletedEvent, FileMovedEvent, FileSystemEventHandler
-from watchdog.observers.inotify import InotifyObserver, InotifyWatchGroup
-from watchdog.observers.inotify_c import InotifyFD
+from watchdog.events import (
+    DirCreatedEvent,
+    DirDeletedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileMovedEvent,
+    FileSystemEventHandler,
+)
+from watchdog.observers import Observer
+from watchdog.observers.api import ObservedWatch
+from watchdog.observers.inotify import InotifyEmitter, InotifyFullEmitter, InotifyObserver, InotifyWatchGroup
+from watchdog.observers.inotify_c import InotifyConstants, InotifyEvent, InotifyFD
+from watchdog.observers.inotify_move_event_grouper import PathedInotifyEvent
+
+
+@pytest.mark.parametrize("emitter_class", [InotifyEmitter, InotifyFullEmitter])
+@pytest.mark.parametrize("full_events", [False, True])
+@pytest.mark.parametrize("is_directory", [False, True])
+@pytest.mark.parametrize("move_in", [False, True])
+def test_queue_events_full_events(tmp_path, monkeypatch, emitter_class, full_events, is_directory, move_in):
+    events = Queue()
+    watch = ObservedWatch(str(tmp_path), recursive=False)
+    emitter = emitter_class(events, watch)
+    path = str(tmp_path / "entry")
+    mask = InotifyConstants.IN_MOVED_TO if move_in else InotifyConstants.IN_MOVED_FROM
+    if is_directory:
+        mask |= InotifyConstants.IN_ISDIR
+    event = PathedInotifyEvent(InotifyEvent(1, mask, 1, b"entry"), os.fsencode(path))
+    inotify = Mock(spec=InotifyWatchGroup)
+    inotify.read_event.return_value = event
+    monkeypatch.setattr(emitter, "_inotify", inotify)
+
+    emitter.queue_events(0, full_events=full_events)
+
+    if full_events:
+        event_class = DirMovedEvent if is_directory else FileMovedEvent
+        expected = event_class("", path) if move_in else event_class(path, "")
+    elif move_in:
+        event_class = DirCreatedEvent if is_directory else FileCreatedEvent
+        expected = event_class(path)
+    else:
+        event_class = DirDeletedEvent if is_directory else FileDeletedEvent
+        expected = event_class(path)
+    assert events.get_nowait() == (expected, watch)
+    assert events.get_nowait() == (DirModifiedEvent(str(tmp_path)), watch)
+    assert events.empty()
+
+
+@pytest.mark.parametrize("observer_class", [Observer, InotifyObserver], ids=["Observer", "InotifyObserver"])
+@pytest.mark.parametrize("generate_full_events", [None, False, True], ids=["default", "disabled", "enabled"])
+@pytest.mark.parametrize("is_directory", [False, True])
+def test_observer_boundary_moves(tmp_path, observer_class, generate_full_events, is_directory):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    watched = tmp_path / "watched"
+    watched.mkdir()
+    outside = tmp_path / "entry"
+    if is_directory:
+        outside.mkdir()
+    else:
+        outside.touch()
+    inside = watched / "entry"
+    renamed = watched / "renamed"
+    created = DirCreatedEvent if is_directory else FileCreatedEvent
+    deleted = DirDeletedEvent if is_directory else FileDeletedEvent
+    moved = DirMovedEvent if is_directory else FileMovedEvent
+    options = {} if generate_full_events is None else {"generate_full_events": generate_full_events}
+    observer = observer_class(**options)
+    try:
+        observer.schedule(Handler(), watched, event_filter=[created, deleted, moved])
+        observer.start()
+
+        outside.rename(inside)
+        expected = moved("", str(inside)) if generate_full_events else created(str(inside))
+        assert events.get(timeout=5) == expected
+
+        inside.rename(renamed)
+        assert events.get(timeout=5) == moved(str(inside), str(renamed))
+
+        renamed.rename(outside)
+        expected = moved(str(renamed), "") if generate_full_events else deleted(str(renamed))
+        assert events.get(timeout=5) == expected
+        assert events.empty()
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
 
 
 def test_observer_does_not_initialize_shared_inotify_fd(monkeypatch):

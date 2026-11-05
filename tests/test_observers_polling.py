@@ -21,15 +21,40 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    FileSystemEventHandler,
 )
 from watchdog.observers.api import ObservedWatch
 from watchdog.observers.polling import PollingEmitter as Emitter
+from watchdog.observers.polling import PollingObserver
 from watchdog.utils import platform
 from watchdog.utils.dirsnapshot import EmptyDirectorySnapshot
 
 from .shell import chmod, mkdir, msize, mv, rm, touch
 
 SLEEP_TIME = 0.5
+
+
+@pytest.mark.parametrize("generate_full_events", [False, True])
+def test_generate_full_events_keeps_polling_behavior(tmp_path, generate_full_events):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    watched = tmp_path / "watched"
+    watched.mkdir()
+    outside = tmp_path / "entry"
+    outside.touch()
+    inside = watched / "entry"
+    observer = PollingObserver(timeout=0.05, generate_full_events=generate_full_events)
+    observer.schedule(Handler(), watched, event_filter=[FileCreatedEvent, FileDeletedEvent, FileMovedEvent])
+    with observer:
+        outside.rename(inside)
+        assert events.get(timeout=5) == FileCreatedEvent(str(inside))
+        inside.rename(outside)
+        assert events.get(timeout=5) == FileDeletedEvent(str(inside))
+        assert events.empty()
 
 
 @pytest.fixture

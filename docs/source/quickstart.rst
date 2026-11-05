@@ -62,6 +62,30 @@ Alternatively, you can use the observer as a context manager for cleaner code:
 The context manager automatically handles starting and stopping the observer,
 ensuring proper cleanup even if an exception occurs.
 
+Moves Across a Watched Directory's Boundary
+-------------------------------------------
+
+With the Linux inotify backend, moves from outside a watched directory are
+reported as created events by default, and moves out are reported as deleted
+events. To receive move events instead, enable ``generate_full_events`` when
+constructing the observer:
+
+.. code-block:: python
+
+    from watchdog.observers import Observer
+
+    observer = Observer(generate_full_events=True)
+
+These :class:`~watchdog.events.FileMovedEvent` and
+:class:`~watchdog.events.DirMovedEvent` events have an empty ``src_path`` for
+moves into the watch, or an empty ``dest_path`` for moves out. Moves within the
+watch still include both paths. The same option is available on
+:class:`~watchdog.observers.inotify.InotifyObserver` directly.
+
+The option defaults to ``False``. Other backends selected by ``Observer`` accept
+it but ignore it, retaining their usual event behavior. Recursive watches still
+report existing descendants of a moved-in directory as synthetic created events.
+
 Typing
 ------
 
