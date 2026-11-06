@@ -7,21 +7,67 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Cancel obsolete runs on new commits or force-pushes
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
-# No job requires write access to the GITHUB_TOKEN; checkout only needs contents: read.
+# dorny/paths-filter uses the GitHub API on pull requests; checkout needs contents: read.
 permissions:
   contents: read
+  pull-requests: read
+
+env:
+  # Full supported Python versions across all platforms on Pull Requests
+  PYTHON_VERSIONS: '["3.11", "3.12", "3.13", "3.13t", "3.14", "3.14t", "3.15", "3.15t", "pypy-3.11", "pypy-3.12"]'
+
+  # Minimal Python baseline versions tested on push to master
+  PYTHON_MASTER_LINUX: '["3.11", "pypy-3.11"]'
+  PYTHON_MASTER_MACOS: '["3.11", "3.13t", "pypy-3.11"]'
+  PYTHON_MASTER_WINDOWS: '["3.11"]'
 
 jobs:
+  # Inspect changed files to determine which OS and test targets need to run
+  changes:
+    name: 🔍 Filter Changes
+    runs-on: ubuntu-latest
+    if: |
+      !startsWith(github.head_ref, 'all-contributors/') &&
+      !startsWith(github.event.pull_request.title, 'docs:') &&
+      !contains(github.event.pull_request.title, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[skip ci]')
+    outputs:
+      linux: ${{ steps.filter.outputs.linux == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.watchmedo == 'true' || steps.filter.outputs.examples == 'true' }}
+      macos: ${{ steps.filter.outputs.macos == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      windows: ${{ steps.filter.outputs.windows == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      # Run only modified tests if PR touches tests only; otherwise run full test suite
+      test_args: ${{ (steps.filter.outputs.not_tests == 'false' && steps.filter.outputs.tests_files) || (steps.filter.outputs.watchmedo == 'true' && steps.filter.outputs.core == 'false' && 'tests/test_0_watchmedo.py') || (steps.filter.outputs.examples == 'true' && steps.filter.outputs.core == 'false' && 'tests/test_examples.py') || '' }}
+      python: ${{ env.PYTHON_VERSIONS }}
+      python_master_linux: ${{ env.PYTHON_MASTER_LINUX }}
+      python_master_macos: ${{ env.PYTHON_MASTER_MACOS }}
+      python_master_windows: ${{ env.PYTHON_MASTER_WINDOWS }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Path Filters
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          predicate-quantifier: "some-with-excludes"
+          filters: .github/filters.yml
+          list-files: shell
+
   quality:
     name: 🧑‍🏭 Quality & Docs
     runs-on: ubuntu-latest
+    if: |
+      !startsWith(github.head_ref, 'all-contributors/') &&
+      !contains(github.event.pull_request.title, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[skip ci]')
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
@@ -45,55 +91,53 @@ jobs:
       - name: Build the documentation
         run: python -m tox -q -e docs
 
-  tox:
-    name: ${{ matrix.os.emoji }} ${{ matrix.os.name }} ${{ matrix.python }}
-    runs-on: ${{ matrix.os.runs-on }}
-    if: "!startsWith(github.head_ref, 'all-contributors/') && !startsWith(github.event.pull_request.title, 'docs:')"
-    timeout-minutes: 15
+  # Linux test matrix: CPython + PyPy
+  linux:
+    name: 🐧 Linux
+    needs: changes
+    if: needs.changes.outputs.linux == 'true' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - name: Linux
-            matrix: linux
-            emoji: 🐧
-            runs-on: [ubuntu-latest]
-          - name: macOS
-            matrix: macos
-            emoji: 🍎
-            runs-on: [macos-latest]
-          - name: Windows
-            matrix: windows
-            emoji: 🪟
-            runs-on: [windows-latest]
-        python:
-          - "3.11"
-          - "3.12"
-          - "3.13"
-          - "3.13t"
-          - "3.14"
-          - "3.14t"
-          - "3.15"
-          - "3.15t"
-          - "pypy-3.11"
+        # Minimal versions on master push; full matrix on pull requests
+        python: ${{ github.event_name == 'push' && fromJSON(needs.changes.outputs.python_master_linux) || fromJSON(needs.changes.outputs.python) }}
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      runs-on: ubuntu-latest
+      python: ${{ matrix.python }}
+      test_args: ${{ needs.changes.outputs.test_args }}
+
+  # macOS test matrix: CPython + free-threaded + PyPy
+  macos:
+    name: 🍎 macOS
+    needs: changes
+    if: needs.changes.outputs.macos == 'true' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minimal versions on master push; full matrix on pull requests
+        python: ${{ github.event_name == 'push' && fromJSON(needs.changes.outputs.python_master_macos) || fromJSON(needs.changes.outputs.python) }}
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      runs-on: macos-latest
+      python: ${{ matrix.python }}
+      test_args: ${{ needs.changes.outputs.test_args }}
+
+  # Windows test matrix: CPython only (skips PyPy)
+  windows:
+    name: 🪟 Windows
+    needs: changes
+    if: needs.changes.outputs.windows == 'true' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minimal version on master push; full matrix on pull requests
+        python: ${{ github.event_name == 'push' && fromJSON(needs.changes.outputs.python_master_windows) || fromJSON(needs.changes.outputs.python) }}
         exclude:
-          - os:
-              matrix: windows
-            python: "pypy-3.11"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: ${{ matrix.python }}
-          allow-prereleases: true
-          cache: pip
-
-      - name: Install dependencies
-        run: python -m pip install tox tox-uv
-
-      - name: Run tests
-        run: python -m tox -q -e py
+          - python: "pypy-3.11"
+          - python: "pypy-3.12"
+    uses: ./.github/workflows/test-runner.yml
+    with:
+      runs-on: windows-latest
+      python: ${{ matrix.python }}
+      test_args: ${{ needs.changes.outputs.test_args }}
