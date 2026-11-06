@@ -15,13 +15,14 @@
 
 name: Build & Publish
 
+# Dedicated release and distribution pipeline
+# Builds full release wheels and sdist, then publishes to PyPI on release tags or manual dispatch
 on:
   push:
+    tags:
+      - "v*"
     branches:
       - master
-  pull_request:
-    branches:
-      - "**"
 
   workflow_dispatch:
     inputs:
@@ -29,103 +30,51 @@ on:
         description: "The branch, tag or SHA to release from"
         required: true
         default: "master"
+      publish:
+        description: "Publish to PyPI (leave unchecked for dry-run build)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
-  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name != 'pull_request' && github.sha || '' }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
-# Publishing authenticates to PyPI with its own token, not the GITHUB_TOKEN, so
-# read-only is sufficient for every job here. Elevate per-job if that ever changes.
 permissions:
   contents: read
 
 jobs:
+  # Build macOS binary wheels in parallel across architectures (arm64, x86_64, universal2)
   macos-built-distributions:
-    name: Build macOS wheels
-    runs-on: macos-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.inputs.branch }}
-      - name: Install Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: "3.11"
-      - name: Install build dependencies
-        run: python -m pip install cibuildwheel
-      - name: Build wheels
-        run: python -m cibuildwheel
-        env:
-          CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
-          CIBW_BUILD: "cp* pp311-* pp312-*"
-          CIBW_ENABLE: "pypy"
-      - name: Artifacts list
-        run: ls -l wheelhouse
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: python-package-distributions-macos
-          path: ./wheelhouse/*.whl
+    name: 🍏 macOS (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x86_64, universal2]
+    uses: ./.github/workflows/wheel-builder.yml
+    with:
+      archs: ${{ matrix.arch }}
+      build: "cp* pp311-* pp312-*"
+      ref: ${{ github.event.inputs.branch || github.ref }}
+      upload_artifacts: true
 
+  # Build platform-specific pure wheels and source distribution (.tar.gz)
   pure-built-distributions:
-    name: Build pure wheels
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.inputs.branch }}
-      - name: Install Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: "3.11"
-      - name: Install build dependencies
-        run: python -m pip install -U setuptools wheel
-      - name: Build wheels
-        run: |
-          for platform in 'manylinux_2_17_x86_64' 'manylinux_2_17_aarch64' 'manylinux_2_17_i686' 'manylinux_2_17_ppc64le' 'manylinux_2_17_s390x' 'manylinux_2_17_armv7l' 'manylinux_2_17_ppc64' 'manylinux2014_x86_64' 'manylinux2014_i686' 'manylinux2014_aarch64' 'manylinux2014_armv7l' 'manylinux2014_ppc64' 'manylinux2014_ppc64le' 'manylinux2014_s390x' 'win32' 'win_amd64' 'win_ia64' 'win_arm64'
-          do
-            python setup.py bdist_wheel --plat-name $platform
-          done
-      - name: Artifacts list
-        run: ls -l dist
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: python-package-distributions-pure-wheels
-          path: ./dist/*.whl
+    name: 📦 Package Distributions
+    uses: ./.github/workflows/dist-builder.yml
+    with:
+      ref: ${{ github.event.inputs.branch || github.ref }}
+      upload_artifacts: true
 
-  source-distribution:
-    name: Build source distribution
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.inputs.branch }}
-      - name: Install Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: "3.11"
-      - name: Build source distribution
-        run: python setup.py sdist
-      - name: Artifacts list
-        run: ls -l dist
-      - name: Store the source distribution
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: python-package-distributions-source
-          path: dist/*.tar.gz
-
+  # Publish to PyPI on release tags (v*) or confirmed manual dispatch
   publish:
+    name: 🚀 Publish to PyPI
     needs:
       - macos-built-distributions
       - pure-built-distributions
-      - source-distribution
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -133,10 +82,11 @@ jobs:
           pattern: python-package-distributions-*
           merge-multiple: true
           path: dist/
+
       - name: What will we publish?
         run: ls -l dist
-      - name: Publish
-        if: github.event.inputs.branch != ''
+
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           user: __token__
