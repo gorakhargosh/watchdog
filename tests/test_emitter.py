@@ -654,10 +654,14 @@ def test_file_lifecyle(
 
     mkfile(p("a"))
     if platform.is_windows():
-        # Ensure system clock advances past creation mtime so Windows NTFS sets
-        # LastModificationTime >= LastChangeTime, deterministically emitting FileModifiedEvent.
-        time.sleep(0.05)
-    touch(p("a"))
+        # touch() only updates the timestamps, and winapi reports that as an
+        # attribute change whenever NTFS records ChangeTime after LastWriteTime.
+        # That ordering is not guaranteed (see test_recursive_on), so write data
+        # instead: a real modification is always reported as a modification.
+        with open(p("a"), "ab") as file:
+            file.write(b"a")
+    else:
+        touch(p("a"))
     mv(p("a"), p("b"))
     rm(p("b"))
 

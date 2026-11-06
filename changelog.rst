@@ -3,12 +3,18 @@
 Changelog
 ---------
 
-Unreleased
-~~~~~~~~~~
+7.1.1-dev
+~~~~~~~~~
+
+2026-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.0...HEAD>`__
 
 **Breaking Changes**
 
 - [watchmedo] Pass the watched source directory to tricks during initialization, preserving configured directory overrides. Custom trick constructors must now accept the ``source_directory`` keyword; it remains optional with a ``None`` default for direct instantiation. (`#926 <https://github.com/gorakhargosh/watchdog/issues/926>`__)
+
+**Other Changes**
+
+- xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
 
 7.1.0
 ~~~~~

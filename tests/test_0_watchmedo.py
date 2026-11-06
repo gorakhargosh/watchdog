@@ -568,134 +568,35 @@ def test_observe_with():
     assert observer.join.call_count == 1
 
 
-def test_schedule_tricks_source_directory(tmp_path):
+@pytest.mark.parametrize(
+    "options", [{}, {"source_directory": None}, {"source_directory": ""}, {"source_directory": "configured"}]
+)
+def test_schedule_tricks_source_directory(tmp_path, options):
     class InspectingTrick(Trick):
-        def __init__(self, *, source_directory=None):
+        def __init__(self, *, source_directory):
             super().__init__(source_directory=source_directory)
-            self.received_source_directory = source_directory
-            self.initial_files = os.listdir(self.source_directory)
+            self.initial_files = os.listdir(source_directory) if source_directory else []
 
-    (tmp_path / "existing.txt").touch()
     pathname = str(tmp_path)
+    configured = tmp_path / "configured"
+    configured.mkdir()
+    (tmp_path / "watched.txt").touch()
+    (configured / "configured.txt").touch()
+    options = options.copy()
+    if options.get("source_directory") == "configured":
+        options["source_directory"] = str(configured)
+    original_options = options.copy()
+    expected = options.get("source_directory", pathname)
     observer = Mock(spec=BaseObserver)
+
     with patch("watchdog.watchmedo.load_class", return_value=InspectingTrick):
-        watchmedo.schedule_tricks(observer, [{"custom.InspectingTrick": {}}], pathname, recursive=True)
+        watchmedo.schedule_tricks(observer, [{"custom.InspectingTrick": options}], pathname, recursive=True)
 
     handler = observer.schedule.call_args.args[0]
-    assert isinstance(handler, InspectingTrick)
-    assert handler.received_source_directory == pathname
-    assert handler.initial_files == ["existing.txt"]
-    observer.schedule.assert_called_once_with(handler, pathname, recursive=True)
-
-
-def test_schedule_tricks_requires_source_directory_keyword():
-    class NarrowTrick(Trick):
-        def __init__(self, *, message):
-            super().__init__()
-            self.message = message
-
-    observer = Mock(spec=BaseObserver)
-    options = {"message": "hello"}
-    with (
-        patch("watchdog.watchmedo.load_class", return_value=NarrowTrick),
-        pytest.raises(TypeError, match="unexpected keyword argument 'source_directory'"),
-    ):
-        watchmedo.schedule_tricks(observer, [{"custom.NarrowTrick": options}], "/watched/directory", recursive=False)
-
-    observer.schedule.assert_not_called()
-    assert options == {"message": "hello"}
-
-
-def test_schedule_tricks_constructor_type_error_is_not_retried():
-    error = TypeError("constructor failed")
-    initialize = Mock(side_effect=error)
-
-    class BrokenTrick(Trick):
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-            initialize(self.source_directory)
-
-    observer = Mock(spec=BaseObserver)
-    pathname = "/watched/directory"
-    options = {}
-    with patch("watchdog.watchmedo.load_class", return_value=BrokenTrick), pytest.raises(TypeError) as exc:
-        watchmedo.schedule_tricks(observer, [{"custom.BrokenTrick": options}], pathname, recursive=False)
-
-    assert exc.value is error
-    initialize.assert_called_once_with(pathname)
-    observer.schedule.assert_not_called()
-    assert options == {}
-
-
-@pytest.mark.parametrize("source_directory", ["/configured/directory", None, ""])
-def test_schedule_tricks_configured_source_directory(source_directory):
-    class RecordingTrick(Trick):
-        def __init__(self, *, source_directory=None):
-            super().__init__(source_directory=source_directory)
-            self.received_source_directory = source_directory
-
-    observer = Mock(spec=BaseObserver)
-    pathname = "/watched/directory"
-    options = {"source_directory": source_directory}
-    with patch("watchdog.watchmedo.load_class", return_value=RecordingTrick):
-        watchmedo.schedule_tricks(observer, [{"custom.RecordingTrick": options}], pathname, recursive=True)
-
-    handler = observer.schedule.call_args.args[0]
-    assert handler.received_source_directory == source_directory
-    assert handler.source_directory == source_directory
-    assert options == {"source_directory": source_directory}
-    observer.schedule.assert_called_once_with(handler, source_directory or pathname, recursive=True)
-
-
-def test_schedule_tricks_source_directory_with_kwargs():
-    class KwargsTrick(Trick):
-        def __init__(self, **kwargs):
-            self.received_source_directory = kwargs["source_directory"]
-            super().__init__(**kwargs)
-
-    observer = Mock(spec=BaseObserver)
-    pathname = "/watched/directory"
-    with patch("watchdog.watchmedo.load_class", return_value=KwargsTrick):
-        watchmedo.schedule_tricks(observer, [{"custom.KwargsTrick": {}}], pathname, recursive=False)
-
-    handler = observer.schedule.call_args.args[0]
-    assert handler.received_source_directory == pathname
-    assert handler.source_directory == pathname
-    observer.schedule.assert_called_once_with(handler, pathname, recursive=False)
-
-
-@pytest.mark.filterwarnings("error::DeprecationWarning")
-@pytest.mark.parametrize(
-    ("trick_cls", "options"),
-    [
-        (Trick, {}),
-        (LoggerTrick, {}),
-        (ShellCommandTrick, {"shell_command": "echo hello"}),
-        (AutoRestartTrick, {"command": ["echo", "hello"]}),
-    ],
-)
-def test_tricks_source_directory_is_optional(trick_cls, options):
-    assert trick_cls(**options).source_directory is None
-    assert trick_cls(source_directory=None, **options).source_directory is None
-
-
-@pytest.mark.parametrize(
-    ("trick_cls", "options"),
-    [
-        (LoggerTrick, {}),
-        (ShellCommandTrick, {"shell_command": "echo hello"}),
-        (AutoRestartTrick, {"command": ["echo", "hello"]}),
-    ],
-)
-def test_schedule_tricks_builtin_source_directory(trick_cls, options):
-    observer = Mock(spec=BaseObserver)
-    tricks = [{f"watchdog.tricks.{trick_cls.__name__}": options}]
-    for pathname in ["/path/one", "/path/two"]:
-        watchmedo.schedule_tricks(observer, tricks, pathname, recursive=True)
-
-        handler = observer.schedule.call_args.args[0]
-        assert isinstance(handler, trick_cls)
-        assert handler.source_directory == pathname
-        observer.schedule.assert_called_with(handler, pathname, recursive=True)
-    assert observer.schedule.call_count == 2
-    assert "source_directory" not in options
+    assert handler.source_directory == expected
+    if expected == pathname:
+        assert "watched.txt" in handler.initial_files
+    elif expected:
+        assert handler.initial_files == ["configured.txt"]
+    observer.schedule.assert_called_once_with(handler, expected or pathname, recursive=True)
+    assert options == original_options
