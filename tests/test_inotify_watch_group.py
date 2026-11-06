@@ -301,33 +301,163 @@ def test_move_to_reconciles_renamed_directory_without_source_watch(p):
     inotify.deactivate()
 
 
-def test_queue_overflow_rebuilds_recursive_watches(p, caplog):
-    class FakeInotifyFD:
-        def __init__(self) -> None:
-            self.next_wd = 0
-            self.removed = []
+class FakeKernelInotifyFD:
+    """Stands in for InotifyFD with a fake kernel that hands out one descriptor per directory."""
 
-        def add_callback(self, path, mask, callback, id_):
+    def __init__(self) -> None:
+        self.kernel: dict[bytes, int] = {}
+        self.masks: dict[bytes, Mask] = {}
+        self.next_wd = 0
+        self.added: list[bytes] = []
+        self.added_masks: list[Mask] = []
+        self.removed: list[tuple[int, object]] = []
+
+    def watch_descriptor_for(self, path: bytes, mask: Mask) -> int:
+        if not os.path.isdir(path):
+            raise FileNotFoundError(path)
+        if path not in self.kernel:
             self.next_wd += 1
-            return self.next_wd
+            self.kernel[path] = self.next_wd
+        self.masks[path] = mask  # inotify_add_watch replaces the mask of an existing watch
+        return self.kernel[path]
 
-        def remove_callbacks(self, callbacks) -> None:
-            self.removed.extend(callbacks)
+    def add_callback(self, path: bytes, mask: Mask, callback: object, id_: object) -> int:
+        self.added.append(path)
+        self.added_masks.append(mask)
+        return self.watch_descriptor_for(path, mask)
 
-    mkdir(p("root"))
-    fake_fd = FakeInotifyFD()
-    inotify = InotifyWatchGroup(
+    def remove_callbacks(self, callbacks: list[tuple[int, object]]) -> None:
+        self.removed.extend(callbacks)
+
+    def forget(self, path: bytes) -> None:
+        """The directory was deleted: the kernel dropped its watch."""
+        del self.kernel[path]
+        del self.masks[path]
+
+
+def create_fake_kernel_watch(p, fake_fd: FakeKernelInotifyFD) -> InotifyWatchGroup:
+    return InotifyWatchGroup(
         cast("InotifyFD", fake_fd), p("root").encode(), is_recursive=True, event_mask=WATCHDOG_ALL_EVENTS
     )
+
+
+def test_queue_overflow_reconciles_recursive_watches_in_place(p, caplog):
+    mkdir(p("root", "kept"), parents=True)
+    mkdir(p("root", "gone"))
+    fake_fd = FakeKernelInotifyFD()
+    inotify = create_fake_kernel_watch(p, fake_fd)
+    before = dict(inotify._active_callbacks_by_path)  # noqa: SLF001
+    fake_fd.added.clear()
+    fake_fd.added_masks.clear()
     mkdir(p("root", "missed", "child"), parents=True)
+    rm(p("root", "gone"), recursive=True)
+    fake_fd.forget(p("root", "gone").encode())
 
     inotify.on_queue_overflow()
 
-    assert fake_fd.removed
-    assert set(inotify._active_callbacks_by_path) == {  # noqa: SLF001
+    # Only the watch of the deleted directory is removed; the live ones are left alone.
+    assert fake_fd.removed == [(before[p("root", "gone").encode()], inotify._id)]  # noqa: SLF001
+    assert fake_fd.added == [p("root", "missed").encode(), p("root", "missed", "child").encode()]
+    after = inotify._active_callbacks_by_path  # noqa: SLF001
+    assert set(after) == {
         p("root").encode(),
+        p("root", "kept").encode(),
         p("root", "missed").encode(),
         p("root", "missed", "child").encode(),
     }
+    assert after[p("root").encode()] == before[p("root").encode()]
+    assert after[p("root", "kept").encode()] == before[p("root", "kept").encode()]
+    # New directories were watched quietly during the walk, and every watch ends with its full mask.
+    assert all(not mask & InotifyConstants.IN_OPEN for mask in fake_fd.added_masks)
+    assert all(fake_fd.masks[path] == inotify.event_mask for path in after)
     assert "reconciling recursive watches" in caplog.text
+    inotify.deactivate()
+
+
+def test_queue_overflow_replaces_the_watch_of_a_recreated_directory(p):
+    mkdir(p("root", "dir"), parents=True)
+    fake_fd = FakeKernelInotifyFD()
+    inotify = create_fake_kernel_watch(p, fake_fd)
+    old_wd = inotify._active_callbacks_by_path[p("root", "dir").encode()]  # noqa: SLF001
+    # Deleted and created again while the events saying so were lost.
+    rm(p("root", "dir"), recursive=True)
+    fake_fd.forget(p("root", "dir").encode())
+    mkdir(p("root", "dir"))
+
+    inotify.on_queue_overflow()
+
+    new_wd = inotify._active_callbacks_by_path[p("root", "dir").encode()]  # noqa: SLF001
+    assert new_wd != old_wd
+    assert fake_fd.removed == [(old_wd, inotify._id)]  # noqa: SLF001
+    assert inotify._active_callbacks_by_watch[new_wd] == p("root", "dir").encode()  # noqa: SLF001
+    assert old_wd not in inotify._active_callbacks_by_watch  # noqa: SLF001
+    inotify.deactivate()
+
+
+def test_queue_overflow_keeps_a_filtered_event_mask(p):
+    mkdir(p("root", "dir"), parents=True)
+    fake_fd = FakeKernelInotifyFD()
+    filtered = Mask(InotifyConstants.IN_CREATE | InotifyConstants.IN_DELETE | InotifyConstants.IN_DELETE_SELF)
+    inotify = InotifyWatchGroup(cast("InotifyFD", fake_fd), p("root").encode(), is_recursive=True, event_mask=filtered)
+    mkdir(p("root", "missed"))
+
+    inotify.on_queue_overflow()
+
+    # Nothing to quiet, and no watch is widened to events the caller did not ask for.
+    assert set(fake_fd.masks.values()) == {inotify.event_mask}
+    assert inotify.event_mask & ~InotifyConstants.IN_DONT_FOLLOW == filtered
+    assert p("root", "missed").encode() in inotify._active_callbacks_by_path  # noqa: SLF001
+    inotify.deactivate()
+
+
+def test_queue_overflow_survives_a_directory_deleted_during_the_reconcile(p):
+    mkdir(p("root", "vanishing"), parents=True)
+    vanishing = p("root", "vanishing").encode()
+
+    class DeletingInotifyFD(FakeKernelInotifyFD):
+        def add_callback(self, path: bytes, mask: Mask, callback: object, id_: object) -> int:
+            wd = super().add_callback(path, mask, callback, id_)
+            if path == p("root", "missed").encode() and vanishing in self.kernel:
+                rm(p("root", "vanishing"), recursive=True)
+                self.forget(vanishing)
+            return wd
+
+    fake_fd = DeletingInotifyFD()
+    inotify = create_fake_kernel_watch(p, fake_fd)
+    mkdir(p("root", "missed"))
+
+    inotify.on_queue_overflow()
+
+    # The deleted directory's own events remove its watch; every other watch gets its full mask back.
+    assert set(fake_fd.masks) == {p("root").encode(), p("root", "missed").encode()}
+    assert all(mask == inotify.event_mask for mask in fake_fd.masks.values())
+    inotify.deactivate()
+
+
+@pytest.mark.timeout(5)
+def test_queue_overflow_keeps_kernel_watches(p):
+    # The reconcile must queue nothing itself, or on a tree with more directories than
+    # fs.inotify.max_queued_events it overflows the queue it is recovering from. Removing a watch
+    # queues IN_IGNORED, and reading a directory queues IN_OPEN, IN_ACCESS and IN_CLOSE_NOWRITE:
+    # live watches keep their descriptors, and the first event after it is the next real change.
+    for i in range(50):
+        mkdir(p("root", f"dir{i}"), parents=True)
+    inotify = create_inotify_watch(p("root").encode(), recursive=True)
+    before = dict(inotify._active_callbacks_by_path)  # noqa: SLF001
+    # Drain what registering the watches queued: that walk reads every directory too.
+    touch(p("root", "dir3", "before"))
+    while True:
+        event = inotify.read_event()
+        if (
+            isinstance(event, PathedInotifyEvent)
+            and event.path == p("root", "dir3", "before").encode()
+            and event.ev.is_close_write
+        ):
+            break
+
+    inotify.on_queue_overflow()
+
+    assert inotify._active_callbacks_by_path == before  # noqa: SLF001
+    touch(p("root", "dir7", "after"))
+    assert_event(inotify, p("root", "dir7", "after"), InotifyConstants.IN_CREATE)
     inotify.deactivate()

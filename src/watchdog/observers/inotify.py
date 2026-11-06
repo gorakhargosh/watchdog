@@ -110,10 +110,15 @@ from watchdog.observers.inotify_move_event_grouper import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from watchdog.observers.api import EventQueue, ObservedWatch
     from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
+
+_DIRECTORY_READ_EVENTS = Mask(InotifyConstants.IN_ACCESS | InotifyConstants.IN_OPEN | InotifyConstants.IN_CLOSE_NOWRITE)
+"""Events that reading a directory reports on its own watch and on its parent's."""
 
 
 class FileSystemEventCtor(Protocol):
@@ -210,7 +215,15 @@ class InotifyWatchGroup(WatchCallback):
             self._remove_watch_internally(wd)
 
     def on_queue_overflow(self) -> None:
-        """Rebuild recursive watches after the kernel drops events."""
+        """Reconcile recursive watches with the tree after the kernel drops events.
+
+        An overflow loses events, not watches, so the watches are reconciled in place rather than
+        removed and added again, and the walk that finds new directories queues nothing. Removing
+        every watch queues an ``IN_IGNORED`` event per directory, and reading every directory
+        queues ``IN_OPEN``, ``IN_ACCESS`` and ``IN_CLOSE_NOWRITE``: on a tree with more
+        directories than ``fs.inotify.max_queued_events`` either one overflows the queue again,
+        and each overflow would start another rebuild.
+        """
         with self._lock:
             if not self.is_active:
                 return
@@ -218,11 +231,10 @@ class InotifyWatchGroup(WatchCallback):
             if not self.is_recursive:
                 return
             logger.warning("Inotify queue overflowed; reconciling recursive watches below %r", self.path)
-            self._remove_callbacks(list(self._active_callbacks_by_watch))
             try:
-                self._add_all_callbacks(self.path)
+                self._reconcile_callbacks()
             except OSError:
-                logger.exception("Unable to rebuild recursive inotify watches below %r", self.path)
+                logger.exception("Unable to reconcile recursive inotify watches below %r", self.path)
 
     def on_event(self, event: InotifyEvent) -> None:
         """called for every event for each watch this callback is registered at."""
@@ -344,25 +356,74 @@ class InotifyWatchGroup(WatchCallback):
         :param path:
             Path to monitor
         """
+        for watch_path in self._paths_to_watch(path):
+            self._add_callback(watch_path)
+
+    def _paths_to_watch(self, path: bytes) -> Iterator[bytes]:
+        """Yield ``path`` and, when watching recursively, every directory below it."""
         is_dir = os.path.isdir(path)
-        self._add_callback(path)
+        yield path
         if is_dir and self.is_recursive:
             for root, dirnames, _ in os.walk(path, followlinks=self.follow_symlink):
                 for dirname in dirnames:
                     full_path = os.path.join(root, dirname)
                     if not self.follow_symlink and os.path.islink(full_path):
                         continue
-                    self._add_callback(full_path)
+                    yield full_path
 
-    def _add_callback(self, path: bytes) -> None:
+    def _reconcile_callbacks(self) -> None:
+        """Match the watches to the tree without touching the ones that are still right.
+
+        The walk must queue nothing itself. Reading a directory reports ``IN_OPEN``,
+        ``IN_ACCESS`` and ``IN_CLOSE_NOWRITE`` on its watch and its parent's, so the watches
+        drop those events until the walk is done. ``inotify_add_watch`` on a watched directory
+        replaces its mask and returns its existing descriptor, so the same call also shows
+        which descriptors are still the kernel's. Watches whose path is gone are removed,
+        unwatched directories are added, and a path whose descriptor changed (deleted and
+        created again while events were lost) gets the new one.
+        """
+        quiet_mask = Mask(self.event_mask & ~_DIRECTORY_READ_EVENTS)
+        stale = []
+        for path, wd in list(self._active_callbacks_by_path.items()):
+            try:
+                if self._inotify_fd.watch_descriptor_for(path, quiet_mask) == wd:
+                    continue
+            except OSError:
+                if path == self.path:
+                    raise
+            stale.append(wd)
+        if stale:
+            self._remove_callbacks(stale)
+        present = set()
+        try:
+            for path in self._paths_to_watch(self.path):
+                present.add(path)
+                if path not in self._active_callbacks_by_path:
+                    self._add_callback(path, quiet_mask)
+        finally:
+            if quiet_mask != self.event_mask:
+                for path in list(self._active_callbacks_by_path):
+                    try:
+                        self._inotify_fd.watch_descriptor_for(path, self.event_mask)
+                    except OSError:
+                        continue  # its deletion is reported as usual
+        gone = [wd for path, wd in self._active_callbacks_by_path.items() if path not in present]
+        if gone:
+            self._remove_callbacks(gone)
+
+    def _add_callback(self, path: bytes, mask: Mask | None = None) -> None:
         """Adds a callback for the given path to monitor events specified by the
         mask.
 
         :param path:
             Path to monitor
+        :param mask:
+            Event mask for the watch; the watch group's own when ``None``.
         """
         try:
-            wd = self._inotify_fd.add_callback(path, self.event_mask, self._callback, self._id)
+            wd = self._inotify_fd.add_callback(
+                path, self.event_mask if mask is None else mask, self._callback, self._id
+            )
             self._active_callbacks_by_path[path] = wd
             self._active_callbacks_by_watch[wd] = path
         except OSError:

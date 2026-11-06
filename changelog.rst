@@ -11,6 +11,7 @@ Changelog
 **Other Changes**
 
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
+- [inotify] Reconcile recursive watches in place after an inotify queue overflow, quieting the watches while it walks the tree. Removing and re-adding every watch queued one ``IN_IGNORED`` event per directory, and reading the directories queued ``IN_OPEN``, ``IN_ACCESS`` and ``IN_CLOSE_NOWRITE``: on a tree with more directories than ``fs.inotify.max_queued_events`` allows, a single overflow led to another, forever. (`#PRNUMBER <https://github.com/gorakhargosh/watchdog/pull/PRNUMBER>`__, thanks to @CMircea)
 
 7.1.0
 ~~~~~
