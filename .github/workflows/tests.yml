@@ -12,17 +12,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
-# No job requires write access to the GITHUB_TOKEN; checkout only needs contents: read.
+# dorny/paths-filter uses the GitHub API on pull requests; checkout needs contents: read.
 permissions:
   contents: read
+  pull-requests: read
 
 env:
   # Full supported Python versions across all platforms on Pull Requests
-  PYTHON_VERSIONS: '["3.11", "3.12", "3.13", "3.13t", "3.14", "3.14t", "3.15", "3.15t", "pypy-3.11"]'
+  PYTHON_VERSIONS: '["3.11", "3.12", "3.13", "3.13t", "3.14", "3.14t", "3.15", "3.15t", "pypy-3.11", "pypy-3.12"]'
 
   # Minimal Python baseline versions tested on push to master
   PYTHON_MASTER_LINUX: '["3.11", "pypy-3.11"]'
-  PYTHON_MASTER_MACOS: '["3.11", "3.14t", "pypy-3.11"]'
+  PYTHON_MASTER_MACOS: '["3.11", "3.13t", "pypy-3.11"]'
   PYTHON_MASTER_WINDOWS: '["3.11"]'
 
 jobs:
@@ -134,6 +135,7 @@ jobs:
         python: ${{ github.event_name == 'push' && fromJSON(needs.changes.outputs.python_master_windows) || fromJSON(needs.changes.outputs.python) }}
         exclude:
           - python: "pypy-3.11"
+          - python: "pypy-3.12"
     uses: ./.github/workflows/test-runner.yml
     with:
       runs-on: windows-latest
