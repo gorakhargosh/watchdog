@@ -185,6 +185,17 @@ def test_str_regexes():
     assert [r.pattern for r in handler1.regexes] == [g_allowed_str_regexes]
 
 
+def test_str_ignore_regexes():
+    handler = RegexMatchingEventHandler(
+        regexes=g_allowed_str_regexes,
+        ignore_regexes="/tmp/cache/.*",
+        case_sensitive=True,
+    )
+    assert [r.pattern for r in handler.ignore_regexes] == ["/tmp/cache/.*"]
+    assert handler.is_ignored("/tmp/cache/app.py")
+    assert not handler.is_ignored("/home/user/app.py")
+
+
 def test_dispatch_ignores_empty_dest_path():
     # Only moved events have a destination; for the others ``dest_path`` is
     # empty and must not be matched against the regexes.
