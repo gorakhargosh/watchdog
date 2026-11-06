@@ -11,6 +11,7 @@ Changelog
 **Other Changes**
 
 - xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
+- [core] ``RegexMatchingEventHandler`` now accepts a single string for ``ignore_regexes``, as it already does for ``regexes``, instead of compiling each character as a separate regex. (`#1419 <https://github.com/gorakhargosh/watchdog/pull/1419>`__, thanks to @arieleven)
 
 7.1.0
 ~~~~~
