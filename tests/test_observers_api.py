@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 from threading import Event
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -118,6 +119,44 @@ def test_event_dispatcher():
     time.sleep(1)
     event_dispatcher.stop()
     event_dispatcher.join()
+
+
+@pytest.mark.parametrize("callback", ["on_any_event", "on_modified"])
+def test_dispatch_calls_exception_hook(callback):
+    event = FileModifiedEvent("/foobar")
+    failure = RuntimeError("handler failed")
+    handler = FileSystemEventHandler()
+    hook = Mock()
+    with patch.object(handler, callback, side_effect=failure), patch.object(handler, "on_exception", hook):
+        handler.dispatch(event)
+    hook.assert_called_once_with(event, failure)
+
+
+def test_dispatch_events_continues_after_exception_hook_failure(caplog):
+    first = FileModifiedEvent("/foobar/first")
+    second = FileModifiedEvent("/foobar/second")
+    observer = BaseObserver(EventEmitter)
+    handler1, handler2 = LoggingEventHandler(), LoggingEventHandler()
+    watch = observer.schedule(handler1, "/foobar")
+    observer.add_handler_for_watch(handler2, watch)
+    failing, peer = observer._handlers[watch]  # noqa: SLF001
+    failure = RuntimeError("handler failed")
+    hook_failure = ValueError("hook failed")
+
+    with (
+        patch.object(failing, "on_modified", side_effect=[failure, None]),
+        patch.object(failing, "on_exception", side_effect=hook_failure) as hook,
+        patch.object(peer, "on_modified") as other_callback,
+    ):
+        for event in (first, second):
+            observer.event_queue.put((event, watch))
+            observer.dispatch_events(observer.event_queue)
+        hook.assert_called_once_with(first, failure)
+        assert [call.args[0] for call in other_callback.call_args_list] == [first, second]
+
+    assert observer.event_queue.unfinished_tasks == 0
+    assert len(caplog.records) == 1
+    assert caplog.records[0].exc_info[1] is hook_failure
 
 
 def test_observer_basic():
@@ -311,6 +350,7 @@ def test_single_file_dispatch_events(tmp_path: Path):
     observer.dispatch_events(observer.event_queue)
 
     assert events == [mod_event, move_event]
+    assert observer.event_queue.unfinished_tasks == 0
 
 
 def test_symlinked_directory_not_treated_as_file(tmp_path: Path):

@@ -267,8 +267,24 @@ class FileSystemEventHandler:
         :type event:
             :class:`watchdog.events.FileSystemEvent`
         """
-        self.on_any_event(event)
-        getattr(self, f"on_{event.event_type}")(event)
+        try:
+            self.on_any_event(event)
+            getattr(self, f"on_{event.event_type}")(event)
+        except Exception as exc:
+            self.on_exception(event, exc)
+
+    def on_exception(self, event: FileSystemEvent, exc: Exception) -> None:
+        """Handle an exception raised while dispatching an event.
+
+        Override this method to report dispatch failures to your application.
+        By default, the exception is logged with its traceback. Ordinary
+        exceptions raised by this hook are logged by the observer; exceptions
+        such as ``KeyboardInterrupt`` and ``SystemExit`` still propagate.
+
+        :param event: The event whose dispatch failed.
+        :param exc: The exception raised by the event handler.
+        """
+        logging.getLogger(__name__).error("Error dispatching event %r to handler %r", event, self, exc_info=exc)
 
     def on_any_event(self, event: FileSystemEvent) -> None:
         """Catch-all event handler.

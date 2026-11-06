@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import queue
 import threading
@@ -18,6 +19,8 @@ if TYPE_CHECKING:
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.utils import Seconds
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_EMITTER_TIMEOUT: Seconds = 1.0
 DEFAULT_OBSERVER_TIMEOUT: Seconds = 1.0
@@ -487,14 +490,19 @@ class BaseObserver(EventDispatcher):
                 event_queue.task_done()
                 return
 
-        with self._lock:
-            # To allow unschedule/stop and safe removal of event handlers
-            # within event handlers itself, check if the handler is still
-            # registered after every dispatch.
-            # Use .get() rather than indexing: _handlers is a defaultdict, so
-            # indexing it here would resurrect a watch that unschedule() removed
-            # but whose events were already queued.
-            for handler in list(self._handlers.get(watch, ())):
-                if handler in self._handlers.get(watch, ()):
-                    handler.dispatch(event)
-        event_queue.task_done()
+        try:
+            with self._lock:
+                # To allow unschedule/stop and safe removal of event handlers
+                # within event handlers itself, check if the handler is still
+                # registered after every dispatch.
+                # Use .get() rather than indexing: _handlers is a defaultdict, so
+                # indexing it here would resurrect a watch that unschedule() removed
+                # but whose events were already queued.
+                for handler in list(self._handlers.get(watch, ())):
+                    if handler in self._handlers.get(watch, ()):
+                        try:
+                            handler.dispatch(event)
+                        except Exception:
+                            logger.exception("Error dispatching event %r to handler %r", event, handler)
+        finally:
+            event_queue.task_done()
