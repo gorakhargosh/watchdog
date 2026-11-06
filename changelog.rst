@@ -3,12 +3,16 @@
 Changelog
 ---------
 
-Unreleased
-~~~~~~~~~~
+7.1.1-dev
+~~~~~~~~~
+
+2026-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.0...HEAD>`__
 
 **Other Changes**
 
 - [observers] Report event handler exceptions through the overridable ``FileSystemEventHandler.on_exception()`` hook (logging by default) and continue dispatching events, ensuring queued entries are marked done. (`#793 <https://github.com/gorakhargosh/watchdog/issues/793>`__)
+
+- xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
 
 7.1.0
 ~~~~~

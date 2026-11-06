@@ -502,16 +502,7 @@ class BaseObserver(EventDispatcher):
                     if handler in self._handlers.get(watch, ()):
                         try:
                             handler.dispatch(event)
-                        except Exception as exc:
-                            on_exception = getattr(handler, "on_exception", None)
-                            if on_exception is None:
-                                logger.exception("Error dispatching event %r to handler %r", event, handler)
-                            else:
-                                try:
-                                    on_exception(event, exc)
-                                except Exception:
-                                    logger.exception(
-                                        "Error handling exception for event %r in handler %r", event, handler
-                                    )
+                        except Exception:
+                            logger.exception("Error dispatching event %r to handler %r", event, handler)
         finally:
             event_queue.task_done()

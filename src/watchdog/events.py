@@ -267,11 +267,14 @@ class FileSystemEventHandler:
         :type event:
             :class:`watchdog.events.FileSystemEvent`
         """
-        self.on_any_event(event)
-        getattr(self, f"on_{event.event_type}")(event)
+        try:
+            self.on_any_event(event)
+            getattr(self, f"on_{event.event_type}")(event)
+        except Exception as exc:
+            self.on_exception(event, exc)
 
     def on_exception(self, event: FileSystemEvent, exc: Exception) -> None:
-        """Handle an exception raised while the observer dispatches an event.
+        """Handle an exception raised while dispatching an event.
 
         Override this method to report dispatch failures to your application.
         By default, the exception is logged with its traceback. Ordinary
