@@ -203,6 +203,9 @@ def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *
     """Schedules tricks with the specified observer and for the given watch
     path.
 
+    Trick constructors must accept ``source_directory`` as a keyword argument.
+    It defaults to ``pathname`` when absent from the configuration.
+
     :param observer:
         The observer thread into which to schedule the trick and watch.
     :param tricks:
@@ -215,7 +218,8 @@ def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *
     for trick in tricks:
         for name, value in trick.items():
             trick_cls = load_class(name)
-            handler = trick_cls(**value)
+            options = {"source_directory": pathname, **value}
+            handler = trick_cls(**options)
             trick_pathname = getattr(handler, "source_directory", None) or pathname
             observer.schedule(handler, trick_pathname, recursive=recursive)
 

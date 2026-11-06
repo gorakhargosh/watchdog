@@ -8,6 +8,10 @@ Changelog
 
 2026-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.0...HEAD>`__
 
+**Breaking Changes**
+
+- [watchmedo] Pass the watched source directory to tricks during initialization, preserving configured directory overrides. Custom trick constructors must now accept the ``source_directory`` keyword; it remains optional with a ``None`` default for direct instantiation. (`#926 <https://github.com/gorakhargosh/watchdog/issues/926>`__)
+
 **Other Changes**
 
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
