@@ -1,6 +1,7 @@
-# Linux: inotify backend implementation and tests
+# Linux: inotify backend implementation, Linux statx syscall, and tests
 linux:
   - "**/*inotify*"
+  - "**/*statx*"
 
 # macOS: fsevents, kqueue, C headers, and setup.py packaging
 macos:
@@ -52,6 +53,7 @@ core:
   - ".github/filters.yml"
   - "tests/**"
   - "!**/*inotify*"
+  - "!**/*statx*"
   - "!**/*fsevents*"
   - "!**/*kqueue*"
   - "!**/*winapi*"

@@ -10,7 +10,7 @@ Changelog
 
 **Other Changes**
 
-- xxx (`#ISSUEID <https://github.com/gorakhargosh/watchdog/issues/ISSUEID>`__, thanks to @yournick)
+- [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 
 7.1.0
 ~~~~~
