@@ -62,6 +62,39 @@ Alternatively, you can use the observer as a context manager for cleaner code:
 The context manager automatically handles starting and stopping the observer,
 ensuring proper cleanup even if an exception occurs.
 
+Forward Events to a Callable
+----------------------------
+
+To reuse a function or hand events to another thread, forward events from
+:meth:`~watchdog.events.FileSystemEventHandler.on_any_event`. For example, this
+handler forwards each event to a queue:
+
+.. code-block:: python
+
+    from collections.abc import Callable
+    from queue import SimpleQueue
+
+    from watchdog.events import FileSystemEvent, FileSystemEventHandler
+    from watchdog.observers import Observer
+
+
+    class CallableEventHandler(FileSystemEventHandler):
+        def __init__(self, callback: Callable[[FileSystemEvent], None]) -> None:
+            super().__init__()
+            self._callback = callback
+
+        def on_any_event(self, event: FileSystemEvent) -> None:
+            self._callback(event)
+
+
+    events: SimpleQueue[FileSystemEvent] = SimpleQueue()
+    observer = Observer()
+    observer.schedule(CallableEventHandler(events.put), ".", recursive=True)
+
+Start and stop the observer as in the preceding example. The callback runs on
+the observer thread, so keep it quick. Another thread can call ``events.get()``
+to process the queued events without blocking the observer.
+
 Typing
 ------
 
