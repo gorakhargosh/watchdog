@@ -37,9 +37,13 @@ jobs:
       !contains(github.event.pull_request.title, '[skip ci]') &&
       !contains(github.event.head_commit.message, '[skip ci]')
     outputs:
-      linux: ${{ steps.filter.outputs.linux == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.watchmedo == 'true' || steps.filter.outputs.examples == 'true' }}
-      macos: ${{ steps.filter.outputs.macos == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.watchmedo == 'true' }}
-      windows: ${{ steps.filter.outputs.windows == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      packaging: ${{ steps.filter.outputs.packaging == 'true' }}
+      linux: ${{ steps.filter.outputs.linux == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      examples: ${{ steps.filter.outputs.examples == 'true' }}
+      macos: ${{ steps.filter.outputs.macos == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      windows: ${{ steps.filter.outputs.windows == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      core: ${{ steps.filter.outputs.core }}
+      watchmedo: ${{ steps.filter.outputs.watchmedo }}
       # Run only modified tests if PR touches tests only; otherwise run full test suite
       test_args: ${{ (steps.filter.outputs.not_tests == 'false' && steps.filter.outputs.tests_files) || (steps.filter.outputs.watchmedo == 'true' && steps.filter.outputs.core == 'false' && 'tests/test_0_watchmedo.py') || (steps.filter.outputs.examples == 'true' && steps.filter.outputs.core == 'false' && 'tests/test_examples.py') || '' }}
       python: ${{ env.PYTHON_VERSIONS }}
@@ -91,11 +95,31 @@ jobs:
       - name: Build the documentation
         run: python -m tox -q -e docs
 
+  # Verify pure wheels and source distribution packaging on Linux/Windows/Core changes
+  packaging:
+    name: 📦 Package Distributions
+    needs: changes
+    if: needs.changes.outputs.linux == 'true' || needs.changes.outputs.windows == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/dist-builder.yml
+    with:
+      upload_artifacts: false
+
+  # Verify native macOS C-extension compilation on macOS/packaging changes
+  macos-wheel:
+    name: 🍏 Build macOS wheel
+    needs: changes
+    if: needs.changes.outputs.macos == 'true' || needs.changes.outputs.packaging == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/wheel-builder.yml
+    with:
+      archs: "arm64"
+      build: ${{ github.event_name == 'pull_request' && 'cp313-*' || 'cp* pp311-* pp312-*' }}
+      upload_artifacts: false
+
   # Linux test matrix: CPython + PyPy
   linux:
     name: 🐧 Linux
     needs: changes
-    if: needs.changes.outputs.linux == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.linux == 'true' || needs.changes.outputs.examples == 'true' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:

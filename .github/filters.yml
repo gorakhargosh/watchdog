@@ -2,12 +2,17 @@
 linux:
   - "**/*inotify*"
 
-# macOS: fsevents, kqueue, C headers, and setup.py packaging
+# macOS: fsevents, kqueue, and C headers
 macos:
   - "**/*fsevents*"
   - "**/*kqueue*"
   - "src/pythoncapi_compat.h"
+
+# Packaging: build configurations, distribution manifests, and setup metadata
+packaging:
   - "setup.py"
+  - "MANIFEST.in"
+  - "pyproject.toml"
 
 # Windows: winapi, directory changes
 windows:
