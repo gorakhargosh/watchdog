@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [inotify] Remove recursive watches when a directory leaves the watched tree, suppress events received outside it while the move is pending, and maintain move tracking with filtered events. Independent watches and directories moved back into the tree remain active. (`#354 <https://github.com/gorakhargosh/watchdog/issues/354>`__)
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 
 7.1.0
