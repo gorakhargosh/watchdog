@@ -1,0 +1,45 @@
+name: Test Task
+
+# Reusable sub-job called by tests.yml across OS matrices
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: "Runner OS environment"
+        required: true
+        type: string
+      python:
+        description: "Python version to test"
+        required: true
+        type: string
+      test_args:
+        description: "Specific test file targets (optional)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: 🐍 Python ${{ inputs.python }}
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python ${{ inputs.python }}
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ inputs.python }}
+          allow-prereleases: true
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install tox tox-uv
+
+      # Runs specific test files if targeted, or full suite if test_args is empty
+      - name: Run tests
+        run: python -m tox -q -e py ${{ inputs.test_args != '' && format('-- {0}', inputs.test_args) || '' }}
