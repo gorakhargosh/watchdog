@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [core] Preserve single-file events on Windows when the watch path uses different filename casing.
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 
 7.1.0
