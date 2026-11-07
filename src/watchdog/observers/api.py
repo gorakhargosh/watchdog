@@ -470,12 +470,13 @@ class BaseObserver(EventDispatcher):
         event, watch = entry
 
         if watch.is_file:
-            target = watch.resolved_path
+            target = os.path.normcase(watch.resolved_path)
             src_path = (
                 os.path.realpath(os.path.abspath(event.src_path))
                 if watch.follow_symlink
                 else os.path.abspath(event.src_path)
             )
+            src_path = os.path.normcase(src_path)
             dest_path = None
             if isinstance(event, FileSystemMovedEvent) and event.dest_path:
                 dest_path = (
@@ -483,6 +484,7 @@ class BaseObserver(EventDispatcher):
                     if watch.follow_symlink
                     else os.path.abspath(event.dest_path)
                 )
+                dest_path = os.path.normcase(dest_path)
             if src_path != target and dest_path != target:
                 event_queue.task_done()
                 return

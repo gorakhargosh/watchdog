@@ -14,6 +14,7 @@ from watchdog.events import (
     LoggingEventHandler,
 )
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
+from watchdog.utils import platform
 
 
 def test_observer_constructor():
@@ -280,7 +281,17 @@ def test_single_file_symlink_no_follow(tmp_path: Path):
     assert watch.path == str(link_dir.resolve())
 
 
-def test_single_file_dispatch_events(tmp_path: Path):
+@pytest.mark.parametrize(
+    "watch_filename",
+    [
+        "a.txt",
+        pytest.param(
+            "A.TXT",
+            marks=pytest.mark.skipif(not platform.is_windows(), reason="Windows paths are case-insensitive"),
+        ),
+    ],
+)
+def test_single_file_dispatch_events(tmp_path: Path, watch_filename: str):
     """Dispatches events for watched single file and moves, filtering out unrelated events."""
     file_a = tmp_path / "a.txt"
     file_a.write_text("a")
@@ -295,7 +306,7 @@ def test_single_file_dispatch_events(tmp_path: Path):
             events.append(event)
 
     observer = BaseObserver(EventEmitter)
-    watch_a = observer.schedule(Handler(), file_a)
+    watch_a = observer.schedule(Handler(), tmp_path / watch_filename)
 
     # Watched file modified -> dispatched
     mod_event = FileModifiedEvent(str(file_a))
@@ -305,12 +316,16 @@ def test_single_file_dispatch_events(tmp_path: Path):
     # Watched file moved -> dispatched
     move_event = FileMovedEvent(str(file_a), str(file_b))
     observer.event_queue.put((move_event, watch_a))
+    # Another file moved onto the watched path -> dispatched
+    move_to_event = FileMovedEvent(str(file_b), str(file_a))
+    observer.event_queue.put((move_to_event, watch_a))
 
     observer.dispatch_events(observer.event_queue)
     observer.dispatch_events(observer.event_queue)
     observer.dispatch_events(observer.event_queue)
+    observer.dispatch_events(observer.event_queue)
 
-    assert events == [mod_event, move_event]
+    assert events == [mod_event, move_event, move_to_event]
 
 
 def test_symlinked_directory_not_treated_as_file(tmp_path: Path):
