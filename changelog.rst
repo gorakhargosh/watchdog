@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [dirsnapshot] Avoid duplicate create or delete events when a renamed file has another hard link in the watched directory.
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 
 7.1.0

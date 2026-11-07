@@ -158,6 +158,12 @@ class DirectorySnapshotDiff:
                 created.remove(path)
                 moved.add((old_path, path))
 
+        # A hard link can make the two inode lookups select different paths.
+        # A move found in either pass must not also remain a create or delete.
+        for old_path, new_path in moved:
+            deleted.discard(old_path)
+            created.discard(new_path)
+
         # find modified paths
         # first check paths that have not moved
         modified: set[bytes | str] = set()
