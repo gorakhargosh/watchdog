@@ -395,11 +395,14 @@ class DirectorySnapshot:
         st = self.stat(path)
         self._stat_info[path] = st
         self._inode_to_path[(st.st_ino, st.st_dev)] = path
+        # Linux statx reads the live path, which may no longer exist at diff time.
+        self.birthtime(path)
 
         for p, st in self.walk(path):
             i = (st.st_ino, st.st_dev)
             self._inode_to_path[i] = p
             self._stat_info[p] = st
+            self.birthtime(p)
 
     def walk(self, root: str) -> Iterator[tuple[str, os.stat_result]]:
         try:
@@ -453,13 +456,14 @@ class DirectorySnapshot:
         """Returns the birth/creation time in nanoseconds for path, or None if unsupported.
 
         - macOS / BSD: uses ``st.st_birthtime_ns``
-        - Linux: uses ``statx(2)`` ``stx_btime`` (evaluated lazily on demand)
+        - Linux: uses ``statx(2)`` ``stx_btime``, captured when taking the snapshot
           (see https://man7.org/linux/man-pages/man2/statx.2.html)
         """
-        if birthtime := self._birthtimes.get(path):
-            return birthtime
+        if path in self._birthtimes:
+            return self._birthtimes[path]
 
         if platform.is_windows():
+            self._birthtimes[path] = None
             return None
 
         if st := self._stat_info.get(path):

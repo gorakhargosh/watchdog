@@ -12,6 +12,7 @@ Changelog
 
 - [core] Allow pattern matching to evaluate relative paths against the watched root directory, supporting intuitive non-recursive patterns (e.g. ``*.json``, ``logs/*.log``) under ``full_match()``. (`#1430 <https://github.com/gorakhargosh/watchdog/issues/1430>`__ Thanks to @prateek-dagar)
 - [observers] Fix race condition between ``Observer.start()`` and ``Observer.schedule()``, and release observer lock during event handler dispatch to prevent blocking concurrent ``schedule()`` and ``unschedule()`` calls. (`#1044 <https://github.com/gorakhargosh/watchdog/issues/1044>`__, thanks to @prateek-dagar)
+- [dirsnapshot] Capture Linux birth times while taking a snapshot so deleted paths retain their historical identity during move detection.
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 
 7.1.0

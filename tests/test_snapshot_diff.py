@@ -419,3 +419,63 @@ def test_matching_birthtime_is_detected_as_move(p: Any) -> None:
     assert diff.files_moved == [(p("old"), p("new"))]
     assert diff.files_deleted == []
     assert diff.files_created == []
+
+
+@pytest.mark.parametrize("is_dir", [False, True])
+def test_linux_birthtime_is_captured_before_inode_reuse(p: Any, *, is_dir: bool) -> None:
+    live_birthtimes = {p("old"): 100}
+    with (
+        patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False),
+        patch("watchdog.utils.dirsnapshot.platform.is_linux", return_value=True),
+        patch("watchdog.utils.dirsnapshot.is_statx_available", return_value=True),
+        patch(
+            "watchdog.utils.dirsnapshot.get_statx_birthtime_ns",
+            side_effect=lambda path, **kwargs: live_birthtimes.get(path),
+        ),
+    ):
+        ref = _fake_snapshot(p(""), {"old": (42, 10, 1000, is_dir)})
+        live_birthtimes.clear()
+        live_birthtimes[p("new")] = 200
+        snapshot = _fake_snapshot(p(""), {"new": (42, 10, 1000, is_dir)})
+        diff = DirectorySnapshotDiff(ref, snapshot)
+
+    assert ref.birthtime(p("old")) == 100
+    assert snapshot.birthtime(p("new")) == 200
+    assert diff.files_moved == []
+    assert diff.dirs_moved == []
+    assert (diff.dirs_deleted if is_dir else diff.files_deleted) == [p("old")]
+    assert (diff.dirs_created if is_dir else diff.files_created) == [p("new")]
+
+
+@pytest.mark.parametrize("birthtime", [None, 0])
+def test_linux_birthtime_does_not_retry_snapshot_lookup(p: Any, birthtime: int | None) -> None:
+    with (
+        patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False),
+        patch("watchdog.utils.dirsnapshot.platform.is_linux", return_value=True),
+        patch("watchdog.utils.dirsnapshot.is_statx_available", return_value=True),
+        patch("watchdog.utils.dirsnapshot.get_statx_birthtime_ns", return_value=birthtime) as statx,
+    ):
+        snapshot = _fake_snapshot(p(""), {"file": (42, 10, 1000, False)})
+        assert statx.call_count == 2  # The root and its file are captured once each.
+        statx.return_value = 200
+        assert snapshot.birthtime(p("file")) == birthtime
+        assert snapshot.birthtime(p("file")) == birthtime
+        assert statx.call_count == 2
+
+
+@pytest.mark.skipif(not platform.is_linux(), reason="Requires Linux statx birth times.")
+def test_linux_birthtime_survives_rename(p: Any) -> None:
+    from watchdog.utils.statx import get_statx_birthtime_ns
+
+    touch(p("old"))
+    birthtime = get_statx_birthtime_ns(p("old"))
+    if birthtime is None:
+        pytest.skip("The filesystem does not expose statx birth times.")
+
+    ref = DirectorySnapshot(p(""))
+    mv(p("old"), p("new"))
+    snapshot = DirectorySnapshot(p(""))
+
+    assert ref.birthtime(p("old")) == birthtime
+    assert snapshot.birthtime(p("new")) == birthtime
+    assert DirectorySnapshotDiff(ref, snapshot).files_moved == [(p("old"), p("new"))]
