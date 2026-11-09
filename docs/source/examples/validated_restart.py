@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import py_compile
+import re
 import subprocess
 import sys
 import threading
@@ -55,6 +56,20 @@ class ValidatedRestartHandler(PatternMatchingEventHandler):
 
         if self.changed.is_set():
             return
+
+        # Check the entry point for the direct "python worker.py [args ...]" form.
+        if (
+            len(self.command) > 1
+            and Path(self.command[1]).suffix == ".py"
+            and (
+                self.command[0] == sys.executable
+                or re.fullmatch(r"(?:pythonw?|pypy)(?:\d+(?:\.\d+)*)?(?:\.exe)?", Path(self.command[0]).name.lower())
+            )
+        ):
+            entrypoint = self.directory / self.command[1]
+            if not entrypoint.is_file():
+                logger.warning("Worker entry point missing; restart skipped: %s", entrypoint)
+                return
 
         self.stop_process()
         logger.info("Validation passed; starting worker: %s", self.command)

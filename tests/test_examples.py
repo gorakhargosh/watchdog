@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import subprocess
+import sys
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -102,6 +103,82 @@ def test_validated_restart_keeps_worker_until_sources_are_valid(
         start.assert_called_with(handler.command, cwd=tmp_path.resolve())
 
     assert not list(tmp_path.rglob("*.pyc"))
+    handler.stop_process()
+
+
+@pytest.mark.parametrize("with_helper", [False, True], ids=["no-other-sources", "valid-helper"])
+@pytest.mark.parametrize("absolute_entrypoint", [False, True], ids=["relative-entrypoint", "absolute-entrypoint"])
+@pytest.mark.parametrize("python", ["python", "python3.12", "python.exe", sys.executable])
+def test_validated_restart_preserves_worker_until_entrypoint_is_restored(
+    validated_restart: ModuleType,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    python: str,
+    *,
+    with_helper: bool,
+    absolute_entrypoint: bool,
+) -> None:
+    source = tmp_path / "worker.py"
+    source.write_text("value = 1\n")
+    if with_helper:
+        (tmp_path / "helper.py").write_text("value = 2\n")
+    handler = validated_restart.event_handler
+    handler.command = [python, str(source) if absolute_entrypoint else source.name, "--verbose"]
+    old_process = Mock()
+    old_process.poll.return_value = None
+    new_process = Mock()
+
+    with patch.object(validated_restart.subprocess, "Popen", side_effect=[old_process, new_process]) as start:
+        handler.restart_if_valid()
+        assert handler.process is old_process
+
+        source.unlink()
+        handler.restart_if_valid()
+        assert start.call_count == 1
+        assert handler.process is old_process
+        old_process.terminate.assert_not_called()
+        old_process.kill.assert_not_called()
+        old_process.wait.assert_not_called()
+        assert "restart skipped" in caplog.text
+        assert "worker.py" in caplog.text
+        assert caplog.records[-1].levelname == "WARNING"
+
+        source.write_text("value = 3\n")
+        handler.restart_if_valid()
+        assert start.call_count == 2
+        old_process.terminate.assert_called_once_with()
+        old_process.wait.assert_called_once_with(timeout=5)
+        assert handler.process is new_process
+        start.assert_called_with(handler.command, cwd=tmp_path.resolve())
+
+    handler.stop_process()
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        [sys.executable, "-c", "pass", "missing.py"],
+        [sys.executable, "-m", "package", "missing.py"],
+        ["other-program", "missing.py"],
+        ["python-tool", "missing.py"],
+        ["worker.py"],
+    ],
+)
+def test_validated_restart_allows_other_command_forms(
+    validated_restart: ModuleType, command: list[str], tmp_path: Path
+) -> None:
+    handler = validated_restart.event_handler
+    handler.command = command
+    old_process = Mock()
+    old_process.poll.return_value = None
+    handler.process = old_process
+    with patch.object(validated_restart.subprocess, "Popen") as start:
+        handler.restart_if_valid()
+        old_process.terminate.assert_called_once_with()
+        old_process.wait.assert_called_once_with(timeout=5)
+        start.assert_called_once_with(command, cwd=tmp_path.resolve())
+        assert handler.process is start.return_value
+
     handler.stop_process()
 
 

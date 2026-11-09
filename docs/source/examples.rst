@@ -56,6 +56,8 @@ Pass a source directory and an optional command, which runs in that directory::
 
     python validated_restart.py /path/to/source python worker.py
 
+For direct commands of the form ``python worker.py [args ...]``, the example also checks that the entry-point file exists before stopping the current worker. If it is missing, the example logs a warning and keeps the worker running until the file is restored.
+
 With only a directory argument, the example starts a built-in demo worker. Keep virtual environments outside the watched source tree. The check validates syntax only; it does not verify imports or runtime behavior. Press Ctrl+C to stop the observer and worker.
 
 .. literalinclude:: examples/validated_restart.py
