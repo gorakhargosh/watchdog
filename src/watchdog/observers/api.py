@@ -512,5 +512,6 @@ class BaseObserver(EventDispatcher):
             with self._lock:
                 is_active = handler in self._handlers.get(watch, ())
             if is_active:
+                event.watch_path = watch.path
                 handler.dispatch(event)
         event_queue.task_done()

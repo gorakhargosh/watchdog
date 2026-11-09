@@ -412,11 +412,11 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         """Return the ignore policy."""
         return self._ignore_policy
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: str, *, base_path: str | None = None) -> bool:
         """Return True if path matches ignore criteria."""
         raise NotImplementedError
 
-    def is_included(self, path: str) -> bool:
+    def is_included(self, path: str, *, base_path: str | None = None) -> bool:
         """Return True if path matches include criteria."""
         raise NotImplementedError
 
@@ -434,6 +434,8 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         if self.ignore_directories and event.is_directory:
             return
 
+        base_path = getattr(event, "watch_path", None)
+
         paths = []
         if event.dest_path:
             paths.append(os.fsdecode(event.dest_path))
@@ -441,12 +443,12 @@ class PathMatchingEventHandler(FileSystemEventHandler):
             paths.append(os.fsdecode(event.src_path))
 
         if self.ignore_policy == IgnorePolicy.ANY:
-            if any(self.is_ignored(p) for p in paths):
+            if any(self.is_ignored(p, base_path=base_path) for p in paths):
                 return
-        elif all(self.is_ignored(p) for p in paths):
+        elif all(self.is_ignored(p, base_path=base_path) for p in paths):
             return
 
-        if any(self.is_included(p) for p in paths):
+        if any(self.is_included(p, base_path=base_path) for p in paths):
             super().dispatch(event)
 
 
@@ -505,22 +507,24 @@ class PatternMatchingEventHandler(PathMatchingEventHandler):
         """Patterns to ignore matching event paths."""
         return self._ignore_patterns
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: str, *, base_path: str | None = None) -> bool:
         return bool(
             self.ignore_patterns
             and match_any_paths(
                 [path],
                 included_patterns=self.ignore_patterns,
                 case_sensitive=self.case_sensitive,
+                base_path=base_path,
             )
         )
 
-    def is_included(self, path: str) -> bool:
+    def is_included(self, path: str, *, base_path: str | None = None) -> bool:
         return bool(
             match_any_paths(
                 [path],
                 included_patterns=self.patterns,
                 case_sensitive=self.case_sensitive,
+                base_path=base_path,
             )
         )
 
@@ -593,10 +597,10 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
         """Regexes to ignore matching event paths."""
         return self._ignore_regexes
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: str, *, base_path: str | None = None) -> bool:
         return any(r.match(path) for r in self.ignore_regexes)
 
-    def is_included(self, path: str) -> bool:
+    def is_included(self, path: str, *, base_path: str | None = None) -> bool:
         return any(r.match(path) for r in self.regexes)
 
     def _validate_rules(self) -> None:
