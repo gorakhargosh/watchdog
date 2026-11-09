@@ -313,14 +313,24 @@ class BaseObserver(EventDispatcher):
         """Returns event emitter created by this observer."""
         return self._emitters
 
+    def start(self) -> None:
+        """Starts the observer thread and all scheduled emitters under synchronization lock.
+
+        Overrides :meth:`watchdog.utils.BaseThread.start` to guarantee atomicity between
+        observer startup and concurrent :meth:`schedule` invocations (prevents #1044).
+        """
+        with self._lock:
+            super().start()
+
     def on_thread_start(self) -> None:
         """Start all scheduled emitters before the observer thread begins dispatching."""
-        for emitter in self._emitters.copy():
-            try:
-                emitter.start()
-            except Exception:
-                self._remove_emitter(emitter)
-                raise
+        with self._lock:
+            for emitter in self._emitters.copy():
+                try:
+                    emitter.start()
+                except Exception:
+                    self._remove_emitter(emitter)
+                    raise
 
     def __enter__(self) -> Self:
         """Context manager entry. Starts the observer if not already running."""
@@ -487,15 +497,21 @@ class BaseObserver(EventDispatcher):
                 event_queue.task_done()
                 return
 
+        # To allow unschedule/stop and safe removal of event handlers
+        # within event handlers itself, check if the handler is still
+        # registered before dispatching.
+        # Use .get() rather than indexing: _handlers is a defaultdict, so
+        # indexing it here would resurrect a watch that unschedule() removed
+        # but whose events were already queued.
+        # Handlers are dispatched without holding self._lock to avoid blocking
+        # concurrent calls to schedule(), unschedule(), or stop().
         with self._lock:
-            # To allow unschedule/stop and safe removal of event handlers
-            # within event handlers itself, check if the handler is still
-            # registered after every dispatch.
-            # Use .get() rather than indexing: _handlers is a defaultdict, so
-            # indexing it here would resurrect a watch that unschedule() removed
-            # but whose events were already queued.
-            for handler in list(self._handlers.get(watch, ())):
-                if handler in self._handlers.get(watch, ()):
-                    event.watch_path = watch.path
-                    handler.dispatch(event)
+            handlers = list(self._handlers.get(watch, ()))
+
+        for handler in handlers:
+            with self._lock:
+                is_active = handler in self._handlers.get(watch, ())
+            if is_active:
+                event.watch_path = watch.path
+                handler.dispatch(event)
         event_queue.task_done()
