@@ -279,6 +279,25 @@ class InotifyFD(BaseThread):
         with self._lock:
             return self._add_callback(path, mask, callback, id_)
 
+    def watch_descriptor_for(self, path: bytes, mask: Mask) -> WatchDescriptor:
+        """Return the kernel's watch descriptor for ``path``.
+
+        A path whose inode is already watched gets its existing descriptor back, with ``mask``
+        as its new event mask: nothing is queued and no callback changes. Otherwise the kernel
+        creates a watch that no callback owns yet, so pass the path to :meth:`add_callback`
+        next.
+
+        :param path:
+            Path to look up.
+        :param mask:
+            Event bit mask, as passed to :meth:`add_callback`.
+        """
+        with self._lock:
+            wd = inotify_add_watch(self._inotify_fd, path, mask)
+            if wd == -1:
+                InotifyFD._raise_error()
+            return WatchDescriptor(wd)
+
     def remove_callbacks(self, callbacks: list[tuple[WatchDescriptor, CallbackId]]) -> None:
         """Removes callbacks from WatchDescriptors. If a callback was the last
         callback on a watch, the watch is removed. Otherwise, just the callback
