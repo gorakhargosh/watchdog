@@ -459,12 +459,12 @@ class DirectorySnapshot:
         - Linux: uses ``statx(2)`` ``stx_btime``, captured when taking the snapshot
           (see https://man7.org/linux/man-pages/man2/statx.2.html)
         """
-        if path in self._birthtimes:
-            return self._birthtimes[path]
-
         if platform.is_windows():
-            self._birthtimes[path] = None
             return None
+
+        # Preserve cached None and zero without querying the live path again.
+        if (birthtime := self._birthtimes.get(path, ...)) is not ...:
+            return birthtime
 
         if st := self._stat_info.get(path):
             # macOS / BSD provides st_birthtime_ns natively

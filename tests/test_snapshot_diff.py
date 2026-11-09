@@ -479,3 +479,15 @@ def test_linux_birthtime_survives_rename(p: Any) -> None:
     assert ref.birthtime(p("old")) == birthtime
     assert snapshot.birthtime(p("new")) == birthtime
     assert DirectorySnapshotDiff(ref, snapshot).files_moved == [(p("old"), p("new"))]
+
+
+def test_windows_birthtime_does_not_populate_cache(p: Any) -> None:
+    with (
+        patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=True),
+        patch("watchdog.utils.dirsnapshot.get_statx_birthtime_ns") as statx,
+    ):
+        snapshot = _fake_snapshot(p(""), {"file": (42, 10, 1000, False)})
+        assert snapshot.birthtime(p("file")) is None
+        assert snapshot.birthtime(p("")) is None
+        assert snapshot._birthtimes == {}  # noqa: SLF001
+        statx.assert_not_called()
