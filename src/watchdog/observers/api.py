@@ -496,5 +496,6 @@ class BaseObserver(EventDispatcher):
             # but whose events were already queued.
             for handler in list(self._handlers.get(watch, ())):
                 if handler in self._handlers.get(watch, ()):
+                    event.watch_path = watch.path
                     handler.dispatch(event)
         event_queue.task_done()
