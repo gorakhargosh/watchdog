@@ -14,6 +14,7 @@ from __future__ import annotations
 #   - `PureWindowsPath` is always case-insensitive.
 #   - `PurePosixPath` is always case-sensitive.
 # Reference: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.match
+import contextlib
 import re
 from pathlib import PurePath, PurePosixPath, PureWindowsPath
 from typing import TYPE_CHECKING
@@ -59,8 +60,10 @@ def _match_path(
     excluded_patterns: set[str],
     *,
     case_sensitive: bool,
+    base_path: str | None = None,
 ) -> bool:
     """Internal function same as :func:`match_path` but does not check arguments."""
+    path_cls: type[PurePosixPath | PureWindowsPath] = PurePosixPath if case_sensitive else PureWindowsPath
     path: PurePosixPath | PureWindowsPath
     if case_sensitive:
         path = PurePosixPath(raw_path)
@@ -74,8 +77,13 @@ def _match_path(
         error = f"conflicting patterns `{common_patterns}` included and excluded"
         raise ValueError(error)
 
-    return any(_full_match(path, p) for p in included_patterns) and not any(
-        _full_match(path, p) for p in excluded_patterns
+    paths = [path]
+    if base_path:
+        with contextlib.suppress(ValueError):
+            paths.append(path.relative_to(path_cls(base_path)))
+
+    return any(_full_match(p, pat) for p in paths for pat in included_patterns) and not any(
+        _full_match(p, pat) for p in paths for pat in excluded_patterns
     )
 
 
@@ -85,6 +93,7 @@ def filter_paths(
     included_patterns: list[str] | None = None,
     excluded_patterns: list[str] | None = None,
     case_sensitive: bool = True,
+    base_path: str | None = None,
 ) -> Iterator[str]:
     """Filters from a set of paths based on acceptable patterns and
     ignorable patterns.
@@ -100,6 +109,8 @@ def filter_paths(
         If no pattern list is specified, no files are ignored.
     :param case_sensitive:
         ``True`` if matching should be case-sensitive; ``False`` otherwise.
+    :param base_path:
+        Optional base path to evaluate relative pattern matches against.
     :returns:
         A list of pathnames that matched the allowable patterns and passed
         through the ignored patterns.
@@ -108,7 +119,7 @@ def filter_paths(
     excluded = set([] if excluded_patterns is None else excluded_patterns)
 
     for path in paths:
-        if _match_path(path, included, excluded, case_sensitive=case_sensitive):
+        if _match_path(path, included, excluded, case_sensitive=case_sensitive, base_path=base_path):
             yield path
 
 
@@ -118,6 +129,7 @@ def match_any_paths(
     included_patterns: list[str] | None = None,
     excluded_patterns: list[str] | None = None,
     case_sensitive: bool = True,
+    base_path: str | None = None,
 ) -> bool:
     """Matches from a set of paths based on acceptable patterns and
     ignorable patterns.
@@ -129,5 +141,6 @@ def match_any_paths(
             included_patterns=included_patterns,
             excluded_patterns=excluded_patterns,
             case_sensitive=case_sensitive,
+            base_path=base_path,
         ),
     )
