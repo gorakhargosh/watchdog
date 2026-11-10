@@ -397,9 +397,11 @@ def test_inode_reuse_is_not_a_move(
     is_dir_old: bool,
     is_dir_new: bool,
 ) -> None:
-    ref = _fake_snapshot(p(""), {"old": (spec_old[0], spec_old[1], spec_old[2], is_dir_old, spec_old[3])})
-    snapshot = _fake_snapshot(p(""), {"new": (spec_new[0], spec_new[1], spec_new[2], is_dir_new, spec_new[3])})
-    diff = DirectorySnapshotDiff(ref, snapshot)
+    # The injected birth times model platforms where birth time is supported.
+    with patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False):
+        ref = _fake_snapshot(p(""), {"old": (spec_old[0], spec_old[1], spec_old[2], is_dir_old, spec_old[3])})
+        snapshot = _fake_snapshot(p(""), {"new": (spec_new[0], spec_new[1], spec_new[2], is_dir_new, spec_new[3])})
+        diff = DirectorySnapshotDiff(ref, snapshot)
 
     assert diff.files_moved == []
     assert diff.dirs_moved == []
@@ -439,8 +441,8 @@ def test_linux_birthtime_is_captured_before_inode_reuse(p: Any, *, is_dir: bool)
         snapshot = _fake_snapshot(p(""), {"new": (42, 10, 1000, is_dir)})
         diff = DirectorySnapshotDiff(ref, snapshot)
 
-    assert ref.birthtime(p("old")) == 100
-    assert snapshot.birthtime(p("new")) == 200
+        assert ref.birthtime(p("old")) == 100
+        assert snapshot.birthtime(p("new")) == 200
     assert diff.files_moved == []
     assert diff.dirs_moved == []
     assert (diff.dirs_deleted if is_dir else diff.files_deleted) == [p("old")]
