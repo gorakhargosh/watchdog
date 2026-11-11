@@ -423,6 +423,12 @@ class KqueueEmitter(EventEmitter):
 
         self._snapshot = DirectorySnapshot(watch.path, recursive=watch.is_recursive, stat=custom_stat)
 
+        # Hand the kevents to the kernel now, not on the first control() call in
+        # the emitter thread: changes made before that call would produce no kevents.
+        # Deletes, renames and attribute changes come from kevents only, so they
+        # would be lost.
+        self._kq.control(self._descriptors.kevents, 0, 0)
+
     def _register_kevent(self, path: bytes | str, *, is_directory: bool) -> None:
         """Registers a kevent descriptor for the given path.
 

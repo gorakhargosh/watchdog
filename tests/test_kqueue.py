@@ -13,12 +13,13 @@ if not hasattr(select, "kqueue") or not hasattr(select, "KQ_NOTE_DELETE"):
 
 import errno
 import os
+import queue
 import shutil
 import threading
 import time
 from unittest.mock import patch
 
-from watchdog.events import DirDeletedEvent
+from watchdog.events import DirDeletedEvent, FileAttribEvent, FileDeletedEvent
 from watchdog.observers.api import EventQueue, ObservedWatch
 from watchdog.observers.kqueue import KqueueEmitter
 
@@ -91,3 +92,43 @@ def test_watched_dir_removed_stops_emitter(tmpdir, remove, recursive):
     deleted = [e for e in events if e == DirDeletedEvent(watched)]
     assert len(deleted) == 1
     assert events[-1] == DirDeletedEvent(watched)
+
+
+@pytest.mark.parametrize("change", ["delete", "chmod"])
+def test_changes_before_start_are_reported(tmpdir, change):
+    """Changes made between creating the emitter and its thread's first
+    kqueue.control() call must still be reported.
+
+    Deletes and attribute changes come from kevents only. If the kevents are
+    handed to the kernel only in the emitter thread, these changes are lost
+    (always with free-threaded Python, which runs both threads at once).
+    """
+    path = os.path.join(str(tmpdir), "a")
+    with open(path, "w"):
+        pass
+    os.chmod(path, 0o644)
+
+    event_queue = EventQueue()
+    emitter = KqueueEmitter(event_queue, ObservedWatch(str(tmpdir), recursive=False), timeout=0.1)
+    if change == "delete":
+        os.remove(path)
+        expected = FileDeletedEvent(path)
+    else:
+        os.chmod(path, 0o600)
+        expected = FileAttribEvent(path)
+
+    emitter.start()
+    try:
+        events = []
+        deadline = time.monotonic() + 5
+        while expected not in events and time.monotonic() < deadline:
+            try:
+                event, _ = event_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            events.append(event)
+    finally:
+        emitter.stop()
+        emitter.join(5)
+
+    assert expected in events
