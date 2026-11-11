@@ -469,6 +469,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "karolyi",
+      "name": "László Károlyi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/987055?v=4",
+      "profile": "https://ksol.io/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
