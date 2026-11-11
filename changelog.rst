@@ -10,7 +10,11 @@ Changelog
 
 **Other Changes**
 
-- [dirsnapshot] Avoid duplicate create or delete events when a renamed file has another hard link in the watched directory. (https://github.com/gorakhargosh/watchdog/issues/1425 Thanks to @parijat1222q)
+- [core] Allow pattern matching to evaluate relative paths against the watched root directory, supporting intuitive non-recursive patterns (e.g. ``*.json``, ``logs/*.log``) under ``full_match()``. (`#1430 <https://github.com/gorakhargosh/watchdog/issues/1430>`__ Thanks to @prateek-dagar)
+- [dirsnapshot] Avoid duplicate create or delete events when a renamed file has another hard link in the watched directory. (`#1425 <https://github.com/gorakhargosh/watchdog/issues/1425>`__, thanks to @parijat1222q)
+- [inotify] Properly format the duplicate-callback ``RuntimeWarning`` message. (`#1435 <https://github.com/gorakhargosh/watchdog/issues/1435>`__, thanks to @BoboTiG)
+- [inotify] Defer allocating an observer's inotify instance and reader thread until its first scheduled watch. Empty observers no longer consume inotify instances; resource-limit errors are raised by ``schedule()`` rather than construction. (`#1432 <https://github.com/gorakhargosh/watchdog/issues/1432>`__, thanks to @kushaldave002)
+- [observers] Fix race condition between ``Observer.start()`` and ``Observer.schedule()``, and release observer lock during event handler dispatch to prevent blocking concurrent ``schedule()`` and ``unschedule()`` calls. (`#1044 <https://github.com/gorakhargosh/watchdog/issues/1044>`__, thanks to @prateek-dagar)
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 
 7.1.0
