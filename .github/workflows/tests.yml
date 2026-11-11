@@ -42,6 +42,7 @@ jobs:
       examples: ${{ steps.filter.outputs.examples == 'true' }}
       macos: ${{ steps.filter.outputs.macos == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
       windows: ${{ steps.filter.outputs.windows == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      freebsd: ${{ steps.filter.outputs.freebsd == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
       core: ${{ steps.filter.outputs.core }}
       watchmedo: ${{ steps.filter.outputs.watchmedo }}
       # Run only modified tests if PR touches tests only; otherwise run full test suite
@@ -165,3 +166,40 @@ jobs:
       runs-on: windows-latest
       python: ${{ matrix.python }}
       test_args: ${{ needs.changes.outputs.test_args }}
+
+  # FreeBSD in a VM, pull requests only: 14.x uses the kqueue backend, 15.x has
+  # inotify, so it runs the inotify backend against FreeBSD's implementation.
+  freebsd:
+    name: 😈 FreeBSD ${{ matrix.release }}
+    needs: changes
+    if: (needs.changes.outputs.freebsd == 'true' && github.event_name == 'pull_request') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Non-blocking on 14.x until the kqueue expectations in tests/test_emitter.py
+    # are fixed: https://github.com/gorakhargosh/watchdog/issues/1442
+    continue-on-error: ${{ matrix.release == '14' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Only the major version: the newest matching release is used.
+        release: ["14", "15"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run tests in a FreeBSD VM
+        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
+        env:
+          TEST_ARGS: ${{ needs.changes.outputs.test_args }}
+        with:
+          release: ${{ matrix.release }}
+          envs: TEST_ARGS
+          copyback: false
+          prepare: |
+            pkg install -y python311
+          # tox-uv is not used here: uv publishes no FreeBSD wheels.
+          run: |
+            set -e
+            python3.11 -m venv /tmp/venv
+            /tmp/venv/bin/python -m pip install -q -r requirements-tests.txt -e '.[watchmedo]'
+            /tmp/venv/bin/python -m pytest -n auto $TEST_ARGS
