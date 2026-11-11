@@ -9,7 +9,6 @@ import select
 import struct
 import threading
 import warnings
-from collections.abc import Callable
 from ctypes import c_char_p, c_int, c_uint32
 from dataclasses import dataclass, field
 from functools import reduce
@@ -18,7 +17,7 @@ from typing import TYPE_CHECKING, ClassVar, NewType, Protocol, cast
 from watchdog.utils import BaseThread, UnsupportedLibcError
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Sequence
+    from collections.abc import Callable, Generator, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +169,10 @@ class WatchCallback(Protocol):
         This is the case when the watched object is deleted."""
         ...
 
+    def on_queue_overflow(self) -> None:
+        """Called when the kernel inotify queue overflows."""
+        ...
+
 
 @dataclass
 class Watch:
@@ -215,15 +218,12 @@ class InotifyFD(BaseThread):
     Watches are created and removed as needed.
     """
 
-    # InotifyFD is a singleton for now.
+    # get_instance() returns a shared instance; direct construction creates independent instances.
     _instance: ClassVar[InotifyFD | None] = None
     _global_lock: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self) -> None:
         super().__init__()
-        if hasattr(self, "is_initialized"):
-            return  # do not initialize the singleton twice.
-        self.is_initialized = True
 
         # The file descriptor associated with the inotify instance.
         self._inotify_fd: int = self._create_inotify_fd()
@@ -253,9 +253,9 @@ class InotifyFD(BaseThread):
 
     @classmethod
     def get_instance(cls) -> InotifyFD:
-        """Use this class method to get a running InotifyFD instance."""
+        """Use this class method to get the shared running InotifyFD instance."""
         with cls._global_lock:
-            # enforce that InotifyFD is a singleton.
+            # Create and start the shared instance only once.
             if cls._instance is None:
                 cls._instance = InotifyFD()
                 cls._instance.start()
@@ -333,6 +333,20 @@ class InotifyFD(BaseThread):
                 callback.on_watch_deleted(wd)
 
     def handle_event(self, event: InotifyEvent) -> None:
+        if event.is_queue_overflow:
+            with self._lock:
+                overflow_callbacks = tuple(
+                    {
+                        id(callback): callback
+                        for watch in self._watch_for_wd.values()
+                        for callback in watch.callbacks.values()
+                    }.values()
+                )
+            logger.warning("Inotify queue overflowed; filesystem events were lost")
+            for callback in overflow_callbacks:
+                callback.on_queue_overflow()
+            return
+
         with self._lock:
             if event.is_ignored:
                 # Clean up book-keeping for deleted watches.
@@ -361,7 +375,8 @@ class InotifyFD(BaseThread):
         return [
             InotifyEvent(wd, mask, cookie, name)
             for wd, mask, cookie, name in InotifyFD._parse_event_buffer(event_buffer)
-            if wd != -1
+            # The kernel reports IN_Q_OVERFLOW with wd=-1. Other global events remain ignored.
+            if wd != -1 or mask & InotifyConstants.IN_Q_OVERFLOW
         ]
 
     # Non-synchronized methods.
@@ -431,7 +446,7 @@ class InotifyFD(BaseThread):
         watch = self._get_or_create_watch(path, mask)
 
         if id_ in watch.callbacks:
-            msg = f"Callback with id '{id_}' already exists for watch {watch.short_str}. It will be Overwritten."
+            msg = f"Callback with id '{id_}' already exists for watch {watch.short_str()}, it will be overwritten."
             warnings.warn(msg, RuntimeWarning, stacklevel=3)
         watch.callbacks[id_] = callback
         return watch.wd
@@ -474,7 +489,10 @@ class InotifyFD(BaseThread):
             return
 
         if watch.callbacks.pop(id_, None) is None:
-            msg = f"Callback with id '{id_}' does not exist for watch {watch.short_str} and therefore cannot be removed"
+            msg = (
+                f"Callback with id '{id_}' does not exist for watch {watch.short_str()}"
+                ", and therefore cannot be removed."
+            )
             warnings.warn(msg, RuntimeWarning, stacklevel=3)
 
         if not watch.is_used:
@@ -529,10 +547,6 @@ class InotifyFD(BaseThread):
             name = event_buffer[i + 16 : i + 16 + length].rstrip(b"\0")
             i += 16 + length
             yield wd, mask, cookie, name
-
-
-# creates global InotifyFD instance NOW, (only necessary for unit tests) todo find better solution
-InotifyFD.get_instance()
 
 
 @dataclass(unsafe_hash=True, frozen=True)
@@ -605,6 +619,10 @@ class InotifyEvent:
     @property
     def is_ignored(self) -> bool:
         return self.mask & InotifyConstants.IN_IGNORED > 0
+
+    @property
+    def is_queue_overflow(self) -> bool:
+        return self.mask & InotifyConstants.IN_Q_OVERFLOW > 0
 
     @property
     def is_directory(self) -> bool:

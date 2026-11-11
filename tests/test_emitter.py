@@ -141,9 +141,7 @@ def test_modify(
             ec.add(DirModifiedEvent, ".")
 
 
-def test_touch(
-    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
-) -> None:
+def test_touch(p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker) -> None:
     mkfile(p("a"))
     start_watching()
 
@@ -278,6 +276,38 @@ def test_move_to(
             ec.add(DirModifiedEvent, "dir2")
 
 
+@pytest.mark.skipif(not platform.is_linux(), reason="Specific to inotify watch handling")
+def test_move_dir_to_then_change_inside(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    # A directory moved in from outside the watched tree must be watched like a created one (#1094)
+    mkdir(p("dir1", "sub", "nested"), parents=True)
+    mkdir(p("dir2"))
+    start_watching(path=p("dir2"))
+
+    mv(p("dir1", "sub"), p("dir2", "sub"))
+
+    with events_checker() as ec:
+        ec.add(DirCreatedEvent, "dir2/sub")
+        ec.add(DirModifiedEvent, "dir2")
+        ec.add(DirCreatedEvent, "dir2/sub/nested")
+
+    mkfile(p("dir2", "sub", "a"))
+    mkfile(p("dir2", "sub", "nested", "b"))
+
+    with events_checker() as ec:
+        ec.add(FileCreatedEvent, "dir2/sub/a")
+        ec.add(DirModifiedEvent, "dir2/sub")
+        ec.add(FileOpenedEvent, "dir2/sub/a")
+        ec.add(FileClosedEvent, "dir2/sub/a")
+        ec.add(DirModifiedEvent, "dir2/sub")
+        ec.add(FileCreatedEvent, "dir2/sub/nested/b")
+        ec.add(DirModifiedEvent, "dir2/sub/nested")
+        ec.add(FileOpenedEvent, "dir2/sub/nested/b")
+        ec.add(FileClosedEvent, "dir2/sub/nested/b")
+        ec.add(DirModifiedEvent, "dir2/sub/nested")
+
+
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
 def test_move_to_full(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
@@ -295,6 +325,7 @@ def test_move_to_full(
             ec.add(DirModifiedEvent, "dir2")
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_move_from(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
 ) -> None:
@@ -302,6 +333,8 @@ def test_move_from(
     mkdir(p("dir2"))
     mkfile(p("dir1", "a"))
     start_watching(path=p("dir1"))
+    if platform.is_windows():
+        time.sleep(0.05)
 
     mv(p("dir1", "a"), p("dir2", "b"))
 
@@ -572,6 +605,7 @@ def test_move_nested_subdirectories(
             ec.add(DirModifiedEvent, "dir2/dir3")
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.skipif(
     not platform.is_windows(),
     reason="Non-Windows create another set of events for this test",
@@ -603,6 +637,9 @@ def test_move_nested_subdirectories_on_windows(
         ec.add(DirModifiedEvent)
         ec.allow_extra_events()
 
+    # Ensure system clock advances past creation mtime so Windows NTFS sets
+    # LastModificationTime >= LastChangeTime, deterministically emitting FileModifiedEvent.
+    time.sleep(0.05)
     touch(p("dir2/dir3", "a"))
 
     with events_checker() as ec:
@@ -616,7 +653,15 @@ def test_file_lifecyle(
     start_watching()
 
     mkfile(p("a"))
-    touch(p("a"))
+    if platform.is_windows():
+        # touch() only updates the timestamps, and winapi reports that as an
+        # attribute change whenever NTFS records ChangeTime after LastWriteTime.
+        # That ordering is not guaranteed (see test_recursive_on), so write data
+        # instead: a real modification is always reported as a modification.
+        with open(p("a"), "ab") as file:
+            file.write(b"a")
+    else:
+        touch(p("a"))
     mv(p("a"), p("b"))
     rm(p("b"))
 

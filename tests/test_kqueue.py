@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+import select
+
 import pytest
 
-from watchdog.utils import platform
-
-if not platform.is_bsd() and not platform.is_darwin():
-    pytest.skip("BSD/macOS only.", allow_module_level=True)
+# Check for kqueue itself, not the platform name: FreeBSD 15+ reports as
+# Linux (it has inotify), but kqueue is still available there.
+if not hasattr(select, "kqueue") or not hasattr(select, "KQ_NOTE_DELETE"):
+    pytest.skip(
+        "kqueue (with KQ_NOTE_* constants) is not supported on this platform/interpreter.", allow_module_level=True
+    )
 
 import errno
 import os
+import shutil
+import threading
+import time
 from unittest.mock import patch
 
+from watchdog.events import DirDeletedEvent
 from watchdog.observers.api import EventQueue, ObservedWatch
 from watchdog.observers.kqueue import KqueueEmitter
 
@@ -40,3 +48,46 @@ def test_register_kevent_ignores_permission_errors(tmpdir, err):
             emitter._register_kevent(path, is_directory=False)  # noqa: SLF001
     finally:
         emitter._descriptors.clear()  # noqa: SLF001
+
+
+@pytest.mark.parametrize("remove", ["rename", "rmtree"])
+@pytest.mark.parametrize("recursive", [False, True])
+def test_watched_dir_removed_stops_emitter(tmpdir, remove, recursive):
+    """Removing or moving the watched directory must stop the emitter cleanly
+    with a DirDeletedEvent, not kill its thread with FileNotFoundError.
+
+    See https://github.com/gorakhargosh/watchdog/issues/1436
+    """
+    watched = os.path.join(str(tmpdir), "A")
+    os.makedirs(os.path.join(watched, "sub"))
+    with open(os.path.join(watched, "sub", "f"), "w"):
+        pass
+
+    thread_errors = []
+    original_excepthook = threading.excepthook
+    threading.excepthook = thread_errors.append
+
+    event_queue = EventQueue()
+    emitter = KqueueEmitter(event_queue, ObservedWatch(watched, recursive=recursive), timeout=0.1)
+    try:
+        emitter.start()
+        time.sleep(0.2)
+        if remove == "rename":
+            os.rename(watched, watched + ".1")
+        else:
+            shutil.rmtree(watched)
+        emitter.join(5)
+        assert not emitter.is_alive()
+    finally:
+        emitter.stop()
+        threading.excepthook = original_excepthook
+
+    assert thread_errors == []
+
+    events = []
+    while not event_queue.empty():
+        event, _ = event_queue.get_nowait()
+        events.append(event)
+    deleted = [e for e in events if e == DirDeletedEvent(watched)]
+    assert len(deleted) == 1
+    assert events[-1] == DirDeletedEvent(watched)

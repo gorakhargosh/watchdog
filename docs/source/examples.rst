@@ -14,6 +14,16 @@ To filter file system events using glob patterns (for example, only observing ch
    :language: python
    :linenos:
 
+Watch a Single File
+-------------------
+Observers watch directories, not individual files. To monitor one file, schedule its parent directory and filter events by the file name. The following example watches ``example.txt`` in the given directory; pass a different file name as the optional second argument::
+
+    python single_file.py /path/to/directory [filename]
+
+.. literalinclude:: examples/single_file.py
+   :language: python
+   :linenos:
+
 Logging Trick
 -------------
 Watchdog also includes built-in "tricks" (pre-implemented event handlers). For instance, the :class:`watchdog.tricks.LoggerTrick` automatically logs events. Here is how you can use it:

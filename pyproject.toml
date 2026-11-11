@@ -41,9 +41,11 @@ pythonpath = "src"
 addopts = """
     --showlocals
     -vvv
-    --cov=watchdog
-    --cov-report=term-missing:skip-covered
 """
+# Coverage tracing disabled temporarily to avoid bytecode tracing overhead
+# across matrix jobs until coverage upload integration (e.g. Codecov) is configured.
+#     --cov=watchdog
+#     --cov-report=term-missing:skip-covered
 
 [tool.ruff]
 line-length = 120

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import threading
 import time
 from pathlib import Path
+from threading import Event
 
 import pytest
 
-from watchdog.events import FileModifiedEvent, FileMovedEvent, FileOpenedEvent, LoggingEventHandler
+from watchdog.events import (
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileOpenedEvent,
+    FileSystemEventHandler,
+    LoggingEventHandler,
+)
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
 
 
@@ -321,3 +329,173 @@ def test_symlinked_directory_not_treated_as_file(tmp_path: Path):
     watch_follow = ObservedWatch(link_dir, recursive=True, follow_symlink=True)
     assert not watch_follow.is_file
     assert watch_follow.is_recursive
+
+
+def test_schedule_defers_emitter_start() -> None:
+    """Scheduling a watch must be non-blocking and not invoke emitter initialization before observer.start().
+
+    See https://github.com/gorakhargosh/watchdog/issues/96
+    """
+    started = Event()
+
+    class CustomEmitter(EventEmitter):
+        def on_thread_start(self) -> None:
+            started.set()
+
+    observer = BaseObserver(CustomEmitter)
+    watch = observer.schedule(FileSystemEventHandler(), "/path/to/watch", recursive=True)
+
+    assert not started.is_set(), "Emitter must not execute on_thread_start during schedule()"
+    assert not observer.is_alive(), "Observer thread must not be running before start()"
+    assert len(observer.emitters) == 1
+    assert next(iter(observer.emitters)).watch == watch
+
+    observer.start()
+    try:
+        assert started.wait(timeout=2.0), "Emitter on_thread_start must be called upon observer.start()"
+    finally:
+        observer.stop()
+        observer.join()
+
+
+def test_lock_not_held_during_handler_dispatch() -> None:
+    """User handler execution must not hold observer lock to avoid blocking schedule/unschedule."""
+
+    class FastEmitter(EventEmitter):
+        def queue_events(self, timeout: float) -> None:
+            self.stopped_event.wait(timeout=timeout)
+
+    observer = BaseObserver(FastEmitter, timeout=0.01)
+    handler_entered = Event()
+    release_handler = Event()
+    schedule_succeeded = Event()
+
+    class BlockingHandler(FileSystemEventHandler):
+        def on_modified(self, event):
+            handler_entered.set()
+            assert release_handler.wait(timeout=5.0)
+
+    handler = BlockingHandler()
+    watch = observer.schedule(handler, "/path/to/watch", recursive=True)
+    observer.start()
+
+    t: threading.Thread | None = None
+    try:
+        observer.event_queue.put((FileModifiedEvent("/path/to/watch/file.txt"), watch))
+        assert handler_entered.wait(timeout=5.0), "Handler was not invoked"
+
+        # While handler is executing, calling schedule from another thread must not deadlock
+        def background_schedule():
+            new_watch = observer.schedule(FileSystemEventHandler(), "/another/path")
+            observer.unschedule(new_watch)
+            schedule_succeeded.set()
+
+        t = threading.Thread(target=background_schedule)
+        t.start()
+        t.join(timeout=5.0)
+        assert schedule_succeeded.is_set(), "Concurrent schedule/unschedule was blocked by running handler"
+    finally:
+        release_handler.set()
+        if t is not None:
+            t.join(timeout=5.0)
+        observer.stop()
+        observer.join(timeout=5.0)
+
+
+def test_observer_start_and_schedule_race() -> None:
+    """Deterministically verify concurrent schedule() blocks on lock until start() completes.
+
+    Addresses race condition #1044:
+    1. HookedObserver pauses inside on_thread_start() while holding self._lock,
+       before threading.Thread.start() has been called (is_alive() is False).
+    2. An instrumented lock notifies the test the moment schedule() attempts acquisition.
+    3. The test confirms schedule() has actively attempted acquire() and is blocked.
+    4. Once startup resumes and completes, observer.is_alive() becomes True,
+       schedule() acquires the lock and starts the emitter.
+    """
+    startup_reached = threading.Event()
+    resume_startup = threading.Event()
+    schedule_lock_attempted = threading.Event()
+    schedule_finished = threading.Event()
+
+    class HookedObserver(BaseObserver):
+        def on_thread_start(self) -> None:
+            super().on_thread_start()
+            startup_reached.set()
+            assert resume_startup.wait(timeout=2.0), "Timeout waiting to resume startup"
+
+    class FastEmitter(EventEmitter):
+        def __init__(self, *args, **kwargs):
+            kwargs["timeout"] = 0.005
+            super().__init__(*args, **kwargs)
+
+        def queue_events(self, timeout: float) -> None:
+            time.sleep(0.005)
+
+    observer = HookedObserver(FastEmitter, timeout=0.005)
+    real_lock = observer._lock  # noqa: SLF001
+
+    class InstrumentedLock:
+        def acquire(self, *args, **kwargs):
+            if threading.current_thread() is t_sched:
+                schedule_lock_attempted.set()
+            return real_lock.acquire(*args, **kwargs)
+
+        def release(self):
+            real_lock.release()
+
+        def __enter__(self):
+            return self.acquire()
+
+        def __exit__(self, *args):
+            self.release()
+
+        def __getattr__(self, name):
+            return getattr(real_lock, name)
+
+    observer._lock = InstrumentedLock()  # type: ignore[assignment]  # noqa: SLF001
+
+    def do_start() -> None:
+        observer.start()
+
+    def do_schedule() -> None:
+        observer.schedule(FileSystemEventHandler(), "/path/deterministic")
+        schedule_finished.set()
+
+    t_start = threading.Thread(target=do_start)
+    t_sched = threading.Thread(target=do_schedule)
+
+    try:
+        t_start.start()
+        assert startup_reached.wait(timeout=2.0), "Startup hook was not reached"
+        assert not observer.is_alive(), "Observer should not be alive before Thread.start()"
+
+        # Launch schedule thread while observer is paused in start()
+        t_sched.start()
+        # Verify schedule() actually reached and attempted to acquire observer._lock
+        assert schedule_lock_attempted.wait(timeout=2.0), "schedule() did not attempt lock acquisition"
+        # Since t_start holds observer._lock, schedule() must not have finished
+        assert not schedule_finished.is_set(), "schedule() completed prematurely while lock was held"
+
+        # Unblock startup
+        resume_startup.set()
+        t_start.join(timeout=2.0)
+        assert not t_start.is_alive(), "Start thread hung"
+        assert observer.is_alive(), "Observer should now be alive"
+
+        # schedule() should now acquire the lock and complete
+        assert schedule_finished.wait(timeout=2.0), "schedule() failed to finish after startup"
+        t_sched.join(timeout=1.0)
+        assert not t_sched.is_alive(), "Schedule thread hung"
+
+        emitters = list(observer.emitters)
+        assert len(emitters) == 1, "Emitter was not created"
+        assert emitters[0].is_alive(), "Scheduled emitter was not started (Issue #1044)"
+    finally:
+        resume_startup.set()
+        if t_start.is_alive():
+            t_start.join(timeout=1.0)
+        if t_sched.is_alive():
+            t_sched.join(timeout=1.0)
+        observer.stop()
+        observer.join(timeout=2.0)

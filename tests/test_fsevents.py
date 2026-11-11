@@ -31,7 +31,7 @@ import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
 from watchdog.events import FileSystemEvent, FileSystemEventHandler, PatternMatchingEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver, EventQueue, ObservedWatch
-from watchdog.observers.fsevents import FSEventsEmitter
+from watchdog.observers.fsevents import DEFAULT_FSEVENTS_LATENCY, FSEventsEmitter, FSEventsObserver
 
 from .shell import touch
 
@@ -79,6 +79,7 @@ def test_coalesced_event_check(event, expectation):
     assert event.is_coalesced == expectation
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_native_event_owns_path() -> None:
     class Path(str):
         __slots__ = ("__weakref__",)
@@ -96,6 +97,7 @@ def test_native_event_owns_path() -> None:
     assert path_ref() is None
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_native_event_cycles_are_collected() -> None:
     class Path(str):
         __slots__ = ("__weakref__", "event")
@@ -108,6 +110,7 @@ def test_native_event_cycles_are_collected() -> None:
     assert path_ref() is None
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_native_event_allocations_are_released() -> None:
     code = """
 import gc
@@ -138,6 +141,7 @@ def test_native_event_unsigned_id() -> None:
     assert event.event_id == 2**64 - 1
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_stream_does_not_retain_paths_list(p: P) -> None:
     class Paths(list):
         pass
@@ -347,7 +351,9 @@ def test_two_observers_on_same_path(p: P) -> None:  # for issue 919
     try:
         sleep(0.2)
         touch(os.path.join(input_dir, "test.txt"))
-        sleep(0.5)
+        deadline = time.time() + 5.0
+        while time.time() < deadline and (not received1 or not received2):
+            sleep(0.05)
         assert observer.is_alive()
         assert observer2.is_alive()
         assert len(received1) >= 1
@@ -756,3 +762,30 @@ def test_watchdog_recursive(p: P) -> None:
             observer.unschedule(watch)
         observer.stop()
         observer.join(1)
+
+
+def test_fsevents_latency_configuration(p: P) -> None:
+    """The default latency is 0.01 and custom latency is forwarded to emitters and stream."""
+    assert DEFAULT_FSEVENTS_LATENCY == 0.01
+
+    obs_default = FSEventsObserver()
+    obs_default.schedule(FileSystemEventHandler(), p(""), recursive=True)
+    assert [e.latency for e in obs_default.emitters] == [DEFAULT_FSEVENTS_LATENCY]
+
+    obs_custom = FSEventsObserver(latency=0.25)
+    obs_custom.schedule(FileSystemEventHandler(), p(""), recursive=True)
+    assert [e.latency for e in obs_custom.emitters] == [0.25]
+
+    stream = _fsevents.Stream([p("")], latency=0.25)
+    assert stream.latency == 0.25
+
+
+@pytest.mark.parametrize("latency", [-0.01, -1])
+def test_fsevents_negative_latency_is_rejected(p: P, latency: float) -> None:
+    """Both Python and C layers reject negative latency values."""
+    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+        _fsevents.Stream([p("")], latency=latency)
+
+    observer = FSEventsObserver(latency=latency)
+    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+        observer.schedule(FileSystemEventHandler(), p(""), recursive=True)

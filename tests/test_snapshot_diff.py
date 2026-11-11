@@ -5,6 +5,7 @@ import os
 import pickle
 import stat
 import time
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -239,7 +240,10 @@ def stat_with_changed_device(path):
     stat = os.stat(path)
     values = list(stat)
     values[2] += 1
-    return os.stat_result(values, {"st_atime": stat.st_atime, "st_mtime": stat.st_mtime, "st_ctime": stat.st_ctime})
+    extra = {"st_atime": stat.st_atime, "st_mtime": stat.st_mtime, "st_ctime": stat.st_ctime}
+    if hasattr(stat, "st_birthtime"):
+        extra["st_birthtime"] = stat.st_birthtime
+    return os.stat_result(values, extra)
 
 
 @pytest.mark.parametrize("is_directory", [False, True])
@@ -336,3 +340,105 @@ def test_attrib_on_chmod(p):
     finally:
         chmod(p("a"), stat.S_IWRITE if platform.is_windows() else 0o644)
         chmod(p("dir1"), stat.S_IWRITE if platform.is_windows() else 0o755)
+
+
+class _FakeDirEntry:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+def _fake_snapshot(root: str, entries: dict[str, tuple]) -> DirectorySnapshot:
+    """Build a DirectorySnapshot from injected stat/listdir functions.
+
+    ``entries`` maps a file/dir name to ``(inode, size, mtime, is_dir, [birthtime])``.
+    """
+    stats = {root: os.stat_result((stat.S_IFDIR | 0o755, 1, 1, 1, 0, 0, 0, 0, 0, 0))}
+    birthtimes: dict[bytes | str, int] = {}
+    for name, spec in entries.items():
+        inode = spec[0]
+        size = spec[1]
+        mtime = spec[2]
+        is_dir = spec[3] if len(spec) > 3 else False
+        birthtime = spec[4] if len(spec) > 4 else None
+
+        mode = (stat.S_IFDIR | 0o755) if is_dir else (stat.S_IFREG | 0o644)
+        extra: dict[str, Any] = {"st_atime": mtime, "st_mtime": mtime, "st_ctime": mtime}
+        full_path = os.path.join(root, name)
+        if birthtime is not None:
+            btime_ns = int(birthtime * 1_000_000_000) if isinstance(birthtime, float) else int(birthtime)
+            if hasattr(os.stat_result, "st_birthtime"):
+                extra["st_birthtime"] = birthtime if isinstance(birthtime, float) else (birthtime / 1e9)
+            birthtimes[full_path] = btime_ns
+
+        stats[full_path] = os.stat_result((mode, inode, 1, 1, 0, 0, size, mtime, mtime, mtime), extra)
+
+    def fake_listdir(path: str | None) -> list[_FakeDirEntry]:
+        return [_FakeDirEntry(name) for name in entries] if path == root else []
+
+    snapshot = DirectorySnapshot(root, recursive=False, stat=stats.__getitem__, listdir=fake_listdir)
+    snapshot._birthtimes.update(birthtimes)  # noqa: SLF001
+    return snapshot
+
+
+@pytest.mark.parametrize(
+    ("spec_old", "spec_new", "is_dir_old", "is_dir_new"),
+    [
+        # 1. Inode reused, differing birth time (macOS, Linux statx, #992)
+        ((42, 10, 1000, 500.0), (42, 10, 1000, 900.0), False, False),
+        # 2. Inode reused, file deleted and directory created with same inode (#303)
+        ((42, 4096, 1000, None), (42, 4096, 1000, None), False, True),
+    ],
+)
+def test_inode_reuse_is_not_a_move(
+    p: Any,
+    spec_old: tuple[Any, ...],
+    spec_new: tuple[Any, ...],
+    *,
+    is_dir_old: bool,
+    is_dir_new: bool,
+) -> None:
+    ref = _fake_snapshot(p(""), {"old": (spec_old[0], spec_old[1], spec_old[2], is_dir_old, spec_old[3])})
+    snapshot = _fake_snapshot(p(""), {"new": (spec_new[0], spec_new[1], spec_new[2], is_dir_new, spec_new[3])})
+    diff = DirectorySnapshotDiff(ref, snapshot)
+
+    assert diff.files_moved == []
+    assert diff.dirs_moved == []
+
+    deleted_list = diff.dirs_deleted if is_dir_old else diff.files_deleted
+    created_list = diff.dirs_created if is_dir_new else diff.files_created
+    assert deleted_list == [p("old")]
+    assert created_list == [p("new")]
+
+
+def test_matching_birthtime_is_detected_as_move(p: Any) -> None:
+    """True file move preserving inode and birth time is detected as a move."""
+    ref = _fake_snapshot(p(""), {"old": (42, 10, 1000, False, 500.0)})
+    snapshot = _fake_snapshot(p(""), {"new": (42, 10, 1000, False, 500.0)})
+    diff = DirectorySnapshotDiff(ref, snapshot)
+
+    assert diff.files_moved == [(p("old"), p("new"))]
+    assert diff.files_deleted == []
+    assert diff.files_created == []
+
+
+@pytest.mark.parametrize("ignore_device", [False, True])
+@pytest.mark.parametrize(("source", "destination"), [("a", "c"), ("c", "a")])
+def test_hard_link_rename_has_no_duplicate_create_or_delete(p, ignore_device, source, destination):
+    touch(p(source))
+    try:
+        os.link(p(source), p("b"))
+    except OSError as e:
+        pytest.skip(f"Hard links are unavailable: {e}")
+
+    def listdir(path):
+        with os.scandir(path) as entries:
+            yield from sorted(entries, key=lambda entry: entry.name)
+
+    ref = DirectorySnapshot(p(""), listdir=listdir)
+    mv(p(source), p(destination))
+    snapshot = DirectorySnapshot(p(""), listdir=listdir)
+    diff = DirectorySnapshotDiff(ref, snapshot, ignore_device=ignore_device)
+
+    assert diff.files_moved == [(p(source), p(destination))]
+    assert diff.files_deleted == []
+    assert diff.files_created == []

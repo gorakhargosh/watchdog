@@ -1,25 +1,67 @@
 from __future__ import annotations
 
+import glob
+
 import pytest
 
 from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
 
 
 @pytest.mark.parametrize(
-    ("raw_path", "included_patterns", "excluded_patterns", "case_sensitive", "expected"),
+    ("raw_path", "included_patterns", "excluded_patterns", "case_sensitive", "base_path", "expected"),
     [
-        ("/users/gorakhargosh/foobar.py", {"**/*.py"}, {"**/*.PY"}, True, True),
-        ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, True, False),
-        ("/users/gorakhargosh/", {"*.py"}, {"*.txt"}, False, False),
-        ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, False, ValueError),
+        ("/users/gorakhargosh/foobar.py", {"**/*.py"}, {"**/*.PY"}, True, None, True),
+        ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, True, None, False),
+        ("/users/gorakhargosh/", {"*.py"}, {"*.txt"}, False, None, False),
+        ("/users/gorakhargosh/foobar.py", {"*.py"}, {"*.PY"}, False, None, ValueError),
+        # Relative matching with base_path
+        ("/users/gorakhargosh/foobar.py", {"*.py"}, set(), True, "/users/gorakhargosh", True),
+        ("/users/gorakhargosh/foobar.py", {"foobar.py"}, set(), True, "/users/gorakhargosh", True),
+        ("/users/gorakhargosh/sub/foobar.py", {"*.py"}, set(), True, "/users/gorakhargosh", False),
+        ("/users/gorakhargosh/sub/foobar.py", {"sub/*.py"}, set(), True, "/users/gorakhargosh", True),
+        ("/users/gorakhargosh/sub/foobar.py", {"**/*.py"}, set(), True, "/users/gorakhargosh", True),
+        ("/users/gorakhargosh/foobar.pyc", {"*.py"}, {"*.pyc"}, True, "/users/gorakhargosh", False),
+        # Character classes (e.g. [0-9])
+        ("/users/gorakhargosh/file3.py", {"**/file[0-9].py"}, set(), True, None, True),
+        ("/users/gorakhargosh/filea.py", {"**/file[0-9].py"}, set(), True, None, False),
+        # Literal brackets escaped using standard glob/fnmatch [[] syntax (see #991)
+        ("/users/gorakhargosh/[test].txt", {"**/[[]test].txt"}, set(), True, None, True),
+        ("/users/gorakhargosh/t.txt", {"**/[[]test].txt"}, set(), True, None, False),
+        # Literal brackets escaped using glob.escape()
+        ("/users/gorakhargosh/[test].txt", {f"**/{glob.escape('[test].txt')}"}, set(), True, None, True),
+        # Complex adjacent/nested brackets escaped using glob.escape()
+        ("/users/gorakhargosh/[[file]][][].txt", {f"**/{glob.escape('[[file]][][].txt')}"}, set(), True, None, True),
     ],
 )
-def test_match_path(raw_path, included_patterns, excluded_patterns, case_sensitive, expected):
+def test_match_path(
+    raw_path: str,
+    included_patterns: set[str],
+    excluded_patterns: set[str],
+    *,
+    case_sensitive: bool,
+    base_path: str | None,
+    expected: bool | type[ValueError],
+) -> None:
     if expected is ValueError:
         with pytest.raises(expected):
-            _match_path(raw_path, included_patterns, excluded_patterns, case_sensitive=case_sensitive)
+            _match_path(
+                raw_path,
+                included_patterns,
+                excluded_patterns,
+                case_sensitive=case_sensitive,
+                base_path=base_path,
+            )
     else:
-        assert _match_path(raw_path, included_patterns, excluded_patterns, case_sensitive=case_sensitive) is expected
+        assert (
+            _match_path(
+                raw_path,
+                included_patterns,
+                excluded_patterns,
+                case_sensitive=case_sensitive,
+                base_path=base_path,
+            )
+            is expected
+        )
 
 
 @pytest.mark.parametrize(

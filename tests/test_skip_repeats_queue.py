@@ -418,6 +418,28 @@ def test_lock_and_capacity_share_timeout(monkeypatch):
     assert q.get_nowait() == "first"
 
 
+@pytest.mark.skipif(not hasattr(queue.Queue, "shutdown"), reason="Queue.shutdown requires Python 3.13+")
+@pytest.mark.parametrize("maxsize", [0, 1])
+@pytest.mark.parametrize("immediate", [False, True])
+@pytest.mark.parametrize("method", ["put", "put_nowait"])
+@pytest.mark.parametrize("item", [None, "event"])
+def test_put_duplicate_after_shutdown(maxsize, immediate, method, item):
+    q = SkipRepeatsQueue(maxsize)
+    q.put(item)
+    q.shutdown(immediate=immediate)
+
+    with pytest.raises(queue.ShutDown):
+        getattr(q, method)(item)
+
+    assert q.qsize() == q.unfinished_tasks == (0 if immediate else 1)
+    if not immediate:
+        assert q.get_nowait() == item
+        q.task_done()
+    q.join()
+    with pytest.raises(queue.ShutDown):
+        q.get_nowait()
+
+
 def test_nonblocking_put_can_fail_on_producer_contention(monkeypatch):
     q = SkipRepeatsQueue(maxsize=2)
     lock = threading.Lock()
