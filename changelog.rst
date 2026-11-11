@@ -78,12 +78,7 @@ Changelog
 - [fsevents] Add support for the ``follow_symlink`` keyword argument. (`#1086 <https://github.com/gorakhargosh/watchdog/pull/1086>`__)
 - [fsevents] Support free-threading and give each emitter its own stream and run loop to prevent shutdown leaks. (`#1140 <https://github.com/gorakhargosh/watchdog/issues/1140>`__)
 - [fsevents] Use multi-phase initialization (PEP 489). (`#1108 <https://github.com/gorakhargosh/watchdog/issues/1108>`__)
-- [core] ``ObservedWatch`` equality now includes ``follow_symlink``, so scheduling a path a second time with a different ``follow_symlink`` value no longer collapses onto the first watch and silently drops the request. (`#1262 <https://github.com/gorakhargosh/watchdog/pull/1262>`__)
-- [core] ``dispatch_events()`` no longer re-adds a watch that ``unschedule()`` removed, which leaked one ``_handlers`` entry per watch that had an event in flight. (`#1261 <https://github.com/gorakhargosh/watchdog/pull/1261>`__)
-- [docs] ``FileSystemEvent`` no longer claims to be immutable; its fields stay writable and the hash is derived from them, so mutating an event held in a dict or set strands it there. (`#1240 <https://github.com/gorakhargosh/watchdog/issues/1240>`__)
-- [windows] A ``ReadDirectoryChangesW`` or ``ReadDirectoryChangesExW`` buffer overflow is now signalled instead of being silently dropped as zero events. (`#1019 <https://github.com/gorakhargosh/watchdog/issues/1019>`__)
-- [docs] Note that ``FileClosedEvent``, ``FileClosedNoWriteEvent`` and ``FileOpenedEvent``, and their ``on_closed()``, ``on_closed_no_write()`` and ``on_opened()`` handlers, are emitted only by ``InotifyObserver`` on Linux. (`#1235 <https://github.com/gorakhargosh/watchdog/pull/1235>`__)
-- [windows] Event file names are decoded as UTF-16LE, so a name starting with U+FEFF or U+FFFE no longer reports the wrong path. (`#1228 <https://github.com/gorakhargosh/watchdog/pull/1228>`__)
+- [windows] A rename whose ``RENAMED_OLD`` and ``RENAMED_NEW`` records arrive in different ``get_events()`` batches no longer emits a move event with an empty ``src_path``. (`#1286 <https://github.com/gorakhargosh/watchdog/pull/1286>`__)
 - [windows] Changing only the case of a name no longer emits a deletion event on top of the move event. (`#752 <https://github.com/gorakhargosh/watchdog/issues/752>`__)
 - [windows] Event file names are decoded as UTF-16LE, so a name starting with U+FEFF or U+FFFE no longer reports the wrong path. (`#1228 <https://github.com/gorakhargosh/watchdog/pull/1228>`__)
 - [windows] Fixed an unsynchronized access to ``WindowsApiEmitter._reader``: ``queue_events()`` now
