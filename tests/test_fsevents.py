@@ -789,3 +789,48 @@ def test_fsevents_negative_latency_is_rejected(p: P, latency: float) -> None:
     observer = FSEventsObserver(latency=latency)
     with pytest.raises(ValueError, match="latency must be a non-negative number"):
         observer.schedule(FileSystemEventHandler(), p(""), recursive=True)
+
+
+def test_fsevents_startup_dedup(p: P) -> None:
+    """FSEvents startup sync must not deliver a duplicate live creation for a catch-up file."""
+    watch_dir = p("")
+    race_file = p("race.txt")
+    created: list[tuple[str, bool]] = []
+    first_seen = threading.Event()
+    second_seen = threading.Event()
+    started_sync = threading.Event()
+    create_done = threading.Event()
+
+    class _Handler(FileSystemEventHandler):
+        def on_created(self, event: FileSystemEvent) -> None:
+            created.append((os.path.basename(os.fsdecode(event.src_path)), event.is_synthetic))
+            if len(created) == 1:
+                first_seen.set()
+            elif len(created) >= 2:
+                second_seen.set()
+
+    obs = FSEventsObserver(timeout=0.05, latency=0.25)
+    orig_start_sync = obs._start_sync  # noqa: SLF001
+
+    def gated_start_sync(watch: ObservedWatch) -> None:
+        # FSEventsEmitter.on_thread_start() already captured _starting_state before _start_sync;
+        # create race.txt now while kernel FSEvents buffers within latency=0.25s.
+        started_sync.set()
+        touch(race_file)
+        create_done.set()
+        orig_start_sync(watch)
+
+    obs._start_sync = gated_start_sync  # type: ignore[method-assign]  # noqa: SLF001
+    obs.schedule(_Handler(), watch_dir, recursive=False, emit_existing=True, ordered_startup=True)
+    obs.start()
+    try:
+        assert started_sync.wait(timeout=2.0)
+        assert create_done.wait(timeout=2.0)
+        assert first_seen.wait(timeout=2.0)
+        # Wait past FSEvents latency=0.25s so any un-drained live event would surface.
+        second_seen.wait(timeout=0.5)
+    finally:
+        obs.stop()
+        obs.join(timeout=2.0)
+
+    assert created == [("race.txt", True)]

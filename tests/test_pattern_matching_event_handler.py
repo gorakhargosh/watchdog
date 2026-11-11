@@ -313,3 +313,16 @@ def test_events_lost_ignores_patterns() -> None:
 
     assert events_collected == [EventsLostEvent("/path/project", is_directory=True)]
     assert any_events == []
+
+
+def test_bytes_watch_path() -> None:
+    events_collected: list[FileSystemEvent] = []
+    handler = PatternMatchingEventHandler(patterns=["*.txt"])
+    handler.on_created = events_collected.append
+
+    event = FileCreatedEvent(b"/path/test.txt")
+    event.watch_path = b"/path"
+    handler.dispatch(event)
+
+    assert len(events_collected) == 1
+    assert events_collected[0].src_path == b"/path/test.txt"

@@ -360,8 +360,12 @@ class FSEventsEmitter(EventEmitter):
             self._stream_started.set()
 
     def on_thread_start(self) -> None:
-        if self.suppress_history:
-            watch_path = os.fsdecode(self.watch.path) if isinstance(self.watch.path, bytes) else self.watch.path
+        if self.suppress_history or getattr(self.watch, "emit_existing", False):
+            watch_path = (
+                os.fsdecode(self._absolute_watch_path)
+                if isinstance(self.watch.path, bytes)
+                else self._absolute_watch_path
+            )
             self._starting_state = DirectorySnapshot(watch_path)
 
     def _encode_path(self, path: bytes | str) -> bytes | str:
@@ -396,6 +400,8 @@ class FSEventsObserver(BaseObserver):
         recursive: bool = False,
         follow_symlink: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
+        emit_existing: bool = False,
+        ordered_startup: bool = False,
     ) -> ObservedWatch:
         # Fix for issue #26: Trace/BPT error when given a unicode path
         # string. https://github.com/gorakhargosh/watchdog/issues#issue/26
@@ -403,5 +409,11 @@ class FSEventsObserver(BaseObserver):
             path = unicodedata.normalize("NFC", path)
 
         return super().schedule(
-            event_handler, path, recursive=recursive, follow_symlink=follow_symlink, event_filter=event_filter
+            event_handler,
+            path,
+            recursive=recursive,
+            follow_symlink=follow_symlink,
+            event_filter=event_filter,
+            emit_existing=emit_existing,
+            ordered_startup=ordered_startup,
         )

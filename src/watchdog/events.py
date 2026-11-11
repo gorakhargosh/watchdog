@@ -147,6 +147,9 @@ class FileSystemEvent:
     are presumed to have happened based on other, actual events.
     """
 
+    watch_path: bytes | str = field(default="", repr=False, compare=False)
+    """The root watch path associated with this event."""
+
 
 class FileSystemMovedEvent(FileSystemEvent):
     """File system event representing any kind of file system movement."""
@@ -482,6 +485,8 @@ class PathMatchingEventHandler(FileSystemEventHandler):
             return
 
         base_path = getattr(event, "watch_path", None)
+        if base_path is not None:
+            base_path = os.fsdecode(base_path)
 
         paths = []
         if event.dest_path:

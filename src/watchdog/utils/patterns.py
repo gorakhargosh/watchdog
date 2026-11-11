@@ -15,6 +15,7 @@ from __future__ import annotations
 #   - `PurePosixPath` is always case-sensitive.
 # Reference: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.match
 import contextlib
+import os
 import re
 from pathlib import PurePath, PurePosixPath, PureWindowsPath
 from typing import TYPE_CHECKING
@@ -80,7 +81,7 @@ def _match_path(
     paths = [path]
     if base_path:
         with contextlib.suppress(ValueError):
-            paths.append(path.relative_to(path_cls(base_path)))
+            paths.append(path.relative_to(path_cls(os.fsdecode(base_path))))
 
     return any(_full_match(p, pat) for p in paths for pat in included_patterns) and not any(
         _full_match(p, pat) for p in paths for pat in excluded_patterns
