@@ -3,6 +3,10 @@ linux:
   - "**/*inotify*"
   - "**/*statx*"
 
+# FreeBSD: BSD kqueue backend implementation and tests
+freebsd:
+  - "**/*kqueue*"
+
 # macOS: fsevents, kqueue, and C headers
 macos:
   - "**/*fsevents*"

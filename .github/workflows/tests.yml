@@ -42,6 +42,7 @@ jobs:
       examples: ${{ steps.filter.outputs.examples == 'true' }}
       macos: ${{ steps.filter.outputs.macos == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
       windows: ${{ steps.filter.outputs.windows == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      freebsd: ${{ steps.filter.outputs.freebsd == 'true' }}
       core: ${{ steps.filter.outputs.core }}
       watchmedo: ${{ steps.filter.outputs.watchmedo }}
       # Run only modified tests if PR touches tests only; otherwise run full test suite
@@ -165,3 +166,53 @@ jobs:
       runs-on: windows-latest
       python: ${{ matrix.python }}
       test_args: ${{ needs.changes.outputs.test_args }}
+
+  # FreeBSD test matrix: CPython 3.11 + free-threaded 3.13t (only on kqueue changes or manual dispatch).
+  # Note: tox and tox-uv are not used here because:
+  #   1. Astral does not publish pre-built FreeBSD wheels for `uv` on PyPI (pip install tox-uv
+  #      would attempt to compile uv from source with Rust/Cargo inside QEMU, adding 15+ mins).
+  #   2. Native `pkg install` provides pre-compiled binaries in seconds without venv overhead.
+  #   3. Standard tox does not natively discover FreeBSD's standalone `python3.13t` (free-threaded) interpreter.
+  freebsd:
+    name: FreeBSD (${{ matrix.python }})
+    needs: changes
+    if: needs.changes.outputs.freebsd == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Standard CPython baseline
+          - python: "3.11"
+            prepare: |
+              pkg update -f
+              pkg install -y python311
+            run: |
+              python3.11 -m ensurepip --upgrade
+              python3.11 -m pip install pytest
+              python3.11 -m pytest tests/test_kqueue.py -v
+
+          # Free-threaded (no-GIL) Python 3.13
+          - python: "3.13t"
+            prepare: |
+              pkg update -f
+              pkg install -y python313t
+            run: |
+              # Sanity check: confirm the interpreter is genuinely running with the GIL disabled (PEP 703)
+              python3.13t -c "import sys; assert not sys._is_gil_enabled(), 'GIL should be disabled'"
+              python3.13t -m ensurepip --upgrade
+              python3.13t -m pip install pytest
+              python3.13t -m pytest tests/test_kqueue.py -v
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Uses release: "14" to automatically boot the latest minor version of the FreeBSD 14 release line,
+      # which is the primary BSD target using KqueueObserver (FreeBSD 15+ has native inotify).
+      - name: Run kqueue tests in FreeBSD VM (${{ matrix.python }})
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14"
+          usesh: true
+          prepare: ${{ matrix.prepare }}
+          run: ${{ matrix.run }}

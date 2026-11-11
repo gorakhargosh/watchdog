@@ -2,7 +2,7 @@
 :synopsis: ``kqueue(2)`` based emitter implementation.
 :author: yesudeep@google.com (Yesudeep Mangalapilly)
 :author: Mickaël Schoentgen <contact@tiger-222.fr>
-:platforms: macOS and BSD with kqueue(2).
+:platforms: macOS and BSD (FreeBSD, OpenBSD, NetBSD) with kqueue(2).
 
 .. WARNING:: kqueue is a very heavyweight way to monitor file systems.
              Each kqueue-detected directory modification triggers
