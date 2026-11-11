@@ -142,6 +142,9 @@ class FileSystemEvent:
     are presumed to have happened based on other, actual events.
     """
 
+    watch_path: bytes | str = field(default="", repr=False, compare=False)
+    """The root watch path associated with this event."""
+
 
 class FileSystemMovedEvent(FileSystemEvent):
     """File system event representing any kind of file system movement."""

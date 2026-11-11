@@ -573,3 +573,50 @@ def test_observe_with():
     assert observer.start.call_count == 1
     assert observer.stop.call_count == 1
     assert observer.join.call_count == 1
+
+
+@pytest.mark.parametrize(
+    ("emit_existing", "ordered_startup", "expected_kwargs"),
+    [
+        (False, False, {"recursive": True}),
+        (True, False, {"recursive": True, "emit_existing": True}),
+        (True, True, {"recursive": True, "emit_existing": True, "ordered_startup": True}),
+    ],
+)
+def test_observe_with_sync_flags(
+    emit_existing: bool,  # noqa: FBT001
+    ordered_startup: bool,  # noqa: FBT001
+    expected_kwargs: dict[str, bool],
+) -> None:
+    observer = Mock(spec=BaseObserver)
+    handler = FileSystemEventHandler()
+    with patch("time.sleep", side_effect=WatchdogShutdownError):
+        watchmedo.observe_with(
+            observer,
+            handler,
+            ["/path/one"],
+            recursive=True,
+            emit_existing=emit_existing,
+            ordered_startup=ordered_startup,
+        )
+
+    observer.schedule.assert_called_once_with(handler, "/path/one", **expected_kwargs)
+
+
+@pytest.mark.parametrize(
+    "subcommand",
+    ["log", "shell-command", "auto-restart", "tricks-from"],
+)
+def test_cli_sync_flags_parsing(subcommand: str) -> None:
+    target = "tricks.yaml" if subcommand == "tricks-from" else "."
+    args_default = watchmedo.cli.parse_args([subcommand, target])
+    assert not args_default.emit_existing
+    assert not args_default.ordered_startup
+
+    args_enabled = watchmedo.cli.parse_args([subcommand, "--emit-existing", "--ordered-startup", target])
+    assert args_enabled.emit_existing
+    assert args_enabled.ordered_startup
+
+    args_short = watchmedo.cli.parse_args([subcommand, "-e", "-o", target])
+    assert args_short.emit_existing
+    assert args_short.ordered_startup

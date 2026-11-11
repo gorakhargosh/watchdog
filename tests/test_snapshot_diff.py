@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import errno
 import os
 import pickle
@@ -516,3 +517,131 @@ def test_hard_link_rename_has_no_duplicate_create_or_delete(p, ignore_device, so
     assert diff.files_moved == [(p(source), p(destination))]
     assert diff.files_deleted == []
     assert diff.files_created == []
+
+
+def test_snapshot_repeated_walk(p: Any) -> None:
+    """Repeated walk() calls on the same snapshot must still traverse nested subtrees."""
+    mkdir(p("sub", "deep"), parents=True)
+    touch(p("sub", "deep", "leaf.txt"))
+    has_loop = False
+    if not platform.is_windows():
+        try:
+            symlink(p(""), p("sub", "loop"), target_is_directory=True)
+            has_loop = True
+        except (OSError, NotImplementedError):
+            has_loop = False
+
+    snapshot = DirectorySnapshot(p(""), recursive=True)
+    first_walk = {os.path.normpath(os.fsdecode(path)) for path, _ in snapshot.walk(p(""))}
+    second_walk = {os.path.normpath(os.fsdecode(path)) for path, _ in snapshot.walk(p(""))}
+
+    expected = {
+        os.path.normpath(p("sub")),
+        os.path.normpath(p("sub", "deep")),
+        os.path.normpath(p("sub", "deep", "leaf.txt")),
+    }
+    if has_loop:
+        expected.add(os.path.normpath(p("sub", "loop")))
+
+    assert expected <= first_walk
+    assert expected <= second_walk
+    assert first_walk == second_walk
+
+
+def test_snapshot_walk_typeerror_propagates_without_rewalk(p: Any) -> None:
+    """A genuine TypeError raised during child stat must propagate without triggering a fallback re-walk."""
+    mkdir(p("sub"))
+    touch(p("sub", "a.txt"))
+    touch(p("sub", "b.txt"))
+
+    sub_dir = os.path.normpath(p("sub"))
+    sub_child_stat_calls: list[str] = []
+    seen_first: dict[str, str | None] = {"name": None}
+
+    def faulty_stat(path: str) -> os.stat_result:
+        st = os.stat(path)
+        if os.path.normpath(os.path.dirname(path)) == sub_dir:
+            name = os.path.basename(path)
+            sub_child_stat_calls.append(name)
+            if seen_first["name"] is None:
+                seen_first["name"] = name
+            elif name != seen_first["name"]:
+                msg = "unrelated TypeError raised while stat-ing child"
+                raise TypeError(msg)
+        return st
+
+    with pytest.raises(TypeError, match="unrelated TypeError"):
+        DirectorySnapshot(p(""), recursive=True, stat=faulty_stat)
+
+    first_name = seen_first["name"]
+    assert first_name is not None
+    assert sub_child_stat_calls.count(first_name) == 1
+
+
+def test_snapshot_walk_legacy_subclass(p: Any) -> None:
+    """Legacy subclasses overriding walk(self, root) without _visited_dirs must remain compatible."""
+    mkdir(p("sub", "deep"), parents=True)
+    touch(p("sub", "deep", "leaf.txt"))
+    seen_roots: list[str] = []
+
+    class LegacySnapshot(DirectorySnapshot):
+        def walk(self, root: str) -> Any:
+            seen_roots.append(os.path.normpath(os.fsdecode(root)))
+            yield from super().walk(root)
+
+    snapshot = LegacySnapshot(p(""), recursive=True)
+    expected = {p("sub"), p("sub", "deep"), p("sub", "deep", "leaf.txt")}
+    assert expected <= {os.fsdecode(path) for path in snapshot.paths}
+
+    explicit_walk = {os.fsdecode(path) for path, _ in snapshot.walk(p(""))}
+    assert expected <= explicit_walk
+    expected_dirs = {os.path.normpath(p("")), os.path.normpath(p("sub")), os.path.normpath(p("sub", "deep"))}
+    assert expected_dirs <= set(seen_roots)
+    assert seen_roots.count(os.path.normpath(p("sub"))) == 2
+
+
+def test_snapshot_zero_inode_traversal(p: Any) -> None:
+    """DirectorySnapshot must traverse nested dirs and handle cycles when st_ino == 0."""
+    mkdir(p("sub", "deep"), parents=True)
+    touch(p("sub", "deep", "leaf.txt"))
+    with contextlib.suppress(OSError):
+        os.symlink(p("sub"), p("sub", "loop"))
+
+    real_stat = os.stat
+
+    def zero_ino_stat(path: str) -> os.stat_result:
+        st = real_stat(path)
+        return os.stat_result(
+            (
+                st.st_mode,
+                0,
+                st.st_dev,
+                st.st_nlink,
+                st.st_uid,
+                st.st_gid,
+                st.st_size,
+                st.st_atime,
+                st.st_mtime,
+                st.st_ctime,
+            )
+        )
+
+    snapshot = DirectorySnapshot(p(""), recursive=True, stat=zero_ino_stat)
+    assert p("sub", "deep", "leaf.txt") in snapshot.paths
+
+
+def test_snapshot_child_stat_permission_error(p: Any) -> None:
+    """Unreadable child entry raising PermissionError must not abort DirectorySnapshot of siblings."""
+    touch(p("ok.txt"))
+    touch(p("denied.txt"))
+
+    real_stat = os.stat
+
+    def selective_stat(path: str) -> os.stat_result:
+        if os.path.basename(path) == "denied.txt":
+            raise PermissionError(errno.EACCES, "Permission denied", path)
+        return real_stat(path)
+
+    snapshot = DirectorySnapshot(p(""), recursive=True, stat=selective_stat)
+    assert p("ok.txt") in snapshot.paths
+    assert p("denied.txt") not in snapshot.paths

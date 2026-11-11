@@ -613,6 +613,8 @@ class InotifyObserver(BaseObserver):
         recursive: bool = False,
         event_filter: list[type[FileSystemEvent]] | None = None,
         follow_symlink: bool = False,
+        emit_existing: bool = False,
+        ordered_startup: bool = False,
     ) -> ObservedWatch:
         # Empty observers need neither a kernel instance nor a reader thread.
         # Allocate under the same lock as schedule/start so every emitter uses
@@ -629,6 +631,8 @@ class InotifyObserver(BaseObserver):
                 recursive=recursive,
                 event_filter=event_filter,
                 follow_symlink=follow_symlink,
+                emit_existing=emit_existing,
+                ordered_startup=ordered_startup,
             )
 
     def on_thread_stop(self) -> None:
