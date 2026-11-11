@@ -4,9 +4,9 @@ import select
 
 import pytest
 
-from watchdog.utils import platform
-
-if (not platform.is_bsd() and not platform.is_darwin()) or not hasattr(select, "KQ_NOTE_DELETE"):
+# Check for kqueue itself, not the platform name: FreeBSD 15+ reports as
+# Linux (it has inotify), but kqueue is still available there.
+if not hasattr(select, "kqueue") or not hasattr(select, "KQ_NOTE_DELETE"):
     pytest.skip(
         "kqueue (with KQ_NOTE_* constants) is not supported on this platform/interpreter.", allow_module_level=True
     )
