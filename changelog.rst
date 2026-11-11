@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [kqueue] Stop the emitter with a ``DirDeletedEvent`` when the watched directory is removed or moved, instead of letting its thread die with ``FileNotFoundError``. The kevents read in the same batch are still reported. (`#1436 <https://github.com/gorakhargosh/watchdog/issues/1436>`__, thanks to @karolyi)
 - [core] Allow pattern matching to evaluate relative paths against the watched root directory, supporting intuitive non-recursive patterns (e.g. ``*.json``, ``logs/*.log``) under ``full_match()``. (`#1430 <https://github.com/gorakhargosh/watchdog/issues/1430>`__ Thanks to @prateek-dagar)
 - [inotify] Properly format the duplicate-callback ``RuntimeWarning`` message. (`#1435 <https://github.com/gorakhargosh/watchdog/issues/1435>`__, thanks to @BoboTiG)
 - [inotify] Defer allocating an observer's inotify instance and reader thread until its first scheduled watch. Empty observers no longer consume inotify instances; resource-limit errors are raised by ``schedule()`` rather than construction. (`#1432 <https://github.com/gorakhargosh/watchdog/issues/1432>`__, thanks to @kushaldave002)
