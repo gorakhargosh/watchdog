@@ -21,7 +21,7 @@ from watchdog.events import (
     generate_sub_moved_events,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
-from watchdog.observers.winapi import DirectoryChangeReader
+from watchdog.observers.winapi import WATCHDOG_FILE_NOTIFY_FLAGS, DirectoryChangeReader, _require_notify_filter
 
 if TYPE_CHECKING:
     from watchdog.events import FileSystemEvent
@@ -35,6 +35,11 @@ logger = logging.getLogger(__name__)
 class WindowsApiEmitter(EventEmitter):
     """Windows API-based emitter that uses ``ReadDirectoryChangesW`` or
     ``ReadDirectoryChangesExW`` to detect file system changes for a watch.
+
+    :param notify_filter:
+        ``dwNotifyFilter`` bitmask for this watch. See :class:`WindowsApiObserver`.
+    :type notify_filter:
+        ``int``
     """
 
     def __init__(
@@ -44,8 +49,10 @@ class WindowsApiEmitter(EventEmitter):
         *,
         timeout: Seconds = DEFAULT_EMITTER_TIMEOUT,
         event_filter: list[type[FileSystemEvent]] | None = None,
+        notify_filter: int = WATCHDOG_FILE_NOTIFY_FLAGS,
     ) -> None:
         super().__init__(event_queue, watch, timeout=timeout, event_filter=event_filter)
+        self.notify_filter = _require_notify_filter(notify_filter)
         self._lock = threading.RLock()
         self._reader: DirectoryChangeReader | None = None
         # The two halves of a rename are not guaranteed to reach one
@@ -55,7 +62,11 @@ class WindowsApiEmitter(EventEmitter):
     def on_thread_start(self) -> None:
         with self._lock:
             assert self._reader is None
-            reader = DirectoryChangeReader(self.watch.path, recursive=self.watch.is_recursive)
+            reader = DirectoryChangeReader(
+                self.watch.path,
+                recursive=self.watch.is_recursive,
+                notify_filter=self.notify_filter,
+            )
             self._reader = reader
         reader.start()
 
@@ -125,7 +136,34 @@ class WindowsApiEmitter(EventEmitter):
 class WindowsApiObserver(BaseObserver):
     """Observer thread that schedules watching directories and dispatches
     calls to event handlers.
+
+    :param timeout:
+        Timeout for the observer to wait on events.
+    :type timeout:
+        ``Seconds``
+    :param notify_filter:
+        ``dwNotifyFilter`` bitmask passed to ``ReadDirectoryChangesW`` and
+        ``ReadDirectoryChangesExW`` for every watch this observer creates.
+        Combine the ``FILE_NOTIFY_CHANGE_*`` constants in
+        :mod:`watchdog.observers.winapi`. Defaults to
+        :data:`~watchdog.observers.winapi.WATCHDOG_FILE_NOTIFY_FLAGS`, which
+        includes ``FILE_NOTIFY_CHANGE_LAST_ACCESS``. Access-time updates can
+        be far more frequent than content changes; mask that flag out when
+        they are not useful, for example
+        ``WATCHDOG_FILE_NOTIFY_FLAGS & ~FILE_NOTIFY_CHANGE_LAST_ACCESS``.
+        Watches that need different masks belong on different observers.
+    :type notify_filter:
+        ``int``
     """
 
-    def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
-        super().__init__(WindowsApiEmitter, timeout=timeout)
+    def __init__(
+        self,
+        *,
+        timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT,
+        notify_filter: int = WATCHDOG_FILE_NOTIFY_FLAGS,
+    ) -> None:
+        super().__init__(
+            WindowsApiEmitter,
+            timeout=timeout,
+            notify_filter=_require_notify_filter(notify_filter),
+        )

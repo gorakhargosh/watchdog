@@ -18,6 +18,7 @@ Changelog
 - [observers] Fix race condition between ``Observer.start()`` and ``Observer.schedule()``, and release observer lock during event handler dispatch to prevent blocking concurrent ``schedule()`` and ``unschedule()`` calls. (`#1044 <https://github.com/gorakhargosh/watchdog/issues/1044>`__, thanks to @prateek-dagar)
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 - [windows] A ``ReadDirectoryChangesW`` or ``ReadDirectoryChangesExW`` buffer overflow is now signalled instead of being silently dropped as zero events. (`#1019 <https://github.com/gorakhargosh/watchdog/issues/1019>`__, thanks to @MohammedAlkindi)
+- [windows] ``WindowsApiObserver``, ``WindowsApiEmitter``, and ``DirectoryChangeReader`` accept a ``notify_filter`` bitmask, the ``dwNotifyFilter`` passed to ``ReadDirectoryChangesW`` and ``ReadDirectoryChangesExW``. The default is still ``WATCHDOG_FILE_NOTIFY_FLAGS``, including ``FILE_NOTIFY_CHANGE_LAST_ACCESS``. Mask that flag out (``WATCHDOG_FILE_NOTIFY_FLAGS & ~FILE_NOTIFY_CHANGE_LAST_ACCESS``) when access-time updates are not useful.
 
 7.1.0
 ~~~~~
