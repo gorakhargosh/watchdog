@@ -95,6 +95,7 @@ try:
         print("SKIP: could not exhaust inotify instances with descriptors reserved for imports")
         sys.exit(77)
 
+    from watchdog.events import FileSystemEventHandler
     from watchdog.observers.polling import PollingObserver
     import watchdog.observers
     from watchdog.observers.inotify import InotifyObserver
@@ -104,13 +105,13 @@ try:
     assert InotifyFD._instance is None
     assert not PollingObserver().is_alive()
     try:
-        InotifyObserver()
+        InotifyObserver().schedule(FileSystemEventHandler(), ".")
     except OSError as error:
         assert error.errno == errno.EMFILE, error
         assert "inotify instance limit reached" in str(error), error
     else:
-        raise AssertionError("InotifyObserver did not raise OSError")
-    print("imports succeeded; InotifyObserver raised EMFILE")
+        raise AssertionError("InotifyObserver.schedule did not raise OSError")
+    print("imports succeeded; InotifyObserver.schedule raised EMFILE")
 finally:
     for fd in fds:
         os.close(fd)
@@ -123,7 +124,7 @@ finally:
     if result.returncode == 77 and result.stdout.startswith("SKIP: "):
         pytest.skip(result.stdout.strip())
     assert result.returncode == 0, (result.stdout, result.stderr)
-    assert result.stdout.strip() == "imports succeeded; InotifyObserver raised EMFILE"
+    assert result.stdout.strip() == "imports succeeded; InotifyObserver.schedule raised EMFILE"
 
 
 def struct_inotify(wd, mask, cookie=0, length=0, name=b"") -> bytes:
