@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ctypes
 import os
 import os.path
 import stat
 import struct
 import threading
+from ctypes.wintypes import DWORD
 from queue import Empty, Queue
 from time import sleep
 from typing import TYPE_CHECKING
@@ -25,6 +27,7 @@ if not platform.is_windows():
 if TYPE_CHECKING:
     from typing import Self
 
+from watchdog.observers import winapi
 from watchdog.observers.read_directory_changes import WindowsApiEmitter
 from watchdog.observers.winapi import (
     FILE_ACTION_CREATED,
@@ -217,6 +220,37 @@ def test_queue_events_locks_reader_access():
     emitter.queue_events(0)
 
     assert locked.is_set()
+
+
+@pytest.mark.parametrize("extended", [False, True])
+def test_read_directory_changes_overflow(monkeypatch, extended):
+    """ReadDirectoryChangesW() and ReadDirectoryChangesExW() both signal a buffer
+    overflow by succeeding while leaving the bytes-returned out-param at zero
+    (see #1019). Left unhandled, that reads as "zero events", so file system
+    changes get lost silently. _run_inner() must recognize this and synthesize an
+    overflow event in the record layout the reader is actually reading.
+    """
+
+    def fake_read_directory_changes(*args, **kwargs):
+        # Simulate a successful call that reports zero bytes returned: the
+        # real signature writes into nbytes via an out-param, so simply not
+        # touching it (it starts at zero) reproduces the overflow condition.
+        return True
+
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesW", fake_read_directory_changes)
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesExW", fake_read_directory_changes)
+
+    reader = DirectoryChangeReader(temp_dir, recursive=False)
+    reader._extended = extended  # noqa: SLF001
+    event_buffer = ctypes.create_string_buffer(1024)
+    nbytes = DWORD()
+
+    reader._run_inner(1, event_buffer, nbytes)  # noqa: SLF001
+
+    events = reader.get_events(0)
+    assert len(events) == 1
+    assert events[0].is_overflow
+    assert events[0].src_path == "."
 
 
 def test_drop_case_only_rename_deletions():

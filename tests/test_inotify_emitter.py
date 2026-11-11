@@ -27,10 +27,32 @@ def test_observer_does_not_initialize_shared_inotify_fd(monkeypatch):
         observer.stop()
 
 
-def test_observers_have_independent_inotify_fds():
+@pytest.mark.parametrize("running", [False, True])
+def test_empty_observers_do_not_allocate_inotify_resources(monkeypatch, running):
+    def unexpected_allocation():
+        raise AssertionError("An observer without watches must not allocate an inotify instance")
+
+    monkeypatch.setattr(InotifyFD, "_create_inotify_fd", staticmethod(unexpected_allocation))
+    observers = []
+    try:
+        for _ in range(5):
+            observer = InotifyObserver()
+            observers.append(observer)
+            if running:
+                observer.start()
+    finally:
+        for observer in observers:
+            observer.stop()
+            if observer.is_alive():
+                observer.join(timeout=5)
+
+
+def test_observers_have_independent_inotify_fds(tmp_path):
     observers = []
     try:
         observers.extend(InotifyObserver() for _ in range(2))
+        for observer in observers:
+            observer.schedule(FileSystemEventHandler(), tmp_path)
 
         first, second = (observer._inotify_fd for observer in observers)  # noqa: SLF001
         assert first is not second
@@ -140,6 +162,7 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         watched.mkdir()
 
     observer = InotifyObserver()
+    observer.schedule(Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileDeletedEvent])
     inotify_fd = observer._inotify_fd  # noqa: SLF001
     add_callback = inotify_fd.add_callback
     registration_attempted = Event()
@@ -151,7 +174,6 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         return add_callback(path, *args, **kwargs)
 
     monkeypatch.setattr(inotify_fd, "add_callback", add_callback_with_error)
-    observer.schedule(Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileDeletedEvent])
     try:
         observer.start()
         if create_after_start:

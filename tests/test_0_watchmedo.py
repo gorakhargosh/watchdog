@@ -332,19 +332,7 @@ def test_auto_restart_negative_debounce_interval():
 
 
 @pytest.mark.flaky(max_runs=5, min_passes=1)
-@pytest.mark.parametrize(
-    "restart_on_command_exit",
-    [
-        True,
-        pytest.param(
-            False,
-            marks=pytest.mark.xfail(
-                condition=platform.is_darwin() or platform.is_windows(),
-                reason="known to be problematic, see #972",
-            ),
-        ),
-    ],
-)
+@pytest.mark.parametrize("restart_on_command_exit", [True, False])
 def test_auto_restart_subprocess_termination(tmpdir, capfd, restart_on_command_exit):
     """Run auto-restart with a script that terminates in about 2 seconds.
 

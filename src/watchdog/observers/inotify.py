@@ -89,6 +89,7 @@ from watchdog.events import (
     FileMovedEvent,
     FileOpenedEvent,
     FileSystemEvent,
+    FileSystemEventHandler,
     generate_sub_created_events,
     generate_sub_moved_events,
 )
@@ -110,6 +111,8 @@ from watchdog.observers.inotify_move_event_grouper import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from watchdog.observers.api import EventQueue, ObservedWatch
     from watchdog.utils import Seconds
 
@@ -695,15 +698,44 @@ class InotifyFullEmitter(InotifyEmitter):
 class InotifyObserver(BaseObserver):
     """Observer thread that schedules watching directories and dispatches
     calls to event handlers.
+
+    The inotify reader is allocated on the first scheduled watch. Kernel
+    resource-limit errors are therefore raised by :meth:`schedule`.
     """
 
     def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT, generate_full_events: bool = False) -> None:
-        self._inotify_fd = InotifyFD()
-        self._inotify_fd.start()
+        self._inotify_fd: InotifyFD | None = None
         cls = InotifyFullEmitter if generate_full_events else InotifyEmitter
-        super().__init__(cls, timeout=timeout, inotify_fd=self._inotify_fd)
+        super().__init__(cls, timeout=timeout)
+
+    def schedule(
+        self,
+        event_handler: FileSystemEventHandler,
+        path: str | Path,
+        *,
+        recursive: bool = False,
+        event_filter: list[type[FileSystemEvent]] | None = None,
+        follow_symlink: bool = False,
+    ) -> ObservedWatch:
+        # Empty observers need neither a kernel instance nor a reader thread.
+        # Allocate under the same lock as schedule/start so every emitter uses
+        # exactly one independent reader, including when watches are added concurrently.
+        with self._lock:
+            if self._inotify_fd is None:
+                inotify_fd = InotifyFD()
+                inotify_fd.start()
+                self._inotify_fd = inotify_fd
+                self._emitter_kwargs["inotify_fd"] = inotify_fd
+            return super().schedule(
+                event_handler,
+                path,
+                recursive=recursive,
+                event_filter=event_filter,
+                follow_symlink=follow_symlink,
+            )
 
     def on_thread_stop(self) -> None:
         super().on_thread_stop()
-        self._inotify_fd.stop()
-        self._inotify_fd.join()
+        if self._inotify_fd is not None:
+            self._inotify_fd.stop()
+            self._inotify_fd.join()
