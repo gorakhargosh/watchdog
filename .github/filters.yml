@@ -9,6 +9,11 @@ macos:
   - "**/*kqueue*"
   - "src/pythoncapi_compat.h"
 
+# FreeBSD: kqueue (14.x) and inotify (15.x) backends
+freebsd:
+  - "**/*kqueue*"
+  - "**/*inotify*"
+
 # Packaging: build configurations, distribution manifests, and setup metadata
 packaging:
   - "setup.py"
