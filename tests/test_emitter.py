@@ -55,9 +55,10 @@ def test_create(
             if not platform.is_windows():
                 ec.add(DirModifiedEvent, ".")
             if platform.is_linux():
+                # inotify reports the close as another directory modification;
+                # kqueue has no open or close events.
                 ec.add(FileOpenedEvent, "a")
                 ec.add(FileClosedEvent, "a")
-            if not platform.is_windows():
                 ec.add(DirModifiedEvent, ".")
 
 
@@ -97,6 +98,7 @@ def test_create_wrong_encoding(
         ec.add(FileCreatedEvent, filename)
         if not platform.is_windows():
             ec.add(DirModifiedEvent, ".")
+        if platform.is_linux():
             ec.add(FileOpenedEvent, filename)
             ec.add(FileClosedEvent, filename)
             ec.add(DirModifiedEvent, ".")
@@ -136,8 +138,8 @@ def test_modify(
 
         if platform.is_linux():
             ec.add(FileClosedEvent, "a")
-
-        if not platform.is_windows() and not platform.is_darwin():
+            # From the close. Writing to an existing file does not modify its
+            # directory, so kqueue reports nothing for it.
             ec.add(DirModifiedEvent, ".")
 
 
@@ -152,6 +154,11 @@ def test_touch(p: P, event_queue: TestEventQueue, start_watching: StartWatching,
     with events_checker() as ec:
         if platform.is_linux():
             ec.add(FileOpenedEvent, "a")
+
+        if platform.is_bsd():
+            # utime() changes st_mtime, so the snapshot diff reports the file as
+            # modified, and the NOTE_ATTRIB kevent adds the attrib event.
+            ec.add(FileModifiedEvent, "a")
 
         ec.add(FileAttribEvent, "a")
 
@@ -234,8 +241,9 @@ def test_case_change(
 
     with events_checker() as ec:
         ec.add(FileMovedEvent, "other", dest_path="OTHER")
-        if platform.is_linux():
+        if platform.is_linux() or platform.is_bsd():
             ec.add(DirModifiedEvent, ".")
+        if platform.is_linux():
             ec.add(DirModifiedEvent, ".")
 
     # In place, a directory.
@@ -243,8 +251,9 @@ def test_case_change(
 
     with events_checker() as ec:
         ec.add(DirMovedEvent, "subdir", dest_path="SUBDIR")
-        if platform.is_linux():
+        if platform.is_linux() or platform.is_bsd():
             ec.add(DirModifiedEvent, ".")
+        if platform.is_linux():
             ec.add(DirModifiedEvent, ".")
 
     # In place, a subfolder one level down.
@@ -254,7 +263,7 @@ def test_case_change(
         if platform.is_windows():
             ec.add(DirModifiedEvent, "dir1")
         ec.add(DirMovedEvent, "dir1/sub", dest_path="dir1/SUB")
-        if platform.is_windows() or platform.is_linux():
+        if not platform.is_darwin():
             ec.add(DirModifiedEvent, "dir1")
         if platform.is_linux():
             ec.add(DirModifiedEvent, "dir1")
@@ -372,7 +381,16 @@ def test_separate_consecutive_moves(
     mv(p("b"), p("dir1", "d"))
 
     with events_checker() as ec:
-        if not platform.is_windows():
+        if platform.is_bsd():
+            # kqueue reports the two moves in one batch or in two, depending on
+            # timing. In one batch, the creation (from the snapshot diff) comes
+            # before the deletion (from the kevent), and dir1 is reported once.
+            ec.ignore_order()
+            ec.allow_extra_events()
+            ec.add(FileDeletedEvent, "dir1/a")
+            ec.add(FileCreatedEvent, "dir1/d")
+            ec.add(DirModifiedEvent, "dir1")
+        elif not platform.is_windows():
             ec.add(FileDeletedEvent, "dir1/a")
             ec.add(DirModifiedEvent, "dir1")
             ec.add(FileCreatedEvent, "dir1/d")
@@ -461,16 +479,13 @@ def test_recursive_on(
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
 
+            # On BSD, the utime() happens before the new file has its own
+            # kevent, so there is no attrib event.
             if platform.is_linux():
                 ec.add(FileOpenedEvent, "dir1/dir2/dir3/a")
-
-            if not platform.is_bsd():
                 ec.add(FileAttribEvent, "dir1/dir2/dir3/a")
-
-            if platform.is_linux():
                 ec.add(FileClosedEvent, "dir1/dir2/dir3/a")
-
-            ec.add(DirModifiedEvent, "dir1/dir2/dir3")
+                ec.add(DirModifiedEvent, "dir1/dir2/dir3")
 
 
 def check_empty_queue(event_queue: TestEventQueue) -> None:
@@ -505,9 +520,9 @@ def test_recursive_off(
             ec.add(FileCreatedEvent, "b")
             if not platform.is_windows():
                 ec.add(DirModifiedEvent, ".")
-                if platform.is_linux():
-                    ec.add(FileOpenedEvent, "b")
-                    ec.add(FileClosedEvent, "b")
+            if platform.is_linux():
+                ec.add(FileOpenedEvent, "b")
+                ec.add(FileClosedEvent, "b")
                 ec.add(DirModifiedEvent, ".")
 
     # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
@@ -561,15 +576,19 @@ def test_renaming_top_level_directory(
         else:
             ec.add(DirMovedEvent, "a", dest_path="a2")
             ec.add(DirModifiedEvent, ".")
-            ec.add(DirModifiedEvent, ".")
+            if not platform.is_bsd():
+                # The source and destination parents are both ".". kqueue
+                # reports it once.
+                ec.add(DirModifiedEvent, ".")
             ec.add(DirMovedEvent, "a/b", dest_path="a2/b")
 
     open(p("a2", "b", "c"), "a").close()
 
     with events_checker() as ec:
         ec.add(FileCreatedEvent, "a2/b/c")
-        if platform.is_linux():
+        if platform.is_linux() or platform.is_bsd():
             ec.add(DirModifiedEvent, "a2/b")
+        if platform.is_linux():
             ec.add(FileOpenedEvent, "a2/b/c")
             ec.add(FileClosedEvent, "a2/b/c")
             ec.add(DirModifiedEvent, "a2/b")
@@ -599,6 +618,9 @@ def test_move_nested_subdirectories(
     with events_checker() as ec:
         if platform.is_linux():
             ec.add(FileOpenedEvent, "dir2/dir3/a")
+        if platform.is_bsd():
+            # As in test_touch: the snapshot diff sees the new st_mtime.
+            ec.add(FileModifiedEvent, "dir2/dir3/a")
         ec.add(FileAttribEvent, "dir2/dir3/a")
         if platform.is_linux():
             ec.add(FileClosedEvent, "dir2/dir3/a")

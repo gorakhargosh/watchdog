@@ -641,17 +641,29 @@ class KqueueEmitter(EventEmitter):
                 self._snapshot = new_snapshot
                 diff_events = new_snapshot - ref_snapshot
 
+                # The same change can be reported more than once in a batch: a
+                # rename yields DirModifiedEvents for both parents, and the
+                # parents' own kevents yield them again; a write shows up both
+                # in the snapshot diff and in the file's kevent. Queue each
+                # event once per batch.
+                queued: set[FileSystemEvent] = set()
+
+                def queue_once(event: FileSystemEvent) -> None:
+                    if event not in queued:
+                        queued.add(event)
+                        self.queue_event(event)
+
                 # Process events
                 for directory_created in diff_events.dirs_created:
-                    self.queue_event(DirCreatedEvent(directory_created))
+                    queue_once(DirCreatedEvent(directory_created))
                 for file_created in diff_events.files_created:
-                    self.queue_event(FileCreatedEvent(file_created))
+                    queue_once(FileCreatedEvent(file_created))
                 for file_modified in diff_events.files_modified:
-                    self.queue_event(FileModifiedEvent(file_modified))
+                    queue_once(FileModifiedEvent(file_modified))
 
                 for kev in event_list:
                     for event in self._gen_kqueue_events(kev, ref_snapshot, new_snapshot):
-                        self.queue_event(event)
+                        queue_once(event)
 
             except OSError as e:
                 if e.errno != errno.EBADF:
