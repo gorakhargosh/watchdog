@@ -446,7 +446,7 @@ class InotifyFD(BaseThread):
         watch = self._get_or_create_watch(path, mask)
 
         if id_ in watch.callbacks:
-            msg = f"Callback with id '{id_}' already exists for watch {watch.short_str}. It will be Overwritten."
+            msg = f"Callback with id '{id_}' already exists for watch {watch.short_str()}, it will be overwritten."
             warnings.warn(msg, RuntimeWarning, stacklevel=3)
         watch.callbacks[id_] = callback
         return watch.wd
@@ -489,7 +489,10 @@ class InotifyFD(BaseThread):
             return
 
         if watch.callbacks.pop(id_, None) is None:
-            msg = f"Callback with id '{id_}' does not exist for watch {watch.short_str} and therefore cannot be removed"
+            msg = (
+                f"Callback with id '{id_}' does not exist for watch {watch.short_str()}"
+                ", and therefore cannot be removed."
+            )
             warnings.warn(msg, RuntimeWarning, stacklevel=3)
 
         if not watch.is_used:

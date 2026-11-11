@@ -34,10 +34,26 @@ from watchdog.observers.inotify_c import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from .utils import Helper, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+class Callback:
+    overflow_count = 0
+    event_count = 0
+
+    def on_event(self, event) -> None:
+        self.event_count += 1
+
+    def on_watch_deleted(self, wd) -> None:
+        pass
+
+    def on_queue_overflow(self) -> None:
+        self.overflow_count += 1
 
 
 def test_inotify_fd_instances_are_independent() -> None:
@@ -331,19 +347,6 @@ def test_read_events_preserves_queue_overflow() -> None:
 
 
 def test_queue_overflow_notifies_each_callback_once(caplog) -> None:
-    class Callback:
-        overflow_count = 0
-        event_count = 0
-
-        def on_event(self, event) -> None:
-            self.event_count += 1
-
-        def on_watch_deleted(self, wd) -> None:
-            pass
-
-        def on_queue_overflow(self) -> None:
-            self.overflow_count += 1
-
     callback = Callback()
     watch_a = Watch(WatchDescriptor(1), Mask(0), b"a")
     watch_b = Watch(WatchDescriptor(2), Mask(0), b"b")
@@ -401,3 +404,20 @@ def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watc
                 inotify_fd.stop()
                 inotify_fd.join(5)
                 assert not inotify_fd.is_alive()
+
+
+def test_add_callback_warn_on_duplicate(tmp_path: Path) -> None:
+    path = os.fsencode(tmp_path)
+    inotify_fd = InotifyFD()
+    args = (path, InotifyConstants.IN_ACCESS, Callback(), CallbackId(1))
+
+    # First call is OK
+    inotify_fd.add_callback(*args)
+
+    # The second must fire a warning
+    error = (
+        f"Callback with id '{args[-1]}' already exists for watch <Watch: wd={args[-1]}, mask=IN_ACCESS,"
+        f" _initial_creation_path={args[0]}>, it will be overwritten."
+    )
+    with pytest.warns(RuntimeWarning, match=error):
+        inotify_fd.add_callback(*args)
