@@ -198,8 +198,13 @@ jobs:
           prepare: |
             pkg install -y python311
           # tox-uv is not used here: uv publishes no FreeBSD wheels.
+          # The inotify exhaustion test uses up the per-user inotify instance
+          # limit (vfs.inotify.max_user_instances), which makes parallel workers
+          # fail with EMFILE, so it runs on its own after the parallel run.
           run: |
             set -e
             python3.11 -m venv /tmp/venv
             /tmp/venv/bin/python -m pip install -q -r requirements-tests.txt -e '.[watchmedo]'
-            /tmp/venv/bin/python -m pytest -n auto $TEST_ARGS
+            /tmp/venv/bin/python -m pytest -n auto \
+              --deselect tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances $TEST_ARGS
+            /tmp/venv/bin/python -m pytest tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances
