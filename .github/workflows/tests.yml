@@ -207,4 +207,8 @@ jobs:
             /tmp/venv/bin/python -m pip install -q -r requirements-tests.txt -e '.[watchmedo]'
             /tmp/venv/bin/python -m pytest -n auto \
               --deselect tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances $TEST_ARGS
-            /tmp/venv/bin/python -m pytest tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances
+            # 14.x has no inotify: the module is skipped there, and selecting a test
+            # in a skipped module makes pytest exit non-zero, so run it on 15.x only.
+            if [ "${{ matrix.release }}" != "14" ]; then
+              /tmp/venv/bin/python -m pytest tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances
+            fi
