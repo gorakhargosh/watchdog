@@ -380,17 +380,28 @@ def test_separate_consecutive_moves(
     mv(p("dir1", "a"), p("c"))
     mv(p("b"), p("dir1", "d"))
 
+    if platform.is_bsd():
+        # kqueue spreads these events over one to three wakeups, depending on
+        # timing, and reports dir1 as modified once per wakeup. Within a wakeup,
+        # a creation (from the snapshot diff) comes before a deletion (from the
+        # kevent). So check the events, but not their order or how often dir1
+        # is reported.
+        found = []
+        while True:
+            try:
+                found.append(event_queue.get(timeout=2)[0])
+            except Empty:
+                break
+        dir1_modified = DirModifiedEvent(p("dir1"))
+        assert dir1_modified in found
+        others = [event for event in found if event != dir1_modified]
+        assert sorted(others, key=repr) == sorted(
+            [FileDeletedEvent(p("dir1", "a")), FileCreatedEvent(p("dir1", "d"))], key=repr
+        )
+        return
+
     with events_checker() as ec:
-        if platform.is_bsd():
-            # kqueue reports the two moves in one batch or in two, depending on
-            # timing. In one batch, the creation (from the snapshot diff) comes
-            # before the deletion (from the kevent), and dir1 is reported once.
-            ec.ignore_order()
-            ec.allow_extra_events()
-            ec.add(FileDeletedEvent, "dir1/a")
-            ec.add(FileCreatedEvent, "dir1/d")
-            ec.add(DirModifiedEvent, "dir1")
-        elif not platform.is_windows():
+        if not platform.is_windows():
             ec.add(FileDeletedEvent, "dir1/a")
             ec.add(DirModifiedEvent, "dir1")
             ec.add(FileCreatedEvent, "dir1/d")
@@ -479,8 +490,10 @@ def test_recursive_on(
             ec.add(FileCreatedEvent, "dir1/dir2/dir3/a")
             ec.add(DirModifiedEvent, "dir1/dir2/dir3")
 
-            # On BSD, the utime() happens before the new file has its own
-            # kevent, so there is no attrib event.
+            # inotify reports the open, the utime() and the close. kqueue only
+            # sees the creation: the emitter registers a kevent for the new file
+            # after the next wakeup, and touch() runs utime() right after the
+            # create, long before that.
             if platform.is_linux():
                 ec.add(FileOpenedEvent, "dir1/dir2/dir3/a")
                 ec.add(FileAttribEvent, "dir1/dir2/dir3/a")

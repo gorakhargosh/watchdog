@@ -641,17 +641,7 @@ class KqueueEmitter(EventEmitter):
                 self._snapshot = new_snapshot
                 diff_events = new_snapshot - ref_snapshot
 
-                # The same change can be reported more than once in a batch: a
-                # rename yields DirModifiedEvents for both parents, and the
-                # parents' own kevents yield them again; a write shows up both
-                # in the snapshot diff and in the file's kevent. Queue each
-                # event once per batch.
-                queued: set[FileSystemEvent] = set()
-
-                def queue_once(event: FileSystemEvent) -> None:
-                    if event not in queued:
-                        queued.add(event)
-                        self.queue_event(event)
+                queue_once = self._batch_queuer()
 
                 # Process events
                 for directory_created in diff_events.dirs_created:
@@ -669,6 +659,23 @@ class KqueueEmitter(EventEmitter):
                 if e.errno != errno.EBADF:
                     raise
 
+    def _batch_queuer(self) -> Callable[[FileSystemEvent], None]:
+        """Returns a function that queues each event once, for one kqueue wakeup.
+
+        The same change can be reported more than once in a wakeup: a rename
+        yields DirModifiedEvents for both parents, and the parents' own kevents
+        yield them again; a write shows up both in the snapshot diff and in the
+        file's kevent.
+        """
+        queued: set[FileSystemEvent] = set()
+
+        def queue_once(event: FileSystemEvent) -> None:
+            if event not in queued:
+                queued.add(event)
+                self.queue_event(event)
+
+        return queue_once
+
     def _queue_watched_dir_deleted(self, event_list: list[select.kevent]) -> None:
         """Handles the watched directory being deleted or moved away.
 
@@ -683,14 +690,15 @@ class KqueueEmitter(EventEmitter):
         ref_snapshot = self._snapshot
         empty_snapshot = EmptyDirectorySnapshot()
         self._snapshot = empty_snapshot
+        queue_once = self._batch_queuer()
         for kev in event_list:
             descriptor = self._descriptors.get_for_fd(kev.ident)
             if descriptor.path == watched_path and (is_renamed(kev) or is_deleted(kev)):
                 # Reported once below, as a deletion of the watched directory.
                 continue
             for event in self._gen_kqueue_events(kev, ref_snapshot, empty_snapshot):
-                self.queue_event(event)
-        self.queue_event(DirDeletedEvent(self.watch.path))
+                queue_once(event)
+        queue_once(DirDeletedEvent(self.watch.path))
         self.stop()
 
     def on_thread_stop(self) -> None:

@@ -147,10 +147,6 @@ class _EventsChecker:
         """Allow events not specified by add()."""
         self._allow_extra = True
 
-    def ignore_order(self) -> None:
-        """Accept the expected events in any order."""
-        self._validate_order = False
-
     def _debug(self, *args: Any) -> None:
         if self._verbose:
             print(" == events checker == ", *args)  # noqa: T201
