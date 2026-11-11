@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [kqueue] Stop the emitter with a ``DirDeletedEvent`` when the watched directory is removed or moved, instead of letting its thread die with ``FileNotFoundError``. The kevents read in the same batch are still reported. (`#1436 <https://github.com/gorakhargosh/watchdog/issues/1436>`__, thanks to @karolyi)
 - [core] Allow pattern matching to evaluate relative paths against the watched root directory, supporting intuitive non-recursive patterns (e.g. ``*.json``, ``logs/*.log``) under ``full_match()``. (`#1430 <https://github.com/gorakhargosh/watchdog/issues/1430>`__ Thanks to @prateek-dagar)
 - [dirsnapshot] Avoid duplicate create or delete events when a renamed file has another hard link in the watched directory. (`#1425 <https://github.com/gorakhargosh/watchdog/issues/1425>`__, thanks to @parijat1222q)
 - [inotify] Properly format the duplicate-callback ``RuntimeWarning`` message. (`#1435 <https://github.com/gorakhargosh/watchdog/issues/1435>`__, thanks to @BoboTiG)
