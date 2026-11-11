@@ -15,19 +15,132 @@ import os
 import resource
 import select
 import struct
+import subprocess
+import sys
 import threading
 import time
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
-from watchdog.observers.inotify_c import InotifyConstants, InotifyEvent, InotifyFD, WatchDescriptor
+from watchdog.observers.inotify_c import (
+    CallbackId,
+    InotifyConstants,
+    InotifyEvent,
+    InotifyFD,
+    Mask,
+    Watch,
+    WatchDescriptor,
+)
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from .utils import Helper, P, StartWatching, TestEventQueue
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+class Callback:
+    overflow_count = 0
+    event_count = 0
+
+    def on_event(self, event) -> None:
+        self.event_count += 1
+
+    def on_watch_deleted(self, wd) -> None:
+        pass
+
+    def on_queue_overflow(self) -> None:
+        self.overflow_count += 1
+
+
+def test_inotify_fd_instances_are_independent() -> None:
+    inotify_fds = []
+    try:
+        for _ in range(2):
+            inotify_fd = InotifyFD()
+            inotify_fds.append(inotify_fd)
+            inotify_fd.start()
+
+        first, second = inotify_fds
+        assert first is not second
+        assert first._inotify_fd != second._inotify_fd  # noqa: SLF001
+        assert all(inotify_fd.is_alive() for inotify_fd in inotify_fds)
+    finally:
+        for inotify_fd in inotify_fds:
+            inotify_fd.stop()
+        for inotify_fd in inotify_fds:
+            inotify_fd.join(timeout=5)
+        assert all(not inotify_fd.is_alive() for inotify_fd in inotify_fds)
+
+
+def test_import_with_exhausted_inotify_instances() -> None:
+    code = """
+import ctypes
+import errno
+import os
+import resource
+import sys
+
+libc = ctypes.CDLL(None, use_errno=True)
+inotify_init = libc.inotify_init
+inotify_init.argtypes = []
+inotify_init.restype = ctypes.c_int
+
+# Keep descriptors available for imports and bound resource use on hosts with
+# unusually high inotify limits.
+soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+max_attempts = 16384
+if soft_limit != resource.RLIM_INFINITY:
+    max_attempts = min(max_attempts, max(0, soft_limit - 64))
+
+fds = []
+try:
+    for _ in range(max_attempts):
+        fd = inotify_init()
+        if fd == -1:
+            error = ctypes.get_errno()
+            if error != errno.EMFILE:
+                print(f"SKIP: inotify_init failed with errno {error}")
+                sys.exit(77)
+            break
+        fds.append(fd)
+    else:
+        print("SKIP: could not exhaust inotify instances with descriptors reserved for imports")
+        sys.exit(77)
+
+    from watchdog.events import FileSystemEventHandler
+    from watchdog.observers.polling import PollingObserver
+    import watchdog.observers
+    from watchdog.observers.inotify import InotifyObserver
+    from watchdog.observers.inotify_c import InotifyFD
+
+    assert watchdog.observers.Observer is InotifyObserver
+    assert InotifyFD._instance is None
+    assert not PollingObserver().is_alive()
+    try:
+        InotifyObserver().schedule(FileSystemEventHandler(), ".")
+    except OSError as error:
+        assert error.errno == errno.EMFILE, error
+        assert "inotify instance limit reached" in str(error), error
+    else:
+        raise AssertionError("InotifyObserver.schedule did not raise OSError")
+    print("imports succeeded; InotifyObserver.schedule raised EMFILE")
+finally:
+    for fd in fds:
+        os.close(fd)
+"""
+    # Propagate pytest's source path when watchdog is not installed.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=env, check=False, timeout=30
+    )
+    if result.returncode == 77 and result.stdout.startswith("SKIP: "):
+        pytest.skip(result.stdout.strip())
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert result.stdout.strip() == "imports succeeded; InotifyObserver.schedule raised EMFILE"
 
 
 def struct_inotify(wd, mask, cookie=0, length=0, name=b"") -> bytes:
@@ -222,6 +335,34 @@ def test_event_equality(p: P) -> None:
     assert event2 != event3
 
 
+def test_read_events_preserves_queue_overflow() -> None:
+    inotify_fd = object.__new__(InotifyFD)
+    inotify_fd._read_event_buffer = lambda _size: (  # type: ignore[method-assign]
+        struct_inotify(-1, Mask(0)) + struct_inotify(-1, InotifyConstants.IN_Q_OVERFLOW)
+    )
+
+    events = inotify_fd.read_events()
+
+    assert events == [InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b"")]
+
+
+def test_queue_overflow_notifies_each_callback_once(caplog) -> None:
+    callback = Callback()
+    watch_a = Watch(WatchDescriptor(1), Mask(0), b"a")
+    watch_b = Watch(WatchDescriptor(2), Mask(0), b"b")
+    watch_a.callbacks[CallbackId(1)] = callback
+    watch_b.callbacks[CallbackId(2)] = callback
+    inotify_fd = object.__new__(InotifyFD)
+    inotify_fd._lock = threading.Lock()
+    inotify_fd._watch_for_wd = {watch_a.wd: watch_a, watch_b.wd: watch_b}
+
+    inotify_fd.handle_event(InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b""))
+
+    assert callback.overflow_count == 1
+    assert callback.event_count == 0
+    assert "Inotify queue overflowed" in caplog.text
+
+
 def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:
     soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
     if soft_limit != resource.RLIM_INFINITY and soft_limit <= 1024:
@@ -240,7 +381,7 @@ def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watc
         finally:
             os.close(fd)
 
-    # The normal singleton is created at import time, before this test runs.
+    # Isolate the high descriptor from the shared singleton used by other tests.
     with (
         patch.object(InotifyFD, "_create_inotify_fd", side_effect=create_high_fd) as create_fd,
         patch.object(InotifyFD, "_instance", new=None),
@@ -263,3 +404,20 @@ def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watc
                 inotify_fd.stop()
                 inotify_fd.join(5)
                 assert not inotify_fd.is_alive()
+
+
+def test_add_callback_warn_on_duplicate(tmp_path: Path) -> None:
+    path = os.fsencode(tmp_path)
+    inotify_fd = InotifyFD()
+    args = (path, InotifyConstants.IN_ACCESS, Callback(), CallbackId(1))
+
+    # First call is OK
+    inotify_fd.add_callback(*args)
+
+    # The second must fire a warning
+    error = (
+        f"Callback with id '{args[-1]}' already exists for watch <Watch: wd={args[-1]}, mask=IN_ACCESS,"
+        f" _initial_creation_path={args[0]}>, it will be overwritten."
+    )
+    with pytest.warns(RuntimeWarning, match=error):
+        inotify_fd.add_callback(*args)

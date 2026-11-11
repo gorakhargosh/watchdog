@@ -276,6 +276,38 @@ def test_move_to(
             ec.add(DirModifiedEvent, "dir2")
 
 
+@pytest.mark.skipif(not platform.is_linux(), reason="Specific to inotify watch handling")
+def test_move_dir_to_then_change_inside(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    # A directory moved in from outside the watched tree must be watched like a created one (#1094)
+    mkdir(p("dir1", "sub", "nested"), parents=True)
+    mkdir(p("dir2"))
+    start_watching(path=p("dir2"))
+
+    mv(p("dir1", "sub"), p("dir2", "sub"))
+
+    with events_checker() as ec:
+        ec.add(DirCreatedEvent, "dir2/sub")
+        ec.add(DirModifiedEvent, "dir2")
+        ec.add(DirCreatedEvent, "dir2/sub/nested")
+
+    mkfile(p("dir2", "sub", "a"))
+    mkfile(p("dir2", "sub", "nested", "b"))
+
+    with events_checker() as ec:
+        ec.add(FileCreatedEvent, "dir2/sub/a")
+        ec.add(DirModifiedEvent, "dir2/sub")
+        ec.add(FileOpenedEvent, "dir2/sub/a")
+        ec.add(FileClosedEvent, "dir2/sub/a")
+        ec.add(DirModifiedEvent, "dir2/sub")
+        ec.add(FileCreatedEvent, "dir2/sub/nested/b")
+        ec.add(DirModifiedEvent, "dir2/sub/nested")
+        ec.add(FileOpenedEvent, "dir2/sub/nested/b")
+        ec.add(FileClosedEvent, "dir2/sub/nested/b")
+        ec.add(DirModifiedEvent, "dir2/sub/nested")
+
+
 @pytest.mark.skipif(not platform.is_linux(), reason="InotifyFullEmitter only supported in Linux")
 def test_move_to_full(
     p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
@@ -622,10 +654,14 @@ def test_file_lifecyle(
 
     mkfile(p("a"))
     if platform.is_windows():
-        # Ensure system clock advances past creation mtime so Windows NTFS sets
-        # LastModificationTime >= LastChangeTime, deterministically emitting FileModifiedEvent.
-        time.sleep(0.05)
-    touch(p("a"))
+        # touch() only updates the timestamps, and winapi reports that as an
+        # attribute change whenever NTFS records ChangeTime after LastWriteTime.
+        # That ordering is not guaranteed (see test_recursive_on), so write data
+        # instead: a real modification is always reported as a modification.
+        with open(p("a"), "ab") as file:
+            file.write(b"a")
+    else:
+        touch(p("a"))
     mv(p("a"), p("b"))
     rm(p("b"))
 

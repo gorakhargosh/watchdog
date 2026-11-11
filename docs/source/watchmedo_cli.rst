@@ -129,31 +129,65 @@ Starts a long-running subprocess (like a development server, worker, or test sui
 
 .. code-block:: bash
 
-    $ watchmedo auto-restart --command="<command>" [options] [directory]
+    $ watchmedo auto-restart [options] <command> [-- <command_args...>]
+
+**Arguments:**
+
+*   ``command``: The executable command to run in a subprocess.
+*   ``command_args``: Arguments for the command. Use ``--`` before arguments so ``watchmedo`` does not misinterpret command flags as ``watchmedo`` options.
 
 **Options:**
 
-*   ``directories``: Directories to watch (default: '.').
-*   ``-c``, ``--command="<command>"``: The process command to run.
-*   ``-d``, ``--directory=DIRECTORY``: Directory to watch. Use another ``-d`` or ``--directory`` option for each directory.
+*   ``-d DIRECTORY``, ``--directory=DIRECTORY``: Directory to watch (default: '.'). Repeat ``-d`` or ``--directory`` to watch multiple directories.
 *   ``--patterns="<patterns>"``: Matches event paths with these glob patterns (separated by ;), e.g. ``**/*.py``.
 *   ``--ignore-patterns="<patterns>"``: Ignores event paths with these patterns (separated by ;).
 *   ``--ignore-directories``: Ignores events for directories.
 *   ``--recursive``: Monitors the directories recursively.
 *   ``--interval=TIMEOUT``, ``--timeout=TIMEOUT``: Use this as the polling interval/blocking timeout in seconds (default: 1.0).
 *   ``--debounce-interval=SECONDS``: After a file change, wait until the specified interval (in seconds) passes with no file changes, and only then restart (default: 0.0).
-*   ``--no-restart-on-command-exit``: Don't auto-restart the command after it exits.
+*   ``--no-restart-on-command-exit``: Don't auto-restart the command after it exits. Useful for short-lived commands (e.g. linters or build scripts) so they only re-run when watched files change instead of looping indefinitely.
 *   ``-q``, ``--quiet``: Minimize output (suppress standard event log messages).
 *   ``-v``, ``--verbose``: Verbose logging.
 *   ``--kill-after=SECONDS``: When stopping, kill the subprocess after the specified timeout in seconds (default 10.0).
 *   ``--signal=SIGNAL``: Stop the subprocess with this signal (default SIGINT).
+
+.. note::
+
+   **Executables vs. Shell Built-ins:**
+   Unlike ``watchmedo shell-command``, ``auto-restart`` executes binary programs directly without a shell (using ``shell=False``).
+
+   * **Standard executables (Python, Node, Go, etc.):**
+     Pass the executable followed by ``--`` and its arguments:
+
+     .. code-block:: bash
+
+         $ watchmedo auto-restart python -- my_app.py --port 8080
+
+   * **Windows shell built-ins (``echo``, ``dir``, etc.):**
+     On Windows, commands like ``echo``, ``dir``, and ``del`` are internal built-ins of ``cmd.exe`` rather than standalone ``.exe`` files. Running them directly will result in a ``FileNotFoundError: [WinError 2]``. To run them with ``auto-restart``:
+
+     .. code-block:: powershell
+
+         $ watchmedo auto-restart --no-restart-on-command-exit cmd -- /c echo hello
+
+     * **``cmd``**: Spawns the Windows command interpreter.
+     * **``--``**: Instructs ``watchmedo`` to stop parsing CLI flags, ensuring following flags are passed directly to ``cmd``.
+     * **``/c``**: The Windows flag telling ``cmd.exe`` to carry out the specified command string and then terminate.
+     * **``--no-restart-on-command-exit``**: Prevents ``watchmedo`` from restarting immediately upon completion (avoiding an infinite loop for short-lived commands).
+
+   * **Alternative (Recommended for shell commands):**
+     If you only need to run shell commands or built-ins upon file changes, use ``watchmedo shell-command`` instead, which automatically runs through your system shell:
+
+     .. code-block:: powershell
+
+         $ watchmedo shell-command --command="echo hello"
 
 **Example:**
 
 .. code-block:: bash
 
     $ watchmedo auto-restart --patterns="**/*.py" \
-        --recursive --command="python my_web_app.py" .
+        --recursive python -- my_web_app.py
 
 Common Use Cases
 ----------------

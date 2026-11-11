@@ -423,6 +423,48 @@ def _generate_observed_path_deleted_event(*, extended: bool = False) -> bytes:
     return buff.raw[:total_size]
 
 
+def _generate_overflow_event(*, extended: bool = False) -> bytes:
+    """Create a synthetic event notifying that the read buffer overflowed.
+
+    :param extended:
+        Whether to format the synthetic event as a
+        ``FILE_NOTIFY_EXTENDED_INFORMATION`` structure (``True``) or a legacy
+        ``FILE_NOTIFY_INFORMATION`` structure (``False``).
+    :returns:
+        A byte buffer containing the synthetic overflow event record.
+    """
+    path_bytes = ".".encode("utf-16-le")
+    byte_len = len(path_bytes)
+    buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
+    offset: int
+    if extended:
+        header = FileNotifyExtendedInformation(
+            0,
+            FILE_ACTION_OVERFLOW,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            byte_len,
+            b"",
+        )
+        offset = FileNotifyExtendedInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header), offset)
+    else:
+        header_fni = FileNotifyInformation(0, FILE_ACTION_OVERFLOW, byte_len, b"")
+        offset = FileNotifyInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header_fni), offset)
+    ctypes.memmove(ctypes.addressof(buff) + offset, path_bytes, byte_len)
+    total_size = offset + byte_len
+    return buff.raw[:total_size]
+
+
 def _get_directory_handle(path: str) -> HANDLE:
     """Returns a Windows handle to the specified directory path."""
     return CreateFileW(
@@ -488,6 +530,10 @@ class WinAPINativeEvent:
     @property
     def is_removed_self(self) -> bool:
         return self.action == FILE_ACTION_REMOVED_SELF
+
+    @property
+    def is_overflow(self) -> bool:
+        return self.action == FILE_ACTION_OVERFLOW
 
 
 def _drop_case_only_rename_deletions(events: list[WinAPINativeEvent]) -> list[WinAPINativeEvent]:
@@ -580,7 +626,14 @@ class DirectoryChangeReader:
                     None,
                     None,
                 )
-            buf = event_buffer.raw[: nbytes.value]
+            # ReadDirectoryChangesW() can succeed while reporting zero bytes
+            # returned: this signals that its buffer overflowed and some file
+            # system events were lost, not that nothing happened.
+            buf = (
+                _generate_overflow_event(extended=self._extended)
+                if nbytes.value == 0
+                else event_buffer.raw[: nbytes.value]
+            )
         except OSError as e:
             if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
                 return

@@ -12,9 +12,90 @@ from watchdog.utils import platform
 if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
-from watchdog.events import DirCreatedEvent, FileDeletedEvent, FileMovedEvent, FileSystemEventHandler
-from watchdog.observers.inotify import InotifyObserver
+from watchdog.events import DirCreatedEvent, FileCreatedEvent, FileDeletedEvent, FileMovedEvent, FileSystemEventHandler
+from watchdog.observers.inotify import InotifyObserver, InotifyWatchGroup
 from watchdog.observers.inotify_c import InotifyFD
+
+
+def test_observer_does_not_initialize_shared_inotify_fd(monkeypatch):
+    # monkeypatch restores the session fixture's shared instance after the test.
+    monkeypatch.setattr(InotifyFD, "_instance", None)
+    observer = InotifyObserver()
+    try:
+        assert InotifyFD._instance is None  # noqa: SLF001
+    finally:
+        observer.stop()
+
+
+@pytest.mark.parametrize("running", [False, True])
+def test_empty_observers_do_not_allocate_inotify_resources(monkeypatch, running):
+    def unexpected_allocation():
+        raise AssertionError("An observer without watches must not allocate an inotify instance")
+
+    monkeypatch.setattr(InotifyFD, "_create_inotify_fd", staticmethod(unexpected_allocation))
+    observers = []
+    try:
+        for _ in range(5):
+            observer = InotifyObserver()
+            observers.append(observer)
+            if running:
+                observer.start()
+    finally:
+        for observer in observers:
+            observer.stop()
+            if observer.is_alive():
+                observer.join(timeout=5)
+
+
+def test_observers_have_independent_inotify_fds(tmp_path):
+    observers = []
+    try:
+        observers.extend(InotifyObserver() for _ in range(2))
+        for observer in observers:
+            observer.schedule(FileSystemEventHandler(), tmp_path)
+
+        first, second = (observer._inotify_fd for observer in observers)  # noqa: SLF001
+        assert first is not second
+        assert first._inotify_fd != second._inotify_fd  # noqa: SLF001
+        assert first.is_alive()
+        assert second.is_alive()
+
+        observers[0].stop()
+        assert not first.is_alive()
+        assert second.is_alive()
+    finally:
+        for observer in observers:
+            observer.stop()
+        assert all(not observer._inotify_fd.is_alive() for observer in observers)  # noqa: SLF001
+
+
+@pytest.mark.parametrize("generate_full_events", [True, False])
+def test_observer_delivers_created_events(tmp_path, generate_full_events):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_created(self, event):
+            events.put(event)
+
+    observer = InotifyObserver(generate_full_events=generate_full_events)
+    directories = [tmp_path / "first", tmp_path / "second"]
+    try:
+        for directory in directories:
+            directory.mkdir()
+            observer.schedule(Handler(), directory)
+        assert all(emitter._inotify_fd is observer._inotify_fd for emitter in observer.emitters)  # noqa: SLF001
+        observer.start()
+
+        for directory in directories:
+            marker = directory / "marker"
+            marker.touch()
+            assert events.get(timeout=5) == FileCreatedEvent(str(marker))
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
+        assert not observer._inotify_fd.is_alive()  # noqa: SLF001
 
 
 @pytest.mark.parametrize("recursive", [True, False])
@@ -80,7 +161,9 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         skipped.mkdir()
         watched.mkdir()
 
-    inotify_fd = InotifyFD.get_instance()
+    observer = InotifyObserver()
+    observer.schedule(Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileDeletedEvent])
+    inotify_fd = observer._inotify_fd  # noqa: SLF001
     add_callback = inotify_fd.add_callback
     registration_attempted = Event()
 
@@ -91,8 +174,6 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         return add_callback(path, *args, **kwargs)
 
     monkeypatch.setattr(inotify_fd, "add_callback", add_callback_with_error)
-    observer = InotifyObserver()
-    observer.schedule(Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileDeletedEvent])
     try:
         observer.start()
         if create_after_start:
@@ -114,6 +195,49 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         observer.stop()
         if observer.is_alive():
             observer.join(timeout=5)
+        assert not observer.is_alive()
+
+
+def test_new_directory_filled_while_its_watches_are_added(tmp_path, monkeypatch):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    tree = tmp_path / "tree"
+    late = tree / "late"
+    add_all_callbacks = InotifyWatchGroup._add_all_callbacks  # noqa: SLF001
+
+    def add_all_callbacks_then_copy_more(self, path):
+        add_all_callbacks(self, path)
+        if path == os.fsencode(tree):
+            # Like `cp -r` still copying: this appears after the watches for the new tree were added
+            (late / "nested").mkdir(parents=True)
+            (late / "file").touch()
+
+    monkeypatch.setattr(InotifyWatchGroup, "_add_all_callbacks", add_all_callbacks_then_copy_more)
+    observer = InotifyObserver()
+    observer.schedule(
+        Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileCreatedEvent, FileDeletedEvent]
+    )
+    try:
+        observer.start()
+        tree.mkdir()
+
+        expected = {DirCreatedEvent(str(late / "nested")), FileCreatedEvent(str(late / "file"))}
+        while expected:
+            expected.discard(events.get(timeout=5))
+
+        # The late directory is watched too
+        marker = late / "nested" / "marker"
+        marker.touch()
+        marker.unlink()
+        while events.get(timeout=5) != FileDeletedEvent(str(marker)):
+            pass
+    finally:
+        observer.stop()
+        observer.join(timeout=5)
         assert not observer.is_alive()
 
 

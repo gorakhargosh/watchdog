@@ -37,6 +37,9 @@ import os
 from stat import S_ISDIR
 from typing import TYPE_CHECKING
 
+from watchdog.utils import platform
+from watchdog.utils.statx import get_statx_birthtime_ns, is_statx_available
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from typing import Any
@@ -108,6 +111,20 @@ class DirectorySnapshotDiff:
             get_ref_path = ref.path
             get_snapshot_path = snapshot.path
 
+        def is_same_entry(ref_path: bytes | str, new_path: bytes | str) -> bool:
+            # A file cannot be renamed into a directory or vice versa (#303).
+            if ref.isdir(ref_path) != snapshot.isdir(new_path):
+                return False
+
+            # If both snapshots have birth time information, differing birth times
+            # prove that the inode was recycled for a newly created file (#992).
+            ref_btime = ref.birthtime(ref_path)
+            new_btime = snapshot.birthtime(new_path)
+            if ref_btime is not None and new_btime is not None:
+                return ref_btime == new_btime
+
+            return True
+
         # find moved paths
         moved: set[tuple[bytes | str, bytes | str]] = set()
         for path in set(deleted):
@@ -117,7 +134,11 @@ class DirectorySnapshotDiff:
             # genuinely new path. A symlink (or hard link) shares its target's
             # inode, so ``new_path`` may still point at the unchanged target,
             # which is not a move.
-            if new_path and (new_path not in ref.paths or ref.inode(new_path) != inode):
+            if (
+                new_path
+                and (new_path not in ref.paths or ref.inode(new_path) != inode)
+                and is_same_entry(path, new_path)
+            ):
                 # file is not deleted but moved
                 deleted.remove(path)
                 moved.add((path, new_path))
@@ -129,9 +150,19 @@ class DirectorySnapshotDiff:
             # gone. A symlink (or hard link) shares its target's inode, so
             # ``old_path`` may still exist with that inode, which means this is a
             # creation, not a move.
-            if old_path and (old_path not in snapshot.paths or snapshot.inode(old_path) != inode):
+            if (
+                old_path
+                and (old_path not in snapshot.paths or snapshot.inode(old_path) != inode)
+                and is_same_entry(old_path, path)
+            ):
                 created.remove(path)
                 moved.add((old_path, path))
+
+        # A hard link can make the two inode lookups select different paths.
+        # A move found in either pass must not also remain a create or delete.
+        for old_path, new_path in moved:
+            deleted.discard(old_path)
+            created.discard(new_path)
 
         # find modified paths
         # first check paths that have not moved
@@ -365,6 +396,7 @@ class DirectorySnapshot:
 
         self._stat_info: dict[bytes | str, os.stat_result] = {}
         self._inode_to_path: dict[tuple[int, int], bytes | str] = {}
+        self._birthtimes: dict[bytes | str, int | None] = {}
 
         st = self.stat(path)
         self._stat_info[path] = st
@@ -422,6 +454,40 @@ class DirectorySnapshot:
     def mtime(self, path: bytes | str) -> float:
         """Returns the last modification time for path."""
         return self._stat_info[path].st_mtime
+
+    def birthtime(self, path: bytes | str) -> int | None:
+        """Returns the birth/creation time in nanoseconds for path, or None if unsupported.
+
+        - macOS / BSD: uses ``st.st_birthtime_ns``
+        - Linux: uses ``statx(2)`` ``stx_btime`` (evaluated lazily on demand)
+          (see https://man7.org/linux/man-pages/man2/statx.2.html)
+        """
+        if birthtime := self._birthtimes.get(path):
+            return birthtime
+
+        if platform.is_windows():
+            return None
+
+        if st := self._stat_info.get(path):
+            # macOS / BSD provides st_birthtime_ns natively
+            btime_ns: int | None = getattr(st, "st_birthtime_ns", None)
+            if btime_ns is not None:
+                self._birthtimes[path] = btime = int(btime_ns)
+                return btime
+            # Fallback to float st_birthtime if nanoseconds attribute is unavailable
+            btime_sec: float | None = getattr(st, "st_birthtime", None)
+            if btime_sec is not None:
+                self._birthtimes[path] = btime = int(btime_sec * 1_000_000_000)
+                return btime
+
+        if platform.is_linux() and is_statx_available():
+            follow = self.stat == os.stat
+            btime_ns = get_statx_birthtime_ns(path, follow_symlinks=follow)
+            self._birthtimes[path] = btime_ns
+            return btime_ns
+
+        self._birthtimes[path] = None
+        return None
 
     def size(self, path: bytes | str) -> int:
         """Returns the size of the file identified by path."""
@@ -489,3 +555,9 @@ class EmptyDirectorySnapshot(DirectorySnapshot):
             An empty set.
         """
         return set()
+
+    def birthtime(self, path: bytes | str) -> int | None:
+        """Mock up method to return birth time. As the snapshot is intended to be
+        empty, it always returns None.
+        """
+        return None

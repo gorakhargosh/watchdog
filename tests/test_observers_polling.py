@@ -279,3 +279,29 @@ def test_polling_emitter_attrib(event_queue, tmp_path):
             chmod(dir_path, stat.S_IWRITE)
         emitter.stop()
         emitter.join(5)
+
+
+@pytest.mark.parametrize(("source", "destination"), [("a", "c"), ("c", "a")])
+def test_hard_link_rename_emits_only_move(p, source, destination):
+    touch(p(source))
+    try:
+        os.link(p(source), p("b"))
+    except OSError as e:
+        pytest.skip(f"Hard links are unavailable: {e}")
+
+    def listdir(path):
+        with os.scandir(path) as entries:
+            yield from sorted(entries, key=lambda entry: entry.name)
+
+    queue = Queue()
+    emitter = Emitter(queue, ObservedWatch(p(""), recursive=True), listdir=listdir)
+    emitter.on_thread_start()
+    mv(p(source), p(destination))
+    emitter.queue_events(0)
+    events = []
+    while not queue.empty():
+        event, _ = queue.get_nowait()
+        if not event.is_directory:
+            events.append(event)
+
+    assert events == [FileMovedEvent(p(source), p(destination))]

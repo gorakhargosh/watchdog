@@ -1,0 +1,81 @@
+# Linux: inotify backend implementation, Linux statx syscall, and tests
+linux:
+  - "**/*inotify*"
+  - "**/*statx*"
+
+# macOS: fsevents, kqueue, and C headers
+macos:
+  - "**/*fsevents*"
+  - "**/*kqueue*"
+  - "src/pythoncapi_compat.h"
+
+# FreeBSD: kqueue (14.x) and inotify (15.x) backends
+freebsd:
+  - "**/*kqueue*"
+  - "**/*inotify*"
+
+# Packaging: build configurations, distribution manifests, and setup metadata
+packaging:
+  - "setup.py"
+  - "MANIFEST.in"
+  - "pyproject.toml"
+
+# Windows: winapi, directory changes
+windows:
+  - "**/*winapi*"
+  - "**/*read_directory_changes*"
+
+# Watchmedo: CLI tool, tricks, utility helpers, and dedicated tests
+watchmedo:
+  - "src/watchdog/watchmedo.py"
+  - "src/watchdog/tricks/**"
+  - "src/watchdog/utils/echo.py"
+  - "src/watchdog/utils/event_debouncer.py"
+  - "src/watchdog/utils/process_watcher.py"
+  - "tests/test_0_watchmedo.py"
+  - "tests/test_echo.py"
+  - "tests/test_event_debouncer.py"
+
+# Examples: documentation examples and example tests
+examples:
+  - "docs/source/examples/**"
+  - "tests/test_examples.py"
+
+# Core: shared library code, cross-platform tests, and CI/project configurations
+core:
+  - "src/watchdog/__init__.py"
+  - "src/watchdog/__main__.py"
+  - "src/watchdog/events.py"
+  - "src/watchdog/version.py"
+  - "src/watchdog/observers/__init__.py"
+  - "src/watchdog/observers/api.py"
+  - "src/watchdog/observers/polling.py"
+  - "src/watchdog/utils/__init__.py"
+  - "src/watchdog/utils/backwards_compat.py"
+  - "src/watchdog/utils/bricks.py"
+  - "src/watchdog/utils/delayed_queue.py"
+  - "src/watchdog/utils/dirsnapshot.py"
+  - "src/watchdog/utils/patterns.py"
+  - "src/watchdog/utils/platform.py"
+  - "tox.ini"
+  - "requirements-*.txt"
+  - ".github/workflows/**"
+  - ".github/filters.yml"
+  - "tests/**"
+  - "!**/*inotify*"
+  - "!**/*statx*"
+  - "!**/*fsevents*"
+  - "!**/*kqueue*"
+  - "!**/*winapi*"
+  - "!tests/test_0_watchmedo.py"
+  - "!tests/test_echo.py"
+  - "!tests/test_event_debouncer.py"
+  - "!tests/test_examples.py"
+
+# Test detection: used to check if a PR touches test files only
+tests:
+  - "tests/**"
+
+not_tests:
+  - "**"
+  - "!tests/**"

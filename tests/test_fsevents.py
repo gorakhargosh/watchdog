@@ -79,6 +79,7 @@ def test_coalesced_event_check(event, expectation):
     assert event.is_coalesced == expectation
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_native_event_owns_path() -> None:
     class Path(str):
         __slots__ = ("__weakref__",)
@@ -96,6 +97,7 @@ def test_native_event_owns_path() -> None:
     assert path_ref() is None
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_native_event_cycles_are_collected() -> None:
     class Path(str):
         __slots__ = ("__weakref__", "event")
@@ -108,6 +110,7 @@ def test_native_event_cycles_are_collected() -> None:
     assert path_ref() is None
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_native_event_allocations_are_released() -> None:
     code = """
 import gc
@@ -138,6 +141,7 @@ def test_native_event_unsigned_id() -> None:
     assert event.event_id == 2**64 - 1
 
 
+@pytest.mark.skipif(sys.implementation.name == "pypy", reason="CPython GC behavior only")
 def test_stream_does_not_retain_paths_list(p: P) -> None:
     class Paths(list):
         pass
