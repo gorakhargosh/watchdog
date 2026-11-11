@@ -201,12 +201,16 @@ jobs:
           # The inotify exhaustion test uses up the per-user inotify instance
           # limit (vfs.inotify.max_user_instances), which makes parallel workers
           # fail with EMFILE, so it runs on its own after the parallel run.
+          # The unmount test runs "sudo mount -t tmpfs" (enabled by GITHUB_REF);
+          # the VM has no sudo, so the mount fails and the test times out.
           run: |
             set -e
             python3.11 -m venv /tmp/venv
             /tmp/venv/bin/python -m pip install -q -r requirements-tests.txt -e '.[watchmedo]'
             /tmp/venv/bin/python -m pytest -n auto \
-              --deselect tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances $TEST_ARGS
+              --deselect tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances \
+              --deselect tests/test_inotify_watch_group.py::test_unmount_watched_directory_filesystem \
+              $TEST_ARGS
             # 14.x has no inotify: the module is skipped there, and selecting a test
             # in a skipped module makes pytest exit non-zero, so run it on 15.x only.
             if [ "${{ matrix.release }}" != "14" ]; then
