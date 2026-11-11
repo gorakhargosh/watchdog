@@ -42,7 +42,7 @@ jobs:
       examples: ${{ steps.filter.outputs.examples == 'true' }}
       macos: ${{ steps.filter.outputs.macos == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
       windows: ${{ steps.filter.outputs.windows == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
-      freebsd: ${{ steps.filter.outputs.freebsd == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' || steps.filter.outputs.watchmedo == 'true' }}
+      freebsd: ${{ steps.filter.outputs.freebsd == 'true' || steps.filter.outputs.core == 'true' || steps.filter.outputs.packaging == 'true' }}
       core: ${{ steps.filter.outputs.core }}
       watchmedo: ${{ steps.filter.outputs.watchmedo }}
       # Run only modified tests if PR touches tests only; otherwise run full test suite
@@ -169,8 +169,10 @@ jobs:
 
   # FreeBSD in a VM, pull requests only: 14.x uses the kqueue backend, 15.x has
   # inotify, so it runs the inotify backend against FreeBSD's implementation.
+  # Linux already covers inotify on free-threaded Python, so 3.13t runs on 14.x
+  # only, for the kqueue backend.
   freebsd:
-    name: 😈 FreeBSD ${{ matrix.release }}
+    name: 😈 FreeBSD ${{ matrix.release }} (${{ matrix.python }})
     needs: changes
     if: (needs.changes.outputs.freebsd == 'true' && github.event_name == 'pull_request') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -181,8 +183,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Only the major version: the newest matching release is used.
-        release: ["14", "15"]
+        # release: only the major version, the newest matching release is used.
+        # python: installed from pkg as python<version without dot>, e.g. python313t.
+        include:
+          - release: "14"
+            python: "3.11"
+          - release: "14"
+            python: "3.13t"
+          - release: "15"
+            python: "3.11"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -196,7 +205,7 @@ jobs:
           envs: TEST_ARGS
           copyback: false
           prepare: |
-            pkg install -y python311
+            pkg install -y "python$(echo '${{ matrix.python }}' | tr -d .)"
           # tox-uv is not used here: uv publishes no FreeBSD wheels.
           # The inotify exhaustion test uses up the per-user inotify instance
           # limit (vfs.inotify.max_user_instances), which makes parallel workers
@@ -205,7 +214,7 @@ jobs:
           # the VM has no sudo, so the mount fails and the test times out.
           run: |
             set -e
-            python3.11 -m venv /tmp/venv
+            python${{ matrix.python }} -m venv /tmp/venv
             /tmp/venv/bin/python -m pip install -q -r requirements-tests.txt -e '.[watchmedo]'
             /tmp/venv/bin/python -m pytest -n auto \
               --deselect tests/test_inotify_c.py::test_import_with_exhausted_inotify_instances \
