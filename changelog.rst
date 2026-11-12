@@ -19,6 +19,7 @@ Changelog
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 - [windows] A ``ReadDirectoryChangesW`` or ``ReadDirectoryChangesExW`` buffer overflow is now signalled instead of being silently dropped as zero events. (`#1019 <https://github.com/gorakhargosh/watchdog/issues/1019>`__, thanks to @MohammedAlkindi)
 - [kqueue] Register the kevents when the emitter is created, not on the emitter thread's first ``kqueue.control()`` call. Deletes, renames and attribute changes made in between were lost, every time on free-threaded Python. (`#1445 <https://github.com/gorakhargosh/watchdog/pull/1445>`__, thanks to @karolyi)
+- [watchmedo] Without ``--command``, ``shell-command`` printed every event as "<type> <object> from <src> to" with an empty destination. It now prints the destination for moved events only. (`#1448 <https://github.com/gorakhargosh/watchdog/pull/1448>`__, thanks to @Kernel-Hunter)
 - [ci] Run the test suite in FreeBSD 14 (kqueue, also on free-threaded 3.13t) and FreeBSD 15 (inotify) VMs on pull requests. The FreeBSD 14 jobs are non-blocking until the kqueue test expectations are fixed. (`#1442 <https://github.com/gorakhargosh/watchdog/issues/1442>`__, thanks to @karolyi)
 
 7.1.0
