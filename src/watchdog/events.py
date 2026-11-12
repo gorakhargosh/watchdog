@@ -582,6 +582,8 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
             regexes = [regexes]
         if ignore_regexes is None:
             ignore_regexes = []
+        elif isinstance(ignore_regexes, str):
+            ignore_regexes = [ignore_regexes]
         flags = 0 if case_sensitive else re.IGNORECASE
         self._regexes = [re.compile(r, flags) for r in regexes]
         self._ignore_regexes = [re.compile(r, flags) for r in ignore_regexes]
