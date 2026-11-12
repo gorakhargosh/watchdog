@@ -35,7 +35,13 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
+from watchdog.events import (
+    EVENT_TYPE_CLOSED_NO_WRITE,
+    EVENT_TYPE_OPENED,
+    EventsLostEvent,
+    FileSystemEvent,
+    PatternMatchingEventHandler,
+)
 from watchdog.utils import echo, platform, renamed_attribute, resolve_renamed_argument
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
@@ -70,6 +76,10 @@ class LoggerTrick(Trick):
 
     @echo_events
     def on_any_event(self, event: FileSystemEvent) -> None:
+        pass
+
+    @echo_events
+    def on_events_lost(self, event: EventsLostEvent) -> None:
         pass
 
 

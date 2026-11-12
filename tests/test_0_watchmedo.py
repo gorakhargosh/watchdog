@@ -19,6 +19,7 @@ from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
 from watchdog.events import (  # noqa: E402
+    EventsLostEvent,
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
@@ -428,6 +429,16 @@ def test_logger_events_echoed(caplog):
         "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
         "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar2.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
         "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar3.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
+
+
+def test_logger_events_lost_echoed(caplog):
+    with caplog.at_level(logging.INFO):
+        LoggerTrick().dispatch(EventsLostEvent("foo", is_directory=True))
+
+    records = [record.getMessage().strip() for record in caplog.get_records(when="call")]
+    assert records == [
+        "on_events_lost(self=<LoggerTrick>, event=EventsLostEvent(src_path='foo', dest_path='', event_type='events_lost', is_directory=True, is_synthetic=False))",  # noqa: E501
     ]
 
 

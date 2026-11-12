@@ -316,4 +316,5 @@ def test_events_lost_event_dispatch():
 
     assert event.event_type == EVENT_TYPE_EVENTS_LOST
     assert not event.is_directory
+    assert EventsLostEvent("/p", is_directory=True).is_directory
     assert calls == [("any", event), ("events_lost", event)]

@@ -539,7 +539,12 @@ class InotifyEmitter(EventEmitter):
                 self.queue_event(cls(src_path))
                 self.stop()
             elif event.ev.is_queue_overflow:
-                self.queue_event(EventsLostEvent(src_path))
+                self.queue_event(
+                    EventsLostEvent(
+                        self.watch.resolved_path if self.watch.is_file else src_path,
+                        is_directory=not self.watch.is_file,
+                    )
+                )
             elif not event.ev.is_directory:
                 if event.ev.is_open:
                     self.queue_event(FileOpenedEvent(src_path))

@@ -378,13 +378,20 @@ def test_queue_overflow_reports_events_lost_once_per_watch(
     # Watches of one observer share an inotify instance, so one overflow loses events for all of them.
     os.mkdir(p("recursive"))
     os.mkdir(p("flat"))
+    with open(p("file"), "w"):
+        pass
     start_watching(path=p("recursive"))
     start_watching(path=p("flat"), recursive=False)
+    start_watching(path=p("file"), recursive=False)
 
     InotifyFD.get_instance().handle_event(InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b""))
 
-    events = sorted((event_queue.get(timeout=5)[0] for _ in range(2)), key=lambda event: event.src_path)
-    assert events == [EventsLostEvent(p("flat")), EventsLostEvent(p("recursive"))]
+    events = sorted((event_queue.get(timeout=5)[0] for _ in range(3)), key=lambda event: event.src_path)
+    assert events == [
+        EventsLostEvent(p("file"), is_directory=False),
+        EventsLostEvent(p("flat"), is_directory=True),
+        EventsLostEvent(p("recursive"), is_directory=True),
+    ]
     with pytest.raises(Empty):
         event_queue.get(timeout=1)
 
@@ -414,7 +421,7 @@ def test_events_lost_is_reported_once_the_watches_are_repaired(
     start_watching(path=p("root"))
     os.makedirs(p("root", "missed", "child"))
 
-    assert event_queue.get(timeout=5)[0] == EventsLostEvent(p("root"))
+    assert event_queue.get(timeout=5)[0] == EventsLostEvent(p("root"), is_directory=True)
 
     # A handler rescanning now must not miss a change below the directories created while events were lost.
     new_file = p("root", "missed", "child", "new")
