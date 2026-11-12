@@ -21,6 +21,7 @@ Changelog
 - [kqueue] Register the kevents when the emitter is created, not on the emitter thread's first ``kqueue.control()`` call. Deletes, renames and attribute changes made in between were lost, every time on free-threaded Python. (`#1445 <https://github.com/gorakhargosh/watchdog/pull/1445>`__, thanks to @karolyi)
 - [kqueue] Queue each event once per kqueue wakeup. A move reported the parent ``DirModifiedEvent`` twice, and a write reported ``FileModifiedEvent`` twice. (`#1442 <https://github.com/gorakhargosh/watchdog/issues/1442>`__, thanks to @karolyi)
 - [ci] Run the test suite in FreeBSD 14 (kqueue, also on free-threaded 3.13t) and FreeBSD 15 (inotify) VMs on pull requests. (`#1445 <https://github.com/gorakhargosh/watchdog/pull/1445>`__, thanks to @karolyi)
+- [watchmedo] Without ``--command``, ``shell-command`` printed every event as "<type> <object> from <src> to" with an empty destination. It now prints the destination for moved events only. (`#1448 <https://github.com/gorakhargosh/watchdog/pull/1448>`__, thanks to @Kernel-Hunter)
 
 7.1.0
 ~~~~~
