@@ -163,6 +163,21 @@ The directory containing the ``tricks.yaml`` file will be monitored. Each trick
 class is initialized with its corresponding keys in the ``tricks.yaml`` file as
 arguments and events are fed to an instance of this class as they arrive.
 
+``watchmedo`` also passes ``source_directory`` to every trick constructor,
+defaulting to the watched pathname when the key is absent from the configuration.
+An explicit ``source_directory`` is passed unchanged; ``None`` (YAML ``null``)
+or an empty string falls back to the default watch path for scheduling.
+The configuration is not modified.
+
+Custom tricks that define ``__init__`` must now accept ``source_directory`` as
+a keyword argument (or via ``**kwargs``) and forward it to ``super().__init__()``
+to access the directory as ``self.source_directory`` during initialization.
+For example, add ``source_directory=None`` to an existing constructor and pass
+``source_directory=source_directory`` to its ``super().__init__()`` call.
+Constructors that do not accept this keyword raise ``TypeError`` when loaded by
+``watchmedo``. Directly instantiated tricks can continue to omit the argument;
+it defaults to ``None`` without a deprecation warning.
+
 Installation
 ------------
 Install from PyPI using ``pip``:

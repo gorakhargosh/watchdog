@@ -8,6 +8,10 @@ Changelog
 
 2026-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.0...HEAD>`__
 
+**Breaking Changes**
+
+- [watchmedo] Pass the watched source directory to tricks during initialization, preserving configured directory overrides. Custom trick constructors must now accept the ``source_directory`` keyword; it remains optional with a ``None`` default for direct instantiation. (`#926 <https://github.com/gorakhargosh/watchdog/issues/926>`__)
+
 **Other Changes**
 
 - [kqueue] Stop the emitter with a ``DirDeletedEvent`` when the watched directory is removed or moved, instead of letting its thread die with ``FileNotFoundError``. The kevents read in the same batch are still reported. (`#1436 <https://github.com/gorakhargosh/watchdog/issues/1436>`__, thanks to @karolyi)

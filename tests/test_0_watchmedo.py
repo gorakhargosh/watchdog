@@ -20,7 +20,7 @@ from yaml.scanner import ScannerError  # noqa: E402
 from watchdog import watchmedo  # noqa: E402
 from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
 from watchdog.observers.api import BaseObserver  # noqa: E402
-from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
+from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, Trick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
 
 
@@ -554,3 +554,37 @@ def test_observe_with():
     assert observer.start.call_count == 1
     assert observer.stop.call_count == 1
     assert observer.join.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "options", [{}, {"source_directory": None}, {"source_directory": ""}, {"source_directory": "configured"}]
+)
+def test_schedule_tricks_source_directory(tmp_path, options):
+    class InspectingTrick(Trick):
+        def __init__(self, *, source_directory):
+            super().__init__(source_directory=source_directory)
+            self.initial_files = os.listdir(source_directory) if source_directory else []
+
+    pathname = str(tmp_path)
+    configured = tmp_path / "configured"
+    configured.mkdir()
+    (tmp_path / "watched.txt").touch()
+    (configured / "configured.txt").touch()
+    options = options.copy()
+    if options.get("source_directory") == "configured":
+        options["source_directory"] = str(configured)
+    original_options = options.copy()
+    expected = options.get("source_directory", pathname)
+    observer = Mock(spec=BaseObserver)
+
+    with patch("watchdog.watchmedo.load_class", return_value=InspectingTrick):
+        watchmedo.schedule_tricks(observer, [{"custom.InspectingTrick": options}], pathname, recursive=True)
+
+    handler = observer.schedule.call_args.args[0]
+    assert handler.source_directory == expected
+    if expected == pathname:
+        assert "watched.txt" in handler.initial_files
+    elif expected:
+        assert handler.initial_files == ["configured.txt"]
+    observer.schedule.assert_called_once_with(handler, expected or pathname, recursive=True)
+    assert options == original_options
