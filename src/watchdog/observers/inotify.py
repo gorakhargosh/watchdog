@@ -80,6 +80,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    EventsLostEvent,
     FileAttribEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
@@ -203,6 +204,14 @@ class InotifyWatchGroup(WatchCallback):
         exception.
         """
         return self._move_event_grouper.read_event()
+
+    def on_events_lost(self) -> None:
+        """Queue the overflow behind the events read so far, once :meth:`on_queue_overflow` is done."""
+        with self._lock:
+            if not self.is_active:
+                return
+            overflow = InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b"")
+            self._move_event_grouper.put_event(PathedInotifyEvent(overflow, self.path))
 
     def on_watch_deleted(self, wd: WatchDescriptor) -> None:
         """Called when a watch that this callback is registered at is removed.
@@ -529,6 +538,13 @@ class InotifyEmitter(EventEmitter):
                 cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.stop()
+            elif event.ev.is_queue_overflow:
+                self.queue_event(
+                    EventsLostEvent(
+                        self.watch.resolved_path if self.watch.is_file else src_path,
+                        is_directory=not self.watch.is_file,
+                    )
+                )
             elif not event.ev.is_directory:
                 if event.ev.is_open:
                     self.queue_event(FileOpenedEvent(src_path))
