@@ -91,7 +91,6 @@ from watchdog.events import (
     FileSystemEvent,
     FileSystemEventHandler,
     generate_sub_created_events,
-    generate_sub_moved_events,
 )
 from watchdog.observers.api import DEFAULT_EMITTER_TIMEOUT, DEFAULT_OBSERVER_TIMEOUT, BaseObserver, EventEmitter
 from watchdog.observers.inotify_c import (
@@ -163,9 +162,16 @@ class InotifyWatchGroup(WatchCallback):
 
     _active_callbacks_by_watch: dict[WatchDescriptor, bytes] = field(default_factory=dict, init=False)
     _active_callbacks_by_path: dict[bytes, WatchDescriptor] = field(default_factory=dict, init=False)
+    # Paths and their directory flags, updated in kernel event order.
+    _known_entries: dict[bytes, bool] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self.event_mask = InotifyWatchGroup.build_event_mask(self.event_mask, follow_symlink=self.follow_symlink)
+        if self.is_recursive:
+            # Keep directory contents current even when these events are filtered by the emitter.
+            self.event_mask = Mask(
+                self.event_mask | InotifyConstants.IN_CREATE | InotifyConstants.IN_DELETE | InotifyConstants.IN_MOVE
+            )
         self._id = CallbackId(id(self))
         self._activate()
 
@@ -222,6 +228,7 @@ class InotifyWatchGroup(WatchCallback):
                 return
             logger.warning("Inotify queue overflowed; reconciling recursive watches below %r", self.path)
             self._remove_callbacks(list(self._active_callbacks_by_watch))
+            self._known_entries.clear()
             try:
                 self._add_all_callbacks(self.path)
             except OSError:
@@ -235,6 +242,27 @@ class InotifyWatchGroup(WatchCallback):
             src_path = self._build_event_source_path(event)
             if src_path is None:
                 return
+
+            moved_descendants: tuple[tuple[bytes, bool], ...] = ()
+            if self.is_recursive:
+                if event.is_moved_from or event.is_delete:
+                    self._known_entries.pop(src_path, None)
+                    if event.is_directory:
+                        prefix = src_path + os.path.sep.encode()
+                        moved_descendants = tuple(
+                            (path, is_directory)
+                            for path, is_directory in self._known_entries.items()
+                            if path.startswith(prefix)
+                        )
+                        for path, _ in moved_descendants:
+                            del self._known_entries[path]
+                elif event.is_create or event.is_moved_to:
+                    self._known_entries[src_path] = event.is_directory
+                    if event.is_moved_to:
+                        move_from = self._move_event_grouper.get_queued_moved_from_event(event.cookie)
+                        if move_from is not None:
+                            for path, is_directory in move_from.moved_descendants:
+                                self._known_entries[src_path + path[len(move_from.path) :]] = is_directory
 
             # todo look into desired behavior for IN_MOVE_SELF events
             #  (keep watching?, stop watching?, are they even possible?)
@@ -266,7 +294,7 @@ class InotifyWatchGroup(WatchCallback):
             elif event.is_create and event.is_directory and self.is_recursive:
                 self._add_all_callbacks(src_path)
 
-            self._move_event_grouper.put_event(PathedInotifyEvent(event, src_path))
+            self._move_event_grouper.put_event(PathedInotifyEvent(event, src_path, moved_descendants))
 
             if event.is_create and event.is_directory and self.is_recursive:
                 for sub_event in self._recursive_simulate(src_path):
@@ -287,10 +315,12 @@ class InotifyWatchGroup(WatchCallback):
                 continue
 
             for dirname in dirnames:
+                self._known_entries[os.path.join(root, dirname)] = True
                 mask = Mask(InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR)
                 events.append(InotifyEvent(wd_root, mask, 0, dirname))
 
             for filename in filenames:
+                self._known_entries[os.path.join(root, filename)] = False
                 mask = InotifyConstants.IN_CREATE
                 events.append(InotifyEvent(wd_root, mask, 0, filename))
         return events
@@ -300,6 +330,7 @@ class InotifyWatchGroup(WatchCallback):
         with self._lock:
             self._is_active = False
             self._remove_callbacks(list(self._active_callbacks_by_watch))
+            self._known_entries.clear()
             self._move_event_grouper.close()
 
     def _activate(self) -> None:
@@ -350,12 +381,15 @@ class InotifyWatchGroup(WatchCallback):
         is_dir = os.path.isdir(path)
         self._add_callback(path)
         if is_dir and self.is_recursive:
-            for root, dirnames, _ in os.walk(path, followlinks=self.follow_symlink):
+            for root, dirnames, filenames in os.walk(path, followlinks=self.follow_symlink):
                 for dirname in dirnames:
                     full_path = os.path.join(root, dirname)
+                    self._known_entries[full_path] = True
                     if not self.follow_symlink and os.path.islink(full_path):
                         continue
                     self._add_callback(full_path)
+                for filename in filenames:
+                    self._known_entries[os.path.join(root, filename)] = False
 
     def _add_callback(self, path: bytes) -> None:
         """Adds a callback for the given path to monitor events specified by the
@@ -492,8 +526,12 @@ class InotifyEmitter(EventEmitter):
             self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
             self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
             if move_from.ev.is_directory and self.watch.is_recursive:
-                for sub_moved_event in generate_sub_moved_events(src_path, dest_path):
-                    self.queue_event(sub_moved_event)
+                # A live directory walk may already include entries moved in after this rename (#361).
+                for path, is_directory in move_from.moved_descendants:
+                    sub_src_path = self._decode_path(path)
+                    sub_dest_path = self._decode_path(move_to.path + path[len(move_from.path) :])
+                    sub_cls = DirMovedEvent if is_directory else FileMovedEvent
+                    self.queue_event(sub_cls(sub_src_path, sub_dest_path, is_synthetic=True))
         else:
             src_path = self._decode_path(event.path)
             if event.ev.is_moved_to:

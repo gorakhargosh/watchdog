@@ -293,3 +293,72 @@ def test_filtered_events_in_subdirectory(tmp_path, recursive, create_after_start
         observer.stop()
         observer.join(timeout=5)
         assert not observer.is_alive()
+
+
+@pytest.mark.parametrize("use_bytes", [False, True])
+def test_fast_directory_moves_preserve_previous_contents(tmp_path, use_bytes):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    def moved(source, destination, *, synthetic=False):
+        source = tmp_path / source
+        destination = tmp_path / destination
+        return FileMovedEvent(
+            os.fsencode(source) if use_bytes else str(source),
+            os.fsencode(destination) if use_bytes else str(destination),
+            is_synthetic=synthetic,
+        )
+
+    directory = tmp_path / "untitled"
+    (directory / "sub").mkdir(parents=True)
+    for name in ("existing", "deleted"):
+        (directory / name).touch()
+    sibling = tmp_path / "untitled-other"
+    sibling.mkdir()
+    (sibling / "file").touch()
+    for name in ("incoming", "marker"):
+        (tmp_path / name).touch()
+
+    observer = InotifyObserver()
+    watch_path = os.fsencode(tmp_path) if use_bytes else str(tmp_path)
+    observer.schedule(Handler(), watch_path, recursive=True, event_filter=[FileMovedEvent])
+    try:
+        observer.start()
+        emitter = next(iter(observer.emitters))
+        with emitter._lock:  # noqa: SLF001
+            # Creation and deletion must update the contents even when only moves are requested.
+            (directory / "created").touch()
+            (directory / "deleted").unlink()
+            (directory / "existing").rename(directory / "sub" / "kept")
+            directory.rename(tmp_path / "newfolder")
+            (tmp_path / "incoming").rename(tmp_path / "newfolder" / "incoming")
+            (tmp_path / "newfolder").rename(tmp_path / "final")
+            (tmp_path / "final" / "sub" / "kept").rename(tmp_path / "kept")
+            (tmp_path / "final" / "incoming").unlink()
+            (tmp_path / "final").rename(tmp_path / "last")
+            (tmp_path / "marker").rename(tmp_path / "done")
+
+        assert events.get(timeout=5) == moved("untitled/existing", "untitled/sub/kept")
+        expected = {
+            moved("untitled/sub/kept", "newfolder/sub/kept", synthetic=True),
+            moved("untitled/created", "newfolder/created", synthetic=True),
+        }
+        assert {events.get(timeout=5) for _ in expected} == expected
+        assert events.get(timeout=5) == moved("incoming", "newfolder/incoming")
+        expected = {
+            moved("newfolder/sub/kept", "final/sub/kept", synthetic=True),
+            moved("newfolder/created", "final/created", synthetic=True),
+            moved("newfolder/incoming", "final/incoming", synthetic=True),
+        }
+        assert {events.get(timeout=5) for _ in expected} == expected
+        assert events.get(timeout=5) == moved("final/sub/kept", "kept")
+        assert events.get(timeout=5) == moved("final/created", "last/created", synthetic=True)
+        assert events.get(timeout=5) == moved("marker", "done")
+        assert events.empty()
+    finally:
+        observer.stop()
+        observer.join(timeout=5)
+        assert not observer.is_alive()

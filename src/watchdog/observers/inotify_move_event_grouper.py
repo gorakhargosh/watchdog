@@ -27,6 +27,8 @@ class PathedInotifyEvent(NamedTuple):
 
     ev: InotifyEvent
     path: bytes
+    # Descendants present when a directory's IN_MOVED_FROM was processed.
+    moved_descendants: tuple[tuple[bytes, bool], ...] = ()
 
 
 GroupedInotifyEvent: TypeAlias = PathedInotifyEvent | tuple[PathedInotifyEvent, PathedInotifyEvent]

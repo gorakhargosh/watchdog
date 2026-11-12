@@ -199,6 +199,33 @@ def test_move_simple(
             ec.add(DirModifiedEvent, "dir2")
 
 
+@pytest.mark.skipif(not platform.is_linux(), reason="Regression test for the inotify emitter")
+@pytest.mark.parametrize("use_full_emitter", [False, True])
+def test_fast_move_into_renamed_directory(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, *, use_full_emitter: bool
+) -> None:
+    mkdir(p("untitled"))
+    touch(p("file.txt"))
+
+    emitter = start_watching(use_full_emitter=use_full_emitter)
+
+    # Reproduce #361 even if the emitter would otherwise process the first move immediately.
+    with emitter._lock:  # noqa: SLF001
+        mv(p("untitled"), p("newfolder"))
+        mv(p("file.txt"), p("newfolder", "file.txt"))
+
+    expected = [
+        DirMovedEvent(p("untitled"), p("newfolder")),
+        DirModifiedEvent(p()),
+        DirModifiedEvent(p()),
+        FileMovedEvent(p("file.txt"), p("newfolder", "file.txt")),
+        DirModifiedEvent(p()),
+        DirModifiedEvent(p("newfolder")),
+    ]
+    assert [event_queue.get(timeout=5)[0] for _ in expected] == expected
+    assert event_queue.empty()
+
+
 def test_case_change(
     p: P,
     event_queue: TestEventQueue,
