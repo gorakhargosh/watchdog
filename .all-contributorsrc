@@ -487,6 +487,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "gero-robert",
+      "name": "Robert Gero",
+      "avatar_url": "https://avatars.githubusercontent.com/u/246973440?v=4",
+      "profile": "https://github.com/gero-robert",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
