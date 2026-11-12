@@ -177,9 +177,6 @@ jobs:
     if: (needs.changes.outputs.freebsd == 'true' && github.event_name == 'pull_request') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Non-blocking on 14.x until the kqueue expectations in tests/test_emitter.py
-    # are fixed: https://github.com/gorakhargosh/watchdog/issues/1442
-    continue-on-error: ${{ matrix.release == '14' }}
     strategy:
       fail-fast: false
       matrix:
