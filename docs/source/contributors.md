@@ -69,6 +69,10 @@
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/taltal-beep"><img src="https://avatars.githubusercontent.com/u/228741870?v=4?s=70" width="70px;" alt="Ariel Even"/><br /><sub><b>Ariel Even</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=taltal-beep" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/kushaldave002"><img src="https://avatars.githubusercontent.com/u/180699801?v=4?s=70" width="70px;" alt="Kushal Dave"/><br /><sub><b>Kushal Dave</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=kushaldave002" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://ksol.io/"><img src="https://avatars.githubusercontent.com/u/987055?v=4?s=70" width="70px;" alt="László Károlyi"/><br /><sub><b>László Károlyi</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=karolyi" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://karimmasmoudi.vercel.app/"><img src="https://avatars.githubusercontent.com/u/125830216?v=4?s=70" width="70px;" alt="Karim Masmoudi"/><br /><sub><b>Karim Masmoudi</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Kernel-Hunter" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/gero-robert"><img src="https://avatars.githubusercontent.com/u/246973440?v=4?s=70" width="70px;" alt="Robert Gero"/><br /><sub><b>Robert Gero</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=gero-robert" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

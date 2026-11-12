@@ -460,6 +460,42 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "kushaldave002",
+      "name": "Kushal Dave",
+      "avatar_url": "https://avatars.githubusercontent.com/u/180699801?v=4",
+      "profile": "https://github.com/kushaldave002",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "karolyi",
+      "name": "László Károlyi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/987055?v=4",
+      "profile": "https://ksol.io/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Kernel-Hunter",
+      "name": "Karim Masmoudi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/125830216?v=4",
+      "profile": "https://karimmasmoudi.vercel.app/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "gero-robert",
+      "name": "Robert Gero",
+      "avatar_url": "https://avatars.githubusercontent.com/u/246973440?v=4",
+      "profile": "https://github.com/gero-robert",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

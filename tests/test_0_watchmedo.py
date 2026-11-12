@@ -18,7 +18,12 @@ from yaml.constructor import ConstructorError  # noqa: E402
 from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
-from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
+from watchdog.events import (  # noqa: E402
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileOpenedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers.api import BaseObserver  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
@@ -218,6 +223,20 @@ def test_shell_command_custom_shell_and_cwd():
             executable="/bin/bash",
             cwd="/some/path",
         )
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        (FileModifiedEvent("foo/bar.baz"), 'echo "modified file foo/bar.baz"'),
+        (FileMovedEvent("foo/bar.baz", "foo/qux.baz"), 'echo "moved file from foo/bar.baz to foo/qux.baz"'),
+    ],
+)
+def test_shell_command_default_command(event, expected):
+    with patch("subprocess.Popen") as mocked_popen:
+        trick = ShellCommandTrick(None, wait_for_process=True)
+        trick.on_any_event(event)
+        mocked_popen.assert_called_once_with(expected, shell=True, executable=None, cwd=None)
 
 
 def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):

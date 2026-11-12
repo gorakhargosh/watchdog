@@ -493,3 +493,26 @@ def test_windows_birthtime_does_not_populate_cache(p: Any) -> None:
         assert snapshot.birthtime(p("")) is None
         assert snapshot._birthtimes == {}  # noqa: SLF001
         statx.assert_not_called()
+
+
+@pytest.mark.parametrize("ignore_device", [False, True])
+@pytest.mark.parametrize(("source", "destination"), [("a", "c"), ("c", "a")])
+def test_hard_link_rename_has_no_duplicate_create_or_delete(p, ignore_device, source, destination):
+    touch(p(source))
+    try:
+        os.link(p(source), p("b"))
+    except OSError as e:
+        pytest.skip(f"Hard links are unavailable: {e}")
+
+    def listdir(path):
+        with os.scandir(path) as entries:
+            yield from sorted(entries, key=lambda entry: entry.name)
+
+    ref = DirectorySnapshot(p(""), listdir=listdir)
+    mv(p(source), p(destination))
+    snapshot = DirectorySnapshot(p(""), listdir=listdir)
+    diff = DirectorySnapshotDiff(ref, snapshot, ignore_device=ignore_device)
+
+    assert diff.files_moved == [(p(source), p(destination))]
+    assert diff.files_deleted == []
+    assert diff.files_created == []
