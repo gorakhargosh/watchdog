@@ -134,20 +134,17 @@ class ShellCommandTrick(Trick):
         object_type = "directory" if event.is_directory else "file"
         context = {
             "watch_src_path": event.src_path,
-            "watch_dest_path": "",
+            "watch_dest_path": event.dest_path,
             "watch_event_type": event.event_type,
             "watch_object": object_type,
         }
 
         if self.shell_command is None:
-            if hasattr(event, "dest_path"):
-                context["dest_path"] = event.dest_path
+            if event.dest_path:
                 command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
             else:
                 command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
         else:
-            if hasattr(event, "dest_path"):
-                context["watch_dest_path"] = event.dest_path
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ctypes
 import os
 import os.path
 import stat
 import struct
 import threading
+from ctypes.wintypes import DWORD
 from queue import Empty, Queue
 from time import sleep
 from typing import TYPE_CHECKING
@@ -12,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from watchdog.events import DirCreatedEvent, DirMovedEvent, FileAttribEvent, FileMovedEvent
+from watchdog.events import DirCreatedEvent, DirMovedEvent, FileAttribEvent, FileMovedEvent, FileSystemEventHandler
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
@@ -25,7 +27,8 @@ if not platform.is_windows():
 if TYPE_CHECKING:
     from typing import Self
 
-from watchdog.observers.read_directory_changes import WindowsApiEmitter
+from watchdog.observers import winapi
+from watchdog.observers.read_directory_changes import WindowsApiEmitter, WindowsApiObserver
 from watchdog.observers.winapi import (
     FILE_ACTION_CREATED,
     FILE_ACTION_DELETED,
@@ -33,6 +36,12 @@ from watchdog.observers.winapi import (
     FILE_ACTION_MODIFIED,
     FILE_ACTION_RENAMED_NEW_NAME,
     FILE_ACTION_RENAMED_OLD_NAME,
+    FILE_NOTIFY_CHANGE_DIR_NAME,
+    FILE_NOTIFY_CHANGE_FILE_NAME,
+    FILE_NOTIFY_CHANGE_LAST_ACCESS,
+    FILE_NOTIFY_CHANGE_LAST_WRITE,
+    FILE_NOTIFY_CHANGE_SIZE,
+    WATCHDOG_FILE_NOTIFY_FLAGS,
     DirectoryChangeReader,
     WinAPINativeEvent,
     _drop_case_only_rename_deletions,
@@ -219,6 +228,37 @@ def test_queue_events_locks_reader_access():
     assert locked.is_set()
 
 
+@pytest.mark.parametrize("extended", [False, True])
+def test_read_directory_changes_overflow(monkeypatch, extended):
+    """ReadDirectoryChangesW() and ReadDirectoryChangesExW() both signal a buffer
+    overflow by succeeding while leaving the bytes-returned out-param at zero
+    (see #1019). Left unhandled, that reads as "zero events", so file system
+    changes get lost silently. _run_inner() must recognize this and synthesize an
+    overflow event in the record layout the reader is actually reading.
+    """
+
+    def fake_read_directory_changes(*args, **kwargs):
+        # Simulate a successful call that reports zero bytes returned: the
+        # real signature writes into nbytes via an out-param, so simply not
+        # touching it (it starts at zero) reproduces the overflow condition.
+        return True
+
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesW", fake_read_directory_changes)
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesExW", fake_read_directory_changes)
+
+    reader = DirectoryChangeReader(temp_dir, recursive=False)
+    reader._extended = extended  # noqa: SLF001
+    event_buffer = ctypes.create_string_buffer(1024)
+    nbytes = DWORD()
+
+    reader._run_inner(1, event_buffer, nbytes)  # noqa: SLF001
+
+    events = reader.get_events(0)
+    assert len(events) == 1
+    assert events[0].is_overflow
+    assert events[0].src_path == "."
+
+
 def test_drop_case_only_rename_deletions():
     """A case-only rename is reported with an extra deletion of the old name."""
     events = [
@@ -387,6 +427,154 @@ def test_winapi_native_event_is_attrib():
     modified_event = WinAPINativeEvent(FILE_ACTION_MODIFIED, "test.txt", is_attrib=False)
     assert not modified_event.is_attrib
     assert modified_event.is_modified
+
+
+# Name and content changes, without the access-time flag that reports reads.
+_CONTENT_NOTIFY_FILTER = (
+    FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE
+)
+
+
+def _notify_filter_passed_to_reader(monkeypatch) -> list[int]:
+    seen: list[int] = []
+
+    def fake_read_directory_changes(*args, **kwargs):
+        seen.append(args[4])
+        return True
+
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesW", fake_read_directory_changes)
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesExW", fake_read_directory_changes)
+    return seen
+
+
+@pytest.mark.parametrize(
+    "notify_filter",
+    [
+        WATCHDOG_FILE_NOTIFY_FLAGS,
+        WATCHDOG_FILE_NOTIFY_FLAGS & ~FILE_NOTIFY_CHANGE_LAST_ACCESS,
+        _CONTENT_NOTIFY_FILTER,
+    ],
+)
+@pytest.mark.parametrize("extended", [False, True])
+def test_read_directory_changes_honors_notify_filter(monkeypatch, notify_filter, extended):
+    """The mask given to the reader is the dwNotifyFilter of both read calls."""
+    seen = _notify_filter_passed_to_reader(monkeypatch)
+
+    reader = DirectoryChangeReader(temp_dir, recursive=False, notify_filter=notify_filter)
+    reader._extended = extended  # noqa: SLF001
+    reader._run_inner(1, ctypes.create_string_buffer(64), DWORD())  # noqa: SLF001
+
+    assert seen == [notify_filter]
+
+
+def test_directory_change_reader_defaults_to_watchdog_file_notify_flags(monkeypatch):
+    """Omitting notify_filter keeps the historical mask, including last access."""
+    seen = _notify_filter_passed_to_reader(monkeypatch)
+
+    reader = DirectoryChangeReader(temp_dir, recursive=False)
+    reader._extended = False  # noqa: SLF001
+    reader._run_inner(1, ctypes.create_string_buffer(64), DWORD())  # noqa: SLF001
+
+    assert WATCHDOG_FILE_NOTIFY_FLAGS & FILE_NOTIFY_CHANGE_LAST_ACCESS
+    assert seen == [WATCHDOG_FILE_NOTIFY_FLAGS]
+
+
+def test_extended_fallback_keeps_the_notify_filter(monkeypatch):
+    """A fallback from ReadDirectoryChangesExW uses the same mask."""
+    seen: list[int] = []
+    notify_filter = WATCHDOG_FILE_NOTIFY_FLAGS & ~FILE_NOTIFY_CHANGE_LAST_ACCESS
+
+    def fake_read_directory_changes_ex(*args, **kwargs):
+        seen.append(args[4])
+        error = OSError("extended notifications are not supported")
+        error.winerror = winapi.ERROR_INVALID_FUNCTION
+        raise error
+
+    def fake_read_directory_changes(*args, **kwargs):
+        seen.append(args[4])
+        return True
+
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesExW", fake_read_directory_changes_ex)
+    monkeypatch.setattr(winapi, "ReadDirectoryChangesW", fake_read_directory_changes)
+
+    reader = DirectoryChangeReader(temp_dir, recursive=True, notify_filter=notify_filter)
+    reader._extended = True  # noqa: SLF001
+    reader._run_inner(1, ctypes.create_string_buffer(64), DWORD())  # noqa: SLF001
+
+    assert seen == [notify_filter, notify_filter]
+    assert reader._extended is False  # noqa: SLF001
+
+
+def test_emitter_passes_notify_filter_to_reader(monkeypatch):
+    captured = {}
+
+    class FakeReader:
+        def __init__(self, path, *, recursive, notify_filter=WATCHDOG_FILE_NOTIFY_FLAGS):
+            captured["path"] = path
+            captured["recursive"] = recursive
+            captured["notify_filter"] = notify_filter
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr("watchdog.observers.read_directory_changes.DirectoryChangeReader", FakeReader)
+    emitter = WindowsApiEmitter(
+        Queue(),
+        ObservedWatch(temp_dir, recursive=True),
+        timeout=0.2,
+        notify_filter=_CONTENT_NOTIFY_FILTER,
+    )
+
+    emitter.on_thread_start()
+
+    assert captured == {"path": temp_dir, "recursive": True, "notify_filter": _CONTENT_NOTIFY_FILTER}
+
+
+def test_observer_forwards_notify_filter_to_emitters():
+    """Every watch created by the observer uses the mask given at construction."""
+    notify_filter = WATCHDOG_FILE_NOTIFY_FLAGS & ~FILE_NOTIFY_CHANGE_LAST_ACCESS
+    observer = WindowsApiObserver(notify_filter=notify_filter)
+    watch = observer.schedule(FileSystemEventHandler(), temp_dir, recursive=True)
+
+    emitter = next(iter(observer.emitters))
+    assert emitter.watch == watch
+    assert emitter.notify_filter == notify_filter
+
+
+def test_observer_defaults_to_watchdog_file_notify_flags():
+    observer = WindowsApiObserver()
+    observer.schedule(FileSystemEventHandler(), temp_dir)
+
+    assert next(iter(observer.emitters)).notify_filter == WATCHDOG_FILE_NOTIFY_FLAGS
+
+
+def _construct_with_notify_filter(factory: str, notify_filter: int):
+    if factory == "reader":
+        DirectoryChangeReader(temp_dir, recursive=False, notify_filter=notify_filter)
+    elif factory == "emitter":
+        WindowsApiEmitter(Queue(), ObservedWatch(temp_dir, recursive=False), notify_filter=notify_filter)
+    else:
+        WindowsApiObserver(notify_filter=notify_filter)
+
+
+@pytest.mark.parametrize(
+    ("notify_filter", "error_type"),
+    [
+        (True, TypeError),
+        (False, TypeError),
+        (None, TypeError),
+        ("1", TypeError),
+        (1.5, TypeError),
+        (0, ValueError),
+        (-1, ValueError),
+        (0x200, ValueError),
+        (FILE_NOTIFY_CHANGE_FILE_NAME | 0x200, ValueError),
+    ],
+)
+@pytest.mark.parametrize("factory", ["reader", "emitter", "observer"])
+def test_notify_filter_rejects_unusable_values(notify_filter, error_type, factory):
+    with pytest.raises(error_type, match="notify_filter"):
+        _construct_with_notify_filter(factory, notify_filter)
 
 
 def test_generate_observed_path_deleted_event():

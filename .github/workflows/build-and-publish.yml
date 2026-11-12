@@ -26,10 +26,6 @@ on:
 
   workflow_dispatch:
     inputs:
-      branch:
-        description: "The branch, tag or SHA to release from"
-        required: true
-        default: "master"
       publish:
         description: "Publish to PyPI (leave unchecked for dry-run build)"
         required: false
@@ -55,7 +51,6 @@ jobs:
     with:
       archs: ${{ matrix.arch }}
       build: "cp* pp311-* pp312-*"
-      ref: ${{ github.event.inputs.branch || github.ref }}
       upload_artifacts: true
 
   # Build platform-specific pure wheels and source distribution (.tar.gz)
@@ -63,7 +58,6 @@ jobs:
     name: 📦 Package Distributions
     uses: ./.github/workflows/dist-builder.yml
     with:
-      ref: ${{ github.event.inputs.branch || github.ref }}
       upload_artifacts: true
 
   # Publish to PyPI on release tags (v*) or confirmed manual dispatch

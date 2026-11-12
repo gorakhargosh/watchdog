@@ -10,8 +10,20 @@ Changelog
 
 **Other Changes**
 
+- [kqueue] Stop the emitter with a ``DirDeletedEvent`` when the watched directory is removed or moved, instead of letting its thread die with ``FileNotFoundError``. The kevents read in the same batch are still reported. (`#1436 <https://github.com/gorakhargosh/watchdog/issues/1436>`__, thanks to @karolyi)
+- [core] Allow pattern matching to evaluate relative paths against the watched root directory, supporting intuitive non-recursive patterns (e.g. ``*.json``, ``logs/*.log``) under ``full_match()``. (`#1430 <https://github.com/gorakhargosh/watchdog/issues/1430>`__ Thanks to @prateek-dagar)
+- [dirsnapshot] Avoid duplicate create or delete events when a renamed file has another hard link in the watched directory. (`#1425 <https://github.com/gorakhargosh/watchdog/issues/1425>`__, thanks to @parijat1222q)
+- [inotify] Properly format the duplicate-callback ``RuntimeWarning`` message. (`#1435 <https://github.com/gorakhargosh/watchdog/issues/1435>`__, thanks to @BoboTiG)
+- [inotify] Defer allocating an observer's inotify instance and reader thread until its first scheduled watch. Empty observers no longer consume inotify instances; resource-limit errors are raised by ``schedule()`` rather than construction. (`#1432 <https://github.com/gorakhargosh/watchdog/issues/1432>`__, thanks to @kushaldave002)
+- [observers] Fix race condition between ``Observer.start()`` and ``Observer.schedule()``, and release observer lock during event handler dispatch to prevent blocking concurrent ``schedule()`` and ``unschedule()`` calls. (`#1044 <https://github.com/gorakhargosh/watchdog/issues/1044>`__, thanks to @prateek-dagar)
 - [dirsnapshot] Fix false move detection on inode recycling by verifying file type, birth time, and nanosecond stat invariants. (`#992 <https://github.com/gorakhargosh/watchdog/issues/992>`__, `#303 <https://github.com/gorakhargosh/watchdog/issues/303>`__ Thanks to @prateek-dagar)
 - [core] ``RegexMatchingEventHandler`` now accepts a single string for ``ignore_regexes``, as it already does for ``regexes``, instead of compiling each character as a separate regex. (`#1419 <https://github.com/gorakhargosh/watchdog/pull/1419>`__, thanks to @arieleven)
+- [windows] A ``ReadDirectoryChangesW`` or ``ReadDirectoryChangesExW`` buffer overflow is now signalled instead of being silently dropped as zero events. (`#1019 <https://github.com/gorakhargosh/watchdog/issues/1019>`__, thanks to @MohammedAlkindi)
+- [kqueue] Register the kevents when the emitter is created, not on the emitter thread's first ``kqueue.control()`` call. Deletes, renames and attribute changes made in between were lost, every time on free-threaded Python. (`#1445 <https://github.com/gorakhargosh/watchdog/pull/1445>`__, thanks to @karolyi)
+- [windows] ``WindowsApiObserver``, ``WindowsApiEmitter``, and ``DirectoryChangeReader`` accept a ``notify_filter`` bitmask, the ``dwNotifyFilter`` passed to ``ReadDirectoryChangesW`` and ``ReadDirectoryChangesExW``. The default is still ``WATCHDOG_FILE_NOTIFY_FLAGS``, including ``FILE_NOTIFY_CHANGE_LAST_ACCESS``. Mask that flag out (``WATCHDOG_FILE_NOTIFY_FLAGS & ~FILE_NOTIFY_CHANGE_LAST_ACCESS``) when access-time updates are not useful. (`#1447 <https://github.com/gorakhargosh/watchdog/issues/1447>`__, thanks to @gero-robert)
+- [kqueue] Queue each event once per kqueue wakeup. A move reported the parent ``DirModifiedEvent`` twice, and a write reported ``FileModifiedEvent`` twice. (`#1442 <https://github.com/gorakhargosh/watchdog/issues/1442>`__, thanks to @karolyi)
+- [ci] Run the test suite in FreeBSD 14 (kqueue, also on free-threaded 3.13t) and FreeBSD 15 (inotify) VMs on pull requests. (`#1445 <https://github.com/gorakhargosh/watchdog/pull/1445>`__, thanks to @karolyi)
+- [watchmedo] Without ``--command``, ``shell-command`` printed every event as "<type> <object> from <src> to" with an empty destination. It now prints the destination for moved events only. (`#1448 <https://github.com/gorakhargosh/watchdog/pull/1448>`__, thanks to @Kernel-Hunter)
 
 7.1.0
 ~~~~~
