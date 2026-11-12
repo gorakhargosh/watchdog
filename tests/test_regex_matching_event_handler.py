@@ -11,6 +11,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    EventsLostEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -214,6 +215,17 @@ def test_dispatch_ignores_empty_dest_path():
     handler = _TestableEventHandler(ignore_regexes=[r"^[^.]*$"])
     handler.dispatch(FileModifiedEvent("/path/blah.py"))
     assert dispatched == [FileModifiedEvent("/path/blah.py")]
+
+
+def test_events_lost_ignores_regexes():
+    # The path is the watch's, not a changed one: the lost events may well have matched.
+    dispatched = []
+    handler = RegexMatchingEventHandler(regexes=[r".*\.py"], ignore_regexes=[r".*/project"], ignore_directories=True)
+    handler.on_events_lost = dispatched.append
+
+    handler.dispatch(EventsLostEvent("/path/project"))
+
+    assert dispatched == [EventsLostEvent("/path/project")]
 
 
 def test_logging_event_handler_dispatch():

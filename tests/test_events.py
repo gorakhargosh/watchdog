@@ -9,6 +9,7 @@ from watchdog.events import (
     EVENT_TYPE_CLOSED_NO_WRITE,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
+    EVENT_TYPE_EVENTS_LOST,
     EVENT_TYPE_MODIFIED,
     EVENT_TYPE_MOVED,
     EVENT_TYPE_OPENED,
@@ -17,6 +18,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    EventsLostEvent,
     FileAttribEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
@@ -296,3 +298,22 @@ def test_attrib_event_dispatch():
     attrib_event = FileAttribEvent("/path/to/file")
     handler.dispatch(attrib_event)
     assert attrib_called == attrib_event
+
+
+def test_events_lost_event_dispatch():
+    calls = []
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            calls.append(("any", event))
+
+        def on_events_lost(self, event):
+            calls.append(("events_lost", event))
+
+    event = EventsLostEvent("/path/to/watch")
+    Handler().dispatch(event)
+    FileSystemEventHandler().dispatch(event)
+
+    assert event.event_type == EVENT_TYPE_EVENTS_LOST
+    assert not event.is_directory
+    assert calls == [("any", event), ("events_lost", event)]

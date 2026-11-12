@@ -19,10 +19,12 @@ import subprocess
 import sys
 import threading
 import time
+from queue import Empty
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent
+from watchdog.events import DirCreatedEvent, DirDeletedEvent, DirModifiedEvent, EventsLostEvent, FileCreatedEvent
+from watchdog.observers.inotify import InotifyWatchGroup
 from watchdog.observers.inotify_c import (
     CallbackId,
     InotifyConstants,
@@ -44,6 +46,7 @@ logger = logging.getLogger(__name__)
 
 class Callback:
     overflow_count = 0
+    events_lost_count = 0
     event_count = 0
 
     def on_event(self, event) -> None:
@@ -54,6 +57,10 @@ class Callback:
 
     def on_queue_overflow(self) -> None:
         self.overflow_count += 1
+
+    def on_events_lost(self) -> None:
+        assert self.overflow_count == 1, "the loss must be reported after the recovery"
+        self.events_lost_count += 1
 
 
 def test_inotify_fd_instances_are_independent() -> None:
@@ -359,8 +366,62 @@ def test_queue_overflow_notifies_each_callback_once(caplog) -> None:
     inotify_fd.handle_event(InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b""))
 
     assert callback.overflow_count == 1
+    assert callback.events_lost_count == 1
     assert callback.event_count == 0
     assert "Inotify queue overflowed" in caplog.text
+
+
+@pytest.mark.timeout(10)
+def test_queue_overflow_reports_events_lost_once_per_watch(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching
+) -> None:
+    # Watches of one observer share an inotify instance, so one overflow loses events for all of them.
+    os.mkdir(p("recursive"))
+    os.mkdir(p("flat"))
+    start_watching(path=p("recursive"))
+    start_watching(path=p("flat"), recursive=False)
+
+    InotifyFD.get_instance().handle_event(InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b""))
+
+    events = sorted((event_queue.get(timeout=5)[0] for _ in range(2)), key=lambda event: event.src_path)
+    assert events == [EventsLostEvent(p("flat")), EventsLostEvent(p("recursive"))]
+    with pytest.raises(Empty):
+        event_queue.get(timeout=1)
+
+
+@pytest.mark.timeout(10)
+def test_events_lost_is_reported_once_the_watches_are_repaired(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    inotify_fd = InotifyFD.get_instance()
+    handle_event = inotify_fd.handle_event
+    on_queue_overflow = InotifyWatchGroup.on_queue_overflow
+
+    def overflow_instead(event: InotifyEvent) -> None:
+        # The kernel drops the events that do not fit in its queue and reports IN_Q_OVERFLOW instead.
+        if event.is_create and event.name == b"missed":
+            event = InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b"")
+        handle_event(event)
+
+    def slow_recovery(self: InotifyWatchGroup) -> None:
+        # Leave time for a handler to react to the event before the recovery ends, were it queued too early.
+        time.sleep(0.5)
+        on_queue_overflow(self)
+
+    monkeypatch.setattr(inotify_fd, "handle_event", overflow_instead)
+    monkeypatch.setattr(InotifyWatchGroup, "on_queue_overflow", slow_recovery)
+    os.mkdir(p("root"))
+    start_watching(path=p("root"))
+    os.makedirs(p("root", "missed", "child"))
+
+    assert event_queue.get(timeout=5)[0] == EventsLostEvent(p("root"))
+
+    # A handler rescanning now must not miss a change below the directories created while events were lost.
+    new_file = p("root", "missed", "child", "new")
+    with open(new_file, "w"):
+        pass
+    while (event := event_queue.get(timeout=5)[0]) != FileCreatedEvent(new_file):
+        assert not isinstance(event, EventsLostEvent)
 
 
 def test_select_fd(helper: Helper, p: P, event_queue: TestEventQueue, start_watching: StartWatching) -> None:

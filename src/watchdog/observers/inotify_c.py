@@ -173,6 +173,10 @@ class WatchCallback(Protocol):
         """Called when the kernel inotify queue overflows."""
         ...
 
+    def on_events_lost(self) -> None:
+        """Called after :meth:`on_queue_overflow` has returned for every callback."""
+        ...
+
 
 @dataclass
 class Watch:
@@ -345,6 +349,9 @@ class InotifyFD(BaseThread):
             logger.warning("Inotify queue overflowed; filesystem events were lost")
             for callback in overflow_callbacks:
                 callback.on_queue_overflow()
+            # Report the loss only once every watch has recovered, so a rescan sees them repaired.
+            for callback in overflow_callbacks:
+                callback.on_events_lost()
             return
 
         with self._lock:

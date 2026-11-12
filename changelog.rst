@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [inotify] Report lost events: after a kernel queue overflow, each watch of the observer gets an ``EventsLostEvent`` for its path, dispatched to the new ``FileSystemEventHandler.on_events_lost()``. It is queued once the watches have been repaired, so a handler can rescan right away. (`#1440 <https://github.com/gorakhargosh/watchdog/issues/1440>`__, thanks to @fstrasz)
 - [kqueue] Stop the emitter with a ``DirDeletedEvent`` when the watched directory is removed or moved, instead of letting its thread die with ``FileNotFoundError``. The kevents read in the same batch are still reported. (`#1436 <https://github.com/gorakhargosh/watchdog/issues/1436>`__, thanks to @karolyi)
 - [core] Allow pattern matching to evaluate relative paths against the watched root directory, supporting intuitive non-recursive patterns (e.g. ``*.json``, ``logs/*.log``) under ``full_match()``. (`#1430 <https://github.com/gorakhargosh/watchdog/issues/1430>`__ Thanks to @prateek-dagar)
 - [dirsnapshot] Avoid duplicate create or delete events when a renamed file has another hard link in the watched directory. (`#1425 <https://github.com/gorakhargosh/watchdog/issues/1425>`__, thanks to @parijat1222q)
