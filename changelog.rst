@@ -26,6 +26,7 @@ Changelog
 - [kqueue] Queue each event once per kqueue wakeup. A move reported the parent ``DirModifiedEvent`` twice, and a write reported ``FileModifiedEvent`` twice. (`#1442 <https://github.com/gorakhargosh/watchdog/issues/1442>`__, thanks to @karolyi)
 - [ci] Run the test suite in FreeBSD 14 (kqueue, also on free-threaded 3.13t) and FreeBSD 15 (inotify) VMs on pull requests. (`#1445 <https://github.com/gorakhargosh/watchdog/pull/1445>`__, thanks to @karolyi)
 - [watchmedo] Without ``--command``, ``shell-command`` printed every event as "<type> <object> from <src> to" with an empty destination. It now prints the destination for moved events only. (`#1448 <https://github.com/gorakhargosh/watchdog/pull/1448>`__, thanks to @Kernel-Hunter)
+- [inotify] A recursive watch that hits the inotify watch or instance limit (``ENOSPC``, ``EMFILE``) on a subdirectory raises ``OSError`` from ``start()`` and ``schedule()`` again, as in 6.0.0, instead of silently watching part of the tree. A subdirectory created later that cannot be watched is logged as a warning. (`#1454 <https://github.com/gorakhargosh/watchdog/issues/1454>`__, thanks to @Kernel-Hunter)
 
 7.1.0
 ~~~~~

@@ -68,6 +68,7 @@ Some extremely useful articles and documentation:
 
 from __future__ import annotations
 
+import errno
 import logging
 import os
 import threading
@@ -319,7 +320,11 @@ class InotifyWatchGroup(WatchCallback):
             if self.is_active:  # maybe wwe can remove this check...
                 return
 
-            self._add_all_callbacks(self.path)
+            try:
+                self._add_all_callbacks(self.path)
+            except OSError:
+                self._remove_callbacks(list(self._active_callbacks_by_watch))
+                raise
             self._is_active = True
 
     # Non-synchronized methods:
@@ -377,11 +382,16 @@ class InotifyWatchGroup(WatchCallback):
             wd = self._inotify_fd.add_callback(path, self.event_mask, self._callback, self._id)
             self._active_callbacks_by_path[path] = wd
             self._active_callbacks_by_watch[wd] = path
-        except OSError:
+        except OSError as e:
             # Descendants may disappear or become inaccessible during recursive
             # registration, but a failure to watch the root must reach the caller.
             if path == self.path:
                 raise
+            # Running out of watches or instances leaves the rest of the tree unwatched.
+            if e.errno in {errno.ENOSPC, errno.EMFILE}:
+                if not self.is_active:
+                    raise
+                logger.warning("Unable to watch %r: %s", path, e)
 
     def _remove_callbacks(self, wds: list[WatchDescriptor]) -> None:
         """removes callbacks for the given paths.
