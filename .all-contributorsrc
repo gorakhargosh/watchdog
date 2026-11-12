@@ -478,6 +478,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Kernel-Hunter",
+      "name": "Karim Masmoudi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/125830216?v=4",
+      "profile": "https://karimmasmoudi.vercel.app/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
