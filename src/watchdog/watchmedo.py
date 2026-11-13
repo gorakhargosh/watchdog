@@ -119,6 +119,23 @@ def command(
     return decorator
 
 
+def _schedule_kwargs(
+    *,
+    recursive: bool,
+    emit_existing: bool = False,
+    ordered_startup: bool = False,
+) -> dict[str, Any]:
+    """Build keyword arguments for ``observer.schedule()`` while omitting default sync flags."""
+    # Backwards compatibility: omit False defaults so custom Observer.schedule() overrides lacking
+    # startup-sync parameters and exact-call mocks (e.g. test_observe_with) keep working unchanged.
+    kwargs: dict[str, Any] = {"recursive": recursive}
+    if emit_existing:
+        kwargs["emit_existing"] = True
+    if emit_existing and ordered_startup:
+        kwargs["ordered_startup"] = True
+    return kwargs
+
+
 def path_split(pathname_spec: str, *, separator: str = os.pathsep) -> list[str]:
     """Splits a pathname specification separated by an OS-dependent separator.
 
@@ -176,6 +193,8 @@ def observe_with(
     pathnames: list[str],
     *,
     recursive: bool,
+    emit_existing: bool = False,
+    ordered_startup: bool = False,
 ) -> None:
     """Single observer thread with a scheduled path and event handler.
 
@@ -187,9 +206,18 @@ def observe_with(
         A list of pathnames to monitor.
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
+    :param emit_existing:
+        ``True`` if synthetic created events should be emitted for existing entries on startup.
+    :param ordered_startup:
+        ``True`` if live events should be staged until startup catch-up completes.
     """
+    schedule_kwargs = _schedule_kwargs(
+        recursive=recursive,
+        emit_existing=emit_existing,
+        ordered_startup=ordered_startup,
+    )
     for pathname in set(pathnames):
-        observer.schedule(event_handler, pathname, recursive=recursive)
+        observer.schedule(event_handler, pathname, **schedule_kwargs)
     observer.start()
     try:
         while True:
@@ -199,7 +227,15 @@ def observe_with(
     observer.join()
 
 
-def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *, recursive: bool) -> None:
+def schedule_tricks(
+    observer: BaseObserver,
+    tricks: list[dict],
+    pathname: str,
+    *,
+    recursive: bool,
+    emit_existing: bool = False,
+    ordered_startup: bool = False,
+) -> None:
     """Schedules tricks with the specified observer and for the given watch
     path.
 
@@ -211,13 +247,22 @@ def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *
         A path name which should be watched.
     :param recursive:
         ``True`` if recursive; ``False`` otherwise.
+    :param emit_existing:
+        ``True`` if synthetic created events should be emitted for existing entries on startup.
+    :param ordered_startup:
+        ``True`` if live events should be staged until startup catch-up completes.
     """
+    schedule_kwargs = _schedule_kwargs(
+        recursive=recursive,
+        emit_existing=emit_existing,
+        ordered_startup=ordered_startup,
+    )
     for trick in tricks:
         for name, value in trick.items():
             trick_cls = load_class(name)
             handler = trick_cls(**value)
             trick_pathname = getattr(handler, "source_directory", None) or pathname
-            observer.schedule(handler, trick_pathname, recursive=recursive)
+            observer.schedule(handler, trick_pathname, **schedule_kwargs)
 
 
 @command(
@@ -262,6 +307,23 @@ def schedule_tricks(observer: BaseObserver, tricks: list[dict], pathname: str, *
             "--debug-force-inotify",
             action="store_true",
             help="[debug] Forces Linux inotify(7).",
+        ),
+        argument(
+            "-e",
+            "--emit-existing",
+            dest="emit_existing",
+            action="store_true",
+            default=False,
+            help="Emit synthetic created events for pre-existing files and directories on startup.",
+        ),
+        argument(
+            "-o",
+            "--ordered-startup",
+            dest="ordered_startup",
+            action="store_true",
+            default=False,
+            help="Stage live events during startup catch-up and flush after synthetic created events "
+            "(requires --emit-existing).",
         ),
     ],
     cmd_aliases=["tricks"],
@@ -316,7 +378,14 @@ def tricks_from(args: Namespace) -> None:
             add_to_sys_path(config[CONFIG_KEY_PYTHON_PATH])
 
         dir_path = os.path.dirname(tricks_file) or os.path.relpath(os.getcwd())
-        schedule_tricks(observer, tricks, dir_path, recursive=args.recursive)
+        schedule_tricks(
+            observer,
+            tricks,
+            dir_path,
+            recursive=args.recursive,
+            emit_existing=args.emit_existing,
+            ordered_startup=args.ordered_startup,
+        )
         observer.start()
         observers.append(observer)
 
@@ -458,6 +527,23 @@ def tricks_generate_yaml(args: Namespace) -> None:
             action="store_true",
             help="[debug] Forces Linux inotify(7).",
         ),
+        argument(
+            "-e",
+            "--emit-existing",
+            dest="emit_existing",
+            action="store_true",
+            default=False,
+            help="Emit synthetic created events for pre-existing files and directories on startup.",
+        ),
+        argument(
+            "-o",
+            "--ordered-startup",
+            dest="ordered_startup",
+            action="store_true",
+            default=False,
+            help="Stage live events during startup catch-up and flush after synthetic created events "
+            "(requires --emit-existing).",
+        ),
     ],
 )
 def log(args: Namespace) -> None:
@@ -500,7 +586,14 @@ def log(args: Namespace) -> None:
         observer_cls = Observer
 
     observer = observer_cls(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, recursive=args.recursive)
+    observe_with(
+        observer,
+        handler,
+        args.directories,
+        recursive=args.recursive,
+        emit_existing=args.emit_existing,
+        ordered_startup=args.ordered_startup,
+    )
 
 
 @command(
@@ -601,6 +694,23 @@ def log(args: Namespace) -> None:
             help="Working directory in which to execute the command.",
         ),
         argument("--debug-force-polling", action="store_true", help="[debug] Forces polling."),
+        argument(
+            "-e",
+            "--emit-existing",
+            dest="emit_existing",
+            action="store_true",
+            default=False,
+            help="Emit synthetic created events for pre-existing files and directories on startup.",
+        ),
+        argument(
+            "-o",
+            "--ordered-startup",
+            dest="ordered_startup",
+            action="store_true",
+            default=False,
+            help="Stage live events during startup catch-up and flush after synthetic created events "
+            "(requires --emit-existing).",
+        ),
     ],
 )
 def shell_command(args: Namespace) -> None:
@@ -632,7 +742,14 @@ def shell_command(args: Namespace) -> None:
         cwd=args.cwd,
     )
     observer = observer_cls(timeout=args.timeout)
-    observe_with(observer, handler, args.directories, recursive=args.recursive)
+    observe_with(
+        observer,
+        handler,
+        args.directories,
+        recursive=args.recursive,
+        emit_existing=args.emit_existing,
+        ordered_startup=args.ordered_startup,
+    )
 
 
 @command(
@@ -725,6 +842,23 @@ def shell_command(args: Namespace) -> None:
             action="store_false",
             help="Don't auto-restart the command after it exits.",
         ),
+        argument(
+            "-e",
+            "--emit-existing",
+            dest="emit_existing",
+            action="store_true",
+            default=False,
+            help="Emit synthetic created events for pre-existing files and directories on startup.",
+        ),
+        argument(
+            "-o",
+            "--ordered-startup",
+            dest="ordered_startup",
+            action="store_true",
+            default=False,
+            help="Stage live events during startup catch-up and flush after synthetic created events "
+            "(requires --emit-existing).",
+        ),
     ],
 )
 def auto_restart(args: Namespace) -> None:
@@ -781,7 +915,14 @@ def auto_restart(args: Namespace) -> None:
     handler.start()
     observer = observer_cls(timeout=args.timeout)
     try:
-        observe_with(observer, handler, args.directories, recursive=args.recursive)
+        observe_with(
+            observer,
+            handler,
+            args.directories,
+            recursive=args.recursive,
+            emit_existing=args.emit_existing,
+            ordered_startup=args.ordered_startup,
+        )
     except WatchdogShutdownError:
         pass
     finally:

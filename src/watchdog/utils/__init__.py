@@ -18,6 +18,7 @@ Types
 
 from __future__ import annotations
 
+import errno
 import sys
 import threading
 import warnings
@@ -32,6 +33,25 @@ T = TypeVar("T")
 
 Seconds = float
 """A duration expressed in seconds."""
+
+_IGNORABLE_FS_ERRNOS = frozenset(
+    (
+        errno.ENOENT,
+        errno.ENOTDIR,
+        errno.EINVAL,
+    )
+)
+
+
+def is_ignorable_fs_error(exc: OSError) -> bool:
+    """Returns True if an OSError represents an expected, transient path disappearance
+    during filesystem traversal (e.g. FileNotFoundError, NotADirectoryError, ENOENT).
+    Returns False for unexpected, fatal I/O faults (e.g. EIO, ESTALE) or permission denials
+    (EACCES, EPERM), which must not be treated as empty directories in snapshots.
+    """
+    if isinstance(exc, (FileNotFoundError, NotADirectoryError)):
+        return True
+    return getattr(exc, "errno", None) in _IGNORABLE_FS_ERRNOS
 
 
 def resolve_renamed_argument(old_name: str, old: T | None, new_name: str, new: T | None, default: T) -> T:

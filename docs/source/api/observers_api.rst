@@ -4,6 +4,12 @@
 .. automodule:: watchdog.observers.api
     :synopsis: Classes useful to observer implementers.
 
+    Enumerations
+    ------------
+    .. autoclass:: SnapshotStatus
+       :members:
+       :show-inheritance:
+
     Immutables
     ----------
     .. autoclass:: ObservedWatch
