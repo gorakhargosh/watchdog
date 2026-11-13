@@ -19,7 +19,7 @@ import subprocess
 import sys
 import threading
 import time
-from queue import Empty
+from queue import Empty, SimpleQueue
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -489,3 +489,226 @@ def test_add_callback_warn_on_duplicate(tmp_path: Path) -> None:
     )
     with pytest.warns(RuntimeWarning, match=error):
         inotify_fd.add_callback(*args)
+
+
+def test_raw_queue_fifo() -> None:
+    inotify_fd = object.__new__(InotifyFD)
+    inotify_fd._lock = threading.Lock()
+    inotify_fd._closed = False
+    inotify_fd._raw_queue = SimpleQueue()
+
+    received: list[bytes] = []
+    cb = Callback()
+    cb.on_event = lambda ev: received.append(ev.name)  # type: ignore[method-assign]
+    watch = Watch(WatchDescriptor(1), Mask(InotifyConstants.IN_CREATE), b"/tmp/fifo")
+    watch.callbacks[CallbackId(1)] = cb
+    inotify_fd._watch_for_wd = {WatchDescriptor(1): watch}
+
+    expected = [f"f_{b}_{i}".encode() for b in range(5) for i in range(50)]
+    for b in range(5):
+        chunk = b"".join(
+            struct_inotify(1, InotifyConstants.IN_CREATE, length=16, name=f"f_{b}_{i}".encode()) for i in range(50)
+        )
+        inotify_fd._raw_queue.put(chunk)
+    inotify_fd._raw_queue.put(b"")
+    inotify_fd._dispatch_raw_buffers()
+    assert received == expected
+
+
+@pytest.mark.parametrize("method", ["stop", "close"])
+def test_shutdown(method: str) -> None:
+    inotify_fd = InotifyFD()
+    entered = threading.Event()
+    orig_check = inotify_fd._check_inotify_fd  # noqa: SLF001
+
+    def check_and_signal(timeout_ms: int | None = None) -> bool:
+        entered.set()
+        return orig_check(timeout_ms)
+
+    inotify_fd._check_inotify_fd = check_and_signal  # type: ignore[method-assign]  # noqa: SLF001
+    inotify_fd.start()
+    assert entered.wait(timeout=5)
+    getattr(inotify_fd, method)()
+    inotify_fd.join(timeout=5)
+    assert not inotify_fd.is_alive()
+
+
+def test_dispatcher_error_stops_reader(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    caught: list[BaseException] = []
+    monkeypatch.setattr(threading, "excepthook", lambda args: caught.append(args.exc_value))
+
+    inotify_fd = InotifyFD()
+    cb = Callback()
+    cb.on_event = lambda _ev: (_ for _ in ()).throw(RuntimeError("boom"))  # type: ignore[method-assign]
+    inotify_fd.add_callback(os.fsencode(tmp_path), InotifyConstants.IN_CREATE, cb, CallbackId(1))
+    inotify_fd.start()
+    try:
+        (tmp_path / "trigger.txt").touch()
+        inotify_fd.join(timeout=5)
+        assert not inotify_fd.is_alive()
+        assert isinstance(inotify_fd._dispatch_error, RuntimeError)  # noqa: SLF001
+        assert any(isinstance(e, RuntimeError) and str(e) == "boom" for e in caught)
+    finally:
+        if inotify_fd.is_alive():
+            inotify_fd.stop()
+            inotify_fd.join(timeout=5)
+
+
+def test_dispatcher_start_failure_closes_fd(monkeypatch: pytest.MonkeyPatch) -> None:
+    inotify_fd = InotifyFD()
+    monkeypatch.setattr(threading.Thread, "start", lambda _self: (_ for _ in ()).throw(RuntimeError("cannot start")))
+    with pytest.raises(RuntimeError, match="cannot start"):
+        inotify_fd.run()
+    assert inotify_fd._closed  # noqa: SLF001
+
+
+def test_reader_enqueues_while_dispatcher_blocked(tmp_path: Path) -> None:
+    inotify_fd = InotifyFD()
+    blocked_in_cb = threading.Event()
+    release_cb = threading.Event()
+    names: list[bytes] = []
+
+    def on_event(ev: InotifyEvent) -> None:
+        names.append(ev.name)
+        if ev.name == b"first.txt":
+            blocked_in_cb.set()
+            assert release_cb.wait(timeout=5)
+
+    cb = Callback()
+    cb.on_event = on_event  # type: ignore[method-assign]
+    inotify_fd.add_callback(os.fsencode(tmp_path), InotifyConstants.IN_CREATE, cb, CallbackId(1))
+    inotify_fd.start()
+    try:
+        (tmp_path / "first.txt").touch()
+        assert blocked_in_cb.wait(timeout=5)
+        (tmp_path / "second.txt").touch()
+        # Reader should enqueue raw buffer for second.txt while dispatcher is still blocked on first.txt
+        deadline = time.monotonic() + 2.0
+        while inotify_fd._raw_queue.qsize() == 0 and time.monotonic() < deadline:  # noqa: SLF001
+            time.sleep(0.01)
+        assert inotify_fd._raw_queue.qsize() > 0  # noqa: SLF001
+        release_cb.set()
+
+        deadline = time.monotonic() + 2.0
+        while b"second.txt" not in names and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert b"second.txt" in names
+    finally:
+        release_cb.set()
+        inotify_fd.stop()
+        inotify_fd.join(timeout=5)
+
+
+def test_parse_event_buffer_large_burst_with_varied_names() -> None:
+    events_bytes: list[bytes] = []
+    expected_names: list[bytes] = []
+    for i in range(500):
+        name = f"file_{i}_{'x' * (i % 25)}.txt".encode()
+        padded_len = ((len(name) + 1 + 15) // 16) * 16
+        events_bytes.append(struct_inotify(1, InotifyConstants.IN_CREATE, length=padded_len, name=name))
+        expected_names.append(name)
+    events_bytes.append(struct_inotify(-1, InotifyConstants.IN_Q_OVERFLOW))
+
+    parsed = list(InotifyFD._parse_event_buffer(b"".join(events_bytes)))  # noqa: SLF001
+    assert len(parsed) == 501
+    assert [p[3] for p in parsed[:500]] == expected_names
+    assert parsed[-1][0] == -1
+    assert parsed[-1][1] & InotifyConstants.IN_Q_OVERFLOW
+
+
+def test_concurrent_callback_mutation_during_handle_event() -> None:
+    inotify_fd = InotifyFD.__new__(InotifyFD)
+    inotify_fd._lock = threading.RLock()  # noqa: SLF001
+    watch = Watch(WatchDescriptor(1), Mask(InotifyConstants.IN_CREATE), b"/tmp/mut")
+    cb1 = Callback()
+    cb1.on_event = lambda _ev: None  # type: ignore[method-assign]
+    watch.callbacks[CallbackId(1)] = cb1
+    inotify_fd._watch_for_wd = {WatchDescriptor(1): watch}  # noqa: SLF001
+
+    mutator_started = threading.Event()
+    stop_mutator = threading.Event()
+    mutations = 0
+    errors: list[BaseException] = []
+
+    def mutator() -> None:
+        nonlocal mutations
+        try:
+            idx = 2
+            while not stop_mutator.is_set():
+                cid = CallbackId(idx)
+                cb = Callback()
+                cb.on_event = lambda _ev: None  # type: ignore[method-assign]
+                with inotify_fd._lock:  # noqa: SLF001
+                    watch.callbacks[cid] = cb
+                    watch.callbacks.pop(cid, None)
+                mutations += 1
+                mutator_started.set()
+                idx += 1
+        except BaseException as exc:
+            errors.append(exc)
+
+    t = threading.Thread(target=mutator, daemon=True)
+    t.start()
+    try:
+        assert mutator_started.wait(timeout=2)
+        ev = InotifyEvent(1, InotifyConstants.IN_CREATE, 0, b"a.txt")
+        for _ in range(200):
+            inotify_fd.handle_event(ev)
+    finally:
+        stop_mutator.set()
+        t.join(timeout=2)
+    assert not t.is_alive()
+    assert not errors
+    assert mutations > 0
+
+
+def test_close_while_coalescing() -> None:
+    inotify_fd = InotifyFD()
+    entered_coalesce = threading.Event()
+    allow_check_to_finish = threading.Event()
+    orig_check = inotify_fd._check_inotify_fd  # noqa: SLF001
+
+    def instrumented_check(timeout_ms: int | None = None) -> bool:
+        if timeout_ms is not None:
+            entered_coalesce.set()
+            allow_check_to_finish.wait(timeout=5)
+        return orig_check(timeout_ms)
+
+    inotify_fd._check_inotify_fd = instrumented_check  # type: ignore[method-assign]  # noqa: SLF001
+    first_chunk = struct_inotify(1, InotifyConstants.IN_CREATE, length=16, name=b"burst")
+    coalesce_result: list[bytes] = []
+
+    def coalesce_worker() -> None:
+        res = inotify_fd._coalesce_event_buffer(first_chunk, time.perf_counter() + 10.0)  # noqa: SLF001
+        coalesce_result.append(res)
+
+    t = threading.Thread(target=coalesce_worker)
+    t.start()
+    try:
+        assert entered_coalesce.wait(timeout=5)
+        inotify_fd.close()
+        allow_check_to_finish.set()
+        t.join(timeout=5)
+        assert not t.is_alive()
+        assert coalesce_result == [first_chunk]
+        assert inotify_fd._closed  # noqa: SLF001
+    finally:
+        allow_check_to_finish.set()
+        if t.is_alive():
+            inotify_fd.close()
+            t.join(timeout=5)
+
+
+def test_stop_while_buffers_queued() -> None:
+    inotify_fd = InotifyFD()
+    events_dispatched: list[InotifyEvent] = []
+    inotify_fd.handle_event = events_dispatched.append  # type: ignore[method-assign]
+    # Enqueue buffers into raw_queue without starting reader thread
+    for i in range(10):
+        chunk = struct_inotify(1, InotifyConstants.IN_CREATE, length=16, name=f"f_{i}".encode())
+        inotify_fd._raw_queue.put(chunk)  # noqa: SLF001
+    inotify_fd.close()
+    # Draining after close should not hang and must complete cleanly
+    inotify_fd._raw_queue.put(b"")  # noqa: SLF001
+    inotify_fd._dispatch_raw_buffers()  # noqa: SLF001
+    assert len(events_dispatched) == 0

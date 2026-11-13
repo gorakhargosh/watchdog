@@ -331,3 +331,68 @@ def test_queue_overflow_rebuilds_recursive_watches(p, caplog):
     }
     assert "reconciling recursive watches" in caplog.text
     inotify.deactivate()
+
+
+def test_vanishing_descendant(p):
+    vanishing = p("root", "pkg", "vanishing").encode()
+    mkdir(p("root", "pkg", "vanishing"), parents=True)
+    mkdir(p("root", "pkg", "surviving"), parents=True)
+
+    class FakeFD:
+        next_wd = 0
+
+        def add_callback(self, path: bytes, mask, callback, id_):
+            if path == vanishing:
+                raise FileNotFoundError(path)
+            self.next_wd += 1
+            return self.next_wd
+
+        def remove_callbacks(self, callbacks) -> None:
+            pass
+
+    inotify = InotifyWatchGroup(
+        cast("InotifyFD", FakeFD()), p("root").encode(), is_recursive=True, event_mask=WATCHDOG_ALL_EVENTS
+    )
+    assert p("root").encode() in inotify._active_callbacks_by_path  # noqa: SLF001
+    assert p("root", "pkg").encode() in inotify._active_callbacks_by_path  # noqa: SLF001
+    assert p("root", "pkg", "surviving").encode() in inotify._active_callbacks_by_path  # noqa: SLF001
+    assert vanishing not in inotify._active_callbacks_by_path  # noqa: SLF001
+    inotify.deactivate()
+
+
+def test_chained_renames(p):
+    class FakeFD:
+        next_wd = 0
+
+        def add_callback(self, path: bytes, mask, callback, id_):
+            self.next_wd += 1
+            return self.next_wd
+
+        def remove_callbacks(self, callbacks) -> None:
+            pass
+
+    mkdir(p("root", "dir_a", "sub", "leaf"), parents=True)
+    inotify = InotifyWatchGroup(
+        cast("InotifyFD", FakeFD()), p("root").encode(), is_recursive=True, event_mask=WATCHDOG_ALL_EVENTS
+    )
+    root_wd = inotify._active_callbacks_by_path[p("root").encode()]  # noqa: SLF001
+    leaf_wd = inotify._active_callbacks_by_path[p("root", "dir_a", "sub", "leaf").encode()]  # noqa: SLF001
+
+    for cookie, (src, dst) in enumerate([("dir_a", "dir_b"), ("dir_b", "dir_c")], start=10):
+        os.rename(p("root", src), p("root", dst))
+        inotify.on_event(
+            InotifyEvent(
+                root_wd, Mask(InotifyConstants.IN_MOVED_FROM | InotifyConstants.IN_ISDIR), cookie, src.encode()
+            )
+        )
+        inotify.on_event(
+            InotifyEvent(root_wd, Mask(InotifyConstants.IN_MOVED_TO | InotifyConstants.IN_ISDIR), cookie, dst.encode())
+        )
+
+    inotify.on_event(InotifyEvent(leaf_wd, Mask(InotifyConstants.IN_CREATE), 0, b"final.txt"))
+    (frm1, to1), (frm2, to2), leaf_ev = inotify.read_event(), inotify.read_event(), inotify.read_event()
+    assert (frm1.path, to1.path) == (p("root", "dir_a").encode(), p("root", "dir_b").encode())
+    assert (frm2.path, to2.path) == (p("root", "dir_b").encode(), p("root", "dir_c").encode())
+    assert isinstance(leaf_ev, PathedInotifyEvent)
+    assert leaf_ev.path == p("root", "dir_c", "sub", "leaf", "final.txt").encode()
+    inotify.deactivate()
