@@ -489,3 +489,24 @@ def test_add_callback_warn_on_duplicate(tmp_path: Path) -> None:
     )
     with pytest.warns(RuntimeWarning, match=error):
         inotify_fd.add_callback(*args)
+
+
+def test_callback_reuse_does_not_hide_replacement(tmp_path: Path) -> None:
+    import warnings
+
+    path = os.fsencode(tmp_path)
+    inotify_fd = InotifyFD()
+    callback = Callback()
+    callback_id = CallbackId(1)
+    try:
+        wd = inotify_fd.add_callback(path, InotifyConstants.IN_ACCESS, callback, callback_id)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert (
+                inotify_fd.add_callback(path, InotifyConstants.IN_ACCESS, callback, callback_id, reuse_callback=True)
+                == wd
+            )
+        with pytest.warns(RuntimeWarning, match="already exists"):
+            inotify_fd.add_callback(path, InotifyConstants.IN_ACCESS, Callback(), callback_id, reuse_callback=True)
+    finally:
+        inotify_fd.close()

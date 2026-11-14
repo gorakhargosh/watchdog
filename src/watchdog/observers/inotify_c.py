@@ -265,10 +265,13 @@ class InotifyFD(BaseThread):
                 cls._instance.start()
             return cls._instance
 
-    def add_callback(self, path: bytes, mask: Mask, callback: WatchCallback, id_: CallbackId) -> WatchDescriptor:
+    def add_callback(
+        self, path: bytes, mask: Mask, callback: WatchCallback, id_: CallbackId, *, reuse_callback: bool = False
+    ) -> WatchDescriptor:
         """Adds a callback for the given path to monitor events specified by the
         mask. If a watch already exists for the given path, it is reused.
-        If a callback with the given id_ already exists for this watch, it is overwritten and a warning is generated.
+        Re-registering a callback with the given id_ generates a warning unless
+        reuse_callback is enabled and the callback object is unchanged.
 
         :param path:
             Path to begin monitoring.
@@ -281,7 +284,7 @@ class InotifyFD(BaseThread):
             The id must be unique only within a given watch.
         """
         with self._lock:
-            return self._add_callback(path, mask, callback, id_)
+            return self._add_callback(path, mask, callback, id_, reuse_callback=reuse_callback)
 
     def remove_callbacks(self, callbacks: list[tuple[WatchDescriptor, CallbackId]]) -> None:
         """Removes callbacks from WatchDescriptors. If a callback was the last
@@ -435,10 +438,13 @@ class InotifyFD(BaseThread):
         os.close(self._kill_r)
         os.close(self._kill_w)
 
-    def _add_callback(self, path: bytes, mask: Mask, callback: WatchCallback, id_: CallbackId) -> WatchDescriptor:
+    def _add_callback(
+        self, path: bytes, mask: Mask, callback: WatchCallback, id_: CallbackId, *, reuse_callback: bool = False
+    ) -> WatchDescriptor:
         """Adds a callback for the given path to monitor events specified by the
         mask. If a watch already exists for the given path, it is reused.
-        If a callback with the given id_ already exists for this watch, it is overwritten and a warning is generated.
+        Re-registering a callback with the given id_ generates a warning unless
+        reuse_callback is enabled and the callback object is unchanged.
 
         :param path:
             Path to begin monitoring.
@@ -452,7 +458,7 @@ class InotifyFD(BaseThread):
         """
         watch = self._get_or_create_watch(path, mask)
 
-        if id_ in watch.callbacks:
+        if id_ in watch.callbacks and (not reuse_callback or watch.callbacks[id_] is not callback):
             msg = f"Callback with id '{id_}' already exists for watch {watch.short_str()}, it will be overwritten."
             warnings.warn(msg, RuntimeWarning, stacklevel=3)
         watch.callbacks[id_] = callback

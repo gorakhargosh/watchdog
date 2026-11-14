@@ -255,7 +255,7 @@ def test_move_to_reconciles_renamed_directory_without_source_watch(p):
         def __init__(self) -> None:
             self.next_wd = 0
 
-        def add_callback(self, path, mask, callback, id_):
+        def add_callback(self, path, mask, callback, id_, *, reuse_callback=False):
             if not os.path.isdir(path):
                 raise FileNotFoundError(path)
             self.next_wd += 1
@@ -307,7 +307,7 @@ def test_queue_overflow_rebuilds_recursive_watches(p, caplog):
             self.next_wd = 0
             self.removed = []
 
-        def add_callback(self, path, mask, callback, id_):
+        def add_callback(self, path, mask, callback, id_, *, reuse_callback=False):
             self.next_wd += 1
             return self.next_wd
 
