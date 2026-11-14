@@ -12,13 +12,22 @@ import random
 from typing import TYPE_CHECKING, cast
 
 from watchdog.observers.inotify import InotifyWatchGroup
-from watchdog.observers.inotify_c import WATCHDOG_ALL_EVENTS, InotifyConstants, InotifyEvent, InotifyFD, Mask
+from watchdog.observers.inotify_c import (
+    WATCHDOG_ALL_EVENTS,
+    InotifyConstants,
+    InotifyEvent,
+    InotifyFD,
+    Mask,
+    WatchDescriptor,
+)
 from watchdog.observers.inotify_move_event_grouper import GroupedInotifyEvent, PathedInotifyEvent
 
 from .shell import mkdir, mount_tmpfs, mv, rm, symlink, touch, unmount
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from .utils import P
 
 
 def wait_for_move_event(read_event: Callable[[], GroupedInotifyEvent]) -> GroupedInotifyEvent:
@@ -395,4 +404,76 @@ def test_chained_renames(p):
     assert (frm2.path, to2.path) == (p("root", "dir_b").encode(), p("root", "dir_c").encode())
     assert isinstance(leaf_ev, PathedInotifyEvent)
     assert leaf_ev.path == p("root", "dir_c", "sub", "leaf", "final.txt").encode()
+    inotify.deactivate()
+
+
+@pytest.mark.parametrize("parent_first", [True, False])
+def test_tree_removal_lifecycle(p: P, *, parent_first: bool) -> None:
+    mkdir(p("root", "parent", "child"), parents=True)
+    inotify = create_inotify_watch(p("root").encode(), recursive=True)
+    parent_wd = inotify._active_callbacks_by_path[p("root", "parent").encode()]  # noqa: SLF001
+    child_wd = inotify._active_callbacks_by_path[p("root", "parent", "child").encode()]  # noqa: SLF001
+
+    if parent_first:
+        inotify._remove_watch_internally(parent_wd)  # noqa: SLF001
+        assert inotify._resolve_path(child_wd) == p("root", "parent", "child").encode()  # noqa: SLF001
+        inotify._remove_watch_internally(child_wd)  # noqa: SLF001
+    else:
+        inotify._remove_watch_internally(child_wd)  # noqa: SLF001
+        inotify._remove_watch_internally(parent_wd)  # noqa: SLF001
+
+    assert parent_wd not in inotify._nodes_by_wd  # noqa: SLF001
+    assert child_wd not in inotify._nodes_by_wd  # noqa: SLF001
+    inotify.deactivate()
+
+
+def test_move_into_already_occupied_destination(p: P) -> None:
+    mkdir(p("root", "src_dir"), parents=True)
+    mkdir(p("root", "dst_dir", "sub"), parents=True)
+    inotify = create_inotify_watch(p("root").encode(), recursive=True)
+    src_wd = inotify._active_callbacks_by_path[p("root", "src_dir").encode()]  # noqa: SLF001
+    old_dst_wd = inotify._active_callbacks_by_path[p("root", "dst_dir").encode()]  # noqa: SLF001
+
+    assert inotify._move_watches(p("root", "src_dir").encode(), p("root", "dst_dir").encode())  # noqa: SLF001
+    assert old_dst_wd not in inotify._nodes_by_wd  # noqa: SLF001
+    assert inotify._active_callbacks_by_path[p("root", "dst_dir").encode()] == src_wd  # noqa: SLF001
+    inotify.deactivate()
+
+
+def test_tree_move_cycle_rejection(p: P) -> None:
+    mkdir(p("root", "a", "b", "c"), parents=True)
+    inotify = create_inotify_watch(p("root").encode(), recursive=True)
+    a_path = p("root", "a").encode()
+    c_path = p("root", "a", "b", "c").encode()
+    # Moving ancestor 'a' into descendant 'c' must be rejected
+    assert not inotify._move_watches(a_path, os.path.join(c_path, b"a"))  # noqa: SLF001
+    assert inotify._find_node_by_path(a_path) is not None  # noqa: SLF001
+    inotify.deactivate()
+
+
+def test_tree_move_root(p: P) -> None:
+    mkdir(p("root", "sub"), parents=True)
+    inotify = create_inotify_watch(p("root").encode(), recursive=True)
+    new_root = p("new_root").encode()
+    assert inotify._move_watches(p("root").encode(), new_root)  # noqa: SLF001
+    assert inotify.path == new_root
+    inotify.deactivate()
+
+
+def test_tree_intermediate_placeholder_and_pruning(p: P) -> None:
+    mkdir(p("root", "a", "b"), parents=True)
+    inotify = create_inotify_watch(p("root").encode(), recursive=False)
+    # Root is watched, but 'a' and 'b' are not watched yet
+    b_path = p("root", "a", "b").encode()
+    # Insert node directly into b: creates placeholder for 'a' with wd=-1
+    node_b = inotify._insert_node(b_path, WatchDescriptor(42))  # noqa: SLF001
+    assert node_b is not None
+    node_a = inotify._find_node_by_path(p("root", "a").encode())  # noqa: SLF001
+    assert node_a is not None
+    assert node_a.wd == WatchDescriptor(-1)  # Placeholder
+    assert inotify._resolve_path(WatchDescriptor(42)) == b_path  # noqa: SLF001
+
+    # Removing b should prune empty placeholder 'a'
+    inotify._remove_watch_internally(WatchDescriptor(42))  # noqa: SLF001
+    assert inotify._find_node_by_path(p("root", "a").encode()) is None  # noqa: SLF001
     inotify.deactivate()

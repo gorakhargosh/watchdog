@@ -6,6 +6,7 @@
 :author: Tim Cuthbertson <tim+github@gfxmonk.net>
 :author: Mickaël Schoentgen <contact@tiger-222.fr>
 :author: Joachim Coenen <joachimcoenen@icloud.com>
+:author: Prateek Dagar <prateek-dagar>
 :platforms: Linux 2.6.13+.
 
 .. ADMONITION:: About system requirements
@@ -125,6 +126,23 @@ class FileSystemEventCtor(Protocol):
     def __call__(self, src_path: bytes | str, dest_path: bytes | str = "") -> FileSystemEvent: ...
 
 
+class DirNode:
+    """N-ary directory tree node for hierarchical inotify watch tracking."""
+
+    __slots__ = ("children", "name", "parent", "wd")
+
+    def __init__(
+        self,
+        name: bytes,
+        wd: WatchDescriptor,
+        parent: DirNode | None = None,
+    ) -> None:
+        self.name = name
+        self.wd = wd
+        self.parent = parent
+        self.children: dict[bytes, DirNode] = {}
+
+
 @dataclass
 class InotifyWatchGroup(WatchCallback):
     """Linux inotify(7) API wrapper class.
@@ -163,8 +181,24 @@ class InotifyWatchGroup(WatchCallback):
 
     _is_active: bool = field(default=False, init=False)
 
-    _active_callbacks_by_watch: dict[WatchDescriptor, bytes] = field(default_factory=dict, init=False)
-    _active_callbacks_by_path: dict[bytes, WatchDescriptor] = field(default_factory=dict, init=False)
+    _root: DirNode | None = field(default=None, init=False)
+    _nodes_by_wd: dict[WatchDescriptor, DirNode] = field(default_factory=dict, init=False)
+
+    @property
+    def _active_callbacks_by_watch(self) -> dict[WatchDescriptor, bytes]:
+        res: dict[WatchDescriptor, bytes] = {}
+        for wd in list(self._nodes_by_wd):
+            if path := self._resolve_path(wd):
+                res[wd] = path
+        return res
+
+    @property
+    def _active_callbacks_by_path(self) -> dict[bytes, WatchDescriptor]:
+        res: dict[bytes, WatchDescriptor] = {}
+        for wd in list(self._nodes_by_wd):
+            if path := self._resolve_path(wd):
+                res[path] = wd
+        return res
 
     def __post_init__(self) -> None:
         self.event_mask = InotifyWatchGroup.build_event_mask(self.event_mask, follow_symlink=self.follow_symlink)
@@ -231,7 +265,8 @@ class InotifyWatchGroup(WatchCallback):
             if not self.is_recursive:
                 return
             logger.warning("Inotify queue overflowed; reconciling recursive watches below %r", self.path)
-            self._remove_callbacks(list(self._active_callbacks_by_watch))
+            self._remove_callbacks(list(self._nodes_by_wd))
+            self._root = None
             try:
                 self._add_all_callbacks(self.path)
             except OSError:
@@ -288,13 +323,15 @@ class InotifyWatchGroup(WatchCallback):
         # HACK: We need to traverse the directory path recursively and simulate
         # events for newly  created subdirectories/files.
         # This will handle: mkdir -p foobar/blah/bar; touch foobar/afile
+        # TODO: Reconcile concurrent directory discovery with real
+        # inotify queue events to eliminate duplicate synthesized events and redundant add_callback calls.
         events = []
         for root, dirnames, filenames in os.walk(src_path, followlinks=self.follow_symlink):
-            wd_root = self._active_callbacks_by_path.get(root)
-            if wd_root is None:
+            if not (node := self._find_node_by_path(root)):
                 # Not watched: it could not be, or it appeared after the watches were added (e.g. a copy
                 # still in progress) and its own queued IN_CREATE event will watch it and report its content
                 continue
+            wd_root = node.wd
 
             for dirname in dirnames:
                 mask = Mask(InotifyConstants.IN_CREATE | InotifyConstants.IN_ISDIR)
@@ -309,7 +346,8 @@ class InotifyWatchGroup(WatchCallback):
         """Removes all associated watches."""
         with self._lock:
             self._is_active = False
-            self._remove_callbacks(list(self._active_callbacks_by_watch))
+            self._remove_callbacks(list(self._nodes_by_wd))
+            self._root = None
             self._move_event_grouper.close()
 
     def _activate(self) -> None:
@@ -323,36 +361,177 @@ class InotifyWatchGroup(WatchCallback):
             try:
                 self._add_all_callbacks(self.path)
             except OSError:
-                self._remove_callbacks(list(self._active_callbacks_by_watch))
+                self._remove_callbacks(list(self._nodes_by_wd))
                 raise
             self._is_active = True
 
     # Non-synchronized methods:
 
+    def _resolve_path(self, wd: WatchDescriptor) -> bytes | None:
+        # TODO: Add bounded LRU/FIFO path cache if needed for high-frequency path resolution.
+        node = self._nodes_by_wd.get(wd)
+        if node is None:
+            return None
+        return self._reconstruct_path_iterative(node)
+
+    def _reconstruct_path_iterative(self, node: DirNode) -> bytes | None:
+        if node is self._root:
+            return self.path
+
+        parts: list[bytes] = []
+        curr: DirNode | None = node
+        root = self._root
+        while curr is not None and curr is not root:
+            parts.append(curr.name)
+            curr = curr.parent
+
+        if curr is not root:
+            return None
+
+        parts.reverse()
+        sep = os.path.sep.encode()
+        root_path = self.path
+        if root_path.endswith(sep):
+            return root_path + sep.join(parts)
+        return root_path + sep + sep.join(parts)
+
+    def _find_node_by_path(self, path: bytes) -> DirNode | None:
+        if self._root is None:
+            return None
+        norm_path = os.path.normpath(path)
+        norm_root = os.path.normpath(self.path)
+        if norm_path == norm_root:
+            return self._root
+
+        sep = os.path.sep.encode()
+        if norm_root == sep:
+            rel = norm_path[len(sep) :]
+        else:
+            prefix = norm_root + sep
+            if not norm_path.startswith(prefix):
+                return None
+            rel = norm_path[len(prefix) :]
+
+        parts = [p for p in rel.split(sep) if p]
+        curr = self._root
+        for part in parts:
+            child = curr.children.get(part)
+            if child is None:
+                return None
+            curr = child
+        return curr
+
+    def _insert_node(self, path: bytes, wd: WatchDescriptor) -> DirNode | None:
+        norm_path = os.path.normpath(path)
+        norm_root = os.path.normpath(self.path)
+        if norm_path == norm_root:
+            if self._root is None:
+                self._root = DirNode(name=b"", wd=wd, parent=None)
+            else:
+                self._root.wd = wd
+            self._nodes_by_wd[wd] = self._root
+            return self._root
+
+        sep = os.path.sep.encode()
+        if norm_root == sep:
+            rel = norm_path[len(sep) :]
+        else:
+            prefix = norm_root + sep
+            if not norm_path.startswith(prefix):
+                logger.warning("Path %r is not under watched root %r", path, self.path)
+                return None
+            rel = norm_path[len(prefix) :]
+
+        parts = [p for p in rel.split(sep) if p]
+        if not parts:
+            return self._root
+
+        if self._root is None:
+            self._root = DirNode(name=b"", wd=WatchDescriptor(-1), parent=None)
+
+        curr = self._root
+        for part in parts[:-1]:
+            child = curr.children.get(part)
+            if child is None:
+                child = DirNode(name=part, wd=WatchDescriptor(-1), parent=curr)
+                curr.children[part] = child
+            curr = child
+
+        last_part = parts[-1]
+        existing = curr.children.get(last_part)
+        if existing is not None:
+            existing.wd = wd
+            node = existing
+        else:
+            node = DirNode(name=last_part, wd=wd, parent=curr)
+            curr.children[last_part] = node
+
+        # Note on descriptor cardinality:
+        # In Linux inotify, inotify_add_watch returns the same WatchDescriptor for multiple paths
+        # that resolve to the same underlying inode (e.g. symlinks followed into an existing directory).
+        # Both upstream flat dicts and this tree map wd -> most recently registered node.
+        # TODO: Consider multi-node mapping per wd if symlink alias path disambiguation is required.
+        self._nodes_by_wd[wd] = node
+        return node
+
     def _build_event_source_path(self, event: InotifyEvent) -> bytes | None:
-        watched_path = self._active_callbacks_by_watch.get(event.wd)
+        watched_path = self._resolve_path(event.wd)
         if watched_path is None:
-            # investigate: can we *actually* get events for a WatchDescriptor that has already been removed?
             return None
         return os.path.join(watched_path, event.name) if event.name else watched_path  # avoid trailing slash
 
+    def _prune_subtree_nodes(self, root_node: DirNode) -> None:
+        stack = [root_node]
+        while stack:
+            curr = stack.pop()
+            self._nodes_by_wd.pop(curr.wd, None)
+            stack.extend(curr.children.values())
+            curr.children.clear()
+            curr.parent = None
+
     def _move_watches(self, move_src_path: bytes, move_dst_path: bytes) -> bool:
         """Move all watches in the source tree and return whether the source was watched."""
-        moved_watch = self._active_callbacks_by_path.pop(move_src_path, None)
-        if moved_watch is not None:
-            self._active_callbacks_by_watch[moved_watch] = move_dst_path
-            self._active_callbacks_by_path[move_dst_path] = moved_watch
+        node = self._find_node_by_path(move_src_path)
+        if node is None:
+            return False
 
-            # move all watches within this directory
-            move_src_prefix = move_src_path + os.path.sep.encode()
-            for path, wd in self._active_callbacks_by_path.copy().items():
-                if path.startswith(move_src_prefix):
-                    del self._active_callbacks_by_path[path]
-                    path = path.replace(move_src_path, move_dst_path, 1)
-                    self._active_callbacks_by_watch[wd] = path
-                    self._active_callbacks_by_path[path] = wd
+        if node is self._root:
+            self.path = move_dst_path
             return True
-        return False
+
+        norm_dst = os.path.normpath(move_dst_path)
+        new_name = os.path.basename(norm_dst)
+        new_parent_path = os.path.dirname(norm_dst)
+        new_parent = self._find_node_by_path(new_parent_path)
+
+        if new_parent is None:
+            return False
+
+        # Guard against cyclic reparenting
+        curr: DirNode | None = new_parent
+        while curr:
+            if curr is node:
+                return False
+            curr = curr.parent
+
+        if node.parent is new_parent and node.name == new_name:
+            return True
+
+        # If a child with new_name already exists in new_parent, clean it up before reparenting
+        existing_child = new_parent.children.pop(new_name, None)
+        if existing_child and existing_child is not node:
+            self._prune_subtree_nodes(existing_child)
+
+        # Detach from old parent
+        if node.parent is not None:
+            node.parent.children.pop(node.name, None)
+
+        # Reparent with new name
+        node.name = new_name
+        node.parent = new_parent
+        new_parent.children[new_name] = node
+
+        return True
 
     def _add_all_callbacks(self, path: bytes) -> None:
         """Adds a watch (optionally recursively) for the given directory path
@@ -380,8 +559,9 @@ class InotifyWatchGroup(WatchCallback):
         """
         try:
             wd = self._inotify_fd.add_callback(path, self.event_mask, self._callback, self._id)
-            self._active_callbacks_by_path[path] = wd
-            self._active_callbacks_by_watch[wd] = path
+            node = self._insert_node(path, wd)
+            if node is None:
+                self._inotify_fd.remove_callbacks([(wd, self._id)])
         except OSError as e:
             # Descendants may disappear or become inaccessible during recursive
             # registration, but a failure to watch the root must reach the caller.
@@ -404,13 +584,27 @@ class InotifyWatchGroup(WatchCallback):
             self._remove_watch_internally(wd)
 
     def _remove_watch_internally(self, wd: WatchDescriptor) -> None:
-        """Removes a watch descriptor from internal dicts."""
-        path = self._active_callbacks_by_watch.pop(wd)
-        wd2 = self._active_callbacks_by_path.pop(path)
-        if wd2 != wd:
-            # Oops. The path already belongs to a different wd. Put it back.
-            # This can happen, when events are sent slightly out of order.
-            self._active_callbacks_by_path[path] = wd2
+        """Removes a watch descriptor from internal tree."""
+        node = self._nodes_by_wd.pop(wd, None)
+        if node is not None:
+            node.wd = WatchDescriptor(-1)
+            if node is self._root and not node.children:
+                self._root = None
+            elif not node.children:
+                self._prune_empty_ancestors(node)
+
+    def _prune_empty_ancestors(self, node: DirNode) -> None:
+        curr: DirNode | None = node
+        while curr is not None and curr is not self._root:
+            if curr.children or curr.wd != WatchDescriptor(-1):
+                break
+            parent = curr.parent
+            if parent is not None:
+                parent.children.pop(curr.name, None)
+            curr.parent = None
+            curr = parent
+        if self._root is not None and not self._root.children and self._root.wd == WatchDescriptor(-1):
+            self._root = None
 
 
 def _select_event_type(
