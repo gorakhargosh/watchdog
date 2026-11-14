@@ -14,7 +14,14 @@ from unittest.mock import patch
 
 import pytest
 
-from watchdog.events import DirCreatedEvent, DirMovedEvent, FileAttribEvent, FileMovedEvent, FileSystemEventHandler
+from watchdog.events import (
+    DirCreatedEvent,
+    DirMovedEvent,
+    EventsLostEvent,
+    FileAttribEvent,
+    FileMovedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers.api import ObservedWatch
 from watchdog.utils import platform
 
@@ -34,6 +41,7 @@ from watchdog.observers.winapi import (
     FILE_ACTION_DELETED,
     FILE_ACTION_DELETED_SELF,
     FILE_ACTION_MODIFIED,
+    FILE_ACTION_OVERFLOW,
     FILE_ACTION_RENAMED_NEW_NAME,
     FILE_ACTION_RENAMED_OLD_NAME,
     FILE_NOTIFY_CHANGE_DIR_NAME,
@@ -384,6 +392,42 @@ def test_rename_split_across_two_batches_keeps_the_source_path(event_queue, emit
     event, _ = event_queue.get_nowait()
 
     assert event == FileMovedEvent(p("old_name"), p("new_name"))
+
+
+@pytest.mark.parametrize("is_file", [False, True])
+def test_overflow_reports_events_lost(is_file):
+    """A ``ReadDirectoryChangesW`` buffer overflow is reported to the watch as lost events.
+
+    This builds its own directory instead of using the ``emitter`` fixture,
+    because ``test_root_deleted`` removes ``temp_dir``.
+    """
+    watched = mkdtemp()
+    if is_file:
+        watched = os.path.join(watched, "file.txt")
+        with open(watched, "w"):
+            pass
+    watch = ObservedWatch(watched, recursive=False)
+    event_queue = Queue()
+    emitter = WindowsApiEmitter(event_queue, watch, timeout=0.2)
+
+    class OverflowReader:
+        def __init__(self):
+            self.batches = [[WinAPINativeEvent(FILE_ACTION_OVERFLOW, ".")]]
+
+        def get_events(self, timeout):
+            return self.batches.pop(0) if self.batches else []
+
+        def stop(self):
+            pass
+
+    emitter._reader = OverflowReader()  # noqa: SLF001
+
+    emitter.queue_events(0)
+
+    assert event_queue.qsize() == 1
+    event, _ = event_queue.get_nowait()
+    expected_path = watch.resolved_path if is_file else watched
+    assert event == EventsLostEvent(expected_path, is_directory=not is_file)
 
 
 @pytest.mark.parametrize(

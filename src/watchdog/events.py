@@ -270,8 +270,10 @@ class EventsLostEvent(FileSystemEvent):
     keeps working, and the event is queued only once the observer has finished its own
     recovery.
 
-    Emitted only by ``InotifyObserver`` on Linux, when the kernel queue overflows. An
-    overflow drops events for every watch of the observer, so each of its watches gets one.
+    Emitted by ``InotifyObserver`` on Linux when the kernel queue overflows (an overflow
+    drops events for every watch of the observer, so each of its watches gets one), and by
+    ``WindowsApiObserver`` on Windows when the ``ReadDirectoryChangesW`` buffer of a watch
+    overflows (only that watch gets one).
     ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler`` deliver it to
     ``on_events_lost()`` only, never to ``on_any_event()``, whatever their patterns,
     regexes and ``ignore_directories``. A watch scheduled with an ``event_filter`` gets it
@@ -388,7 +390,7 @@ class FileSystemEventHandler:
         """Called when file system events were lost: rescan ``event.src_path`` to catch up.
 
         ``event.src_path`` is the watched directory, or the watched file for a file watch.
-        Emitted only by ``InotifyObserver`` on Linux.
+        Emitted by ``InotifyObserver`` on Linux and ``WindowsApiObserver`` on Windows.
 
         :param event:
             Event representing the loss.
