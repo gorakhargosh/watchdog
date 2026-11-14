@@ -261,7 +261,6 @@ class InotifyWatchGroup(WatchCallback):
         with self._lock:
             if not self.is_active:
                 return
-            self._move_event_grouper.discard_pending_events()
             if not self.is_recursive:
                 return
             logger.warning("Inotify queue overflowed; reconciling recursive watches below %r", self.path)

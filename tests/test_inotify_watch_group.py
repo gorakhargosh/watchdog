@@ -342,6 +342,38 @@ def test_queue_overflow_rebuilds_recursive_watches(p, caplog):
     inotify.deactivate()
 
 
+def test_queue_overflow_keeps_events_read_before_it(p):
+    class FakeInotifyFD:
+        def __init__(self) -> None:
+            self.next_wd = 0
+            self.removed = []
+
+        def add_callback(self, path, mask, callback, id_):
+            self.next_wd += 1
+            return self.next_wd
+
+        def remove_callbacks(self, callbacks) -> None:
+            self.removed.extend(callbacks)
+
+    mkdir(p("root"))
+    fake_fd = FakeInotifyFD()
+    inotify = InotifyWatchGroup(
+        cast("InotifyFD", fake_fd), p("root").encode(), is_recursive=True, event_mask=WATCHDOG_ALL_EVENTS
+    )
+
+    inotify.on_event(InotifyEvent(WatchDescriptor(1), InotifyConstants.IN_CREATE, 0, b"f"))
+    inotify.on_queue_overflow()
+    inotify.on_events_lost()
+
+    kept = inotify.read_event()
+    assert isinstance(kept, PathedInotifyEvent)
+    assert kept.ev.is_create
+    assert kept.path == p("root", "f").encode()
+    lost = inotify.read_event()
+    assert lost.ev.is_queue_overflow
+    inotify.deactivate()
+
+
 def test_vanishing_descendant(p):
     vanishing = p("root", "pkg", "vanishing").encode()
     mkdir(p("root", "pkg", "vanishing"), parents=True)
