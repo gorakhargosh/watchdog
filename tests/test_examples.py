@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from queue import Queue
 from unittest.mock import patch
 
 import pytest
@@ -33,6 +34,22 @@ def test_example(script_path: str, tmp_path: Path) -> None:
         with patch.object(module.logger, "info") as log:
             module.event_handler.dispatch(event)
         log.assert_called_once_with(event)
+    elif Path(script_path).name == "callable_event_handler.py":
+        event = FileModifiedEvent(str(watched_directory / "example.txt"))
+        with patch.object(module.logger, "info") as log:
+            module.event_handler.dispatch(event)
+        log.assert_called_once_with("%s", event)
+
+        events: Queue[FileModifiedEvent] = Queue()
+        handler = module.CallableEventHandler(events.put)
+        handler.dispatch(event)
+        assert events.get_nowait() is event
+        assert events.empty()
+
+        watch = module.observer.schedule(handler, str(watched_directory))
+        module.observer.remove_handler_for_watch(handler, watch)
+        module.observer.add_handler_for_watch(handler, watch)
+        module.observer.unschedule(watch)
 
 
 @pytest.mark.parametrize("config_path", CONFIG_EXAMPLES)
