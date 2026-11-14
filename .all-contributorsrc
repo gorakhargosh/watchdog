@@ -478,6 +478,33 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Kernel-Hunter",
+      "name": "Karim Masmoudi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/125830216?v=4",
+      "profile": "https://karimmasmoudi.vercel.app/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "gero-robert",
+      "name": "Robert Gero",
+      "avatar_url": "https://avatars.githubusercontent.com/u/246973440?v=4",
+      "profile": "https://github.com/gero-robert",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "FFspiky",
+      "name": "FFspiky",
+      "avatar_url": "https://avatars.githubusercontent.com/u/190641534?v=4",
+      "profile": "https://github.com/FFspiky",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

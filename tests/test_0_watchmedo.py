@@ -18,7 +18,13 @@ from yaml.constructor import ConstructorError  # noqa: E402
 from yaml.scanner import ScannerError  # noqa: E402
 
 from watchdog import watchmedo  # noqa: E402
-from watchdog.events import FileModifiedEvent, FileOpenedEvent, FileSystemEventHandler  # noqa: E402
+from watchdog.events import (  # noqa: E402
+    EventsLostEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileOpenedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers.api import BaseObserver  # noqa: E402
 from watchdog.tricks import AutoRestartTrick, LoggerTrick, ShellCommandTrick, kill_process  # noqa: E402
 from watchdog.utils import WatchdogShutdownError, platform  # noqa: E402
@@ -220,6 +226,20 @@ def test_shell_command_custom_shell_and_cwd():
         )
 
 
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        (FileModifiedEvent("foo/bar.baz"), 'echo "modified file foo/bar.baz"'),
+        (FileMovedEvent("foo/bar.baz", "foo/qux.baz"), 'echo "moved file from foo/bar.baz to foo/qux.baz"'),
+    ],
+)
+def test_shell_command_default_command(event, expected):
+    with patch("subprocess.Popen") as mocked_popen:
+        trick = ShellCommandTrick(None, wait_for_process=True)
+        trick.on_any_event(event)
+        mocked_popen.assert_called_once_with(expected, shell=True, executable=None, cwd=None)
+
+
 def test_auto_restart_not_happening_on_file_opened_event(tmpdir, capfd):
     # FIXME: see issue #949, and find a way to better handle that scenario
     script = make_dummy_script(tmpdir, n=10)
@@ -409,6 +429,16 @@ def test_logger_events_echoed(caplog):
         "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
         "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar2.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
         "on_any_event(self=<LoggerTrick>, event=FileOpenedEvent(src_path='foo/bar3.baz', dest_path='', event_type='opened', is_directory=False, is_synthetic=False))",  # noqa: E501
+    ]
+
+
+def test_logger_events_lost_echoed(caplog):
+    with caplog.at_level(logging.INFO):
+        LoggerTrick().dispatch(EventsLostEvent("foo", is_directory=True))
+
+    records = [record.getMessage().strip() for record in caplog.get_records(when="call")]
+    assert records == [
+        "on_events_lost(self=<LoggerTrick>, event=EventsLostEvent(src_path='foo', dest_path='', event_type='events_lost', is_directory=True, is_synthetic=False))",  # noqa: E501
     ]
 
 

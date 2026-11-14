@@ -66,6 +66,10 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: EventsLostEvent
+   :members:
+   :show-inheritance:
+
 
 Event Handler Classes
 ---------------------
@@ -118,6 +122,7 @@ EVENT_TYPE_CLOSED = "closed"
 EVENT_TYPE_CLOSED_NO_WRITE = "closed_no_write"
 EVENT_TYPE_OPENED = "opened"
 EVENT_TYPE_ATTRIB = "attrib"
+EVENT_TYPE_EVENTS_LOST = "events_lost"
 
 
 @dataclass(unsafe_hash=True)
@@ -256,6 +261,28 @@ class DirMovedEvent(FileSystemMovedEvent):
     is_directory = True
 
 
+@dataclass(unsafe_hash=True)
+class EventsLostEvent(FileSystemEvent):
+    """Event signaling that file system events of the watch at ``src_path`` were lost.
+
+    ``src_path`` is the watched directory, or the watched file for a file watch, not a
+    changed path: rescan it to catch up. ``is_directory`` tells which. The watch itself
+    keeps working, and the event is queued only once the observer has finished its own
+    recovery.
+
+    Emitted only by ``InotifyObserver`` on Linux, when the kernel queue overflows. An
+    overflow drops events for every watch of the observer, so each of its watches gets one.
+    ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler`` deliver it to
+    ``on_events_lost()`` only, never to ``on_any_event()``, whatever their patterns,
+    regexes and ``ignore_directories``. A watch scheduled with an ``event_filter`` gets it
+    only if the filter lists ``EventsLostEvent``.
+    """
+
+    event_type = EVENT_TYPE_EVENTS_LOST
+    is_directory: bool = field(default=False, kw_only=True)
+    """True if the watch is a directory; False for a file watch."""
+
+
 class FileSystemEventHandler:
     """Base file system event handler that you can override methods from."""
 
@@ -357,6 +384,18 @@ class FileSystemEventHandler:
             :class:`watchdog.events.FileOpenedEvent`
         """
 
+    def on_events_lost(self, event: EventsLostEvent) -> None:
+        """Called when file system events were lost: rescan ``event.src_path`` to catch up.
+
+        ``event.src_path`` is the watched directory, or the watched file for a file watch.
+        Emitted only by ``InotifyObserver`` on Linux.
+
+        :param event:
+            Event representing the loss.
+        :type event:
+            :class:`watchdog.events.EventsLostEvent`
+        """
+
 
 class IgnorePolicy(StrEnum):
     """Policy for ignoring multi-path events (such as file moves or renames)."""
@@ -431,6 +470,12 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`watchdog.events.FileSystemEvent`
         """
+        if isinstance(event, EventsLostEvent):
+            # Its path is the watch's, not a matched one: no pattern may hide a loss, and
+            # on_any_event() only gets matched paths.
+            self.on_events_lost(event)
+            return
+
         if self.ignore_directories and event.is_directory:
             return
 
@@ -582,6 +627,8 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
             regexes = [regexes]
         if ignore_regexes is None:
             ignore_regexes = []
+        elif isinstance(ignore_regexes, str):
+            ignore_regexes = [ignore_regexes]
         flags = 0 if case_sensitive else re.IGNORECASE
         self._regexes = [re.compile(r, flags) for r in regexes]
         self._ignore_regexes = [re.compile(r, flags) for r in ignore_regexes]
@@ -664,6 +711,11 @@ class LoggingEventHandler(FileSystemEventHandler):
         super().on_opened(event)
 
         self.logger.info("Opened file: %s", event.src_path)
+
+    def on_events_lost(self, event: EventsLostEvent) -> None:
+        super().on_events_lost(event)
+
+        self.logger.warning("Events lost: %s", event.src_path)
 
 
 def generate_sub_moved_events(

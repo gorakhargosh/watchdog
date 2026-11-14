@@ -423,6 +423,12 @@ class KqueueEmitter(EventEmitter):
 
         self._snapshot = DirectorySnapshot(watch.path, recursive=watch.is_recursive, stat=custom_stat)
 
+        # Hand the kevents to the kernel now, not on the first control() call in
+        # the emitter thread: changes made before that call would produce no kevents.
+        # Deletes, renames and attribute changes come from kevents only, so they
+        # would be lost.
+        self._kq.control(self._descriptors.kevents, 0, 0)
+
     def _register_kevent(self, path: bytes | str, *, is_directory: bool) -> None:
         """Registers a kevent descriptor for the given path.
 
@@ -635,21 +641,40 @@ class KqueueEmitter(EventEmitter):
                 self._snapshot = new_snapshot
                 diff_events = new_snapshot - ref_snapshot
 
+                queue_once = self._batch_queuer()
+
                 # Process events
                 for directory_created in diff_events.dirs_created:
-                    self.queue_event(DirCreatedEvent(directory_created))
+                    queue_once(DirCreatedEvent(directory_created))
                 for file_created in diff_events.files_created:
-                    self.queue_event(FileCreatedEvent(file_created))
+                    queue_once(FileCreatedEvent(file_created))
                 for file_modified in diff_events.files_modified:
-                    self.queue_event(FileModifiedEvent(file_modified))
+                    queue_once(FileModifiedEvent(file_modified))
 
                 for kev in event_list:
                     for event in self._gen_kqueue_events(kev, ref_snapshot, new_snapshot):
-                        self.queue_event(event)
+                        queue_once(event)
 
             except OSError as e:
                 if e.errno != errno.EBADF:
                     raise
+
+    def _batch_queuer(self) -> Callable[[FileSystemEvent], None]:
+        """Returns a function that queues each event once, for one kqueue wakeup.
+
+        The same change can be reported more than once in a wakeup: a rename
+        yields DirModifiedEvents for both parents, and the parents' own kevents
+        yield them again; a write shows up both in the snapshot diff and in the
+        file's kevent.
+        """
+        queued: set[FileSystemEvent] = set()
+
+        def queue_once(event: FileSystemEvent) -> None:
+            if event not in queued:
+                queued.add(event)
+                self.queue_event(event)
+
+        return queue_once
 
     def _queue_watched_dir_deleted(self, event_list: list[select.kevent]) -> None:
         """Handles the watched directory being deleted or moved away.
@@ -665,14 +690,15 @@ class KqueueEmitter(EventEmitter):
         ref_snapshot = self._snapshot
         empty_snapshot = EmptyDirectorySnapshot()
         self._snapshot = empty_snapshot
+        queue_once = self._batch_queuer()
         for kev in event_list:
             descriptor = self._descriptors.get_for_fd(kev.ident)
             if descriptor.path == watched_path and (is_renamed(kev) or is_deleted(kev)):
                 # Reported once below, as a deletion of the watched directory.
                 continue
             for event in self._gen_kqueue_events(kev, ref_snapshot, empty_snapshot):
-                self.queue_event(event)
-        self.queue_event(DirDeletedEvent(self.watch.path))
+                queue_once(event)
+        queue_once(DirDeletedEvent(self.watch.path))
         self.stop()
 
     def on_thread_stop(self) -> None:

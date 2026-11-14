@@ -27,7 +27,7 @@ class ManualInotifyFD:
         self.callbacks = {}
         self.removed = []
 
-    def add_callback(self, path, mask, callback, id_):
+    def add_callback(self, path, mask, callback, id_, *, reuse_callback=False):
         stat = os.stat(path)
         inode = stat.st_dev, stat.st_ino
         if inode not in self.inodes:

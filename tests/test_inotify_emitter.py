@@ -198,6 +198,74 @@ def test_recursive_watch_ignores_subdirectory_errors(tmp_path, monkeypatch, erro
         assert not observer.is_alive()
 
 
+@pytest.mark.parametrize("error", [errno.ENOSPC, errno.EMFILE])
+def test_recursive_watch_limit_on_subdirectory_reaches_caller(tmp_path, monkeypatch, error):
+    skipped = tmp_path / "skipped"
+    skipped.mkdir()
+
+    observer = InotifyObserver()
+    observer.schedule(FileSystemEventHandler(), tmp_path, recursive=True)
+    inotify_fd = observer._inotify_fd  # noqa: SLF001
+    add_callback = inotify_fd.add_callback
+
+    def add_callback_with_error(path, *args, **kwargs):
+        if path == os.fsencode(skipped):
+            raise OSError(error, os.strerror(error), path)
+        return add_callback(path, *args, **kwargs)
+
+    monkeypatch.setattr(inotify_fd, "add_callback", add_callback_with_error)
+    try:
+        with pytest.raises(OSError, match=os.strerror(error)) as exc:
+            observer.start()
+        assert exc.value.errno == error
+        assert not observer.emitters
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+
+
+@pytest.mark.parametrize("error", [errno.ENOSPC, errno.EMFILE])
+def test_recursive_watch_limit_on_new_subdirectory_is_logged(tmp_path, monkeypatch, caplog, error):
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    skipped = tmp_path / "skipped"
+    ready = tmp_path / "ready"
+    ready.touch()
+
+    observer = InotifyObserver()
+    observer.schedule(Handler(), tmp_path, recursive=True, event_filter=[DirCreatedEvent, FileDeletedEvent])
+    inotify_fd = observer._inotify_fd  # noqa: SLF001
+    add_callback = inotify_fd.add_callback
+
+    def add_callback_with_error(path, *args, **kwargs):
+        if path == os.fsencode(skipped):
+            raise OSError(error, os.strerror(error), path)
+        return add_callback(path, *args, **kwargs)
+
+    monkeypatch.setattr(inotify_fd, "add_callback", add_callback_with_error)
+    try:
+        observer.start()
+        skipped.mkdir()
+        assert events.get(timeout=5) == DirCreatedEvent(str(skipped))
+
+        # The observer keeps running and reports events from the root.
+        ready.unlink()
+        assert events.get(timeout=5) == FileDeletedEvent(str(ready))
+        assert any(
+            record.levelname == "WARNING" and os.strerror(error) in record.getMessage() for record in caplog.records
+        )
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
+
+
 def test_new_directory_filled_while_its_watches_are_added(tmp_path, monkeypatch):
     events = Queue()
 
