@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import errno
 import os
+import time
 from queue import Queue
 from threading import Event
 
@@ -357,6 +358,44 @@ def test_filtered_events_in_subdirectory(tmp_path, recursive, create_after_start
         # checks that the filter excluded their create/modify/open/close events.
         assert events.get(timeout=5) == FileDeletedEvent(str(finished))
         assert events.empty()
+    finally:
+        observer.stop()
+        observer.join(timeout=5)
+        assert not observer.is_alive()
+
+
+def test_schedule_unschedule_load(tmp_path):
+    events = Queue()
+    handler = FileSystemEventHandler()
+    handler.on_any_event = events.put  # type: ignore[method-assign]
+    subdirs = [tmp_path / f"sub_{i}" for i in range(6)]
+    for d in subdirs:
+        d.mkdir()
+
+    observer = InotifyObserver()
+    root_watch = observer.schedule(handler, str(tmp_path), recursive=True)
+    observer.start()
+    try:
+        for cycle in range(15):
+            extra = [observer.schedule(handler, str(d), recursive=True) for d in subdirs[:3]]
+            for d in subdirs:
+                f = d / f"f_{cycle}.txt"
+                f.write_text("x")
+                f.unlink()
+            for w in extra:
+                observer.unschedule(w)
+
+        marker = tmp_path / "done.txt"
+        marker.touch()
+        marker.unlink()
+        deadline = time.monotonic() + 5.0
+        while True:
+            remaining = max(0.01, deadline - time.monotonic())
+            if events.get(timeout=remaining) == FileDeletedEvent(str(marker)):
+                break
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Did not observe marker deletion within 5s")
+        observer.unschedule(root_watch)
     finally:
         observer.stop()
         observer.join(timeout=5)

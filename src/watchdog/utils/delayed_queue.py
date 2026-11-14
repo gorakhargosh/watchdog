@@ -33,7 +33,7 @@ class DelayedQueue(Generic[T]):
     def put(self, element: T, *, delay: bool = False) -> None:
         """Add element to queue."""
         self._lock.acquire()
-        self._queue.append((element, time.monotonic(), delay))
+        self._queue.append((element, time.monotonic() if delay else 0.0, delay))
         self._not_empty.notify()
         self._lock.release()
 
@@ -64,14 +64,17 @@ class DelayedQueue(Generic[T]):
                 self._not_empty.release()
                 return None
             head, insert_time, delay = self._queue[0]
+            if not delay:
+                self._queue.popleft()
+                self._not_empty.release()
+                return head
             self._not_empty.release()
 
             # wait for delay if required
-            if delay:
+            time_left = insert_time + self.delay - time.monotonic()
+            while time_left > 0:
+                time.sleep(time_left)
                 time_left = insert_time + self.delay - time.monotonic()
-                while time_left > 0:
-                    time.sleep(time_left)
-                    time_left = insert_time + self.delay - time.monotonic()
 
             # return element if it's still in the queue
             with self._lock:

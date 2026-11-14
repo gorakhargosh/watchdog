@@ -8,10 +8,12 @@ import os
 import select
 import struct
 import threading
+import time
 import warnings
 from ctypes import c_char_p, c_int, c_uint32
 from dataclasses import dataclass, field
 from functools import reduce
+from queue import Empty, SimpleQueue
 from typing import TYPE_CHECKING, ClassVar, NewType, Protocol, cast
 
 from watchdog.utils import BaseThread, UnsupportedLibcError
@@ -155,6 +157,17 @@ EVENT_SIZE = ctypes.sizeof(InotifyEventStruct)
 DEFAULT_NUM_EVENTS = 2048
 DEFAULT_EVENT_BUFFER_SIZE = DEFAULT_NUM_EVENTS * (EVENT_SIZE + 16)
 
+# Burst-coalescing thresholds to avoid waking the dispatcher on every small read:
+# reads arriving within 1 ms of the previous batch enter coalescing until reaching
+# the ~16 KB stopping threshold (or approximate 1 ms window), while reads after
+# >= 1 ms of idle are enqueued immediately with zero delay.
+# Note: _COALESCE_MAX_BYTES is a stopping threshold rather than a strict byte cap.
+# TODO: Consider exposing these thresholds as configurable options on InotifyFD.
+_COALESCE_MAX_BYTES = 16384
+_COALESCE_BURST_GAP_S = 0.001
+_COALESCE_WINDOW_S = 0.001
+_COALESCE_POLL_TIMEOUT_MS = 1
+
 
 CallbackId = NewType("CallbackId", int)
 
@@ -248,6 +261,11 @@ class InotifyFD(BaseThread):
         # Stores the callbacks for a given watch descriptor.
         self._watch_for_wd: dict[WatchDescriptor, Watch] = {}
 
+        # Unbounded FIFO queue decoupling kernel FD reads from callback dispatch;
+        # absorbs bursts without IN_Q_OVERFLOW (grows if producer permanently outpaces dispatch).
+        self._raw_queue: SimpleQueue[bytes] = SimpleQueue()
+        self._dispatch_error: BaseException | None = None
+
     @classmethod
     def _create_inotify_fd(cls) -> int:
         inotify_fd = inotify_init()
@@ -307,11 +325,78 @@ class InotifyFD(BaseThread):
         self.close()
 
     def run(self) -> None:
-        """Read events from `inotify` and handle them."""
-        while self.should_keep_running():
-            inotify_events = self.read_events()
-            for event in inotify_events:
-                self.handle_event(event)
+        """Read raw event chunks from `inotify` into C-extension SimpleQueue and dispatch on worker thread."""
+        dispatch_thread = threading.Thread(
+            target=self._dispatch_raw_buffers,
+            name="InotifyFD-Dispatcher",
+            daemon=True,
+        )
+        dispatch_started = False
+        try:
+            dispatch_thread.start()
+            dispatch_started = True
+            last_read_t = 0.0
+            while self.should_keep_running() and not self._closed:
+                event_buffer = self._read_event_buffer(DEFAULT_EVENT_BUFFER_SIZE)
+                if not event_buffer:
+                    continue
+                now = time.perf_counter()
+                # If this read arrived shortly after the previous batch, coalesce trailing
+                # burst chunks up to _COALESCE_MAX_BYTES before waking the dispatcher.
+                if (now - last_read_t) < _COALESCE_BURST_GAP_S and len(event_buffer) < _COALESCE_MAX_BYTES:
+                    event_buffer = self._coalesce_event_buffer(event_buffer, now + _COALESCE_WINDOW_S)
+                    now = time.perf_counter()
+                last_read_t = now
+                self._raw_queue.put(event_buffer)
+        finally:
+            if dispatch_started:
+                # Wake and stop the dispatcher thread.
+                self._raw_queue.put(b"")
+                dispatch_thread.join(timeout=5)
+            else:
+                self.close()
+        if self._dispatch_error is not None:
+            raise self._dispatch_error
+
+    def _coalesce_event_buffer(self, first_chunk: bytes, deadline: float) -> bytes:
+        """Coalesce consecutive burst reads up to `_COALESCE_MAX_BYTES` within a bounded deadline."""
+        chunks = [first_chunk]
+        total_len = len(first_chunk)
+        while (
+            total_len < _COALESCE_MAX_BYTES
+            and time.perf_counter() < deadline
+            and self.should_keep_running()
+            and not self._closed
+        ):
+            more = self._read_event_buffer(DEFAULT_EVENT_BUFFER_SIZE, timeout_ms=_COALESCE_POLL_TIMEOUT_MS)
+            if not more:
+                break
+            chunks.append(more)
+            total_len += len(more)
+        return b"".join(chunks) if len(chunks) > 1 else first_chunk
+
+    def _dispatch_raw_buffers(self) -> None:
+        """Consume raw byte chunks from SimpleQueue, unpack structs, and invoke callbacks."""
+        try:
+            while True:
+                event_buffer = self._raw_queue.get()
+                while True:
+                    if not event_buffer:
+                        return
+                    if self._closed:
+                        # Skip dispatching trailing events after instance has closed
+                        break
+
+                    for wd, mask, cookie, name in InotifyFD._parse_event_buffer(event_buffer):
+                        if wd != -1 or mask & InotifyConstants.IN_Q_OVERFLOW:
+                            self.handle_event(InotifyEvent(wd, mask, cookie, name))
+                    try:
+                        event_buffer = self._raw_queue.get_nowait()
+                    except Empty:
+                        break
+        except BaseException as exc:
+            self._dispatch_error = exc
+            self.stop()
 
     def close(self) -> None:
         """Closes the inotify instance and removes all associated watches."""
@@ -388,15 +473,16 @@ class InotifyFD(BaseThread):
 
     # Non-synchronized methods.
 
-    def _check_inotify_fd(self) -> bool:
+    def _check_inotify_fd(self, timeout_ms: int | None = None) -> bool:
         """return true if we can read _inotify_fd without blocking"""
         if self._poller is not None:
-            return any(fd == self._inotify_fd for fd, _ in self._poller.poll())
+            return any(fd == self._inotify_fd for fd, _ in self._poller.poll(timeout_ms))
 
-        result = select.select([self._inotify_fd, self._kill_r], [], [])
+        timeout_s = None if timeout_ms is None else timeout_ms / 1000.0
+        result = select.select([self._inotify_fd, self._kill_r], [], [], timeout_s)
         return self._inotify_fd in result[0]
 
-    def _read_event_buffer(self, event_buffer_size: int) -> bytes:
+    def _read_event_buffer(self, event_buffer_size: int, timeout_ms: int | None = None) -> bytes:
         """
         Reads from inotify and returns what was read.
         If inotify got closed or if an errno.EBADF occurred during reading, None is returned.
@@ -410,7 +496,7 @@ class InotifyFD(BaseThread):
 
                     self._is_reading = True
 
-                if self._check_inotify_fd():
+                if self._check_inotify_fd(timeout_ms):
                     event_buffer = os.read(self._inotify_fd, event_buffer_size)
 
                 with self._lock:
