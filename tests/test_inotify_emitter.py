@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import errno
+import logging
 import os
+import re
 import time
 from queue import Queue
 from threading import Event
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from watchdog.utils import platform
 
@@ -14,7 +20,8 @@ if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
 from watchdog.events import DirCreatedEvent, FileCreatedEvent, FileDeletedEvent, FileMovedEvent, FileSystemEventHandler
-from watchdog.observers.inotify import InotifyObserver, InotifyWatchGroup
+from watchdog.observers.api import ObservedWatch
+from watchdog.observers.inotify import InotifyEmitter, InotifyObserver, InotifyWatchGroup
 from watchdog.observers.inotify_c import InotifyFD
 
 
@@ -400,3 +407,20 @@ def test_schedule_unschedule_load(tmp_path):
         observer.stop()
         observer.join(timeout=5)
         assert not observer.is_alive()
+
+
+def test_queue_events_when_inactive(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    watch = ObservedWatch(str(tmp_path), recursive=False)
+    emitter = InotifyEmitter(Queue(), watch)
+    # Simulate an emitter that has stopped or is inactive (_inotify is None).
+    emitter._inotify = None  # noqa: SLF001
+
+    caplog.set_level(logging.DEBUG)
+    emitter.queue_events(0.01)
+
+    error_logs = [record for record in caplog.records if record.levelno >= logging.ERROR]
+    assert not error_logs, f"Unexpected error logs on inactive emitter: {error_logs}"
+    assert any(
+        record.levelno == logging.DEBUG and re.search(r"called when the thread is inactive", record.message)
+        for record in caplog.records
+    )
