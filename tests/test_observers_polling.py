@@ -305,3 +305,34 @@ def test_hard_link_rename_emits_only_move(p, source, destination):
             events.append(event)
 
     assert events == [FileMovedEvent(p(source), p(destination))]
+
+
+@pytest.mark.parametrize("was_dir", [False, True])
+def test_reused_inode_replacement_emits_delete_and_create(p, event_queue, was_dir):
+    path = p("entry")
+    (mkdir if was_dir else touch)(path)
+
+    def reused_inode_stat(name):
+        result = os.stat(name)
+        if name != path:
+            return result
+        # Model an inode reused after deletion through the supported VFS hook.
+        values = list(result)
+        values[1] = 42
+        return os.stat_result(values)
+
+    emitter = Emitter(event_queue, ObservedWatch(p(""), recursive=True), stat=reused_inode_stat)
+    emitter.on_thread_start()
+    (os.rmdir if was_dir else os.unlink)(path)
+    (touch if was_dir else mkdir)(path)
+    emitter.queue_events(0)
+    events = set()
+    while not event_queue.empty():
+        event, _ = event_queue.get_nowait()
+        if event.src_path == path:
+            events.add(event)
+
+    if was_dir:
+        assert events == {DirDeletedEvent(path), FileCreatedEvent(path)}
+    else:
+        assert events == {FileDeletedEvent(path), DirCreatedEvent(path)}

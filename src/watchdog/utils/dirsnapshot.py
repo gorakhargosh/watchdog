@@ -90,12 +90,6 @@ class DirectorySnapshotDiff:
             def get_inode(directory: DirectorySnapshot, full_path: bytes | str) -> int | tuple[int, int]:
                 return directory.inode(full_path)
 
-        # check that all unchanged paths have the same inode
-        for path in ref.paths & snapshot.paths:
-            if get_inode(ref, path) != get_inode(snapshot, path):
-                created.add(path)
-                deleted.add(path)
-
         if ignore_device:
             # Retain each snapshot's canonical path when hard links share an inode.
             ref_paths = {ref.inode(path)[0]: ref.path(ref.inode(path)) for path in ref.paths}
@@ -124,6 +118,13 @@ class DirectorySnapshotDiff:
                 return ref_btime == new_btime
 
             return True
+
+        # Paths present in both snapshots may refer to different entries even
+        # when the inode has been reused. Treat those as replacements, too.
+        for path in ref.paths & snapshot.paths:
+            if get_inode(ref, path) != get_inode(snapshot, path) or not is_same_entry(path, path):
+                created.add(path)
+                deleted.add(path)
 
         # find moved paths
         moved: set[tuple[bytes | str, bytes | str]] = set()
@@ -169,7 +170,7 @@ class DirectorySnapshotDiff:
         modified: set[bytes | str] = set()
         attrib: set[bytes | str] = set()
         for path in ref.paths & snapshot.paths:
-            if get_inode(ref, path) == get_inode(snapshot, path):
+            if get_inode(ref, path) == get_inode(snapshot, path) and is_same_entry(path, path):
                 if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
                     modified.add(path)
                 if self.is_attrib_modified(ref.stat_info(path), snapshot.stat_info(path)):
