@@ -307,8 +307,11 @@ def test_hard_link_rename_emits_only_move(p, source, destination):
     assert events == [FileMovedEvent(p(source), p(destination))]
 
 
-@pytest.mark.parametrize("was_dir", [False, True])
-def test_reused_inode_replacement_emits_delete_and_create(p, event_queue, was_dir):
+@pytest.mark.parametrize(
+    ("was_dir", "deleted_cls", "created_cls"),
+    [(False, FileDeletedEvent, DirCreatedEvent), (True, DirDeletedEvent, FileCreatedEvent)],
+)
+def test_reused_inode_replacement_emits_delete_and_create(p, event_queue, was_dir, deleted_cls, created_cls):
     path = p("entry")
     (mkdir if was_dir else touch)(path)
 
@@ -332,7 +335,4 @@ def test_reused_inode_replacement_emits_delete_and_create(p, event_queue, was_di
         if event.src_path == path:
             events.add(event)
 
-    if was_dir:
-        assert events == {DirDeletedEvent(path), FileCreatedEvent(path)}
-    else:
-        assert events == {FileDeletedEvent(path), DirCreatedEvent(path)}
+    assert events == {deleted_cls(path), created_cls(path)}

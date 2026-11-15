@@ -34,6 +34,7 @@ from __future__ import annotations
 import contextlib
 import errno
 import os
+import sys
 from stat import S_ISDIR
 from typing import TYPE_CHECKING
 
@@ -110,11 +111,13 @@ class DirectorySnapshotDiff:
             if ref.isdir(ref_path) != snapshot.isdir(new_path):
                 return False
 
-            # If both snapshots have birth time information, differing birth times
-            # prove that the inode was recycled for a newly created file (#992).
+            # Compare available birth times to detect recycled inodes (#992).
             ref_btime = ref.birthtime(ref_path)
             new_btime = snapshot.birthtime(new_path)
             if ref_btime is not None and new_btime is not None:
+                # FreeBSD utimes(2) can lower birth time when mtime is backdated.
+                if ref_path == new_path and sys.platform.startswith("freebsd") and new_btime < ref_btime:
+                    return True
                 return ref_btime == new_btime
 
             return True
