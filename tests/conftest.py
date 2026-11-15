@@ -4,6 +4,7 @@ import contextlib
 import gc
 import os
 import threading
+import time
 from functools import partial
 
 import pytest
@@ -32,6 +33,20 @@ def _inotify_instance():
     from watchdog.observers.inotify_c import InotifyFD
 
     inotify_fd = InotifyFD.get_instance()
+    # InotifyFD (InotifyFD-Reader) spawns a secondary background thread (InotifyFD-Dispatcher)
+    # in its run() loop. Under PyPy JIT warm-up or free-threaded Python (PEP 703 / nogil),
+    # get_instance() may return before the dispatcher thread is registered by the OS scheduler.
+    # We poll until InotifyFD-Dispatcher is active so that function-scoped _no_thread_leaks
+    # fixtures capture both inotify threads in their baseline thread count, preventing false
+    # thread-leak assertions (e.g. 'assert 3 == 2' in CI).
+    deadline = time.monotonic() + 5.0
+    while not any(thread.name == "InotifyFD-Dispatcher" for thread in threading.enumerate()):
+        if time.monotonic() >= deadline:
+            raise AssertionError("InotifyFD dispatcher thread did not start within 5.0s")
+        time.sleep(0.001)
+
+    assert inotify_fd.is_alive()
+
     try:
         yield
     finally:
