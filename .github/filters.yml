@@ -74,8 +74,8 @@ core:
 
 # Test detection: used to check if a PR touches test files only
 tests:
-  - "tests/**"
+  - "tests/test_*.py"
 
 not_tests:
   - "**"
-  - "!tests/**"
+  - "!tests/test_*.py"
