@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import logging
 import os
 import time
 from queue import Queue
@@ -14,7 +15,8 @@ if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
 from watchdog.events import DirCreatedEvent, FileCreatedEvent, FileDeletedEvent, FileMovedEvent, FileSystemEventHandler
-from watchdog.observers.inotify import InotifyObserver, InotifyWatchGroup
+from watchdog.observers.api import ObservedWatch
+from watchdog.observers.inotify import InotifyEmitter, InotifyObserver, InotifyWatchGroup
 from watchdog.observers.inotify_c import InotifyFD
 
 
@@ -400,3 +402,28 @@ def test_schedule_unschedule_load(tmp_path):
         observer.stop()
         observer.join(timeout=5)
         assert not observer.is_alive()
+
+
+def test_queue_events_when_inactive_does_not_log_error(caplog: pytest.LogCaptureFixture) -> None:
+    queue = Queue()
+    watch = ObservedWatch("/tmp/test", recursive=False)
+    emitter = InotifyEmitter(queue, watch)
+    with caplog.at_level(logging.ERROR):
+        emitter.queue_events(1)
+    assert not caplog.records
+
+
+def test_queue_events_stopped_during_read_does_not_log_error(caplog: pytest.LogCaptureFixture) -> None:
+    queue = Queue()
+    watch = ObservedWatch("/tmp/test", recursive=False)
+    emitter = InotifyEmitter(queue, watch)
+
+    class MockWatchGroup:
+        def read_event(self):
+            emitter._inotify = None  # noqa: SLF001
+            return object()
+
+    emitter._inotify = MockWatchGroup()  # type: ignore[assignment]  # noqa: SLF001
+    with caplog.at_level(logging.ERROR):
+        emitter.queue_events(1)
+    assert not caplog.records
