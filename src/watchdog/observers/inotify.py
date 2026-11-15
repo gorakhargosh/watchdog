@@ -680,14 +680,14 @@ class InotifyEmitter(EventEmitter):
         with self._lock:
             inotify = self._inotify
         if inotify is None:
-            logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+            logger.debug("InotifyEmitter.queue_events() called when the thread is inactive")
             return
         event = inotify.read_event()
         if event is None:
             return
         with self._lock:
             if self._inotify is None:
-                logger.error("InotifyEmitter.queue_events() called when the thread is inactive")
+                logger.debug("InotifyEmitter.queue_events() called when the thread is inactive")
                 return
             self.build_and_queue_event(event)
 
