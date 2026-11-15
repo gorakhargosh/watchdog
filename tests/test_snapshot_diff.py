@@ -4,6 +4,7 @@ import errno
 import os
 import pickle
 import stat
+import sys
 import time
 from typing import Any
 from unittest.mock import patch
@@ -410,6 +411,97 @@ def test_inode_reuse_is_not_a_move(
     created_list = diff.dirs_created if is_dir_new else diff.files_created
     assert deleted_list == [p("old")]
     assert created_list == [p("new")]
+
+
+@pytest.mark.parametrize(
+    ("was_dir", "is_dir", "old_birthtime", "new_birthtime"),
+    [
+        (False, False, 100, 200),
+        (True, True, 100, 200),
+        (False, True, None, None),
+        (True, False, None, None),
+        (False, False, 0, 200),
+    ],
+)
+@pytest.mark.parametrize("modified", [False, True])
+def test_same_path_replacement(p, was_dir, is_dir, old_birthtime, new_birthtime, modified):
+    # An inode can be reused at its original path, even with the same size/mtime.
+    with patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False):
+        ref = _fake_snapshot(p(""), {"entry": (42, 10, 1000, was_dir, old_birthtime)})
+        snapshot = _fake_snapshot(
+            p(""), {"entry": (42, 20 if modified else 10, 2000 if modified else 1000, is_dir, new_birthtime)}
+        )
+        diff = DirectorySnapshotDiff(ref, snapshot)
+
+    assert diff.files_deleted == ([] if was_dir else [p("entry")])
+    assert diff.dirs_deleted == ([p("entry")] if was_dir else [])
+    assert diff.files_created == ([] if is_dir else [p("entry")])
+    assert diff.dirs_created == ([p("entry")] if is_dir else [])
+    assert diff.files_moved == diff.dirs_moved == []
+    assert diff.files_modified == diff.dirs_modified == []
+    assert diff.files_attrib == diff.dirs_attrib == []
+
+
+@pytest.mark.parametrize("os_platform", ["freebsd14", "freebsd15"])
+@pytest.mark.parametrize("is_dir", [False, True])
+@pytest.mark.parametrize("new_mtime", [500, 2500])
+def test_freebsd_backdated_birthtime_is_not_a_replacement(p, os_platform, is_dir, new_mtime):
+    with (
+        patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False),
+        patch("sys.platform", os_platform),
+    ):
+        ref = _fake_snapshot(p(""), {"entry": (42, 10, 2000, is_dir, 1500.0)})
+        snapshot = _fake_snapshot(p(""), {"entry": (42, 10, new_mtime, is_dir, 500.0)})
+        diff = DirectorySnapshotDiff(ref, snapshot)
+
+    assert diff.files_created == diff.dirs_created == []
+    assert diff.files_deleted == diff.dirs_deleted == []
+    assert diff.files_moved == diff.dirs_moved == []
+    assert diff.files_modified == ([] if is_dir else [p("entry")])
+    assert diff.dirs_modified == ([p("entry")] if is_dir else [])
+
+
+def test_non_freebsd_older_birthtime_is_a_replacement(p):
+    with (
+        patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False),
+        patch("sys.platform", "linux"),
+    ):
+        ref = _fake_snapshot(p(""), {"entry": (42, 10, 2000, False, 1500.0)})
+        snapshot = _fake_snapshot(p(""), {"entry": (42, 10, 500, False, 500.0)})
+        diff = DirectorySnapshotDiff(ref, snapshot)
+
+    assert diff.files_created == diff.files_deleted == [p("entry")]
+    assert diff.files_modified == []
+
+
+@pytest.mark.skipif(not sys.platform.startswith("freebsd"), reason="FreeBSD filesystem timestamp behavior")
+def test_freebsd_touch_backdated_file(p):
+    touch(p("entry"))
+    ref = DirectorySnapshot(p(""))
+    os.utime(p("entry"), (1000, 1000))
+    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
+    assert diff.files_created == diff.files_deleted == []
+    assert diff.files_modified == [p("entry")]
+
+
+@pytest.mark.parametrize("is_dir", [False, True])
+@pytest.mark.parametrize("birthtimes", [(100, 100), (0, 0), (None, 100), (100, None), (None, None)])
+@pytest.mark.parametrize("modified", [False, True])
+def test_same_path_unchanged_identity(p, is_dir, birthtimes, modified):
+    # Missing birth times preserve the inode-only fallback; matching ones allow edits.
+    with patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False):
+        ref = _fake_snapshot(p(""), {"entry": (42, 10, 1000, is_dir, birthtimes[0])})
+        snapshot = _fake_snapshot(
+            p(""), {"entry": (42, 20 if modified else 10, 2000 if modified else 1000, is_dir, birthtimes[1])}
+        )
+        diff = DirectorySnapshotDiff(ref, snapshot)
+
+    assert diff.files_deleted == diff.dirs_deleted == []
+    assert diff.files_created == diff.dirs_created == []
+    assert diff.files_moved == diff.dirs_moved == []
+    assert diff.files_modified == ([p("entry")] if modified and not is_dir else [])
+    assert diff.dirs_modified == ([p("entry")] if modified and is_dir else [])
+    assert diff.files_attrib == diff.dirs_attrib == []
 
 
 def test_matching_birthtime_is_detected_as_move(p: Any) -> None:

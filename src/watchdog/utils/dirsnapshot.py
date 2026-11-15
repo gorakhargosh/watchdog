@@ -34,6 +34,7 @@ from __future__ import annotations
 import contextlib
 import errno
 import os
+import sys
 from stat import S_ISDIR
 from typing import TYPE_CHECKING
 
@@ -90,12 +91,6 @@ class DirectorySnapshotDiff:
             def get_inode(directory: DirectorySnapshot, full_path: bytes | str) -> int | tuple[int, int]:
                 return directory.inode(full_path)
 
-        # check that all unchanged paths have the same inode
-        for path in ref.paths & snapshot.paths:
-            if get_inode(ref, path) != get_inode(snapshot, path):
-                created.add(path)
-                deleted.add(path)
-
         if ignore_device:
             # Retain each snapshot's canonical path when hard links share an inode.
             ref_paths = {ref.inode(path)[0]: ref.path(ref.inode(path)) for path in ref.paths}
@@ -116,14 +111,23 @@ class DirectorySnapshotDiff:
             if ref.isdir(ref_path) != snapshot.isdir(new_path):
                 return False
 
-            # If both snapshots have birth time information, differing birth times
-            # prove that the inode was recycled for a newly created file (#992).
+            # Compare available birth times to detect recycled inodes (#992).
             ref_btime = ref.birthtime(ref_path)
             new_btime = snapshot.birthtime(new_path)
             if ref_btime is not None and new_btime is not None:
+                # FreeBSD utimes(2) can lower birth time when mtime is backdated.
+                if ref_path == new_path and sys.platform.startswith("freebsd") and new_btime < ref_btime:
+                    return True
                 return ref_btime == new_btime
 
             return True
+
+        # Paths present in both snapshots may refer to different entries even
+        # when the inode has been reused. Treat those as replacements, too.
+        for path in ref.paths & snapshot.paths:
+            if get_inode(ref, path) != get_inode(snapshot, path) or not is_same_entry(path, path):
+                created.add(path)
+                deleted.add(path)
 
         # find moved paths
         moved: set[tuple[bytes | str, bytes | str]] = set()
@@ -169,7 +173,7 @@ class DirectorySnapshotDiff:
         modified: set[bytes | str] = set()
         attrib: set[bytes | str] = set()
         for path in ref.paths & snapshot.paths:
-            if get_inode(ref, path) == get_inode(snapshot, path):
+            if get_inode(ref, path) == get_inode(snapshot, path) and is_same_entry(path, path):
                 if ref.mtime(path) != snapshot.mtime(path) or ref.size(path) != snapshot.size(path):
                     modified.add(path)
                 if self.is_attrib_modified(ref.stat_info(path), snapshot.stat_info(path)):
