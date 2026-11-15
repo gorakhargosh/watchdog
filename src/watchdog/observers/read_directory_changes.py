@@ -12,6 +12,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    EventsLostEvent,
     FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
@@ -127,6 +128,12 @@ class WindowsApiEmitter(EventEmitter):
                 logger.warning(
                     "Some file system events were lost due to a buffer overflow while watching %s",
                     self.watch.path,
+                )
+                self.queue_event(
+                    EventsLostEvent(
+                        self.watch.resolved_path if self.watch.is_file else self.watch.path,
+                        is_directory=not self.watch.is_file,
+                    )
                 )
         if should_stop:
             # watched directory was deleted, stop observer threads

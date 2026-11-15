@@ -29,6 +29,7 @@ Changelog
 - [inotify] A recursive watch that hits the inotify watch or instance limit (``ENOSPC``, ``EMFILE``) on a subdirectory raises ``OSError`` from ``start()`` and ``schedule()`` again, as in 6.0.0, instead of silently watching part of the tree. A subdirectory created later that cannot be watched is logged as a warning. (`#1454 <https://github.com/gorakhargosh/watchdog/issues/1454>`__, thanks to @Kernel-Hunter)
 - [inotify] Refactor watch tracking from flat string path dictionaries to a hierarchical directory tree (``DirNode``), making recursive subtree moves atomic operations with cycle detection and ancestor placeholder pruning. (`#1459 <https://github.com/gorakhargosh/watchdog/pull/1459>`__, thanks to @prateek-dagar)
 - [inotify] Events read before a kernel queue overflow are delivered instead of discarded, ahead of the ``EventsLostEvent``. (`#1440 <https://github.com/gorakhargosh/watchdog/issues/1440>`__, thanks to @KurathSec and @fstrasz)
+- [windows] Report lost events: when the ``ReadDirectoryChangesW`` buffer of a watch overflows, the watch gets an ``EventsLostEvent``, dispatched to ``FileSystemEventHandler.on_events_lost()``, as on inotify. (`#1440 <https://github.com/gorakhargosh/watchdog/issues/1440>`__, thanks to @fstrasz)
 
 7.1.0
 ~~~~~
