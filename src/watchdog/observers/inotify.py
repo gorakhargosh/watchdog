@@ -121,6 +121,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_INVALID_WD = WatchDescriptor(-1)
+
 
 class FileSystemEventCtor(Protocol):
     def __call__(self, src_path: bytes | str, dest_path: bytes | str = "") -> FileSystemEvent: ...
@@ -245,7 +247,7 @@ class InotifyWatchGroup(WatchCallback):
         with self._lock:
             if not self.is_active:
                 return
-            overflow = InotifyEvent(WatchDescriptor(-1), InotifyConstants.IN_Q_OVERFLOW, 0, b"")
+            overflow = InotifyEvent(_INVALID_WD, InotifyConstants.IN_Q_OVERFLOW, 0, b"")
             self._move_event_grouper.put_event(PathedInotifyEvent(overflow, self.path))
 
     def on_watch_deleted(self, wd: WatchDescriptor) -> None:
@@ -300,6 +302,10 @@ class InotifyWatchGroup(WatchCallback):
                 move_dst_path = src_path
                 source_was_watched = move_src_path is not None and self._move_watches(move_src_path, move_dst_path)
                 if event.is_directory and self.is_recursive and not source_was_watched:
+                    # If an external directory moves over an existing watched directory,
+                    # remove the displaced destination node so its replacement can be watched.
+                    if (existing := self._find_node_by_path(src_path)) is not None and existing is not self._root:
+                        self._remove_node_and_watches(existing, src_path)
                     # The source may have been seen before its watch was registered.
                     self._add_all_callbacks(src_path)
                     if move_src_path is not None:
@@ -308,7 +314,27 @@ class InotifyWatchGroup(WatchCallback):
                             if sub_src_path is not None:
                                 self._move_event_grouper.put_event(PathedInotifyEvent(sub_event, sub_src_path))
             elif event.is_create and event.is_directory and self.is_recursive:
+                # If a directory is recreated while an earlier move-out was pending,
+                # remove any stale watch state before adding the new directory watches.
+                if (
+                    (existing := self._find_node_by_path(src_path)) is not None
+                    and existing is not self._root
+                    and self._has_pending_moved_from(src_path)
+                ):
+                    self._remove_node_and_watches(existing, src_path)
                 self._add_all_callbacks(src_path)
+            elif (
+                event.is_delete
+                and event.is_directory
+                and (existing := self._find_node_by_path(src_path)) is not None
+                and existing.parent is not None
+                and existing.parent.children.get(existing.name) is existing
+            ):
+                # Detach the deleted directory node from its parent so downward lookups
+                # (_find_node_by_path) no longer resolve it, allowing a newly created directory
+                # at the same path to register independently. The old node's WD and callbacks
+                # remain alive in _nodes_by_wd until the kernel delivers IN_IGNORED for its WD.
+                existing.parent.children.pop(existing.name, None)
 
             self._move_event_grouper.put_event(PathedInotifyEvent(event, src_path))
 
@@ -381,8 +407,11 @@ class InotifyWatchGroup(WatchCallback):
         curr: DirNode | None = node
         root = self._root
         while curr is not None and curr is not root:
+            parent = curr.parent
+            if parent is None or parent.children.get(curr.name) is not curr:
+                return None
             parts.append(curr.name)
-            curr = curr.parent
+            curr = parent
 
         if curr is not root:
             return None
@@ -446,13 +475,13 @@ class InotifyWatchGroup(WatchCallback):
             return self._root
 
         if self._root is None:
-            self._root = DirNode(name=b"", wd=WatchDescriptor(-1), parent=None)
+            self._root = DirNode(name=b"", wd=_INVALID_WD, parent=None)
 
         curr = self._root
         for part in parts[:-1]:
             child = curr.children.get(part)
             if child is None:
-                child = DirNode(name=part, wd=WatchDescriptor(-1), parent=curr)
+                child = DirNode(name=part, wd=_INVALID_WD, parent=curr)
                 curr.children[part] = child
             curr = child
 
@@ -479,14 +508,54 @@ class InotifyWatchGroup(WatchCallback):
             return None
         return os.path.join(watched_path, event.name) if event.name else watched_path  # avoid trailing slash
 
-    def _prune_subtree_nodes(self, root_node: DirNode) -> None:
-        stack = [root_node]
+    def _has_pending_moved_from(self, path: bytes) -> bool:
+        return self._move_event_grouper.has_pending_moved_from(path)
+
+    def _remove_node_and_watches(self, node: DirNode, path: bytes) -> list[bytes]:
+        if node is self._root:
+            return []
+
+        if node.parent is not None and node.parent.children.get(node.name) is node:
+            node.parent.children.pop(node.name, None)
+        node.parent = None
+
+        sub_paths: list[bytes] = []
+        wds: list[WatchDescriptor] = []
+        stack: list[tuple[DirNode, bytes]] = [(node, path)]
         while stack:
-            curr = stack.pop()
-            self._nodes_by_wd.pop(curr.wd, None)
-            stack.extend(curr.children.values())
+            curr, curr_path = stack.pop()
+            if curr is not node:
+                sub_paths.append(curr_path)
+            if curr.wd != _INVALID_WD:
+                wds.append(curr.wd)
+                self._nodes_by_wd.pop(curr.wd, None)
+            for name, child in reversed(curr.children.items()):
+                stack.append((child, os.path.join(curr_path, name)))
             curr.children.clear()
             curr.parent = None
+
+        if wds:
+            self._remove_callbacks(wds)
+            self._move_event_grouper.purge_events_for_wds(set(wds))
+        return sub_paths
+
+    def remove_watched_directory(self, path: bytes) -> list[bytes]:
+        """Remove inotify watches for a directory and all its descendants, pruning them from the tree.
+
+        Returns the full paths of all descendant subdirectories removed.
+        """
+        # TODO: Synthetic file deletion events for files inside moved-out directories could be
+        # tracked if file nodes or subtree snapshotting are added to DirNode.
+        # TODO: Symlink alias disambiguation and multi-root watch descriptor deduplication.
+        with self._lock:
+            if self._move_event_grouper.has_pending_move_to_or_create(path):
+                return []
+
+            node = self._find_node_by_path(path)
+            if node is None or node is self._root:
+                return []
+
+            return self._remove_node_and_watches(node, path)
 
     def _move_watches(self, move_src_path: bytes, move_dst_path: bytes) -> bool:
         """Move all watches in the source tree and return whether the source was watched."""
@@ -519,7 +588,7 @@ class InotifyWatchGroup(WatchCallback):
         # If a child with new_name already exists in new_parent, clean it up before reparenting
         existing_child = new_parent.children.pop(new_name, None)
         if existing_child and existing_child is not node:
-            self._prune_subtree_nodes(existing_child)
+            self._remove_node_and_watches(existing_child, norm_dst)
 
         # Detach from old parent
         if node.parent is not None:
@@ -556,6 +625,8 @@ class InotifyWatchGroup(WatchCallback):
         :param path:
             Path to monitor
         """
+        if (existing := self._find_node_by_path(path)) is not None and existing.wd != _INVALID_WD:
+            return
         try:
             wd = self._inotify_fd.add_callback(path, self.event_mask, self._callback, self._id)
             node = self._insert_node(path, wd)
@@ -586,7 +657,7 @@ class InotifyWatchGroup(WatchCallback):
         """Removes a watch descriptor from internal tree."""
         node = self._nodes_by_wd.pop(wd, None)
         if node is not None:
-            node.wd = WatchDescriptor(-1)
+            node.wd = _INVALID_WD
             if node is self._root and not node.children:
                 self._root = None
             elif not node.children:
@@ -595,14 +666,14 @@ class InotifyWatchGroup(WatchCallback):
     def _prune_empty_ancestors(self, node: DirNode) -> None:
         curr: DirNode | None = node
         while curr is not None and curr is not self._root:
-            if curr.children or curr.wd != WatchDescriptor(-1):
+            if curr.children or curr.wd != _INVALID_WD:
                 break
             parent = curr.parent
-            if parent is not None:
+            if parent is not None and parent.children.get(curr.name) is curr:
                 parent.children.pop(curr.name, None)
             curr.parent = None
             curr = parent
-        if self._root is not None and not self._root.children and self._root.wd == WatchDescriptor(-1):
+        if self._root is not None and not self._root.children and self._root.wd == _INVALID_WD:
             self._root = None
 
 
@@ -729,10 +800,18 @@ class InotifyEmitter(EventEmitter):
                 cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                if event.ev.is_moved_from and event.ev.is_directory and self.watch.is_recursive and self._inotify:
+                    for sub_path in self._inotify.remove_watched_directory(event.path):
+                        decoded = self._decode_path(sub_path)
+                        self.queue_event(DirDeletedEvent(decoded, is_synthetic=True))
             elif event.ev.is_moved_from and full_events:
                 cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path, ""))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+                if event.ev.is_directory and self.watch.is_recursive and self._inotify:
+                    for sub_path in self._inotify.remove_watched_directory(event.path):
+                        decoded = self._decode_path(sub_path)
+                        self.queue_event(DirMovedEvent(decoded, "", is_synthetic=True))
             elif event.ev.is_create:
                 cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
@@ -769,8 +848,8 @@ class InotifyEmitter(EventEmitter):
         # Always listen to delete self
         event_mask = InotifyConstants.IN_DELETE_SELF
         if self.watch.is_recursive:
-            # New directories need watches even when creation events are filtered.
-            event_mask = Mask(event_mask | InotifyConstants.IN_CREATE)
+            # New and moved directories need watches even when creation/move events are filtered.
+            event_mask = Mask(event_mask | InotifyConstants.IN_CREATE | InotifyConstants.IN_MOVE)
 
         for cls in self._event_filter:
             if cls in {DirMovedEvent, FileMovedEvent}:
