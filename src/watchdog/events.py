@@ -66,6 +66,10 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: EventsLostEvent
+   :members:
+   :show-inheritance:
+
 
 Event Handler Classes
 ---------------------
@@ -118,6 +122,7 @@ EVENT_TYPE_CLOSED = "closed"
 EVENT_TYPE_CLOSED_NO_WRITE = "closed_no_write"
 EVENT_TYPE_OPENED = "opened"
 EVENT_TYPE_ATTRIB = "attrib"
+EVENT_TYPE_EVENTS_LOST = "events_lost"
 
 
 @dataclass(unsafe_hash=True)
@@ -256,6 +261,30 @@ class DirMovedEvent(FileSystemMovedEvent):
     is_directory = True
 
 
+@dataclass(unsafe_hash=True)
+class EventsLostEvent(FileSystemEvent):
+    """Event signaling that file system events of the watch at ``src_path`` were lost.
+
+    ``src_path`` is the watched directory, or the watched file for a file watch, not a
+    changed path: rescan it to catch up. ``is_directory`` tells which. The watch itself
+    keeps working, and the event is queued only once the observer has finished its own
+    recovery.
+
+    Emitted by ``InotifyObserver`` on Linux when the kernel queue overflows (an overflow
+    drops events for every watch of the observer, so each of its watches gets one), and by
+    ``WindowsApiObserver`` on Windows when the ``ReadDirectoryChangesW`` buffer of a watch
+    overflows (only that watch gets one).
+    ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler`` deliver it to
+    ``on_events_lost()`` only, never to ``on_any_event()``, whatever their patterns,
+    regexes and ``ignore_directories``. A watch scheduled with an ``event_filter`` gets it
+    only if the filter lists ``EventsLostEvent``.
+    """
+
+    event_type = EVENT_TYPE_EVENTS_LOST
+    is_directory: bool = field(default=False, kw_only=True)
+    """True if the watch is a directory; False for a file watch."""
+
+
 class FileSystemEventHandler:
     """Base file system event handler that you can override methods from."""
 
@@ -357,6 +386,18 @@ class FileSystemEventHandler:
             :class:`watchdog.events.FileOpenedEvent`
         """
 
+    def on_events_lost(self, event: EventsLostEvent) -> None:
+        """Called when file system events were lost: rescan ``event.src_path`` to catch up.
+
+        ``event.src_path`` is the watched directory, or the watched file for a file watch.
+        Emitted by ``InotifyObserver`` on Linux and ``WindowsApiObserver`` on Windows.
+
+        :param event:
+            Event representing the loss.
+        :type event:
+            :class:`watchdog.events.EventsLostEvent`
+        """
+
 
 class IgnorePolicy(StrEnum):
     """Policy for ignoring multi-path events (such as file moves or renames)."""
@@ -412,11 +453,11 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         """Return the ignore policy."""
         return self._ignore_policy
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: str, *, base_path: str | None = None) -> bool:
         """Return True if path matches ignore criteria."""
         raise NotImplementedError
 
-    def is_included(self, path: str) -> bool:
+    def is_included(self, path: str, *, base_path: str | None = None) -> bool:
         """Return True if path matches include criteria."""
         raise NotImplementedError
 
@@ -431,8 +472,16 @@ class PathMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`watchdog.events.FileSystemEvent`
         """
+        if isinstance(event, EventsLostEvent):
+            # Its path is the watch's, not a matched one: no pattern may hide a loss, and
+            # on_any_event() only gets matched paths.
+            self.on_events_lost(event)
+            return
+
         if self.ignore_directories and event.is_directory:
             return
+
+        base_path = getattr(event, "watch_path", None)
 
         paths = []
         if event.dest_path:
@@ -441,12 +490,12 @@ class PathMatchingEventHandler(FileSystemEventHandler):
             paths.append(os.fsdecode(event.src_path))
 
         if self.ignore_policy == IgnorePolicy.ANY:
-            if any(self.is_ignored(p) for p in paths):
+            if any(self.is_ignored(p, base_path=base_path) for p in paths):
                 return
-        elif all(self.is_ignored(p) for p in paths):
+        elif all(self.is_ignored(p, base_path=base_path) for p in paths):
             return
 
-        if any(self.is_included(p) for p in paths):
+        if any(self.is_included(p, base_path=base_path) for p in paths):
             super().dispatch(event)
 
 
@@ -505,22 +554,24 @@ class PatternMatchingEventHandler(PathMatchingEventHandler):
         """Patterns to ignore matching event paths."""
         return self._ignore_patterns
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: str, *, base_path: str | None = None) -> bool:
         return bool(
             self.ignore_patterns
             and match_any_paths(
                 [path],
                 included_patterns=self.ignore_patterns,
                 case_sensitive=self.case_sensitive,
+                base_path=base_path,
             )
         )
 
-    def is_included(self, path: str) -> bool:
+    def is_included(self, path: str, *, base_path: str | None = None) -> bool:
         return bool(
             match_any_paths(
                 [path],
                 included_patterns=self.patterns,
                 case_sensitive=self.case_sensitive,
+                base_path=base_path,
             )
         )
 
@@ -578,6 +629,8 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
             regexes = [regexes]
         if ignore_regexes is None:
             ignore_regexes = []
+        elif isinstance(ignore_regexes, str):
+            ignore_regexes = [ignore_regexes]
         flags = 0 if case_sensitive else re.IGNORECASE
         self._regexes = [re.compile(r, flags) for r in regexes]
         self._ignore_regexes = [re.compile(r, flags) for r in ignore_regexes]
@@ -593,10 +646,10 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
         """Regexes to ignore matching event paths."""
         return self._ignore_regexes
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: str, *, base_path: str | None = None) -> bool:
         return any(r.match(path) for r in self.ignore_regexes)
 
-    def is_included(self, path: str) -> bool:
+    def is_included(self, path: str, *, base_path: str | None = None) -> bool:
         return any(r.match(path) for r in self.regexes)
 
     def _validate_rules(self) -> None:
@@ -660,6 +713,11 @@ class LoggingEventHandler(FileSystemEventHandler):
         super().on_opened(event)
 
         self.logger.info("Opened file: %s", event.src_path)
+
+    def on_events_lost(self, event: EventsLostEvent) -> None:
+        super().on_events_lost(event)
+
+        self.logger.warning("Events lost: %s", event.src_path)
 
 
 def generate_sub_moved_events(

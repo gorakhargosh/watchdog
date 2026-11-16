@@ -11,6 +11,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    EventsLostEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -298,3 +299,17 @@ def test_rename_cross_boundary_permissive() -> None:
     e3 = FileMovedEvent("/path/a.tmp", "/path/b.tmp")
     handler.dispatch(e3)
     assert events_collected == []
+
+
+def test_events_lost_ignores_patterns() -> None:
+    # The path is the watch's, not a changed one: the lost events may well have matched.
+    events_collected: list[FileSystemEvent] = []
+    any_events: list[FileSystemEvent] = []
+    handler = PatternMatchingEventHandler(patterns=["*.py"], ignore_patterns=["*/project"], ignore_directories=True)
+    handler.on_events_lost = events_collected.append
+    handler.on_any_event = any_events.append
+
+    handler.dispatch(EventsLostEvent("/path/project", is_directory=True))
+
+    assert events_collected == [EventsLostEvent("/path/project", is_directory=True)]
+    assert any_events == []

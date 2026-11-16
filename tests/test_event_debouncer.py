@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-import time
+import threading
 import warnings
+from queue import Queue
+from types import SimpleNamespace
 
 import pytest
 
 from watchdog.events import FileModifiedEvent
+from watchdog.utils import event_debouncer
 from watchdog.utils.event_debouncer import EventDebouncer
 
 
@@ -64,51 +67,147 @@ def test_no_warning_with_new_names():
         assert debouncer.debounce_interval == 0.5
 
 
-def test_event_debouncer_coalesce_and_drain():
+class ObservedCondition(threading.Condition):
+    """Expose wait boundaries without sleeping to guess the worker's state."""
+
+    def __init__(self):
+        super().__init__()
+        self.waits = Queue()
+
+    def wait(self, timeout=None):
+        self.waits.put(timeout)
+        return super().wait(timeout)
+
+    def expect_wait(self, timeout):
+        assert self.waits.get(timeout=5) == timeout
+        # wait() publishes before releasing its lock. Acquiring it here ensures
+        # the worker has actually entered the wait before the test continues.
+        with self:
+            pass
+
+
+def test_event_debouncer_coalesce_and_drain(monkeypatch):
     called = []
+    delivered = threading.Event()
     e1 = FileModifiedEvent("/some/path1")
     e2 = FileModifiedEvent("/some/path2")
-    debouncer = EventDebouncer(0.05, called.append)
+    e3 = FileModifiedEvent("/some/path3")
+
+    def callback(events):
+        called.append(events)
+        delivered.set()
+
+    debouncer = EventDebouncer(0.01, callback)
+    cond = ObservedCondition()
+    monkeypatch.setattr(debouncer, "_cond", cond)
     debouncer.start()
     try:
-        # Does not emit when idle
-        time.sleep(0.06)
-        assert not called
-
-        # Coalesces burst of events into a single callback
-        debouncer.handle_event(e1)
-        debouncer.handle_event(e2)
-
-        deadline = time.monotonic() + 2.0
-        while not called and time.monotonic() < deadline:
-            time.sleep(0.01)
+        cond.expect_wait(None)
+        with cond:
+            assert not called
+            # Both events arrive before the worker can inspect the batch.
+            debouncer.handle_event(e1)
+            debouncer.handle_event(e2)
+        assert delivered.wait(5)
+        cond.expect_wait(0.01)
+        cond.expect_wait(None)
         assert called == [[e1, e2]]
 
-        # Drains pending events upon stop()
-        e3 = FileModifiedEvent("/some/path3")
-        debouncer.handle_event(e3)
+        with cond:
+            # Stop before the worker can process this event normally. It must
+            # drain the pending event, without delivering the old batch twice.
+            debouncer.handle_event(e3)
+            debouncer.stop()
     finally:
         debouncer.stop()
-        debouncer.join()
-
+        debouncer.join(5)
+    assert not debouncer.is_alive()
     assert called == [[e1, e2], [e3]]
 
 
-def test_event_debouncer_starvation():
+def test_event_debouncer_starvation(monkeypatch):
     called = []
-    debouncer = EventDebouncer(0.03, called.append)
+    now = 0.0
+    monkeypatch.setattr(event_debouncer, "time", SimpleNamespace(monotonic=lambda: now))
+    debouncer = EventDebouncer(60, called.append)
+    cond = ObservedCondition()
+    monkeypatch.setattr(debouncer, "_cond", cond)
+    batches = [[FileModifiedEvent(f"/batch{batch}/path{i}") for i in range(4)] for batch in range(2)]
     debouncer.start()
     try:
-        for i in range(8):
-            debouncer.handle_event(FileModifiedEvent(f"/some/path{i}"))
-            time.sleep(0.01)
-
-        deadline = time.monotonic() + 2.0
-        while not called and time.monotonic() < deadline:
-            time.sleep(0.01)
-
-        # Flushes periodically despite rapid continuous events (fixes #997)
-        assert len(called) >= 1
+        cond.expect_wait(None)
+        for batch, events in enumerate(batches):
+            with cond:
+                now = batch * 100.0
+                debouncer.handle_event(events[0])
+            cond.expect_wait(60)
+            for event, elapsed in zip(events[1:], [20.0, 40.0, 61.0], strict=True):
+                with cond:
+                    now = batch * 100.0 + elapsed
+                    debouncer.handle_event(event)
+                if elapsed < 60:
+                    cond.expect_wait(60)
+                    with cond:
+                        assert called == batches[:batch]
+            # Notifications did not let the worker time out. The elapsed-time
+            # limit must still flush the batch, preventing starvation. Repeat
+            # for another batch to verify the elapsed timer starts afresh.
+            cond.expect_wait(None)
+            assert called == batches[: batch + 1]
     finally:
         debouncer.stop()
-        debouncer.join()
+        debouncer.join(5)
+    assert not debouncer.is_alive()
+
+
+def test_event_debouncer_stop_while_idle(monkeypatch):
+    called = []
+    debouncer = EventDebouncer(60, called.append)
+    cond = ObservedCondition()
+    monkeypatch.setattr(debouncer, "_cond", cond)
+    debouncer.start()
+    try:
+        cond.expect_wait(None)
+    finally:
+        debouncer.stop()
+        debouncer.join(5)
+    assert not debouncer.is_alive()
+    assert called == []
+
+
+def test_event_debouncer_stop_during_debounce(monkeypatch):
+    called = []
+    event = FileModifiedEvent("/some/path")
+    debouncer = EventDebouncer(60, called.append)
+    cond = ObservedCondition()
+    monkeypatch.setattr(debouncer, "_cond", cond)
+    debouncer.start()
+    try:
+        cond.expect_wait(None)
+        debouncer.handle_event(event)
+        cond.expect_wait(60)
+    finally:
+        debouncer.stop()
+        debouncer.join(5)
+    assert not debouncer.is_alive()
+    assert called == [[event]]
+
+
+def test_event_debouncer_zero_interval(monkeypatch):
+    called = []
+    event = FileModifiedEvent("/some/path")
+    debouncer = EventDebouncer(0, called.append)
+    cond = ObservedCondition()
+    monkeypatch.setattr(debouncer, "_cond", cond)
+    debouncer.start()
+    try:
+        cond.expect_wait(None)
+        debouncer.handle_event(event)
+        # A zero interval must go straight back to waiting for another event,
+        # without a timed debounce wait or an empty callback.
+        cond.expect_wait(None)
+        assert called == [[event]]
+    finally:
+        debouncer.stop()
+        debouncer.join(5)
+    assert not debouncer.is_alive()

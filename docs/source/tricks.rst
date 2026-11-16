@@ -25,7 +25,7 @@ Without tricks, running multiple tasks requires starting several terminal proces
     watchmedo shell-command --patterns="**/*.py" --command="ruff check ." .
 
     # Terminal 3
-    watchmedo auto-restart --patterns="**/*.py" --command="python app.py" .
+    watchmedo auto-restart --patterns="**/*.py" python -- app.py
 
 Using tricks simplifies configuration by allowing multiple event handlers to run under a single observer:
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from watchdog.events import (
     EVENT_TYPE_CLOSED,
     EVENT_TYPE_CLOSED_NO_WRITE,
@@ -12,6 +14,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    EventsLostEvent,
     FileClosedEvent,
     FileClosedNoWriteEvent,
     FileCreatedEvent,
@@ -90,3 +93,10 @@ def test_logging_event_handler_dispatch():
     handler = _TestableEventHandler()
     for event in all_events:
         handler.dispatch(event)
+
+
+def test_logging_event_handler_warns_on_events_lost(caplog):
+    with caplog.at_level(logging.WARNING):
+        LoggingEventHandler().dispatch(EventsLostEvent("/path/to/watch"))
+
+    assert caplog.messages == ["Events lost: /path/to/watch"]

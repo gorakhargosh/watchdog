@@ -291,19 +291,38 @@ WATCHDOG_FILE_SHARE_FLAGS = reduce(
         FILE_SHARE_DELETE,
     ],
 )
-WATCHDOG_FILE_NOTIFY_FLAGS = reduce(
-    lambda x, y: x | y,
-    [
-        FILE_NOTIFY_CHANGE_FILE_NAME,
-        FILE_NOTIFY_CHANGE_DIR_NAME,
-        FILE_NOTIFY_CHANGE_ATTRIBUTES,
-        FILE_NOTIFY_CHANGE_SIZE,
-        FILE_NOTIFY_CHANGE_LAST_WRITE,
-        FILE_NOTIFY_CHANGE_SECURITY,
-        FILE_NOTIFY_CHANGE_LAST_ACCESS,
-        FILE_NOTIFY_CHANGE_CREATION,
-    ],
+# Every dwNotifyFilter bit ReadDirectoryChangesW documents. Validation accepts
+# any non-empty subset, so a narrower mask can drop flags the default includes.
+_FILE_NOTIFY_CHANGE_ALL = (
+    FILE_NOTIFY_CHANGE_FILE_NAME
+    | FILE_NOTIFY_CHANGE_DIR_NAME
+    | FILE_NOTIFY_CHANGE_ATTRIBUTES
+    | FILE_NOTIFY_CHANGE_SIZE
+    | FILE_NOTIFY_CHANGE_LAST_WRITE
+    | FILE_NOTIFY_CHANGE_LAST_ACCESS
+    | FILE_NOTIFY_CHANGE_CREATION
+    | FILE_NOTIFY_CHANGE_SECURITY
 )
+# Default dwNotifyFilter. Includes last-access time: on NTFS an access-time
+# update can be reported for a read, which floods a watcher that only cares
+# about content and name changes. Pass a narrower mask as ``notify_filter``.
+WATCHDOG_FILE_NOTIFY_FLAGS = _FILE_NOTIFY_CHANGE_ALL
+
+
+def _require_notify_filter(notify_filter: int) -> int:
+    """Return ``notify_filter`` when it is a usable ``dwNotifyFilter`` mask.
+
+    ``bool`` is rejected because it subclasses ``int``: ``True`` would
+    otherwise select ``FILE_NOTIFY_CHANGE_FILE_NAME`` alone.
+    """
+    if isinstance(notify_filter, bool) or not isinstance(notify_filter, int):
+        error = f"notify_filter must be an int bitmask of FILE_NOTIFY_CHANGE_* flags, got {notify_filter!r}"
+        raise TypeError(error)
+    if notify_filter <= 0 or notify_filter & ~_FILE_NOTIFY_CHANGE_ALL:
+        error = f"notify_filter must be a non-empty combination of FILE_NOTIFY_CHANGE_* flags, got {notify_filter:#x}"
+        raise ValueError(error)
+    return notify_filter
+
 
 # ReadDirectoryChangesW buffer length.
 # To handle cases with lot of changes, this seems the highest safest value we can use.
@@ -423,6 +442,48 @@ def _generate_observed_path_deleted_event(*, extended: bool = False) -> bytes:
     return buff.raw[:total_size]
 
 
+def _generate_overflow_event(*, extended: bool = False) -> bytes:
+    """Create a synthetic event notifying that the read buffer overflowed.
+
+    :param extended:
+        Whether to format the synthetic event as a
+        ``FILE_NOTIFY_EXTENDED_INFORMATION`` structure (``True``) or a legacy
+        ``FILE_NOTIFY_INFORMATION`` structure (``False``).
+    :returns:
+        A byte buffer containing the synthetic overflow event record.
+    """
+    path_bytes = ".".encode("utf-16-le")
+    byte_len = len(path_bytes)
+    buff = ctypes.create_string_buffer(PATH_BUFFER_SIZE)
+    offset: int
+    if extended:
+        header = FileNotifyExtendedInformation(
+            0,
+            FILE_ACTION_OVERFLOW,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            byte_len,
+            b"",
+        )
+        offset = FileNotifyExtendedInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header), offset)
+    else:
+        header_fni = FileNotifyInformation(0, FILE_ACTION_OVERFLOW, byte_len, b"")
+        offset = FileNotifyInformation.FileName.offset
+        ctypes.memmove(buff, ctypes.addressof(header_fni), offset)
+    ctypes.memmove(ctypes.addressof(buff) + offset, path_bytes, byte_len)
+    total_size = offset + byte_len
+    return buff.raw[:total_size]
+
+
 def _get_directory_handle(path: str) -> HANDLE:
     """Returns a Windows handle to the specified directory path."""
     return CreateFileW(
@@ -489,6 +550,10 @@ class WinAPINativeEvent:
     def is_removed_self(self) -> bool:
         return self.action == FILE_ACTION_REMOVED_SELF
 
+    @property
+    def is_overflow(self) -> bool:
+        return self.action == FILE_ACTION_OVERFLOW
+
 
 def _drop_case_only_rename_deletions(events: list[WinAPINativeEvent]) -> list[WinAPINativeEvent]:
     """Drop the spurious deletion reported ahead of a case-only rename.
@@ -517,11 +582,22 @@ class DirectoryChangeReader:
     thread is used to make that call in order to reduce the time window
     in that events may be lost.  The processing of data received from
     ReadDirectoryChangesW() is queued and processed by another thread.
+
+    :param path:
+        Directory to watch.
+    :param recursive:
+        ``True`` to watch subdirectories.
+    :param notify_filter:
+        ``dwNotifyFilter`` bitmask of ``FILE_NOTIFY_CHANGE_*`` flags. Defaults
+        to :data:`WATCHDOG_FILE_NOTIFY_FLAGS`.
+    :type notify_filter:
+        ``int``
     """
 
-    def __init__(self, path: str, *, recursive: bool) -> None:
+    def __init__(self, path: str, *, recursive: bool, notify_filter: int = WATCHDOG_FILE_NOTIFY_FLAGS) -> None:
         self._path = path
         self._recursive = recursive
+        self._notify_filter = _require_notify_filter(notify_filter)
         self._reader_thread: threading.Thread | None = None
         self._handle: HANDLE | None = None
         self._should_stop = False
@@ -536,6 +612,7 @@ class DirectoryChangeReader:
         # We will re-use the _event_buffer and so we copy the data into a second buffer
         # (double-buffering technique) and queue it for another thread to process.
         # This reduces the time window in which we could miss events.
+        notify_filter = self._notify_filter
         try:
             if self._extended and ReadDirectoryChangesExW is not None:
                 try:
@@ -544,7 +621,7 @@ class DirectoryChangeReader:
                         ctypes.byref(event_buffer),
                         len(event_buffer),
                         self._recursive,
-                        WATCHDOG_FILE_NOTIFY_FLAGS,
+                        notify_filter,
                         ctypes.byref(nbytes),
                         None,
                         None,
@@ -562,7 +639,7 @@ class DirectoryChangeReader:
                             ctypes.byref(event_buffer),
                             len(event_buffer),
                             self._recursive,
-                            WATCHDOG_FILE_NOTIFY_FLAGS,
+                            notify_filter,
                             ctypes.byref(nbytes),
                             None,
                             None,
@@ -575,12 +652,19 @@ class DirectoryChangeReader:
                     ctypes.byref(event_buffer),
                     len(event_buffer),
                     self._recursive,
-                    WATCHDOG_FILE_NOTIFY_FLAGS,
+                    notify_filter,
                     ctypes.byref(nbytes),
                     None,
                     None,
                 )
-            buf = event_buffer.raw[: nbytes.value]
+            # ReadDirectoryChangesW() can succeed while reporting zero bytes
+            # returned: this signals that its buffer overflowed and some file
+            # system events were lost, not that nothing happened.
+            buf = (
+                _generate_overflow_event(extended=self._extended)
+                if nbytes.value == 0
+                else event_buffer.raw[: nbytes.value]
+            )
         except OSError as e:
             if e.winerror == ERROR_OPERATION_ABORTED:  # type: ignore[attr-defined]
                 return

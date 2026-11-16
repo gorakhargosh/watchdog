@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 from types import SimpleNamespace
 
@@ -76,3 +77,43 @@ def test_deprecated_delay_sec_attribute():
     with pytest.warns(DeprecationWarning, match="'delay_sec' is deprecated"):
         queue.delay_sec = 3
     assert queue.delay == 3
+
+
+@pytest.mark.parametrize("remove_while_sleeping", [False, True])
+def test_mixed_delays(monkeypatch, remove_while_sleeping):
+    q = DelayedQueue[str](0.25)
+    q.put("a", delay=False)
+    q.put("b", delay=True)
+    q.put("c", delay=False)
+
+    if remove_while_sleeping:
+        entered_wait = threading.Event()
+        allow_wakeup = threading.Event()
+        orig_sleep = delayed_queue.time.sleep
+
+        def synchronized_sleep(secs: float) -> None:
+            entered_wait.set()
+            assert allow_wakeup.wait(timeout=2.0)
+            orig_sleep(secs)
+
+        monkeypatch.setattr(delayed_queue.time, "sleep", synchronized_sleep)
+
+        def _consumer(results: list[str | None]) -> None:
+            results.append(q.get())  # "a"
+            results.append(q.get())  # enters sleep on "b", then returns "c" after "b" is removed
+
+        results: list[str | None] = []
+        t = threading.Thread(target=_consumer, args=(results,), daemon=True)
+        t.start()
+        assert entered_wait.wait(timeout=2.0)
+        assert q.remove(lambda x: x == "b") == "b"
+        allow_wakeup.set()
+        t.join(timeout=2.0)
+        assert not t.is_alive()
+        assert results == ["a", "c"]
+    else:
+        q.delay = 0.01
+        assert [q.get() for _ in range(3)] == ["a", "b", "c"]
+
+    q.close()
+    assert q.get() is None

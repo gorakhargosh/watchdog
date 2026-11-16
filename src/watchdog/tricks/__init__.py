@@ -35,7 +35,13 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-from watchdog.events import EVENT_TYPE_CLOSED_NO_WRITE, EVENT_TYPE_OPENED, FileSystemEvent, PatternMatchingEventHandler
+from watchdog.events import (
+    EVENT_TYPE_CLOSED_NO_WRITE,
+    EVENT_TYPE_OPENED,
+    EventsLostEvent,
+    FileSystemEvent,
+    PatternMatchingEventHandler,
+)
 from watchdog.utils import echo, platform, renamed_attribute, resolve_renamed_argument
 from watchdog.utils.event_debouncer import EventDebouncer
 from watchdog.utils.process_watcher import ProcessWatcher
@@ -70,6 +76,10 @@ class LoggerTrick(Trick):
 
     @echo_events
     def on_any_event(self, event: FileSystemEvent) -> None:
+        pass
+
+    @echo_events
+    def on_events_lost(self, event: EventsLostEvent) -> None:
         pass
 
 
@@ -134,20 +144,17 @@ class ShellCommandTrick(Trick):
         object_type = "directory" if event.is_directory else "file"
         context = {
             "watch_src_path": event.src_path,
-            "watch_dest_path": "",
+            "watch_dest_path": event.dest_path,
             "watch_event_type": event.event_type,
             "watch_object": object_type,
         }
 
         if self.shell_command is None:
-            if hasattr(event, "dest_path"):
-                context["dest_path"] = event.dest_path
+            if event.dest_path:
                 command = 'echo "${watch_event_type} ${watch_object} from ${watch_src_path} to ${watch_dest_path}"'
             else:
                 command = 'echo "${watch_event_type} ${watch_object} ${watch_src_path}"'
         else:
-            if hasattr(event, "dest_path"):
-                context["watch_dest_path"] = event.dest_path
             command = self.shell_command
 
         command = Template(command).safe_substitute(**context)
