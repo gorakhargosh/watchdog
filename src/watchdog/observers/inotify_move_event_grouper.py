@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING, NamedTuple, cast
 
 from watchdog.utils.delayed_queue import DelayedQueue
@@ -16,7 +17,7 @@ from watchdog.utils.delayed_queue import DelayedQueue
 if TYPE_CHECKING:
     from typing import TypeAlias
 
-    from watchdog.observers.inotify_c import InotifyEvent
+    from watchdog.observers.inotify_c import InotifyEvent, WatchDescriptor
     from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,52 @@ class InotifyMoveEventGrouper:
             return isinstance(event, PathedInotifyEvent) and event.ev.is_moved_from and event.ev.cookie == cookie
 
         return cast("PathedInotifyEvent", self._queue.find(matching_from_event))
+
+    def has_pending_moved_from(self, path: bytes) -> bool:
+        """Check if an IN_MOVED_FROM event for the given directory path is pending."""
+        norm_path = os.path.normpath(path)
+
+        def _is_matching_moved_from(item: GroupedInotifyEvent) -> bool:
+            return (
+                isinstance(item, PathedInotifyEvent)
+                and item.ev.is_moved_from
+                and item.ev.is_directory
+                and os.path.normpath(item.path) == norm_path
+            )
+
+        return self._queue.find(_is_matching_moved_from) is not None
+
+    def has_pending_move_to_or_create(self, path: bytes) -> bool:
+        """Check if an IN_MOVED_TO or IN_CREATE directory event for the given path is pending."""
+        norm_path = os.path.normpath(path)
+
+        def _is_matching(item: GroupedInotifyEvent) -> bool:
+            if isinstance(item, PathedInotifyEvent):
+                return (
+                    item.ev.is_directory
+                    and (item.ev.is_moved_to or item.ev.is_create)
+                    and os.path.normpath(item.path) == norm_path
+                )
+            return item[1].ev.is_directory and os.path.normpath(item[1].path) == norm_path
+
+        return self._queue.find(_is_matching) is not None
+
+    def purge_events_for_wds(self, wds: set[WatchDescriptor]) -> None:
+        """Purge all queued events associated with any of the given watch descriptors."""
+        if not wds:
+            return
+
+        def _is_matching(item: GroupedInotifyEvent) -> bool:
+            if isinstance(item, PathedInotifyEvent):
+                return item.ev.wd in wds
+            # For paired move events (item[0] is from_event, item[1] is to_event),
+            # only purge if the destination WD belongs to the removed subtree.
+            # If the destination remains watched, the move into the surviving tree
+            # is a valid event that must be preserved.
+            return item[1].ev.wd in wds
+
+        while self._queue.remove(_is_matching) is not None:
+            pass
 
     def close(self) -> None:
         """closes the queue"""
