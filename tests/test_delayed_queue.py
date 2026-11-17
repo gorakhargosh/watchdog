@@ -69,7 +69,10 @@ def test_delay_attribute():
 def test_deprecated_delay_sec_attribute():
     queue = DelayedQueue[str](2)
 
-    with pytest.warns(DeprecationWarning, match="'delay_sec' is deprecated, use 'delay' instead") as record:
+    with pytest.warns(
+        DeprecationWarning,
+        match=r"'delay_sec' is deprecated and will be removed in 9\.0\.0, use 'delay' instead",
+    ) as record:
         assert queue.delay_sec == 2
     # The warning points at the caller, not at watchdog.
     assert record[0].filename == __file__

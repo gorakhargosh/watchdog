@@ -68,6 +68,7 @@ class EventDebouncer(BaseThread):
             "debounce_interval",
             debounce_interval,
             default=None,
+            removed_in="9.0.0",
         )
         if interval is None:
             error = "EventDebouncer() missing required argument: 'debounce_interval'"
@@ -81,7 +82,11 @@ class EventDebouncer(BaseThread):
         self._events: list[FileSystemEvent] = []
         self._cond = threading.Condition()
 
-    debounce_interval_seconds = renamed_attribute("debounce_interval_seconds", "debounce_interval")
+    debounce_interval_seconds = renamed_attribute(
+        "debounce_interval_seconds",
+        "debounce_interval",
+        removed_in="9.0.0",
+    )
 
     def handle_event(self, event: FileSystemEvent) -> None:
         with self._cond:

@@ -28,7 +28,7 @@ class DelayedQueue(Generic[T]):
         self._queue: deque[tuple[T, float, bool]] = deque()
         self._closed = False
 
-    delay_sec = renamed_attribute("delay_sec", "delay")
+    delay_sec = renamed_attribute("delay_sec", "delay", removed_in="9.0.0")
 
     def put(self, element: T, *, delay: bool = False) -> None:
         """Add element to queue."""

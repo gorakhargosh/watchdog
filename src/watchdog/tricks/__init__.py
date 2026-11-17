@@ -229,6 +229,7 @@ class AutoRestartTrick(Trick):
             "debounce_interval",
             debounce_interval,
             default=0,
+            removed_in="9.0.0",
         )
         if kill_after < 0:
             error = "kill_after must be non-negative."
@@ -258,7 +259,11 @@ class AutoRestartTrick(Trick):
         self._is_trick_stopping = False
         self._stopping_lock = threading.RLock()
 
-    debounce_interval_seconds = renamed_attribute("debounce_interval_seconds", "debounce_interval")
+    debounce_interval_seconds = renamed_attribute(
+        "debounce_interval_seconds",
+        "debounce_interval",
+        removed_in="9.0.0",
+    )
 
     def start(self) -> None:
         if self.debounce_interval:
