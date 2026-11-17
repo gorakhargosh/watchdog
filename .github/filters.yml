@@ -57,6 +57,7 @@ core:
   - "src/watchdog/utils/dirsnapshot.py"
   - "src/watchdog/utils/patterns.py"
   - "src/watchdog/utils/platform.py"
+  - "src/watchdog/utils/sync.py"
   - "tox.ini"
   - "requirements-*.txt"
   - ".github/workflows/**"

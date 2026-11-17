@@ -155,3 +155,46 @@ def get_statx_birthtime_ns(path: str | bytes, *, follow_symlinks: bool = True) -
     if ret == 0 and (stx.stx_mask & STATX_BTIME):
         return int(stx.stx_btime.tv_sec) * 1_000_000_000 + int(stx.stx_btime.tv_nsec)
     return None
+
+
+def get_path_birthtime_ns(
+    path: str | bytes,
+    st: os.stat_result | None = None,
+    *,
+    follow_symlinks: bool = True,
+) -> int | None:
+    """Retrieve file birth time (creation time) in nanoseconds across platforms.
+
+    Supports macOS/BSD (``st_birthtime_ns`` / ``st_birthtime``), Linux (``statx(2)``
+    via :func:`get_statx_birthtime_ns`), and Windows (``st_birthtime`` / ``st_ctime``).
+    If ``st`` is provided, inspects it first before falling back to statx or os.stat.
+    Returns ``None`` if birth time is not supported by the OS or filesystem.
+
+    :param path: File path string or bytes to inspect.
+    :param st: Optional pre-queried :class:`os.stat_result` to inspect first.
+    :param follow_symlinks: Whether to follow symbolic links.
+    """
+    decoded = os.fsdecode(path) if isinstance(path, bytes) else path
+    if st is None and platform.is_linux():
+        # Linux os.stat_result lacks st_birthtime; query statx(2) directly to avoid a redundant stat() syscall.
+        return get_statx_birthtime_ns(decoded, follow_symlinks=follow_symlinks)
+
+    if st is None:
+        try:
+            st = os.stat(decoded) if follow_symlinks else os.lstat(decoded)
+        except OSError:
+            st = None
+
+    if st is not None:
+        if (btime_ns := getattr(st, "st_birthtime_ns", None)) is not None:
+            return int(btime_ns)
+        if (btime_sec := getattr(st, "st_birthtime", None)) is not None:
+            return int(btime_sec * 1_000_000_000)
+        # On Windows, os.stat().st_ctime represents file creation time
+        if platform.is_windows():
+            if (ctime_ns := getattr(st, "st_ctime_ns", None)) is not None:
+                return int(ctime_ns)
+            if (ctime_sec := getattr(st, "st_ctime", None)) is not None:
+                return int(ctime_sec * 1_000_000_000)
+
+    return get_statx_birthtime_ns(decoded, follow_symlinks=follow_symlinks)
