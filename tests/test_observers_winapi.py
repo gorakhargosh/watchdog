@@ -629,3 +629,23 @@ def test_generate_observed_path_deleted_event():
     buf_standard = _generate_observed_path_deleted_event(extended=False)
     events_standard = _parse_event_buffer(buf_standard)
     assert events_standard == [(FILE_ACTION_DELETED_SELF, ".")]
+
+
+def test_directory_change_reader_is_a_daemon_thread():
+    """The reader must not keep the interpreter alive.
+
+    ``BaseThread.start()`` runs ``on_thread_start()`` before the observer
+    thread exists, so the reader is created on the caller's thread and
+    inherits its ``daemon`` flag. Started from the main thread it used to be
+    non-daemon, which blocked interpreter exit even after every test finished.
+    See #1470.
+    """
+    watched = os.path.join(mkdtemp(), "daemon")
+    os.makedirs(watched)
+    reader = DirectoryChangeReader(watched, recursive=False)
+    reader.start()
+    try:
+        assert reader._reader_thread is not None  # noqa: SLF001
+        assert reader._reader_thread.daemon is True  # noqa: SLF001
+    finally:
+        reader.stop()
