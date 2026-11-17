@@ -34,7 +34,15 @@ Seconds = float
 """A duration expressed in seconds."""
 
 
-def resolve_renamed_argument(old_name: str, old: T | None, new_name: str, new: T | None, default: T) -> T:
+def resolve_renamed_argument(
+    old_name: str,
+    old: T | None,
+    new_name: str,
+    new: T | None,
+    default: T,
+    *,
+    removed_in: str | None = None,
+) -> T:
     """Resolves an argument that was renamed from ``old_name`` to ``new_name``.
 
     Both values are expected to default to ``None`` ("not given"). Passing the
@@ -46,13 +54,15 @@ def resolve_renamed_argument(old_name: str, old: T | None, new_name: str, new: T
     if new is not None:
         error = f"Cannot pass both {new_name!r} and its deprecated name {old_name!r}."
         raise TypeError(error)
-    warnings.warn(f"{old_name!r} is deprecated, use {new_name!r} instead.", DeprecationWarning, stacklevel=3)
+    suffix = f" and will be removed in {removed_in}" if removed_in else ""
+    warnings.warn(f"{old_name!r} is deprecated{suffix}, use {new_name!r} instead.", DeprecationWarning, stacklevel=3)
     return old
 
 
-def renamed_attribute(old_name: str, new_name: str) -> property:
+def renamed_attribute(old_name: str, new_name: str, *, removed_in: str | None = None) -> property:
     """Creates a read/write property keeping ``old_name`` as a deprecated alias of the attribute ``new_name``."""
-    message = f"{old_name!r} is deprecated, use {new_name!r} instead."
+    suffix = f" and will be removed in {removed_in}" if removed_in else ""
+    message = f"{old_name!r} is deprecated{suffix}, use {new_name!r} instead."
 
     def getter(self: Any) -> Any:
         warnings.warn(message, DeprecationWarning, stacklevel=2)
@@ -62,7 +72,7 @@ def renamed_attribute(old_name: str, new_name: str) -> property:
         warnings.warn(message, DeprecationWarning, stacklevel=2)
         setattr(self, new_name, value)
 
-    return property(getter, setter, doc=f"Deprecated, use ``{new_name}`` instead.")
+    return property(getter, setter, doc=f"Deprecated{suffix}, use ``{new_name}`` instead.")
 
 
 class UnsupportedLibcError(Exception):
