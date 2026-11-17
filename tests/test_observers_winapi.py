@@ -277,6 +277,10 @@ def test_get_events_returns_while_buffers_keep_arriving():
     reader = DirectoryChangeReader(temp_dir, recursive=False)
     stop = threading.Event()
 
+    # Queue the first buffer up front so the result does not depend on how soon
+    # the feeder thread gets scheduled.
+    reader._buf_queue.put((winapi._generate_overflow_event(), False))  # noqa: SLF001
+
     def feed():
         # One buffer every 20 ms for up to 3 s, well past the 0.2 s timeout.
         for _ in range(150):
@@ -298,6 +302,32 @@ def test_get_events_returns_while_buffers_keep_arriving():
     assert events
     assert all(event.is_overflow for event in events)
     assert elapsed < 1
+
+
+def test_get_events_keeps_buffers_that_arrive_together_in_one_batch():
+    """Buffers arriving close together stay in one batch even late in the timeout.
+
+    Windows can report the two halves of a case-only rename in separate buffers;
+    splitting them across batches leaves the extra deletion uncoalesced.
+    """
+    reader = DirectoryChangeReader(temp_dir, recursive=False)
+
+    def feed():
+        # The first buffer lands 0.4 s into the 0.5 s timeout, the second 0.25 s
+        # later: past the call's timeout, but well within one from the first.
+        sleep(0.4)
+        reader._buf_queue.put((winapi._generate_overflow_event(), False))  # noqa: SLF001
+        sleep(0.25)
+        reader._buf_queue.put((winapi._generate_overflow_event(), False))  # noqa: SLF001
+
+    feeder = threading.Thread(target=feed, daemon=True)
+    feeder.start()
+    try:
+        events = reader.get_events(0.5)
+    finally:
+        feeder.join()
+
+    assert len(events) == 2
 
 
 def test_drop_case_only_rename_deletions():
