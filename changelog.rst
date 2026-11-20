@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [fsevents] Fix compiler warnings in the C extension. (`#1411 <https://github.com/gorakhargosh/watchdog/issues/1411>`__, thanks to @BoboTiG)
 - [windows] Deliver events while the watched tree keeps changing: ``DirectoryChangeReader.get_events()`` now returns within its timeout instead of waiting until no buffer has arrived for a full timeout. (`#1469 <https://github.com/gorakhargosh/watchdog/issues/1469>`__, thanks to @zzoraemon043)
 - [dirsnapshot] Detect replacements at the same path when an inode is reused but the entry type or available birth time changes, instead of missing the replacement or reporting it as a modification. (`#1464 <https://github.com/gorakhargosh/watchdog/pull/1464>`__, thanks to @anticipate218)
 - [inotify] Report lost events: after a kernel queue overflow, each watch gets an ``EventsLostEvent`` for its directory or file, dispatched to the new ``FileSystemEventHandler.on_events_lost()`` once the watches are repaired. Pattern and regex handlers (and so tricks) receive it only through ``on_events_lost()``. (`#1440 <https://github.com/gorakhargosh/watchdog/issues/1440>`__, thanks to @fstrasz)
