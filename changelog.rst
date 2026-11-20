@@ -3,10 +3,10 @@
 Changelog
 ---------
 
-7.1.1-dev
-~~~~~~~~~
+7.1.1
+~~~~~
 
-2026-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.0...HEAD>`__
+2026-11-20 • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.0...v7.1.1>`__
 
 **Other Changes**
 
