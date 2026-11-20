@@ -646,6 +646,6 @@ def test_directory_change_reader_is_a_daemon_thread():
     reader.start()
     try:
         assert reader._reader_thread is not None  # noqa: SLF001
-        assert reader._reader_thread.daemon is True  # noqa: SLF001
+        assert reader._reader_thread.daemon  # noqa: SLF001
     finally:
         reader.stop()
