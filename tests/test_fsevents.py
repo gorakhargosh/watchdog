@@ -402,7 +402,7 @@ def test_stream_concurrent_run_race(p: P) -> None:
 
     assert not t1.is_alive()
     assert not t2.is_alive()
-    assert "Stream is already running" in results
+    assert "Stream is already running." in results
     assert "success" in results
 
 
@@ -783,9 +783,11 @@ def test_fsevents_latency_configuration(p: P) -> None:
 @pytest.mark.parametrize("latency", [-0.01, -1])
 def test_fsevents_negative_latency_is_rejected(p: P, latency: float) -> None:
     """Both Python and C layers reject negative latency values."""
-    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+    error = r"Latency must be a non-negative number."
+
+    with pytest.raises(ValueError, match=error):
         _fsevents.Stream([p("")], latency=latency)
 
     observer = FSEventsObserver(latency=latency)
-    with pytest.raises(ValueError, match="latency must be a non-negative number"):
+    with pytest.raises(ValueError, match=error):
         observer.schedule(FileSystemEventHandler(), p(""), recursive=True)

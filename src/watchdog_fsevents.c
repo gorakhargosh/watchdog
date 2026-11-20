@@ -41,8 +41,8 @@ typedef struct {
     FSEventStreamEventId id;
 } NativeEventObject;
 
-PyObject* NativeEventRepr(PyObject* instance) {
-    NativeEventObject *self = (NativeEventObject*)instance;
+static PyObject *NativeEventRepr(PyObject *instance) {
+    NativeEventObject *self = (NativeEventObject *)instance;
 
     return PyUnicode_FromFormat(
         "NativeEvent(path=\"%S\", inode=%S, flags=%x, id=%llu)",
@@ -53,38 +53,38 @@ PyObject* NativeEventRepr(PyObject* instance) {
     );
 }
 
-PyObject* NativeEventTypeFlags(PyObject* instance, void* closure)
+static PyObject *NativeEventTypeFlags(PyObject *instance, void *closure)
 {
     UNUSED(closure);
-    NativeEventObject *self = (NativeEventObject*)instance;
+    NativeEventObject *self = (NativeEventObject *)instance;
     return PyLong_FromLong(self->flags);
 }
 
-PyObject* NativeEventTypePath(PyObject* instance, void* closure)
+static PyObject *NativeEventTypePath(PyObject *instance, void *closure)
 {
     UNUSED(closure);
-    NativeEventObject *self = (NativeEventObject*)instance;
+    NativeEventObject *self = (NativeEventObject *)instance;
     return Py_NewRef(self->path);
 }
 
-PyObject* NativeEventTypeInode(PyObject* instance, void* closure)
+static PyObject *NativeEventTypeInode(PyObject *instance, void *closure)
 {
     UNUSED(closure);
-    NativeEventObject *self = (NativeEventObject*)instance;
+    NativeEventObject *self = (NativeEventObject *)instance;
     return Py_NewRef(self->inode);
 }
 
-PyObject* NativeEventTypeID(PyObject* instance, void* closure)
+static PyObject *NativeEventTypeID(PyObject *instance, void *closure)
 {
     UNUSED(closure);
-    NativeEventObject *self = (NativeEventObject*)instance;
+    NativeEventObject *self = (NativeEventObject *)instance;
     return PyLong_FromUnsignedLongLong(self->id);
 }
 
-PyObject* NativeEventTypeIsCoalesced(PyObject* instance, void* closure)
+static PyObject *NativeEventTypeIsCoalesced(PyObject *instance, void *closure)
 {
     UNUSED(closure);
-    NativeEventObject *self = (NativeEventObject*)instance;
+    NativeEventObject *self = (NativeEventObject *)instance;
 
     // if any of these bitmasks match then we have a coalesced event and need to do sys calls to figure out what happened
     FSEventStreamEventFlags coalesced_masks[] = {
@@ -102,10 +102,10 @@ PyObject* NativeEventTypeIsCoalesced(PyObject* instance, void* closure)
 }
 
 #define FLAG_PROPERTY(suffix, flag) \
-    PyObject* NativeEventType##suffix(PyObject* instance, void* closure) \
+    static PyObject *NativeEventType##suffix(PyObject *instance, void *closure) \
     { \
         UNUSED(closure); \
-        NativeEventObject *self = (NativeEventObject*)instance; \
+        NativeEventObject *self = (NativeEventObject *)instance; \
         if (self->flags & flag) { \
             Py_RETURN_TRUE; \
         } \
@@ -158,22 +158,25 @@ static PyObject *NativeEventNew(PyTypeObject *type, PyObject *args, PyObject *kw
     return (PyObject *)self;
 }
 
-static int NativeEventTraverse(NativeEventObject *self, visitproc visit, void *arg) {
+static int NativeEventTraverse(PyObject *instance, visitproc visit, void *arg) {
+    NativeEventObject *self = (NativeEventObject *)instance;
     Py_VISIT(self->path);
     Py_VISIT(self->inode);
     return 0;
 }
 
-static int NativeEventClear(NativeEventObject *self) {
+static int NativeEventClear(PyObject *instance) {
+    NativeEventObject *self = (NativeEventObject *)instance;
     Py_CLEAR(self->path);
     Py_CLEAR(self->inode);
     return 0;
 }
 
-static void NativeEventDealloc(NativeEventObject *self) {
+static void NativeEventDealloc(PyObject *instance) {
+    NativeEventObject *self = (NativeEventObject *)instance;
     PyObject_GC_UnTrack(self);
-    NativeEventClear(self);
-    Py_TYPE(self)->tp_free((PyObject *)self);
+    NativeEventClear(instance);
+    Py_TYPE(self)->tp_free(instance);
 }
 
 static PyGetSetDef NativeEventProperties[] = {
@@ -218,10 +221,10 @@ static PyTypeObject NativeEventType = {
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC,
     .tp_new = NativeEventNew,
     .tp_getset = NativeEventProperties,
-    .tp_traverse = (traverseproc) NativeEventTraverse,
-    .tp_clear = (inquiry) NativeEventClear,
-    .tp_repr = (reprfunc) NativeEventRepr,
-    .tp_dealloc = (destructor) NativeEventDealloc,
+    .tp_traverse = NativeEventTraverse,
+    .tp_clear = NativeEventClear,
+    .tp_repr = NativeEventRepr,
+    .tp_dealloc = NativeEventDealloc,
 };
 
 
@@ -238,7 +241,10 @@ CFString_AsPyUnicode(CFStringRef path)
     }
 
     CFIndex size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(path), kCFStringEncodingUTF8) + 1;
-    char *buffer = malloc(size);
+    if (size <= 0) {
+        return PyErr_NoMemory();
+    }
+    char *buffer = malloc((size_t)size);
     if (buffer == NULL) {
         return PyErr_NoMemory();
     }
@@ -251,8 +257,11 @@ CFString_AsPyUnicode(CFStringRef path)
 static PyObject *
 CFNumberRef_AsPyLong(CFNumberRef number)
 {
-    long value;
-    CFNumberGetValue(number, kCFNumberSInt64Type, &value);
+    long value = 0;
+    if (!CFNumberGetValue(number, kCFNumberSInt64Type, &value)) {
+        PyErr_SetString(PyExc_ValueError, "Failed converting CFNumber to long.");
+        return NULL;
+    }
     return PyLong_FromLong(value);
 }
 
@@ -264,7 +273,7 @@ CFNumberRef_AsPyLong(CFNumberRef number)
  * :returns:
  *      A new ``CFStringRef`` with the contents of ``py_string``, or ``NULL`` if an error occurred.
  */
-CFStringRef PyString_AsUTF8EncodedCFStringRef(PyObject *py_string)
+static CFStringRef PyString_AsUTF8EncodedCFStringRef(PyObject *py_string)
 {
     CFStringRef cf_string = NULL;
 
@@ -298,7 +307,8 @@ paths_to_cf_array(PyObject *paths)
     if (snapshot == NULL) {
         return NULL;
     }
-    CFMutableArrayRef array = CFArrayCreateMutable(kCFAllocatorDefault, PyTuple_GET_SIZE(snapshot),
+    CFIndex count = (CFIndex)PyTuple_GET_SIZE(snapshot);
+    CFMutableArrayRef array = CFArrayCreateMutable(kCFAllocatorDefault, count,
                                                   &kCFTypeArrayCallBacks);
     if (array == NULL) {
         goto error;
@@ -400,10 +410,10 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
 
     PyGILState_STATE gil_state = PyGILState_Ensure();
 
-    py_event_paths = PyList_New(num_events);
-    py_event_inodes = PyList_New(num_events);
-    py_event_flags = PyList_New(num_events);
-    py_event_ids = PyList_New(num_events);
+    py_event_paths = PyList_New((Py_ssize_t)num_events);
+    py_event_inodes = PyList_New((Py_ssize_t)num_events);
+    py_event_flags = PyList_New((Py_ssize_t)num_events);
+    py_event_ids = PyList_New((Py_ssize_t)num_events);
     if (!(py_event_paths && py_event_inodes && py_event_flags && py_event_ids)) {
         goto done;
     }
@@ -412,7 +422,7 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
         PyObject *id = PyLong_FromUnsignedLongLong(event_ids[i]);
         PyObject *flags = PyLong_FromLong(event_flags[i]);
 
-        CFDictionaryRef path_info_dict = CFArrayGetValueAtIndex(event_path_info_array_ref, i);
+        CFDictionaryRef path_info_dict = CFArrayGetValueAtIndex(event_path_info_array_ref, (CFIndex)i);
         CFStringRef cf_path = CFDictionaryGetValue(path_info_dict, kFSEventStreamEventExtendedDataPathKey);
         CFNumberRef cf_inode = CFDictionaryGetValue(path_info_dict, kFSEventStreamEventExtendedFileIDKey);
 
@@ -427,10 +437,10 @@ watchdog_FSEventStreamCallback(ConstFSEventStreamRef          stream_ref,
             Py_XDECREF(id);
             goto done;
         }
-        PyList_SET_ITEM(py_event_paths, i, path);
-        PyList_SET_ITEM(py_event_inodes, i, inode);
-        PyList_SET_ITEM(py_event_flags, i, flags);
-        PyList_SET_ITEM(py_event_ids, i, id);
+        PyList_SET_ITEM(py_event_paths, (Py_ssize_t)i, path);
+        PyList_SET_ITEM(py_event_inodes, (Py_ssize_t)i, inode);
+        PyList_SET_ITEM(py_event_flags, (Py_ssize_t)i, flags);
+        PyList_SET_ITEM(py_event_ids, (Py_ssize_t)i, id);
     }
 
     /* Call the Python callback function supplied to ``run()``:
@@ -467,7 +477,7 @@ Stream_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     if (stream_latency < 0) {
-        PyErr_SetString(PyExc_ValueError, "latency must be a non-negative number");
+        PyErr_SetString(PyExc_ValueError, "Latency must be a non-negative number.");
         return NULL;
     }
     CFArrayRef paths = paths_to_cf_array(py_paths);
@@ -496,8 +506,9 @@ Stream_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static void
-Stream_dealloc(StreamObject *self)
+Stream_dealloc(PyObject *instance)
 {
+    StreamObject *self = (StreamObject *)instance;
     CFRelease(self->paths);
     if (self->run_loop != NULL) {
         CFRelease(self->run_loop);
@@ -506,7 +517,7 @@ Stream_dealloc(StreamObject *self)
 #if PY_VERSION_HEX < 0x030D0000
     PyThread_free_lock(self->mutex);
 #endif
-    Py_TYPE(self)->tp_free((PyObject *)self);
+    Py_TYPE(self)->tp_free(instance);
 }
 
 PyDoc_STRVAR(Stream_run__doc__,
@@ -516,8 +527,9 @@ runs that loop until stop() is called. Returns immediately if stop() was already
 called. callback(paths, inodes, flags, ids) is invoked on the calling thread;\n\
 started(), if given, is called once the stream has been started.");
 static PyObject *
-Stream_run(StreamObject *self, PyObject *args, PyObject *kwds)
+Stream_run(PyObject *instance, PyObject *args, PyObject *kwds)
 {
+    StreamObject *self = (StreamObject *)instance;
     static char *kwlist[] = {"callback", "started", NULL};
     PyObject *callback = NULL;
     PyObject *started = Py_None;
@@ -525,7 +537,7 @@ Stream_run(StreamObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
     if (!PyCallable_Check(callback)) {
-        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        PyErr_SetString(PyExc_TypeError, "Callback must be callable.");
         return NULL;
     }
     CFRunLoopRef run_loop = CFRunLoopGetCurrent();
@@ -537,7 +549,7 @@ Stream_run(StreamObject *self, PyObject *args, PyObject *kwds)
     }
     if (self->run_loop != NULL) {
         stream_unlock(self);
-        PyErr_SetString(PyExc_RuntimeError, "Stream is already running");
+        PyErr_SetString(PyExc_RuntimeError, "Stream is already running.");
         return NULL;
     }
     self->run_loop = (CFRunLoopRef)CFRetain(run_loop);
@@ -547,7 +559,7 @@ Stream_run(StreamObject *self, PyObject *args, PyObject *kwds)
     PyObject *result = NULL;
     FSEventStreamContext stream_context = {0, self, NULL, NULL, NULL};
     FSEventStreamRef stream_ref = FSEventStreamCreate(kCFAllocatorDefault,
-                                                      (FSEventStreamCallback)&watchdog_FSEventStreamCallback,
+                                                      (FSEventStreamCallback)watchdog_FSEventStreamCallback,
                                                       &stream_context,
                                                       self->paths,
                                                       kFSEventStreamEventIdSinceNow,
@@ -558,7 +570,7 @@ Stream_run(StreamObject *self, PyObject *args, PyObject *kwds)
                                                       | kFSEventStreamCreateFlagUseExtendedData
                                                       | kFSEventStreamCreateFlagUseCFTypes);
     if (stream_ref == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream");
+        PyErr_SetString(PyExc_RuntimeError, "Failed creating fsevent stream.");
         goto finish;
     }
     FSEventStreamScheduleWithRunLoop(stream_ref, run_loop, kCFRunLoopDefaultMode);
@@ -599,10 +611,10 @@ PyDoc_STRVAR(Stream_stop__doc__,
 Makes a running run() return and a future run() return immediately. May be\n\
 called from any thread, including from inside the callback.");
 static PyObject *
-Stream_stop(StreamObject *self, PyObject *unused)
+Stream_stop(PyObject *instance, PyObject *unused)
 {
     UNUSED(unused);
-    stream_stop(self);
+    stream_stop((StreamObject *)instance);
     Py_RETURN_NONE;
 }
 
@@ -620,8 +632,8 @@ static PyGetSetDef Stream_getset[] = {
 };
 
 static PyMethodDef Stream_methods[] = {
-    {"run",  (PyCFunction)Stream_run,  METH_VARARGS | METH_KEYWORDS, Stream_run__doc__},
-    {"stop", (PyCFunction)Stream_stop, METH_NOARGS, Stream_stop__doc__},
+    {"run",  (PyCFunction)(void (*)(void))Stream_run, METH_VARARGS | METH_KEYWORDS, Stream_run__doc__},
+    {"stop", Stream_stop,                             METH_NOARGS,                  Stream_stop__doc__},
     {NULL, NULL, 0, NULL},
 };
 
@@ -633,7 +645,7 @@ static PyTypeObject StreamType = {
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = Stream_new,
-    .tp_dealloc = (destructor)Stream_dealloc,
+    .tp_dealloc = Stream_dealloc,
     .tp_methods = Stream_methods,
     .tp_getset = Stream_getset,
 };
@@ -665,7 +677,7 @@ watchdog_fsevents_exec(PyObject *module)
 }
 
 static PyModuleDef_Slot watchdog_fsevents_slots[] = {
-    {Py_mod_exec, (void *)watchdog_fsevents_exec},
+    {Py_mod_exec, (void *)(uintptr_t)watchdog_fsevents_exec},
 #ifdef Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED
     {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},
 #endif
