@@ -559,7 +559,7 @@ Stream_run(PyObject *instance, PyObject *args, PyObject *kwds)
     PyObject *result = NULL;
     FSEventStreamContext stream_context = {0, self, NULL, NULL, NULL};
     FSEventStreamRef stream_ref = FSEventStreamCreate(kCFAllocatorDefault,
-                                                      watchdog_FSEventStreamCallback,
+                                                      (FSEventStreamCallback)watchdog_FSEventStreamCallback,
                                                       &stream_context,
                                                       self->paths,
                                                       kFSEventStreamEventIdSinceNow,
