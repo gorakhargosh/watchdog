@@ -783,7 +783,7 @@ def test_fsevents_latency_configuration(p: P) -> None:
 @pytest.mark.parametrize("latency", [-0.01, -1])
 def test_fsevents_negative_latency_is_rejected(p: P, latency: float) -> None:
     """Both Python and C layers reject negative latency values."""
-    error = r"Latency must be a non-negative number\."
+    error = r"Latency must be a non-negative number."
 
     with pytest.raises(ValueError, match=error):
         _fsevents.Stream([p("")], latency=latency)
