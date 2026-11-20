@@ -15,6 +15,7 @@ import contextlib
 import ctypes
 import queue
 import threading
+import time
 from ctypes.wintypes import BOOL, DWORD, HANDLE, LPCWSTR, LPVOID, LPWSTR
 from dataclasses import dataclass
 from functools import reduce
@@ -734,11 +735,20 @@ class DirectoryChangeReader:
 
     def get_events(self, timeout: Seconds) -> list[WinAPINativeEvent]:
         events: list[WinAPINativeEvent] = []
+        # Collect for ``timeout`` from the first buffer: waiting a full ``timeout``
+        # after each buffer never returns while the watched tree keeps changing.
+        # Starting the clock at the first buffer, not at the call, keeps buffers
+        # that arrive together (such as the two halves of a case-only rename) in
+        # the same batch.
+        deadline: float | None = None
         while True:
+            wait = timeout if deadline is None else max(deadline - time.monotonic(), 0)
             try:
-                buf, is_extended = self._buf_queue.get(timeout=timeout)
+                buf, is_extended = self._buf_queue.get(timeout=wait)
             except queue.Empty:
                 break
+            if deadline is None:
+                deadline = time.monotonic() + timeout
             if not buf:
                 continue
             if is_extended:
