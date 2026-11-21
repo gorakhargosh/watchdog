@@ -448,14 +448,14 @@ def test_tree_removal_lifecycle(p: P, *, parent_first: bool) -> None:
 
     if parent_first:
         inotify._remove_watch_internally(parent_wd)  # noqa: SLF001
-        assert inotify._resolve_path(child_wd) == p("root", "parent", "child").encode()  # noqa: SLF001
+        assert inotify._tree.resolve_path(child_wd) == p("root", "parent", "child").encode()  # noqa: SLF001
         inotify._remove_watch_internally(child_wd)  # noqa: SLF001
     else:
         inotify._remove_watch_internally(child_wd)  # noqa: SLF001
         inotify._remove_watch_internally(parent_wd)  # noqa: SLF001
 
-    assert parent_wd not in inotify._nodes_by_wd  # noqa: SLF001
-    assert child_wd not in inotify._nodes_by_wd  # noqa: SLF001
+    assert parent_wd not in inotify._tree.nodes_by_wd  # noqa: SLF001
+    assert child_wd not in inotify._tree.nodes_by_wd  # noqa: SLF001
     inotify.deactivate()
 
 
@@ -467,7 +467,7 @@ def test_move_into_already_occupied_destination(p: P) -> None:
     old_dst_wd = inotify._active_callbacks_by_path[p("root", "dst_dir").encode()]  # noqa: SLF001
 
     assert inotify._move_watches(p("root", "src_dir").encode(), p("root", "dst_dir").encode())  # noqa: SLF001
-    assert old_dst_wd not in inotify._nodes_by_wd  # noqa: SLF001
+    assert old_dst_wd not in inotify._tree.nodes_by_wd  # noqa: SLF001
     assert inotify._active_callbacks_by_path[p("root", "dst_dir").encode()] == src_wd  # noqa: SLF001
     inotify.deactivate()
 
@@ -479,7 +479,7 @@ def test_tree_move_cycle_rejection(p: P) -> None:
     c_path = p("root", "a", "b", "c").encode()
     # Moving ancestor 'a' into descendant 'c' must be rejected
     assert not inotify._move_watches(a_path, os.path.join(c_path, b"a"))  # noqa: SLF001
-    assert inotify._find_node_by_path(a_path) is not None  # noqa: SLF001
+    assert inotify._tree.find_node_by_path(a_path) is not None  # noqa: SLF001
     inotify.deactivate()
 
 
@@ -498,14 +498,14 @@ def test_tree_intermediate_placeholder_and_pruning(p: P) -> None:
     # Root is watched, but 'a' and 'b' are not watched yet
     b_path = p("root", "a", "b").encode()
     # Insert node directly into b: creates placeholder for 'a' with wd=-1
-    node_b = inotify._insert_node(b_path, WatchDescriptor(42))  # noqa: SLF001
+    node_b = inotify._tree.insert_node(b_path, WatchDescriptor(42))  # noqa: SLF001
     assert node_b is not None
-    node_a = inotify._find_node_by_path(p("root", "a").encode())  # noqa: SLF001
+    node_a = inotify._tree.find_node_by_path(p("root", "a").encode())  # noqa: SLF001
     assert node_a is not None
     assert node_a.wd == WatchDescriptor(-1)  # Placeholder
-    assert inotify._resolve_path(WatchDescriptor(42)) == b_path  # noqa: SLF001
+    assert inotify._tree.resolve_path(WatchDescriptor(42)) == b_path  # noqa: SLF001
 
     # Removing b should prune empty placeholder 'a'
     inotify._remove_watch_internally(WatchDescriptor(42))  # noqa: SLF001
-    assert inotify._find_node_by_path(p("root", "a").encode()) is None  # noqa: SLF001
+    assert inotify._tree.find_node_by_path(p("root", "a").encode()) is None  # noqa: SLF001
     inotify.deactivate()
