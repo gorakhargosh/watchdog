@@ -760,6 +760,8 @@ class InotifyEmitter(EventEmitter):
             self._queue_move_pair_events(*event)
         else:
             src_path = self._decode_path(event.path)
+            # Directory events of a recursive watch also concern the subtree below the directory.
+            is_recursive_directory = event.ev.is_directory and self.watch.is_recursive
             if event.ev.is_moved_to:
                 if full_events:
                     cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
@@ -768,7 +770,7 @@ class InotifyEmitter(EventEmitter):
                     cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=event.ev.is_directory)
                     self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                if event.ev.is_directory and self.watch.is_recursive:
+                if is_recursive_directory:
                     for sub_created_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_created_event)
             elif event.ev.is_attrib:
@@ -781,7 +783,7 @@ class InotifyEmitter(EventEmitter):
                 cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                if event.ev.is_moved_from and event.ev.is_directory and self.watch.is_recursive:
+                if event.ev.is_moved_from and is_recursive_directory:
                     self._queue_removed_subdirectory_events(
                         event.path, lambda path: DirDeletedEvent(path, is_synthetic=True)
                     )
@@ -789,7 +791,7 @@ class InotifyEmitter(EventEmitter):
                 cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path, ""))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                if event.ev.is_directory and self.watch.is_recursive:
+                if is_recursive_directory:
                     self._queue_removed_subdirectory_events(
                         event.path, lambda path: DirMovedEvent(path, "", is_synthetic=True)
                     )
