@@ -322,18 +322,8 @@ class InotifyWatchGroup(WatchCallback):
                 ):
                     self._remove_node_and_watches(existing, src_path)
                 self._add_all_callbacks(src_path)
-            elif (
-                event.is_delete
-                and event.is_directory
-                and (existing := self._find_node_by_path(src_path)) is not None
-                and existing.parent is not None
-                and existing.parent.children.get(existing.name) is existing
-            ):
-                # Detach the deleted directory node from its parent so downward lookups
-                # (_find_node_by_path) no longer resolve it, allowing a newly created directory
-                # at the same path to register independently. The old node's WD and callbacks
-                # remain alive in _nodes_by_wd until the kernel delivers IN_IGNORED for its WD.
-                existing.parent.children.pop(existing.name, None)
+            elif event.is_delete and event.is_directory:
+                self._detach_deleted_directory(src_path)
 
             self._move_event_grouper.put_event(PathedInotifyEvent(event, src_path))
 
@@ -342,6 +332,20 @@ class InotifyWatchGroup(WatchCallback):
                     sub_src_path = self._build_event_source_path(sub_event)
                     if sub_src_path is not None:
                         self._move_event_grouper.put_event(PathedInotifyEvent(sub_event, sub_src_path))
+
+    def _detach_deleted_directory(self, path: bytes) -> None:
+        """Detach the node of a deleted directory from its parent.
+
+        Downward lookups (_find_node_by_path) then no longer resolve it, allowing a newly created
+        directory at the same path to register independently. The old node's WD and callbacks
+        remain alive in _nodes_by_wd until the kernel delivers IN_IGNORED for its WD.
+        """
+        node = self._find_node_by_path(path)
+        if node is None:
+            return
+        parent = node.parent
+        if parent is not None and parent.children.get(node.name) is node:
+            parent.children.pop(node.name, None)
 
     def _recursive_simulate(self, src_path: bytes) -> list[InotifyEvent]:
         # HACK: We need to traverse the directory path recursively and simulate
