@@ -74,6 +74,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://karimmasmoudi.vercel.app/"><img src="https://avatars.githubusercontent.com/u/125830216?v=4?s=70" width="70px;" alt="Karim Masmoudi"/><br /><sub><b>Karim Masmoudi</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=Kernel-Hunter" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/gero-robert"><img src="https://avatars.githubusercontent.com/u/246973440?v=4?s=70" width="70px;" alt="Robert Gero"/><br /><sub><b>Robert Gero</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=gero-robert" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/FFspiky"><img src="https://avatars.githubusercontent.com/u/190641534?v=4?s=70" width="70px;" alt="FFspiky"/><br /><sub><b>FFspiky</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=FFspiky" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://obayang.com/"><img src="https://avatars.githubusercontent.com/u/195147269?v=4?s=70" width="70px;" alt="Oba Yang"/><br /><sub><b>Oba Yang</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=zzoraemon043" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
