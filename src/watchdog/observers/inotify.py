@@ -395,9 +395,10 @@ class InotifyWatchGroup(WatchCallback):
         node = self._nodes_by_wd.get(wd)
         if node is None:
             return None
-        return self._reconstruct_path_iterative(node)
+        return self._path_of_node(node)
 
-    def _reconstruct_path_iterative(self, node: DirNode) -> bytes | None:
+    def _path_of_node(self, node: DirNode) -> bytes | None:
+        """Return the full path of ``node``, or None if it is no longer attached to the tree."""
         if node is self._root:
             return self.path
 
