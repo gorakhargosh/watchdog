@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [inotify] Internal refactoring of ``InotifyEmitter`` and ``InotifyWatchGroup``: the watch tree is now a separate ``WatchTree`` class, ``InotifyFullEmitter`` overrides event-building methods instead of passing ``full_events``, and ``_select_event_type()`` moved to ``watchdog.events``. The ``full_events`` keyword argument of ``InotifyEmitter.queue_events()`` and ``build_and_queue_event()`` was removed. (`#1477 <https://github.com/gorakhargosh/watchdog/pull/1477>`__, thanks to @rhaularj)
 - [fsevents] Fix compiler warnings in the C extension. (`#1411 <https://github.com/gorakhargosh/watchdog/issues/1411>`__, thanks to @BoboTiG)
 - [windows] Deliver events while the watched tree keeps changing: ``DirectoryChangeReader.get_events()`` now returns within its timeout instead of waiting until no buffer has arrived for a full timeout. (`#1469 <https://github.com/gorakhargosh/watchdog/issues/1469>`__, thanks to @zzoraemon043)
 - [dirsnapshot] Detect replacements at the same path when an inode is reused but the entry type or available birth time changes, instead of missing the replacement or reporting it as a modification. (`#1464 <https://github.com/gorakhargosh/watchdog/pull/1464>`__, thanks to @anticipate218)
