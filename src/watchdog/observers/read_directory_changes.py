@@ -18,6 +18,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    _select_event_type,
     generate_sub_created_events,
     generate_sub_moved_events,
 )
@@ -110,12 +111,15 @@ class WindowsApiEmitter(EventEmitter):
                 else:
                     self.queue_event(FileMovedEvent(src_path, dest_path))
             elif winapi_event.is_attrib:
-                self.queue_event((DirAttribEvent if os.path.isdir(src_path) else FileAttribEvent)(src_path))
+                cls = _select_event_type(DirAttribEvent, FileAttribEvent, is_directory=os.path.isdir(src_path))
+                self.queue_event(cls(src_path))
             elif winapi_event.is_modified:
-                self.queue_event((DirModifiedEvent if os.path.isdir(src_path) else FileModifiedEvent)(src_path))
+                cls = _select_event_type(DirModifiedEvent, FileModifiedEvent, is_directory=os.path.isdir(src_path))
+                self.queue_event(cls(src_path))
             elif winapi_event.is_added:
                 isdir = os.path.isdir(src_path)
-                self.queue_event((DirCreatedEvent if isdir else FileCreatedEvent)(src_path))
+                cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=isdir)
+                self.queue_event(cls(src_path))
                 if isdir and self.watch.is_recursive:
                     for sub_created_event in generate_sub_created_events(src_path):
                         self.queue_event(sub_created_event)

@@ -107,7 +107,7 @@ import os.path
 import re
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from watchdog.utils.patterns import match_any_paths
 
@@ -283,6 +283,20 @@ class EventsLostEvent(FileSystemEvent):
     event_type = EVENT_TYPE_EVENTS_LOST
     is_directory: bool = field(default=False, kw_only=True)
     """True if the watch is a directory; False for a file watch."""
+
+
+class FileSystemEventCtor(Protocol):
+    def __call__(self, src_path: bytes | str, dest_path: bytes | str = "") -> FileSystemEvent: ...
+
+
+def _select_event_type(
+    dir_event: type[FileSystemEvent],
+    file_event: type[FileSystemEvent],
+    *,
+    is_directory: bool,
+) -> FileSystemEventCtor:
+    """selects the correct FileSystemEvent Type based on `is_directory` and returns it."""
+    return cast("FileSystemEventCtor", dir_event if is_directory else file_event)
 
 
 class FileSystemEventHandler:

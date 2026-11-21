@@ -514,6 +514,33 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "zzoraemon043",
+      "name": "Oba Yang",
+      "avatar_url": "https://avatars.githubusercontent.com/u/195147269?v=4",
+      "profile": "https://obayang.com/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "anticipate218",
+      "name": "anticipate218",
+      "avatar_url": "https://avatars.githubusercontent.com/u/185322635?v=4",
+      "profile": "https://github.com/anticipate218",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "fstrasz",
+      "name": "Frank Strasz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/25868006?v=4",
+      "profile": "https://github.com/fstrasz",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

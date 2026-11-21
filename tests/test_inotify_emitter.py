@@ -588,7 +588,7 @@ def test_move_out_buffered_events(
         sentinel_seen.clear()
 
         # 2. Buffer an in-flight file modification event for sub's watch descriptor behind IN_MOVED_FROM
-        sub_node = watch_group._find_node_by_path(os.fsencode(p("watched", "sub")))  # noqa: SLF001
+        sub_node = watch_group._tree.find_node_by_path(os.fsencode(p("watched", "sub")))  # noqa: SLF001
         assert sub_node is not None
         watch_group._move_event_grouper.put_event(  # noqa: SLF001
             PathedInotifyEvent(
@@ -642,7 +642,7 @@ def test_move_out_and_back(p: P, event_queue: TestEventQueue) -> None:
         )
 
         with watch_group._lock, inotify_fd._lock:  # noqa: SLF001
-            node_before = watch_group._find_node_by_path(sub_bytes)  # noqa: SLF001
+            node_before = watch_group._tree.find_node_by_path(sub_bytes)  # noqa: SLF001
             assert node_before is not None
             watch_before = inotify_fd._watch_for_wd.get(node_before.wd)  # noqa: SLF001
             assert watch_before is not None
@@ -656,9 +656,9 @@ def test_move_out_and_back(p: P, event_queue: TestEventQueue) -> None:
 
         # The directory watch and callback registration must survive expiry of the original departure
         with watch_group._lock, inotify_fd._lock:  # noqa: SLF001
-            restored_node = watch_group._find_node_by_path(sub_bytes)  # noqa: SLF001
+            restored_node = watch_group._tree.find_node_by_path(sub_bytes)  # noqa: SLF001
             assert restored_node is not None
-            assert watch_group._nodes_by_wd.get(restored_node.wd) is restored_node  # noqa: SLF001
+            assert watch_group._tree.nodes_by_wd.get(restored_node.wd) is restored_node  # noqa: SLF001
             watch_after = inotify_fd._watch_for_wd.get(restored_node.wd)  # noqa: SLF001
             assert watch_after is not None
             assert watch_group._id in watch_after.callbacks  # noqa: SLF001
@@ -714,8 +714,8 @@ def test_unrelated_create_during_pending_move(p: P, event_queue: TestEventQueue)
         events = _drain_event_queue(event_queue)
 
         with watch_group._lock:  # noqa: SLF001
-            node_a = watch_group._find_node_by_path(os.fsencode(p("watched", "dir_a_new")))  # noqa: SLF001
-            node_nested = watch_group._find_node_by_path(os.fsencode(p("watched", "dir_a_new", "nested")))  # noqa: SLF001
+            node_a = watch_group._tree.find_node_by_path(os.fsencode(p("watched", "dir_a_new")))  # noqa: SLF001
+            node_nested = watch_group._tree.find_node_by_path(os.fsencode(p("watched", "dir_a_new", "nested")))  # noqa: SLF001
         assert node_a is not None
         assert node_a.wd == wd_a
         assert node_nested is not None
@@ -775,8 +775,8 @@ def test_move_watches_replace_dest(p: P) -> None:
     )
     try:
         with watch_group._lock:  # noqa: SLF001
-            node_a = watch_group._find_node_by_path(bytes_a)  # noqa: SLF001
-            node_nested_a = watch_group._find_node_by_path(bytes_nested_a)  # noqa: SLF001
+            node_a = watch_group._tree.find_node_by_path(bytes_a)  # noqa: SLF001
+            node_nested_a = watch_group._tree.find_node_by_path(bytes_nested_a)  # noqa: SLF001
             wd_b = watch_group._active_callbacks_by_path[bytes_b]  # noqa: SLF001
             wd_nested_b = watch_group._active_callbacks_by_path[bytes_nested_b]  # noqa: SLF001
             assert node_a is not None
@@ -785,11 +785,11 @@ def test_move_watches_replace_dest(p: P) -> None:
             wd_nested_a = node_nested_a.wd
 
             assert watch_group._move_watches(bytes_a, bytes_b)  # noqa: SLF001
-            assert wd_b not in watch_group._nodes_by_wd  # noqa: SLF001
-            assert wd_nested_b not in watch_group._nodes_by_wd  # noqa: SLF001
-            assert watch_group._find_node_by_path(bytes_nested_b) is None  # noqa: SLF001
-            assert watch_group._find_node_by_path(bytes_b) is node_a  # noqa: SLF001
-            assert watch_group._find_node_by_path(os.fsencode(p("watched", "dir_b", "nested_a"))) is node_nested_a  # noqa: SLF001
+            assert wd_b not in watch_group._tree.nodes_by_wd  # noqa: SLF001
+            assert wd_nested_b not in watch_group._tree.nodes_by_wd  # noqa: SLF001
+            assert watch_group._tree.find_node_by_path(bytes_nested_b) is None  # noqa: SLF001
+            assert watch_group._tree.find_node_by_path(bytes_b) is node_a  # noqa: SLF001
+            assert watch_group._tree.find_node_by_path(os.fsencode(p("watched", "dir_b", "nested_a"))) is node_nested_a  # noqa: SLF001
         with inotify_fd._lock:  # noqa: SLF001
             for old_wd in (wd_b, wd_nested_b):
                 watch_old = inotify_fd._watch_for_wd.get(old_wd)  # noqa: SLF001
