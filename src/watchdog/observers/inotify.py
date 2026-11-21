@@ -74,7 +74,7 @@ import logging
 import os
 import threading
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING
 
 from watchdog.events import (
     DirAttribEvent,
@@ -93,6 +93,7 @@ from watchdog.events import (
     FileOpenedEvent,
     FileSystemEvent,
     FileSystemEventHandler,
+    _select_event_type,
     generate_sub_created_events,
     generate_sub_moved_events,
 )
@@ -116,16 +117,13 @@ from watchdog.observers.inotify_move_event_grouper import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from watchdog.events import FileSystemEventCtor
     from watchdog.observers.api import EventQueue, ObservedWatch
     from watchdog.utils import Seconds
 
 logger = logging.getLogger(__name__)
 
 _INVALID_WD = WatchDescriptor(-1)
-
-
-class FileSystemEventCtor(Protocol):
-    def __call__(self, src_path: bytes | str, dest_path: bytes | str = "") -> FileSystemEvent: ...
 
 
 class DirNode:
@@ -675,16 +673,6 @@ class InotifyWatchGroup(WatchCallback):
             curr = parent
         if self._root is not None and not self._root.children and self._root.wd == _INVALID_WD:
             self._root = None
-
-
-def _select_event_type(
-    dir_event: type[FileSystemEvent],
-    file_event: type[FileSystemEvent],
-    *,
-    is_directory: bool,
-) -> FileSystemEventCtor:
-    """selects the correct FileSystemEvent Type based on `is_directory` and returns it."""
-    return cast("FileSystemEventCtor", dir_event if is_directory else file_event)
 
 
 class InotifyEmitter(EventEmitter):
