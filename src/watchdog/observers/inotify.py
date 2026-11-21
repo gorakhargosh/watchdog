@@ -735,10 +735,7 @@ class InotifyEmitter(EventEmitter):
         if inotify is not None:
             inotify.deactivate()
 
-    def queue_events(self, timeout: Seconds, *, full_events: bool = False) -> None:
-        # If "full_events" is true, then the method will report unmatched move events as separate events
-        # This behavior is by default only called by a InotifyFullEmitter
-        #
+    def queue_events(self, timeout: Seconds) -> None:
         # Snapshot the watch group before the blocking read. Holding only a
         # local reference means on_thread_stop() can null self._inotify and
         # close the queue without this method raising AttributeError.
@@ -756,7 +753,7 @@ class InotifyEmitter(EventEmitter):
                 return
             self.build_and_queue_event(event)
 
-    def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = False) -> None:
+    def build_and_queue_event(self, event: GroupedInotifyEvent) -> None:
         """called for every event for each watch this callback is registered at."""
         cls: FileSystemEventCtor
         if not isinstance(event, PathedInotifyEvent):
@@ -767,12 +764,7 @@ class InotifyEmitter(EventEmitter):
             # Directory events of a recursive watch also concern the subtree below the directory.
             is_recursive_directory = event.ev.is_directory and self.watch.is_recursive
             if event.ev.is_moved_to:
-                if full_events:
-                    cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
-                    self.queue_event(cls("", src_path))
-                else:
-                    cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=event.ev.is_directory)
-                    self.queue_event(cls(src_path))
+                self.queue_event(self._unmatched_moved_to_event(src_path, is_directory=event.ev.is_directory))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 if is_recursive_directory:
                     for sub_created_event in generate_sub_created_events(src_path):
@@ -783,22 +775,15 @@ class InotifyEmitter(EventEmitter):
             elif event.ev.is_modify:
                 cls = _select_event_type(DirModifiedEvent, FileModifiedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
-            elif event.ev.is_delete or (event.ev.is_moved_from and not full_events):
+            elif event.ev.is_delete:
                 cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                if event.ev.is_moved_from and is_recursive_directory:
-                    self._queue_removed_subdirectory_events(
-                        event.path, lambda path: DirDeletedEvent(path, is_synthetic=True)
-                    )
-            elif event.ev.is_moved_from and full_events:
-                cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
-                self.queue_event(cls(src_path, ""))
+            elif event.ev.is_moved_from:
+                self.queue_event(self._unmatched_moved_from_event(src_path, is_directory=event.ev.is_directory))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 if is_recursive_directory:
-                    self._queue_removed_subdirectory_events(
-                        event.path, lambda path: DirMovedEvent(path, "", is_synthetic=True)
-                    )
+                    self._queue_removed_subdirectory_events(event.path, self._moved_out_subdirectory_event)
             elif event.ev.is_create:
                 cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
@@ -822,6 +807,23 @@ class InotifyEmitter(EventEmitter):
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 elif event.ev.is_close_nowrite:
                     self.queue_event(FileClosedNoWriteEvent(src_path))
+
+    # How a move is reported when only one of its ends is watched. InotifyFullEmitter overrides these
+    # three methods to report a move with an empty source or destination path instead.
+
+    def _unmatched_moved_to_event(self, path: bytes | str, *, is_directory: bool) -> FileSystemEvent:
+        """Event for a path moved in from outside the watch: it is reported as created."""
+        cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=is_directory)
+        return cls(path)
+
+    def _unmatched_moved_from_event(self, path: bytes | str, *, is_directory: bool) -> FileSystemEvent:
+        """Event for a path moved out of the watch: it is reported as deleted."""
+        cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=is_directory)
+        return cls(path)
+
+    def _moved_out_subdirectory_event(self, path: bytes | str) -> FileSystemEvent:
+        """Synthetic event for each subdirectory of a directory moved out of the watch."""
+        return DirDeletedEvent(path, is_synthetic=True)
 
     def _queue_move_pair_events(self, move_from: PathedInotifyEvent, move_to: PathedInotifyEvent) -> None:
         """Queue the events for a move whose source and destination are both watched."""
@@ -896,8 +898,16 @@ class InotifyFullEmitter(InotifyEmitter):
     Such move events will have a ``None`` value for the unmatched part.
     """
 
-    def build_and_queue_event(self, event: GroupedInotifyEvent, *, full_events: bool = True) -> None:
-        super().build_and_queue_event(event, full_events=full_events)
+    def _unmatched_moved_to_event(self, path: bytes | str, *, is_directory: bool) -> FileSystemEvent:
+        cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=is_directory)
+        return cls("", path)
+
+    def _unmatched_moved_from_event(self, path: bytes | str, *, is_directory: bool) -> FileSystemEvent:
+        cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=is_directory)
+        return cls(path, "")
+
+    def _moved_out_subdirectory_event(self, path: bytes | str) -> FileSystemEvent:
+        return DirMovedEvent(path, "", is_synthetic=True)
 
 
 class InotifyObserver(BaseObserver):
