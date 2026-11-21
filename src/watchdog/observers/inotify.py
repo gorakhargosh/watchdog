@@ -115,6 +115,7 @@ from watchdog.observers.inotify_move_event_grouper import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from watchdog.events import FileSystemEventCtor
@@ -756,16 +757,7 @@ class InotifyEmitter(EventEmitter):
         cls: FileSystemEventCtor
         if not isinstance(event, PathedInotifyEvent):
             # we got a move event tuple
-            move_from, move_to = event
-            src_path = self._decode_path(move_from.path)
-            dest_path = self._decode_path(move_to.path)
-            cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=move_from.ev.is_directory)
-            self.queue_event(cls(src_path, dest_path))
-            self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-            self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
-            if move_from.ev.is_directory and self.watch.is_recursive:
-                for sub_moved_event in generate_sub_moved_events(src_path, dest_path):
-                    self.queue_event(sub_moved_event)
+            self._queue_move_pair_events(*event)
         else:
             src_path = self._decode_path(event.path)
             if event.ev.is_moved_to:
@@ -789,18 +781,18 @@ class InotifyEmitter(EventEmitter):
                 cls = _select_event_type(DirDeletedEvent, FileDeletedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                if event.ev.is_moved_from and event.ev.is_directory and self.watch.is_recursive and self._inotify:
-                    for sub_path in self._inotify.remove_watched_directory(event.path):
-                        decoded = self._decode_path(sub_path)
-                        self.queue_event(DirDeletedEvent(decoded, is_synthetic=True))
+                if event.ev.is_moved_from and event.ev.is_directory and self.watch.is_recursive:
+                    self._queue_removed_subdirectory_events(
+                        event.path, lambda path: DirDeletedEvent(path, is_synthetic=True)
+                    )
             elif event.ev.is_moved_from and full_events:
                 cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path, ""))
                 self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
-                if event.ev.is_directory and self.watch.is_recursive and self._inotify:
-                    for sub_path in self._inotify.remove_watched_directory(event.path):
-                        decoded = self._decode_path(sub_path)
-                        self.queue_event(DirMovedEvent(decoded, "", is_synthetic=True))
+                if event.ev.is_directory and self.watch.is_recursive:
+                    self._queue_removed_subdirectory_events(
+                        event.path, lambda path: DirMovedEvent(path, "", is_synthetic=True)
+                    )
             elif event.ev.is_create:
                 cls = _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=event.ev.is_directory)
                 self.queue_event(cls(src_path))
@@ -824,6 +816,29 @@ class InotifyEmitter(EventEmitter):
                     self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
                 elif event.ev.is_close_nowrite:
                     self.queue_event(FileClosedNoWriteEvent(src_path))
+
+    def _queue_move_pair_events(self, move_from: PathedInotifyEvent, move_to: PathedInotifyEvent) -> None:
+        """Queue the events for a move whose source and destination are both watched."""
+        src_path = self._decode_path(move_from.path)
+        dest_path = self._decode_path(move_to.path)
+        cls = _select_event_type(DirMovedEvent, FileMovedEvent, is_directory=move_from.ev.is_directory)
+        self.queue_event(cls(src_path, dest_path))
+        self.queue_event(DirModifiedEvent(os.path.dirname(src_path)))
+        self.queue_event(DirModifiedEvent(os.path.dirname(dest_path)))
+        if move_from.ev.is_directory and self.watch.is_recursive:
+            for sub_moved_event in generate_sub_moved_events(src_path, dest_path):
+                self.queue_event(sub_moved_event)
+
+    def _queue_removed_subdirectory_events(
+        self,
+        path: bytes,
+        make_event: Callable[[bytes | str], FileSystemEvent],
+    ) -> None:
+        """Stop watching the subdirectories of ``path`` and queue ``make_event(sub_path)`` for each of them."""
+        if self._inotify is None:
+            return
+        for sub_path in self._inotify.remove_watched_directory(path):
+            self.queue_event(make_event(self._decode_path(sub_path)))
 
     def _decode_path(self, path: bytes) -> bytes | str:
         """Decode path only if unicode string was passed to this emitter."""
