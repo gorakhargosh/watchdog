@@ -24,6 +24,10 @@ on:
     branches:
       - master
 
+  release:
+    types:
+      - published
+
   workflow_dispatch:
     inputs:
       publish:
@@ -60,7 +64,7 @@ jobs:
     with:
       upload_artifacts: true
 
-  # Publish to PyPI on release tags (v*) or confirmed manual dispatch
+  # Publish to PyPI on release tags (v*), published GitHub releases, or confirmed manual dispatch
   publish:
     name: 🚀 Publish to PyPI
     needs:
@@ -68,7 +72,10 @@ jobs:
       - pure-built-distributions
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -80,9 +87,11 @@ jobs:
       - name: What will we publish?
         run: ls -l dist
 
+      # Validate sdist (.tar.gz) and wheel (.whl) metadata before publishing to PyPI
+      - name: Validate distribution metadata
+        run: pipx run twine check dist/*
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
