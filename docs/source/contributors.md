@@ -78,6 +78,7 @@
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/anticipate218"><img src="https://avatars.githubusercontent.com/u/185322635?v=4?s=70" width="70px;" alt="anticipate218"/><br /><sub><b>anticipate218</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=anticipate218" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/rhaularj"><img src="https://avatars.githubusercontent.com/u/157034167?v=4?s=70" width="70px;" alt="rhaularj"/><br /><sub><b>rhaularj</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=rhaularj" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
