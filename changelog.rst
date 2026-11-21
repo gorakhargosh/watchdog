@@ -3,6 +3,15 @@
 Changelog
 ---------
 
+7.1.2-dev
+~~~~~~~~~
+
+202x-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v7.1.1...HEAD>`__
+
+**Other Changes**
+
+- 
+
 7.1.1
 ~~~~~
 
