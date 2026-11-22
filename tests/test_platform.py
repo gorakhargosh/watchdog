@@ -50,6 +50,9 @@ def test_platform_predicates(name, expected):
         assert platform.is_windows() == expected[3]
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 13), reason="stdlib glob.translate exists only on Python >= 3.13"
+)
 def test_backwards_compat_translate_matches_stdlib_glob():
     import glob as stdlib_glob
 
@@ -74,7 +77,8 @@ def test_full_match_windows_path_is_case_insensitive():
 
 def test_full_match_falls_back_to_compat_translate_on_old_python():
     # Python < 3.13 has no PurePath.full_match; simulate it.
-    with mock.patch.object(PurePosixPath, "full_match", side_effect=AttributeError):
+    # create=True: on Python < 3.13 PurePosixPath has no full_match attribute at all
+    with mock.patch.object(PurePosixPath, "full_match", side_effect=AttributeError, create=True):
         assert _full_match(PurePosixPath("/tmp/x.py"), "**/*.py")
         assert not _full_match(PurePosixPath("/tmp/x.txt"), "**/*.py")
 
