@@ -318,3 +318,37 @@ def test_events_lost_event_dispatch():
     assert not event.is_directory
     assert EventsLostEvent("/p", is_directory=True).is_directory
     assert calls == [("any", event), ("events_lost", event)]
+
+
+def test_select_event_type_picks_dir_and_file_ctors():
+
+    from watchdog.events import DirCreatedEvent, FileCreatedEvent, _select_event_type
+
+    assert _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=False) is FileCreatedEvent
+    assert _select_event_type(DirCreatedEvent, FileCreatedEvent, is_directory=True) is DirCreatedEvent
+
+
+def test_path_matching_handler_base_methods_raise_not_implemented():
+    import pytest
+
+    from watchdog.events import PathMatchingEventHandler
+
+    filt = PathMatchingEventHandler()
+    with pytest.raises(NotImplementedError):
+        filt.is_ignored("/x")
+    with pytest.raises(NotImplementedError):
+        filt.is_included("/x")
+
+
+def test_generate_sub_created_events_walks_tree(tmp_path):
+    from watchdog.events import DirCreatedEvent, FileCreatedEvent, generate_sub_created_events
+
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "a.txt").write_text("a")
+    (tmp_path / "b.txt").write_text("b")
+    events = list(generate_sub_created_events(str(tmp_path)))
+    dirs = [e for e in events if isinstance(e, DirCreatedEvent)]
+    files = [e for e in events if isinstance(e, FileCreatedEvent)]
+    assert {e.src_path for e in dirs} == {str(tmp_path / "sub")}
+    assert {e.src_path for e in files} == {str(tmp_path / "sub" / "a.txt"), str(tmp_path / "b.txt")}
+    assert all(e.is_synthetic for e in events)
