@@ -155,3 +155,8 @@ OS Independent Polling
     |project_name| also includes a fallback-implementation that polls
     watched directories for changes by periodically comparing snapshots
     of the directory tree.
+
+    This is useful when a mount does not deliver native notifications, including
+    CIFS/SMB and Windows-drive paths watched from WSL 2. Select ``PollingObserver``
+    explicitly; ``Observer`` chooses by operating system, not filesystem type.
+    See :ref:`usage` for an example and the limits of snapshot-based monitoring.

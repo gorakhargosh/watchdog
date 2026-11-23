@@ -35,6 +35,9 @@ file system changes and simply print them to the console:
 
 To stop the program, press Control-C.
 
+For network shares, WSL mounts, dynamic watches, handler exceptions, shutdown,
+and manual snapshot comparisons, see :ref:`usage`.
+
 Alternatively, you can use the observer as a context manager for cleaner code:
 
 .. code-block:: python
