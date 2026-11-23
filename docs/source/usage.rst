@@ -13,6 +13,15 @@ operating system. It does not inspect each scheduled path to decide whether its
 filesystem delivers notifications. A native API being available does not mean
 that every mounted filesystem supports it.
 
+All implementations selected by ``Observer`` accept ``timeout`` in seconds.
+If the selected implementation is polling, this is the wait between directory
+scans. For example, ``Observer(timeout=10)`` also sets a ten-second interval
+when the platform falls back to polling. There is no need to change
+``DEFAULT_OBSERVER_TIMEOUT``. ``PollingObserver(timeout=10)`` chooses polling
+explicitly; the virtual-filesystem variant, ``PollingObserverVFS``, names the
+same setting ``polling_interval``. On native observers, ``timeout`` does not
+turn notifications into periodic snapshots or debounce callbacks.
+
 Use :class:`watchdog.observers.polling.PollingObserver` explicitly when changes
 are visible through directory listings and file metadata but native
 notifications are unavailable:
@@ -44,6 +53,43 @@ may become a single modification. Scanning a large tree also takes time: the
 interval is a wait between scans, not a guarantee of a new result every N
 seconds. If changes are missing, first verify that the watcher process can list
 the affected directory and see the changed metadata on that same mount.
+
+File readiness and close events
+-------------------------------
+
+Polling emits changes inferred from file metadata. It cannot observe file
+handles and never emits ``opened``, ``closed`` or ``closed_no_write`` events,
+including on CIFS shares. Linux inotify can report those events; the other
+native observers do not provide the same close-event interface.
+
+A creation or modification notification can arrive while another process is
+still writing the file. For a reliable handoff, coordinate with the producer:
+write and close a temporary file, then publish its final name, or publish a
+separate completion marker. Handle the resulting move or creation as
+appropriate for the backend. A quiet period or an unchanged size across scans
+is a useful heuristic, but a paused writer can resume afterwards. Applications
+should handle transient read errors, including Windows sharing violations.
+
+Avoiding events caused by a handler
+-----------------------------------
+
+Filesystem notifications also include operations performed by the watcher
+process. A path-pattern filter cannot identify which process changed a file.
+A flag set only while the handler writes is insufficient: the notification may
+already be queued and dispatched after the flag is cleared.
+
+Keep generated output and logs outside the watched input tree, or exclude their
+paths. If a handler must rewrite an input, make the operation idempotent: compare
+the intended contents with the existing contents and write only when they
+differ. Subscribe only to events that drive that operation. In particular,
+reading a file from ``on_opened`` can cause another open notification on Linux;
+reading from a handler that only processes modifications avoids that cycle.
+Idempotence still matters when the handler itself writes.
+
+An ``opened`` notification reports an operation that has already occurred. It
+cannot delay another program's read until an encryption or decryption handler
+finishes; transparent access control requires a different integration with the
+application or filesystem.
 
 Knowing when the initial snapshot is ready
 ------------------------------------------
@@ -138,6 +184,31 @@ Shutdown is not a promise that every queued event has been dispatched. If all
 application work must finish, manage and drain the application's work queue
 separately. A stopped observer, like a Python thread, cannot be started again;
 create a new observer when restarting monitoring.
+
+``stop()`` clears the watch handlers and ends dispatch; queued events are not
+guaranteed to reach a callback. ``join()`` on the observer waits for the thread,
+not for that queue to drain. To finish events already queued while the observer
+and its handlers are healthy, stop and join its emitters first, then wait for
+the event queue, and finally stop the observer:
+
+.. code-block:: python
+
+    # Run from the managing thread after the application's producers are quiet.
+    # Do not add or remove watches during this sequence.
+    emitters = list(observer.emitters)
+    for emitter in emitters:
+        emitter.stop()
+    for emitter in emitters:
+        emitter.join()
+    observer.event_queue.join()
+    observer.stop()
+    observer.join()
+
+This drains events already enqueued; it does not promise to read every pending
+native notification or finish a final polling scan. ``event_queue.join()`` has
+no timeout and needs a live dispatcher whose callbacks return. Call it from the
+managing thread, not a callback. It also does not wait for work a callback has
+handed to another worker; drain that application's queue separately.
 
 Comparing snapshots on demand
 -----------------------------
