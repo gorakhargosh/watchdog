@@ -108,6 +108,8 @@ def command(
             formatter_class=HelpFormatter,
         )
         command_parsers[name] = parser
+        for alias in cmd_aliases or []:
+            command_parsers[alias] = parser
         verbosity_group = parser.add_mutually_exclusive_group()
         verbosity_group.add_argument("-q", "--quiet", dest="verbosity", action="append_const", const=-1)
         verbosity_group.add_argument("-v", "--verbose", dest="verbosity", action="append_const", const=1)
