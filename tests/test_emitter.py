@@ -547,6 +547,7 @@ def test_recursive_off(
 
         mkdir(p("dir3"))
         with events_checker() as ec:
+            ec.add(DirCreatedEvent, "dir3")
             ec.add(DirModifiedEvent, ".")  # the contents of the parent directory changed
 
         mv(p("dir1", "dir2", "somefile"), p("somefile"))

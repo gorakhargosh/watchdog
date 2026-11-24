@@ -10,6 +10,8 @@ Changelog
 
 **Other Changes**
 
+- [fsevents] Report direct child directory creation, deletion and moves out of a non-recursive watch. Events for entries deeper in the watched tree remain filtered.
+
 - [inotify] Internal refactoring of ``InotifyEmitter`` and ``InotifyWatchGroup``: the watch tree is now a separate ``WatchTree`` class, ``InotifyFullEmitter`` overrides event-building methods instead of passing ``full_events``, and ``_select_event_type()`` moved to ``watchdog.events``. The ``full_events`` keyword argument of ``InotifyEmitter.queue_events()`` and ``build_and_queue_event()`` was removed. (`#1477 <https://github.com/gorakhargosh/watchdog/pull/1477>`__, thanks to @rhaularj)
 
 7.1.1
