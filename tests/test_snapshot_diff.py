@@ -6,6 +6,8 @@ import pickle
 import stat
 import sys
 import time
+from contextlib import nullcontext
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -348,7 +350,7 @@ class _FakeDirEntry:
         self.name = name
 
 
-def _fake_snapshot(root: str, entries: dict[str, tuple]) -> DirectorySnapshot:
+def _fake_snapshot(root: str, entries: dict[str, tuple], *, native_stat: bool = False) -> DirectorySnapshot:
     """Build a DirectorySnapshot from injected stat/listdir functions.
 
     ``entries`` maps a file/dir name to ``(inode, size, mtime, is_dir, [birthtime])``.
@@ -376,7 +378,11 @@ def _fake_snapshot(root: str, entries: dict[str, tuple]) -> DirectorySnapshot:
     def fake_listdir(path: str | None) -> list[_FakeDirEntry]:
         return [_FakeDirEntry(name) for name in entries] if path == root else []
 
-    snapshot = DirectorySnapshot(root, recursive=False, stat=stats.__getitem__, listdir=fake_listdir)
+    stat_function = stats.__getitem__
+    # Tests of the Linux statx fallback replace the native stat provider too;
+    # ordinary callers of this helper continue to represent a custom VFS.
+    with patch("watchdog.utils.dirsnapshot.os.stat", stat_function) if native_stat else nullcontext():
+        snapshot = DirectorySnapshot(root, recursive=False, stat=stat_function, listdir=fake_listdir)
     snapshot._birthtimes.update(birthtimes)  # noqa: SLF001
     return snapshot
 
@@ -527,10 +533,10 @@ def test_linux_birthtime_is_captured_before_inode_reuse(p: Any, *, is_dir: bool)
             side_effect=lambda path, **kwargs: live_birthtimes.get(path),
         ),
     ):
-        ref = _fake_snapshot(p(""), {"old": (42, 10, 1000, is_dir)})
+        ref = _fake_snapshot(p(""), {"old": (42, 10, 1000, is_dir)}, native_stat=True)
         live_birthtimes.clear()
         live_birthtimes[p("new")] = 200
-        snapshot = _fake_snapshot(p(""), {"new": (42, 10, 1000, is_dir)})
+        snapshot = _fake_snapshot(p(""), {"new": (42, 10, 1000, is_dir)}, native_stat=True)
         diff = DirectorySnapshotDiff(ref, snapshot)
 
         assert ref.birthtime(p("old")) == 100
@@ -549,7 +555,7 @@ def test_linux_birthtime_does_not_retry_snapshot_lookup(p: Any, birthtime: int |
         patch("watchdog.utils.dirsnapshot.is_statx_available", return_value=True),
         patch("watchdog.utils.dirsnapshot.get_statx_birthtime_ns", return_value=birthtime) as statx,
     ):
-        snapshot = _fake_snapshot(p(""), {"file": (42, 10, 1000, False)})
+        snapshot = _fake_snapshot(p(""), {"file": (42, 10, 1000, False)}, native_stat=True)
         assert statx.call_count == 2  # The root and its file are captured once each.
         statx.return_value = 200
         assert snapshot.birthtime(p("file")) == birthtime
@@ -584,6 +590,43 @@ def test_windows_birthtime_does_not_populate_cache(p: Any) -> None:
         assert snapshot.birthtime(p("file")) is None
         assert snapshot.birthtime(p("")) is None
         assert snapshot._birthtimes == {}  # noqa: SLF001
+        statx.assert_not_called()
+
+
+@pytest.mark.parametrize("is_dir", [False, True])
+def test_custom_stat_birthtime_ignores_changes_on_host_filesystem(p, is_dir):
+    with (
+        patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False),
+        patch("watchdog.utils.dirsnapshot.platform.is_linux", return_value=True),
+        patch("watchdog.utils.dirsnapshot.is_statx_available", return_value=True),
+        patch("watchdog.utils.dirsnapshot.get_statx_birthtime_ns", return_value=100) as statx,
+    ):
+        ref = _fake_snapshot(p(""), {"entry": (42, 10, 1000, is_dir)})
+        # Only the unrelated host filesystem changed. Both VFS snapshots still
+        # describe the same entries, so no replacement events should appear.
+        statx.return_value = 200
+        snapshot = _fake_snapshot(p(""), {"entry": (42, 10, 1000, is_dir)})
+
+        assert len(DirectorySnapshotDiff(ref, snapshot)) == 0
+        assert ref.birthtime(p("entry")) is None
+        assert snapshot.birthtime(p("entry")) is None
+        statx.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "expected"), [("st_birthtime_ns", 0, 0), ("st_birthtime", 1.5, 1_500_000_000)]
+)
+def test_custom_stat_keeps_provided_birthtime(p, field, value, expected):
+    info = SimpleNamespace(st_mode=stat.S_IFDIR, st_ino=1, st_dev=2, **{field: value})
+    with (
+        patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=False),
+        patch("watchdog.utils.dirsnapshot.platform.is_linux", return_value=True),
+        patch("watchdog.utils.dirsnapshot.is_statx_available", return_value=True),
+        patch("watchdog.utils.dirsnapshot.get_statx_birthtime_ns") as statx,
+    ):
+        snapshot = DirectorySnapshot(p(""), stat=lambda path: info, listdir=lambda path: [])
+
+        assert snapshot.birthtime(p("")) == expected
         statx.assert_not_called()
 
 
