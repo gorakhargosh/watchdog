@@ -385,6 +385,20 @@ def test_parse_event_buffer_reads_the_whole_file_name(file_name):
     assert _parse_event_buffer(buffer) == [(FILE_ACTION_CREATED, file_name)]
 
 
+@pytest.mark.parametrize("extended", [False, True])
+@pytest.mark.parametrize("file_name", ["high-\ud800.txt", "low-\udcff.txt", "pair-\U0001f600.txt"])
+def test_parse_event_buffer_preserves_surrogates(extended, file_name):
+    # NTFS accepts unpaired UTF-16 code units, and Python preserves them in
+    # Windows paths. Receiving such a filename must not stop event decoding.
+    name = file_name.encode("utf-16-le", errors="surrogatepass")
+    if extended:
+        buffer = struct.pack("<IIqqqqqqIIqqI", 0, FILE_ACTION_CREATED, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, len(name)) + name
+        assert _parse_extended_event_buffer(buffer) == [(FILE_ACTION_CREATED, file_name, False)]
+    else:
+        buffer = struct.pack("<III", 0, FILE_ACTION_CREATED, len(name)) + name
+        assert _parse_event_buffer(buffer) == [(FILE_ACTION_CREATED, file_name)]
+
+
 def test_on_thread_stop_is_idempotent():
     """A second ``on_thread_stop()`` must not stop the reader again.
 
