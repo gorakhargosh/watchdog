@@ -104,8 +104,8 @@ class EventDebouncer(BaseThread):
     def run(self) -> None:
         """Runs the event loop that waits for incoming filesystem events and triggers
         the callback once the debounce interval has passed."""
-        with self._cond:
-            while self.should_keep_running():
+        while self.should_keep_running():
+            with self._cond:
                 # Wait for first event (or shutdown).
                 while self.should_keep_running() and not self._events:
                     self._cond.wait()
@@ -120,13 +120,17 @@ class EventDebouncer(BaseThread):
                         if timed_out or self.time_to_flush(started):
                             break
 
-                if self._events:
-                    events = self._events
-                    self._events = []
-                    self.events_callback(events)
-
-            # Send any events accrued before leaving
-            if self._events:
                 events = self._events
                 self._events = []
+
+            # The callback may wait for another thread that submits an event or
+            # stops this debouncer. Only the batch transfer needs the lock.
+            if events:
                 self.events_callback(events)
+
+        # Send any events accrued before leaving.
+        with self._cond:
+            events = self._events
+            self._events = []
+        if events:
+            self.events_callback(events)
