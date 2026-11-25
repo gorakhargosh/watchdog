@@ -488,8 +488,10 @@ class DirectorySnapshot:
                 self._birthtimes[path] = btime = int(btime_sec * 1_000_000_000)
                 return btime
 
-        if platform.is_linux() and is_statx_available():
-            follow = self.stat == os.stat
+        # Custom stat functions may describe a virtual filesystem. A native
+        # lookup of the same path would supply unrelated host metadata.
+        if (self.stat is os.stat or self.stat is os.lstat) and platform.is_linux() and is_statx_available():
+            follow = self.stat is os.stat
             btime_ns = get_statx_birthtime_ns(path, follow_symlinks=follow)
             self._birthtimes[path] = btime_ns
             return btime_ns
