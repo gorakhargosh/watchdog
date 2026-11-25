@@ -493,6 +493,52 @@ def test_overflow_reports_events_lost(is_file):
     assert event == EventsLostEvent(expected_path, is_directory=not is_file)
 
 
+@pytest.mark.parametrize("split_batches", [False, True])
+@pytest.mark.parametrize("is_directory", [False, True])
+def test_rename_after_overflow_does_not_reuse_lost_source(tmp_path, split_batches, is_directory):
+    watched = str(tmp_path)
+    destination = tmp_path / "unrelated"
+    if is_directory:
+        destination.mkdir()
+    else:
+        destination.touch()
+    native_events = [
+        WinAPINativeEvent(FILE_ACTION_RENAMED_OLD_NAME, "stale"),
+        WinAPINativeEvent(FILE_ACTION_OVERFLOW, "."),
+        WinAPINativeEvent(FILE_ACTION_RENAMED_NEW_NAME, "unrelated"),
+        WinAPINativeEvent(FILE_ACTION_RENAMED_OLD_NAME, "before"),
+        WinAPINativeEvent(FILE_ACTION_RENAMED_NEW_NAME, "after"),
+    ]
+
+    class Reader:
+        def __init__(self):
+            self.batches = [[event] for event in native_events] if split_batches else [native_events]
+
+        def get_events(self, timeout):
+            return self.batches.pop(0)
+
+        def stop(self):
+            pass
+
+    event_queue = Queue()
+    emitter = WindowsApiEmitter(event_queue, ObservedWatch(watched, recursive=True))
+    reader = Reader()
+    emitter._reader = reader  # noqa: SLF001
+    try:
+        while reader.batches:
+            emitter.queue_events(0)
+    finally:
+        emitter.stop()
+
+    events = [event_queue.get_nowait()[0] for _ in range(event_queue.qsize())]
+    moved_class = DirMovedEvent if is_directory else FileMovedEvent
+    assert events == [
+        EventsLostEvent(watched, is_directory=True),
+        moved_class("", str(destination)),
+        FileMovedEvent(str(tmp_path / "before"), str(tmp_path / "after")),
+    ]
+
+
 @pytest.mark.parametrize(
     ("last_change_time", "last_mod_time", "expected_attrib"),
     [

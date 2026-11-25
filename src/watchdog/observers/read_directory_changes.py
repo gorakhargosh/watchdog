@@ -129,6 +129,8 @@ class WindowsApiEmitter(EventEmitter):
                 self.queue_event(DirDeletedEvent(self.watch.path))
                 should_stop = True
             elif winapi_event.is_overflow:
+                # A missing half of a rename cannot be paired across lost events.
+                self._last_renamed_src_path = ""
                 logger.warning(
                     "Some file system events were lost due to a buffer overflow while watching %s",
                     self.watch.path,
