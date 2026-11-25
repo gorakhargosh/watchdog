@@ -211,3 +211,96 @@ def test_event_debouncer_zero_interval(monkeypatch):
         debouncer.stop()
         debouncer.join(5)
     assert not debouncer.is_alive()
+
+
+def test_event_debouncer_callback_allows_submitting_thread():
+    first, second, third = [FileModifiedEvent(f"/path{i}") for i in range(3)]
+    submitted = threading.Event()
+    callback_finished = threading.Event()
+    callback_waits = []
+    called = []
+
+    def submit():
+        debouncer.handle_event(second)
+        debouncer.handle_event(third)
+        submitted.set()
+
+    submitter = threading.Thread(target=submit)
+
+    def callback(events):
+        called.append(events)
+        if events == [first]:
+            submitter.start()
+            # A callback waiting for work that submits another event must not
+            # deadlock the producer on the debouncer's condition.
+            callback_waits.append(submitted.wait(5))
+            callback_finished.set()
+
+    debouncer = EventDebouncer(0, callback)
+    debouncer.handle_event(first)
+    debouncer.start()
+    try:
+        assert callback_finished.wait(10)
+    finally:
+        if submitter.ident is not None:
+            submitter.join(5)
+        debouncer.stop()
+        debouncer.join(5)
+
+    assert not submitter.is_alive()
+    assert not debouncer.is_alive()
+    assert callback_waits == [True]
+    assert called == [[first], [second, third]]
+
+
+@pytest.mark.parametrize("draining", [False, True])
+def test_event_debouncer_callback_allows_stop(draining):
+    event = FileModifiedEvent("/path")
+    entered = threading.Event()
+    release_callback = threading.Event()
+    stopped = threading.Event()
+    called = []
+
+    def callback(events):
+        called.append(events)
+        entered.set()
+        release_callback.wait(10)
+
+    debouncer = EventDebouncer(0, callback)
+    debouncer.handle_event(event)
+    if draining:
+        debouncer.stop()
+
+    def stop():
+        debouncer.stop()
+        stopped.set()
+
+    stopper = threading.Thread(target=stop)
+    debouncer.start()
+    try:
+        assert entered.wait(5)
+        stopper.start()
+        assert stopped.wait(5)
+    finally:
+        release_callback.set()
+        if stopper.ident is not None:
+            stopper.join(5)
+        debouncer.stop()
+        debouncer.join(5)
+
+    assert not stopper.is_alive()
+    assert not debouncer.is_alive()
+    assert called == [[event]]
+
+
+def test_event_debouncer_callback_exception_still_propagates():
+    error = RuntimeError("callback failed")
+
+    def callback(events):
+        raise error
+
+    debouncer = EventDebouncer(0, callback)
+    debouncer.handle_event(FileModifiedEvent("/path"))
+    with pytest.raises(RuntimeError) as raised:
+        debouncer.run()
+    assert raised.value is error
