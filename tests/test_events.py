@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import tempfile
 
+import pytest
+
 from watchdog.events import (
     EVENT_TYPE_ATTRIB,
     EVENT_TYPE_CLOSED,
@@ -284,6 +286,29 @@ def test_generate_sub_moved_events_repeated_dirname():
 
         assert len(file_events) == 1
         assert file_events[0].src_path == os.path.join(src_root, "data", "file.txt")
+
+
+@pytest.mark.parametrize("as_bytes", [False, True])
+@pytest.mark.parametrize("source_suffix", ["", os.sep])
+@pytest.mark.parametrize("destination_suffix", [os.sep, os.sep * 2])
+def test_generate_sub_moved_events_trailing_separator(tmp_path, as_bytes, source_suffix, destination_suffix):
+    destination = tmp_path / "new"
+    (destination / "sub").mkdir(parents=True)
+    (destination / "file.txt").touch()
+    (destination / "sub" / "nested.txt").touch()
+    source = str(tmp_path / "old")
+    convert = os.fsencode if as_bytes else str
+
+    events = list(
+        generate_sub_moved_events(convert(source + source_suffix), convert(str(destination) + destination_suffix))
+    )
+
+    assert {(event.src_path, os.path.normpath(event.dest_path), event.is_directory) for event in events} == {
+        (convert(os.path.join(source, "sub")), convert(str(destination / "sub")), True),
+        (convert(os.path.join(source, "file.txt")), convert(str(destination / "file.txt")), False),
+        (convert(os.path.join(source, "sub", "nested.txt")), convert(str(destination / "sub" / "nested.txt")), False),
+    }
+    assert all(event.is_synthetic for event in events)
 
 
 def test_attrib_event_dispatch():
