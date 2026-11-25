@@ -333,7 +333,13 @@ def test_regex_cross_boundary_moves() -> None:
 
 @pytest.mark.parametrize(
     ("regexes", "ignore_regexes", "case_sensitive"),
-    [(r".*\.py", [r".*\.py"], True), ([r".*\.py"], [r".*\.PY"], False), (None, [r".*"], True)],
+    [
+        (r".*\.py", [r".*\.py"], True),
+        ([r".*\.py"], [r".*\.py"], False),
+        ([r"\D+"], [r"\D+"], False),
+        (None, [r".*"], True),
+        (None, [r".*"], False),
+    ],
 )
 def test_conflicting_regexes(
     regexes: list[str] | str | None, ignore_regexes: list[str] | None, *, case_sensitive: bool
@@ -344,3 +350,40 @@ def test_conflicting_regexes(
             ignore_regexes=ignore_regexes,
             case_sensitive=case_sensitive,
         )
+
+
+@pytest.mark.parametrize(
+    ("regex", "ignore_regex", "accepted_path", "ignored_path"),
+    [
+        (r"^/path/\D+\.txt$", r"^/path/\d+\.txt$", "/path/report.txt", "/path/123.txt"),
+        (r"^/path/\S+\.txt$", r"^/path/\s+\.txt$", "/path/report.txt", "/path/ .txt"),
+        (r"^/path/\W+\.txt$", r"^/path/\w+\.txt$", "/path/-.txt", "/path/report.txt"),
+        (r"^/path/(?-i:Report)\.txt$", r"^/path/(?-i:report)\.txt$", "/path/Report.txt", "/path/report.txt"),
+    ],
+)
+def test_distinct_regex_syntax(regex: str, ignore_regex: str, accepted_path: str, ignored_path: str) -> None:
+    handler = RegexMatchingEventHandler(regexes=[regex], ignore_regexes=[ignore_regex])
+    accepted = FileCreatedEvent(accepted_path)
+    ignored = FileCreatedEvent(ignored_path)
+    dispatched = []
+    handler.on_created = dispatched.append
+
+    assert handler.is_included(accepted_path)
+    assert not handler.is_ignored(accepted_path)
+    assert handler.is_ignored(ignored_path)
+    assert not handler.is_included(ignored_path)
+    handler.dispatch(accepted)
+    handler.dispatch(ignored)
+    assert dispatched == [accepted]
+
+
+def test_literal_case_variants_keep_ignore_precedence() -> None:
+    handler = RegexMatchingEventHandler(regexes=[r".*\.py$", r".*\.txt$"], ignore_regexes=[r".*\.PY$"])
+    accepted = FileCreatedEvent("/path/report.txt")
+    dispatched = []
+    handler.on_created = dispatched.append
+
+    handler.dispatch(FileCreatedEvent("/path/script.py"))
+    handler.dispatch(FileCreatedEvent("/path/script.PY"))
+    handler.dispatch(accepted)
+    assert dispatched == [accepted]

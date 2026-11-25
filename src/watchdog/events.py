@@ -606,6 +606,9 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
     """Matches given regexes with file paths associated with occurring events.
     Uses the `re` module.
 
+    Identical regex strings in the include and ignore lists are rejected.
+    Other overlapping expressions are allowed, with ignore rules taking precedence.
+
     :param regexes:
         Regexes to allow matching event paths.
     :param ignore_regexes:
@@ -668,8 +671,9 @@ class RegexMatchingEventHandler(PathMatchingEventHandler):
 
     def _validate_rules(self) -> None:
         if self._ignore_regexes:
-            included = {r.pattern if self.case_sensitive else r.pattern.lower() for r in self._regexes}
-            excluded = {r.pattern if self.case_sensitive else r.pattern.lower() for r in self._ignore_regexes}
+            # Case folding changes regex syntax, such as \D into \d.
+            included = {r.pattern for r in self._regexes}
+            excluded = {r.pattern for r in self._ignore_regexes}
             common_regexes = included & excluded
             if common_regexes:
                 error = f"conflicting regexes `{common_regexes}` included and excluded"
