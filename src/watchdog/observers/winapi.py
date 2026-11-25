@@ -355,7 +355,8 @@ def _parse_event_buffer(read_buffer: bytes) -> list[tuple[int, str]]:
         # ReadDirectoryChangesW writes UTF-16LE without a byte-order mark, so the
         # "utf-16" codec would eat a leading U+FEFF and let a leading U+FFFE flip
         # the byte order of the rest of the name.
-        results.append((fni.Action, filename.decode("utf-16-le")))
+        # Windows paths may contain unpaired UTF-16 surrogate code units.
+        results.append((fni.Action, filename.decode("utf-16-le", errors="surrogatepass")))
         num_to_skip = fni.NextEntryOffset
         if num_to_skip <= 0:
             break
@@ -383,7 +384,7 @@ def _parse_extended_event_buffer(read_buffer: bytes) -> list[tuple[int, str, boo
         ptr = ctypes.addressof(fnei) + FileNotifyExtendedInformation.FileName.offset
         filename = ctypes.string_at(ptr, fnei.FileNameLength)
         is_attrib = fnei.Action == FILE_ACTION_MODIFIED and fnei.LastChangeTime > fnei.LastModificationTime
-        results.append((fnei.Action, filename.decode("utf-16-le"), is_attrib))
+        results.append((fnei.Action, filename.decode("utf-16-le", errors="surrogatepass"), is_attrib))
         num_to_skip = fnei.NextEntryOffset
         if num_to_skip <= 0:
             break
