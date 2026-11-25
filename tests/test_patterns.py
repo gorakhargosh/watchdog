@@ -4,6 +4,7 @@ import glob
 
 import pytest
 
+from watchdog.utils import platform
 from watchdog.utils.patterns import _match_path, filter_paths, match_any_paths
 
 
@@ -134,3 +135,40 @@ def test_match_any_paths(included_patterns, excluded_patterns, case_sensitive, e
 )
 def test_match_path_case_sensitivity(raw_path, pattern, case_sensitive, expected):
     assert _match_path(raw_path, {pattern}, set(), case_sensitive=case_sensitive) is expected
+
+
+@pytest.mark.skipif(not platform.is_windows(), reason="Native Windows path separators")
+@pytest.mark.parametrize(
+    ("raw_path", "included_patterns", "excluded_patterns", "base_path", "expected"),
+    [
+        (r"H:\root\sub\Report.TXT", {"sub/*.TXT"}, set(), r"H:\root", True),
+        (r"H:\root\sub\Report.TXT", {r"sub\*.TXT"}, set(), r"H:\root", True),
+        (r"H:\root\sub\Report.TXT", {"sub/*.TXT"}, set(), "H:/root", True),
+        ("H:/root/sub/Report.TXT", {r"sub\*.TXT"}, set(), r"H:\root", True),
+        (r"\\server\share\root\sub\Report.TXT", {"sub/*.TXT"}, set(), r"\\server\share\root", True),
+        (r"H:\root\sub\Report.TXT", {"**/Report.TXT"}, set(), None, True),
+        (r"H:\root\sub\Report.TXT", {r"H:\root\sub\*.TXT"}, set(), None, True),
+        (r"H:\root\sub\Report.TXT", {"**"}, {"sub/*.TXT"}, r"H:\root", False),
+        (r"H:\root\sub\Report.TXT", {"**"}, {r"sub\*.TXT"}, r"H:\root", False),
+        (r"H:\root\sub\Report.TXT", {"**/*.txt"}, set(), None, False),
+        (r"H:\root\sub\Report.TXT", {"Sub/*.TXT"}, set(), r"H:\root", False),
+        (r"H:\other\sub\Report.TXT", {"sub/*.TXT"}, set(), r"H:\root", False),
+    ],
+)
+def test_match_native_windows_paths(raw_path, included_patterns, excluded_patterns, base_path, expected) -> None:
+    assert (
+        _match_path(raw_path, included_patterns, excluded_patterns, case_sensitive=True, base_path=base_path)
+        is expected
+    )
+
+
+@pytest.mark.skipif(not platform.is_windows(), reason="Native Windows path separators")
+def test_filter_native_windows_paths_preserves_input() -> None:
+    paths = [r"H:\root\sub\Report.TXT", r"H:\root\sub\Report.txt"]
+    assert list(filter_paths(paths, included_patterns=[r"sub\*.TXT"], base_path=r"H:\root")) == paths[:1]
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Backslashes are literal filename characters on POSIX")
+def test_match_path_preserves_literal_backslashes() -> None:
+    assert _match_path(r"sub\Report.TXT", {"*.TXT"}, set(), case_sensitive=True)
+    assert not _match_path(r"sub\Report.TXT", {"sub/*.TXT"}, set(), case_sensitive=True)

@@ -20,6 +20,7 @@ from watchdog.events import (
     IgnorePolicy,
     PatternMatchingEventHandler,
 )
+from watchdog.utils import platform
 from watchdog.utils.patterns import filter_paths
 
 path_1 = "/path/xyz"
@@ -313,3 +314,24 @@ def test_events_lost_ignores_patterns() -> None:
 
     assert events_collected == [EventsLostEvent("/path/project", is_directory=True)]
     assert any_events == []
+
+
+@pytest.mark.skipif(not platform.is_windows(), reason="Native Windows path separators")
+def test_dispatch_native_windows_paths() -> None:
+    handler = PatternMatchingEventHandler(
+        patterns=["sub/*.TXT"], ignore_patterns=["**/ignored.TXT"], case_sensitive=True
+    )
+    events = [
+        FileCreatedEvent(r"H:\root\sub\Report.TXT"),
+        FileCreatedEvent(r"H:\root\sub\ignored.TXT"),
+        FileCreatedEvent(r"H:\root\sub\Report.txt"),
+        FileMovedEvent(r"H:\root\other\Report.TXT", r"H:\root\sub\Renamed.TXT"),
+    ]
+    dispatched = []
+    handler.on_any_event = dispatched.append
+
+    for event in events:
+        event.watch_path = r"H:\root"
+        handler.dispatch(event)
+
+    assert dispatched == [events[0], events[3]]
