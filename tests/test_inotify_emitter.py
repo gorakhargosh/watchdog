@@ -487,14 +487,23 @@ def test_move_out_stops_watching(
     mv(p("watched", "sub"), p("outside", "sub"))
 
     expected_paths = {p("watched", "sub"), p("watched", "sub", "nested")}
+    expected_file = p("watched", "sub", "nested", "file.txt")
     seen_paths: set[str | bytes] = set()
-    while not expected_paths.issubset(seen_paths):
+    file_event_seen = False
+    while not expected_paths.issubset(seen_paths) or not file_event_seen:
         ev = event_queue.get(timeout=5)[0]
         if use_full_emitter:
             if isinstance(ev, DirMovedEvent) and ev.dest_path == "":
                 seen_paths.add(ev.src_path)
-        elif isinstance(ev, DirDeletedEvent):
-            seen_paths.add(ev.src_path)
+            elif isinstance(ev, FileMovedEvent) and ev.dest_path == "" and ev.src_path == expected_file:
+                file_event_seen = True
+        else:
+            if isinstance(ev, DirDeletedEvent):
+                seen_paths.add(ev.src_path)
+            elif isinstance(ev, FileDeletedEvent) and ev.src_path == expected_file:
+                file_event_seen = True
+
+    assert file_event_seen
 
     _drain_event_queue(event_queue)
 
@@ -515,6 +524,34 @@ def test_move_out_stops_watching(
         or os.path.commonpath([str(e.src_path), outside_prefix]) == outside_prefix
     ]
     assert not leaked
+
+
+def test_move_out_reports_files_created_after_watching(
+    p: P,
+    start_watching: StartWatching,
+    event_queue: TestEventQueue,
+) -> None:
+    mkdir(p("watched"))
+    mkdir(p("watched", "sub"))
+    mkdir(p("outside"))
+
+    start_watching(path=p("watched"))
+    _drain_event_queue(event_queue)
+
+    # The file is only known from the event stream, not from the initial scan.
+    new_file = p("watched", "sub", "new.txt")
+    mkfile(new_file)
+    while True:
+        ev = event_queue.get(timeout=5)[0]
+        if isinstance(ev, FileCreatedEvent) and ev.src_path == new_file:
+            break
+
+    mv(p("watched", "sub"), p("outside", "sub"))
+
+    while True:
+        ev = event_queue.get(timeout=5)[0]
+        if isinstance(ev, FileDeletedEvent) and ev.src_path == new_file:
+            break
 
 
 def test_internal_move_preserves_watches(

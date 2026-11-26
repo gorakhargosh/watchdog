@@ -130,7 +130,7 @@ _INVALID_WD = WatchDescriptor(-1)
 class DirNode:
     """N-ary directory tree node for hierarchical inotify watch tracking."""
 
-    __slots__ = ("children", "name", "parent", "wd")
+    __slots__ = ("children", "files", "name", "parent", "wd")
 
     def __init__(
         self,
@@ -142,6 +142,7 @@ class DirNode:
         self.wd = wd
         self.parent = parent
         self.children: dict[bytes, DirNode] = {}
+        self.files: set[bytes] = set()  # names of the files known to live here
 
 
 class WatchTree:
@@ -284,6 +285,18 @@ class WatchTree:
         if parent is not None and parent.children.get(node.name) is node:
             parent.children.pop(node.name, None)
 
+    def add_file(self, directory: bytes, name: bytes) -> None:
+        """Record that ``name`` lives in ``directory``."""
+        node = self.find_node_by_path(directory)
+        if node is not None:
+            node.files.add(name)
+
+    def remove_file(self, directory: bytes, name: bytes) -> None:
+        """Forget that ``name`` lives in ``directory``."""
+        node = self.find_node_by_path(directory)
+        if node is not None:
+            node.files.discard(name)
+
     def prune_empty_ancestors(self, node: DirNode) -> None:
         curr: DirNode | None = node
         while curr is not None and curr is not self.root:
@@ -297,14 +310,15 @@ class WatchTree:
         if self.root is not None and not self.root.children and self.root.wd == _INVALID_WD:
             self.root = None
 
-    def detach_subtree(self, node: DirNode, path: bytes) -> tuple[list[bytes], list[WatchDescriptor]]:
+    def detach_subtree(self, node: DirNode, path: bytes) -> tuple[list[bytes], list[WatchDescriptor], list[bytes]]:
         """Detach ``node`` and its descendants from the tree.
 
-        Returns the paths of the detached descendants and the watch descriptors that
-        are no longer tracked, so the caller can remove the matching kernel watches.
+        Returns the paths of the detached descendants, the watch descriptors that
+        are no longer tracked, and the paths of the files that lived below ``node``,
+        so the caller can remove the matching kernel watches and report the files.
         """
         if node is self.root:
-            return [], []
+            return [], [], []
 
         if node.parent is not None and node.parent.children.get(node.name) is node:
             node.parent.children.pop(node.name, None)
@@ -312,6 +326,7 @@ class WatchTree:
 
         sub_paths: list[bytes] = []
         wds: list[WatchDescriptor] = []
+        files: list[bytes] = []
         stack: list[tuple[DirNode, bytes]] = [(node, path)]
         while stack:
             curr, curr_path = stack.pop()
@@ -320,11 +335,13 @@ class WatchTree:
             if curr.wd != _INVALID_WD:
                 wds.append(curr.wd)
                 self.nodes_by_wd.pop(curr.wd, None)
+            files.extend(os.path.join(curr_path, name) for name in curr.files)
             for name, child in reversed(curr.children.items()):
                 stack.append((child, os.path.join(curr_path, name)))
             curr.children.clear()
+            curr.files.clear()
             curr.parent = None
-        return sub_paths, wds
+        return sub_paths, wds, files
 
     def remove_wd(self, wd: WatchDescriptor) -> None:
         """Forget the watch descriptor ``wd`` and prune the nodes left without a watch or children."""
@@ -474,6 +491,16 @@ class InotifyWatchGroup(WatchCallback):
             if src_path is None:
                 return
 
+            # Track the files known to live in each watched directory. The kernel
+            # reports only the directory when a watched subtree is moved out, so
+            # this is what lets the emitter report the files it contained.
+            if event.name and not event.is_directory:
+                parent = os.path.dirname(src_path)
+                if event.is_create or event.is_moved_to:
+                    self._tree.add_file(parent, event.name)
+                elif event.is_delete or event.is_moved_from:
+                    self._tree.remove_file(parent, event.name)
+
             # todo look into desired behavior for IN_MOVE_SELF events
             #  (keep watching?, stop watching?, are they even possible?)
             if event.is_moved_from:
@@ -585,28 +612,29 @@ class InotifyWatchGroup(WatchCallback):
     def _has_pending_moved_from(self, path: bytes) -> bool:
         return self._move_event_grouper.has_pending_moved_from(path)
 
-    def _remove_node_and_watches(self, node: DirNode, path: bytes) -> list[bytes]:
-        sub_paths, wds = self._tree.detach_subtree(node, path)
+    def _remove_node_and_watches(self, node: DirNode, path: bytes) -> tuple[list[bytes], list[bytes]]:
+        sub_paths, wds, files = self._tree.detach_subtree(node, path)
         if wds:
             self._remove_callbacks(wds)
             self._move_event_grouper.purge_events_for_wds(set(wds))
-        return sub_paths
+        return sub_paths, files
 
-    def remove_watched_directory(self, path: bytes) -> list[bytes]:
+    def remove_watched_directory(self, path: bytes) -> tuple[list[bytes], list[bytes]]:
         """Remove inotify watches for a directory and all its descendants, pruning them from the tree.
 
-        Returns the full paths of all descendant subdirectories removed.
+        Returns the full paths of the descendant subdirectories and files removed.
+        The files are known to the tree from the watch-time scan and from the file
+        events processed since, so the caller can report the deletions that the
+        kernel does not emit for a subtree that was moved out of the watch.
         """
-        # TODO: Synthetic file deletion events for files inside moved-out directories could be
-        # tracked if file nodes or subtree snapshotting are added to DirNode.
         # TODO: Symlink alias disambiguation and multi-root watch descriptor deduplication.
         with self._lock:
             if self._move_event_grouper.has_pending_move_to_or_create(path):
-                return []
+                return [], []
 
             node = self._tree.find_node_by_path(path)
             if node is None or node is self._tree.root:
-                return []
+                return [], []
 
             return self._remove_node_and_watches(node, path)
 
@@ -664,12 +692,14 @@ class InotifyWatchGroup(WatchCallback):
         is_dir = os.path.isdir(path)
         self._add_callback(path)
         if is_dir and self.is_recursive:
-            for root, dirnames, _ in os.walk(path, followlinks=self.follow_symlink):
+            for root, dirnames, filenames in os.walk(path, followlinks=self.follow_symlink):
                 for dirname in dirnames:
                     full_path = os.path.join(root, dirname)
                     if not self.follow_symlink and os.path.islink(full_path):
                         continue
                     self._add_callback(full_path)
+                if node := self._tree.find_node_by_path(root):
+                    node.files.update(filenames)
 
     def _add_callback(self, path: bytes) -> None:
         """Adds a callback for the given path to monitor events specified by the
@@ -855,6 +885,10 @@ class InotifyEmitter(EventEmitter):
         """Synthetic event for each subdirectory of a directory moved out of the watch."""
         return DirDeletedEvent(path, is_synthetic=True)
 
+    def _moved_out_file_event(self, path: bytes | str) -> FileSystemEvent:
+        """Synthetic event for each file of a directory moved out of the watch."""
+        return FileDeletedEvent(path, is_synthetic=True)
+
     def _queue_move_pair_events(self, move_from: PathedInotifyEvent, move_to: PathedInotifyEvent) -> None:
         """Queue the events for a move whose source and destination are both watched."""
         src_path = self._decode_path(move_from.path)
@@ -875,8 +909,11 @@ class InotifyEmitter(EventEmitter):
         """Stop watching the subdirectories of ``path`` and queue ``make_event(sub_path)`` for each of them."""
         if self._inotify is None:
             return
-        for sub_path in self._inotify.remove_watched_directory(path):
+        sub_dirs, sub_files = self._inotify.remove_watched_directory(path)
+        for sub_path in sub_dirs:
             self.queue_event(make_event(self._decode_path(sub_path)))
+        for sub_file in sub_files:
+            self.queue_event(self._moved_out_file_event(self._decode_path(sub_file)))
 
     def _decode_path(self, path: bytes) -> bytes | str:
         """Decode path only if unicode string was passed to this emitter."""
@@ -938,6 +975,9 @@ class InotifyFullEmitter(InotifyEmitter):
 
     def _moved_out_subdirectory_event(self, path: bytes | str) -> FileSystemEvent:
         return DirMovedEvent(path, "", is_synthetic=True)
+
+    def _moved_out_file_event(self, path: bytes | str) -> FileSystemEvent:
+        return FileMovedEvent(path, "", is_synthetic=True)
 
 
 class InotifyObserver(BaseObserver):
