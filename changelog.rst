@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [observers] Add ``drain`` and ``drain_timeout`` options to ``BaseObserver.stop()`` (with ``drain_completed`` status), record unhandled emitter exceptions on ``EventEmitter.exception``, and ensure unexpected dispatcher exits tear down active emitters cleanly. (`#876 <https://github.com/gorakhargosh/watchdog/issues/876>`__, `#857 <https://github.com/gorakhargosh/watchdog/issues/857>`__, thanks to @prateek-dagar)
 - [inotify] Internal refactoring of ``InotifyEmitter`` and ``InotifyWatchGroup``: the watch tree is now a separate ``WatchTree`` class, ``InotifyFullEmitter`` overrides event-building methods instead of passing ``full_events``, and ``_select_event_type()`` moved to ``watchdog.events``. The ``full_events`` keyword argument of ``InotifyEmitter.queue_events()`` and ``build_and_queue_event()`` was removed. (`#1477 <https://github.com/gorakhargosh/watchdog/pull/1477>`__, thanks to @rhaularj)
 
 7.1.1

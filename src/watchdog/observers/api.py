@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import queue
 import threading
@@ -10,17 +11,34 @@ from typing import TYPE_CHECKING
 
 from watchdog.events import FileSystemMovedEvent
 from watchdog.utils import BaseThread
-from watchdog.utils.bricks import SkipRepeatsQueue
+from watchdog.utils.bricks import _EMPTY, SkipRepeatsQueue
 
 if TYPE_CHECKING:
     import types
+    from collections.abc import Callable
     from typing import Any, Self
 
     from watchdog.events import FileSystemEvent, FileSystemEventHandler
     from watchdog.utils import Seconds
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_EMITTER_TIMEOUT: Seconds = 1.0
 DEFAULT_OBSERVER_TIMEOUT: Seconds = 1.0
+
+
+class _DrainSentinel:
+    """Internal FIFO barrier placed on the event queue to wait for prior events to dispatch.
+
+    Uses default identity equality so ``SkipRepeatsQueue`` never deduplicates
+    a sentinel against any other queued item.
+    """
+
+    __slots__ = ("completed", "done_event")
+
+    def __init__(self) -> None:
+        self.done_event = threading.Event()
+        self.completed = False
 
 
 class EventQueue(SkipRepeatsQueue):
@@ -35,6 +53,29 @@ class EventQueue(SkipRepeatsQueue):
     :type maxsize:
         ``int``
     """
+
+    def _discard_sentinel(self, sentinel: _DrainSentinel) -> bool:
+        """Delete an unconsumed drain sentinel from the queue if it is still waiting.
+
+        Called when the dispatcher thread exits before it could pop ``sentinel``,
+        so the sentinel is not left sitting in the queue as an unfinished task.
+        Returns ``True`` if the sentinel was found and removed, ``False`` if it
+        had already been popped.
+        """
+        # self.mutex is queue.Queue's internal threading.Lock protecting self.queue
+        # and self.unfinished_tasks from concurrent put()/get() calls.
+        with self.mutex:
+            for idx, item in enumerate(self.queue):
+                if item is sentinel:
+                    del self.queue[idx]
+                    if self._last_item is sentinel:
+                        self._last_item = self.queue[-1] if self.queue else _EMPTY
+                    self.unfinished_tasks -= 1
+                    if self.unfinished_tasks == 0:
+                        self.all_tasks_done.notify_all()
+                    self.not_full.notify()
+                    return True
+        return False
 
 
 class ObservedWatch:
@@ -150,6 +191,8 @@ class EventEmitter(BaseThread):
         self._watch = watch
         self._timeout = timeout
         self._event_filter = frozenset(event_filter) if event_filter is not None else None
+        self._exception: Exception | None = None
+        self._on_exit: Callable[[EventEmitter, Exception | None], None] | None = None
 
     @property
     def timeout(self) -> Seconds:
@@ -160,6 +203,19 @@ class EventEmitter(BaseThread):
     def watch(self) -> ObservedWatch:
         """The watch associated with this emitter."""
         return self._watch
+
+    @property
+    def exception(self) -> Exception | None:
+        """The unhandled exception that terminated this emitter, if any."""
+        return self._exception
+
+    def _notify_exit(self, exc: Exception | None) -> None:
+        callback = self._on_exit
+        if callback is not None:
+            try:
+                callback(self, exc)
+            except Exception:
+                logger.exception("Error in emitter exit callback for %r", self.watch)
 
     def queue_event(self, event: FileSystemEvent) -> None:
         """Queues a single event.
@@ -185,8 +241,18 @@ class EventEmitter(BaseThread):
         """
 
     def run(self) -> None:
-        while self.should_keep_running():
-            self.queue_events(self.timeout)
+        exit_error: Exception | None = None
+        try:
+            while self.should_keep_running():
+                self.queue_events(self.timeout)
+        except Exception as exc:
+            # Record ordinary emitter failures for lifecycle hooks / future supervision
+            # while letting process-control BaseExceptions propagate untouched.
+            exit_error = exc
+            self._exception = exc
+            raise
+        finally:
+            self._notify_exit(exit_error)
 
 
 class EventDispatcher(BaseThread):
@@ -211,6 +277,9 @@ class EventDispatcher(BaseThread):
             raise TypeError(error)
         self._event_queue = EventQueue()
         self._timeout = timeout
+        self._drain_lock = threading.Lock()
+        self._active_drain: _DrainSentinel | None = None
+        self._dispatcher_exited = False
 
     @property
     def timeout(self) -> Seconds:
@@ -243,11 +312,29 @@ class EventDispatcher(BaseThread):
         """
 
     def run(self) -> None:
-        while self.should_keep_running():
-            try:
-                self.dispatch_events(self.event_queue)
-            except queue.Empty:
-                continue
+        try:
+            while self.should_keep_running():
+                try:
+                    self.dispatch_events(self.event_queue)
+                except queue.Empty:
+                    continue
+        finally:
+            # Wake any pending stop(drain=True) waiters with completed=False so they
+            # never hang until drain_timeout if the dispatcher exits unexpectedly.
+            with self._drain_lock:
+                self._dispatcher_exited = True
+                active = self._active_drain
+                self._active_drain = None
+            if active is not None:
+                self.event_queue._discard_sentinel(active)  # noqa: SLF001
+                active.done_event.set()
+            if self.should_keep_running():
+                # Unexpected dispatcher exit: tear down emitters so they don't keep
+                # running as orphaned producer threads leaking into event_queue.
+                try:
+                    self.on_thread_stop()
+                except Exception:
+                    logger.exception("Error during dispatcher teardown")
 
 
 class BaseObserver(EventDispatcher):
@@ -281,26 +368,69 @@ class BaseObserver(EventDispatcher):
         self._handlers: defaultdict[ObservedWatch, set[FileSystemEventHandler]] = defaultdict(set)
         self._emitters: set[EventEmitter] = set()
         self._emitter_for_watch: dict[ObservedWatch, EventEmitter] = {}
+        self._draining = False
+        self._drain_completed: bool | None = None
+
+    def _on_emitter_exit(self, emitter: EventEmitter, exc: Exception | None) -> None:
+        """Internal lifecycle hook called when an emitter thread exits.
+
+        Kept intentionally lightweight so subclasses/supervisors can observe
+        emitter termination without joining or restarting from the emitter thread.
+        """
+        if exc is not None:
+            logger.debug("Emitter for %r exited with exception: %r", emitter.watch, exc)
 
     def _add_emitter(self, emitter: EventEmitter) -> None:
+        emitter._on_exit = self._on_emitter_exit  # noqa: SLF001
         self._emitter_for_watch[emitter.watch] = emitter
         self._emitters.add(emitter)
+
+    def _stop_and_join_emitters(self, emitters: list[EventEmitter]) -> None:
+        """Stop all given emitters first, then join them outside ``self._lock``.
+
+        Stopping all emitters before joining lets them unblock concurrently
+        rather than waiting sequentially for each emitter's poll timeout.
+        """
+        for emitter in emitters:
+            # Guard against calling stop() twice on an already-stopped emitter.
+            if emitter.should_keep_running():
+                emitter.stop()
+        for emitter in emitters:
+            with contextlib.suppress(RuntimeError):
+                emitter.join()
 
     def _remove_emitter(self, emitter: EventEmitter) -> None:
         del self._emitter_for_watch[emitter.watch]
         self._emitters.remove(emitter)
-        emitter.stop()
+        if emitter.should_keep_running():
+            emitter.stop()
         with contextlib.suppress(RuntimeError):
             emitter.join()
 
-    def _clear_emitters(self) -> None:
-        for emitter in self._emitters:
-            emitter.stop()
-        for emitter in self._emitters:
-            with contextlib.suppress(RuntimeError):
-                emitter.join()
+    def _detach_emitters(self) -> list[EventEmitter]:
+        """Detach and return all emitters; caller must hold ``self._lock``."""
+        emitters = list(self._emitters)
         self._emitters.clear()
         self._emitter_for_watch.clear()
+        return emitters
+
+    def _clear_emitters(self) -> None:
+        """Detach all emitters under ``self._lock``, then stop and join them unlocked."""
+        with self._lock:
+            emitters = self._detach_emitters()
+        self._stop_and_join_emitters(emitters)
+
+    @property
+    def drain_completed(self) -> bool | None:
+        """Whether the most recent ``stop(drain=True)`` confirmed all queued events
+        were dispatched before shutdown.
+
+        Returns ``None`` if ``stop(drain=True)`` has not been called, ``True`` if the
+        drain sentinel was processed by the dispatcher, or ``False`` if draining timed
+        out, the dispatcher was not running, or ``stop(drain=True)`` was called from
+        the dispatcher thread itself.
+        """
+        return self._drain_completed
 
     def _add_handler_for_watch(self, event_handler: FileSystemEventHandler, watch: ObservedWatch) -> None:
         self._handlers[watch].add(event_handler)
@@ -389,6 +519,10 @@ class BaseObserver(EventDispatcher):
             a watch.
         """
         with self._lock:
+            if self._draining:
+                error = "Cannot schedule a watch while the observer is draining"
+                raise RuntimeError(error)
+
             watch = ObservedWatch(path, recursive=recursive, event_filter=event_filter, follow_symlink=follow_symlink)
 
             # If we don't have an emitter for this watch already, create it.
@@ -400,9 +534,15 @@ class BaseObserver(EventDispatcher):
                     event_filter=event_filter,
                     **self._emitter_kwargs,
                 )
-                if self.is_alive():
-                    emitter.start()
+                # Register the emitter and its exit hook before starting so an
+                # immediate failure in run() always sees a registered emitter.
                 self._add_emitter(emitter)
+                try:
+                    if self.is_alive() and self.should_keep_running():
+                        emitter.start()
+                except BaseException:
+                    self._remove_emitter(emitter)
+                    raise
             self._add_handler_for_watch(event_handler, watch)
             self._watches.add(watch)
         return watch
@@ -465,53 +605,122 @@ class BaseObserver(EventDispatcher):
         """Unschedules all watches and detaches all associated event handlers."""
         with self._lock:
             self._handlers.clear()
-            self._clear_emitters()
             self._watches.clear()
+            emitters = self._detach_emitters()
+        self._stop_and_join_emitters(emitters)
+
+    def _drain_event_queue(self, drain_timeout: float | None) -> bool:
+        """Stop all emitters and wait for already-queued events to finish dispatching.
+
+        Returns ``True`` only when the dispatcher thread actually processes the
+        FIFO drain sentinel, confirming all prior events were dispatched.
+        """
+        if drain_timeout is not None and (
+            isinstance(drain_timeout, bool) or not isinstance(drain_timeout, (int, float))
+        ):
+            error = f"drain_timeout must be a float or None (got {drain_timeout!r})"
+            raise TypeError(error)
+
+        if threading.current_thread() is self:
+            logger.warning("stop(drain=True) called from observer dispatch thread; skipping drain to avoid deadlock")
+            return False
+
+        # Mark draining under self._lock before snapshotting emitters so concurrent
+        # schedule() calls cannot start new emitters outside the drain barrier.
+        # Stop and join emitters outside self._lock while handlers remain registered,
+        # so running handlers can still call schedule()/unschedule() without deadlocking.
+        with self._lock:
+            self._draining = True
+            emitters = list(self._emitters)
+        self._stop_and_join_emitters(emitters)
+
+        if not self.is_alive():
+            return False
+
+        # Check exit state, coalesce concurrent drains onto one active sentinel, and
+        # enqueue atomically under self._drain_lock.
+        with self._drain_lock:
+            if self._dispatcher_exited:
+                return False
+            if self._active_drain is None:
+                self._active_drain = _DrainSentinel()
+                self.event_queue.put(self._active_drain)
+            sentinel = self._active_drain
+
+        sentinel.done_event.wait(timeout=drain_timeout)
+        return sentinel.completed
+
+    def stop(self, *, drain: bool = False, drain_timeout: float | None = None) -> None:
+        """Signals the observer to stop.
+
+        Draining must occur here rather than in :meth:`on_thread_stop` because
+        :meth:`watchdog.utils.BaseThread.stop` sets ``_stopped_event`` first, which
+        immediately ends the dispatcher loop.
+
+        :param drain:
+            If ``True``, stops and joins all active emitters first so no new OS
+            events are produced, waits for already-queued events to be dispatched
+            to registered handlers, and then clears handlers and stops the
+            dispatcher thread. Defaults to ``False`` (immediate stop).
+        :param drain_timeout:
+            Maximum time in seconds to wait for queued events to drain after
+            emitters have stopped when ``drain=True`` (does not bound emitter
+            shutdown/join time). ``None`` (the default) waits indefinitely with
+            no deadline. Ignored when ``drain=False``.
+        """
+        self._drain_completed = self._drain_event_queue(drain_timeout) if drain else None
+        super().stop()
 
     def on_thread_stop(self) -> None:
         self.unschedule_all()
 
     def dispatch_events(self, event_queue: EventQueue) -> None:
         entry = event_queue.get(block=True)
-        if entry is EventDispatcher.stop_event:
-            event_queue.task_done()
-            return
+        try:
+            # Fast-path ordinary (event, watch) tuples past control-item checks.
+            if type(entry) is not tuple:
+                if entry is EventDispatcher.stop_event:
+                    return
+                if isinstance(entry, _DrainSentinel):
+                    entry.completed = True
+                    entry.done_event.set()
+                    return
 
-        event, watch = entry
+            event, watch = entry
 
-        if watch.is_file:
-            target = watch.resolved_path
-            src_path = (
-                os.path.realpath(os.path.abspath(event.src_path))
-                if watch.follow_symlink
-                else os.path.abspath(event.src_path)
-            )
-            dest_path = None
-            if isinstance(event, FileSystemMovedEvent) and event.dest_path:
-                dest_path = (
-                    os.path.realpath(os.path.abspath(event.dest_path))
+            if watch.is_file:
+                target = watch.resolved_path
+                src_path = (
+                    os.path.realpath(os.path.abspath(event.src_path))
                     if watch.follow_symlink
-                    else os.path.abspath(event.dest_path)
+                    else os.path.abspath(event.src_path)
                 )
-            if src_path != target and dest_path != target:
-                event_queue.task_done()
-                return
+                dest_path = None
+                if isinstance(event, FileSystemMovedEvent) and event.dest_path:
+                    dest_path = (
+                        os.path.realpath(os.path.abspath(event.dest_path))
+                        if watch.follow_symlink
+                        else os.path.abspath(event.dest_path)
+                    )
+                if src_path != target and dest_path != target:
+                    return
 
-        # To allow unschedule/stop and safe removal of event handlers
-        # within event handlers itself, check if the handler is still
-        # registered before dispatching.
-        # Use .get() rather than indexing: _handlers is a defaultdict, so
-        # indexing it here would resurrect a watch that unschedule() removed
-        # but whose events were already queued.
-        # Handlers are dispatched without holding self._lock to avoid blocking
-        # concurrent calls to schedule(), unschedule(), or stop().
-        with self._lock:
-            handlers = list(self._handlers.get(watch, ()))
-
-        for handler in handlers:
+            # To allow unschedule/stop and safe removal of event handlers
+            # within event handlers itself, check if the handler is still
+            # registered before dispatching.
+            # Use .get() rather than indexing: _handlers is a defaultdict, so
+            # indexing it here would resurrect a watch that unschedule() removed
+            # but whose events were already queued.
+            # Handlers are dispatched without holding self._lock to avoid blocking
+            # concurrent calls to schedule(), unschedule(), or stop().
             with self._lock:
-                is_active = handler in self._handlers.get(watch, ())
-            if is_active:
-                event.watch_path = watch.path
-                handler.dispatch(event)
-        event_queue.task_done()
+                handlers = list(self._handlers.get(watch, ()))
+
+            for handler in handlers:
+                with self._lock:
+                    is_active = handler in self._handlers.get(watch, ())
+                if is_active:
+                    event.watch_path = watch.path
+                    handler.dispatch(event)
+        finally:
+            event_queue.task_done()
