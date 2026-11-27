@@ -96,8 +96,12 @@ class PollingEmitter(EventEmitter):
 
         If the watched directory no longer exists or is not a directory, a
         :class:`~watchdog.events.DirDeletedEvent` is queued and the emitter
-        stops. Other :class:`OSError` exceptions are logged and retried on the
-        next poll.
+        stops. For a watch on a single file (implemented as a watch on its
+        parent directory), the queued event is a
+        :class:`~watchdog.events.FileDeletedEvent` for the watched file:
+        the file necessarily vanished with the directory, and the dispatcher
+        drops events whose path is not the watched file's. Other
+        :class:`OSError` exceptions are logged and retried on the next poll.
 
         :param timeout:
             Seconds to wait between successive snapshots. Polling emitters use
@@ -118,7 +122,12 @@ class PollingEmitter(EventEmitter):
             try:
                 new_snapshot = self._take_snapshot()
             except (FileNotFoundError, NotADirectoryError):
-                self.queue_event(DirDeletedEvent(self.watch.path))
+                if self.watch.is_file:
+                    # The file cannot survive its containing directory, and the
+                    # dispatcher only delivers events about the watched file (#1506).
+                    self.queue_event(FileDeletedEvent(self.watch.resolved_path))
+                else:
+                    self.queue_event(DirDeletedEvent(self.watch.path))
                 self.stop()
                 return
             except OSError as exc:
@@ -169,11 +178,13 @@ class PollingObserver(BaseObserver):
 
     If a poll fails because the watched directory no longer exists
     (``FileNotFoundError`` or ``NotADirectoryError``), a
-    :class:`~watchdog.events.DirDeletedEvent` is emitted and watching stops.
-    Any other ``OSError``, for instance while a network share is briefly
-    unreachable, is logged once and the next poll tries again. Changes made
-    in the meantime are reported once the directory can be read again. An
-    outage that the OS reports as ``ENOENT`` still looks like a deletion.
+    :class:`~watchdog.events.DirDeletedEvent` is emitted and watching stops;
+    for a watch on a single file, a :class:`~watchdog.events.FileDeletedEvent`
+    for that file is emitted instead. Any other ``OSError``, for instance while
+    a network share is briefly unreachable, is logged once and the next poll
+    tries again. Changes made in the meantime are reported once the directory
+    can be read again. An outage that the OS reports as ``ENOENT`` still looks
+    like a deletion.
     """
 
     def __init__(self, *, timeout: Seconds = DEFAULT_OBSERVER_TIMEOUT) -> None:
