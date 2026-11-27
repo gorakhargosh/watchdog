@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import signal
+import subprocess
 import sys
 import time
 from unittest.mock import Mock, patch
@@ -525,6 +526,32 @@ def test_invalid_verbosity(cmdline, verbosity_cmdline_args):
     with pytest.raises((watchmedo.LogLevelError, SystemExit)):  # noqa: PT012
         args = watchmedo.cli.parse_args(cmd)
         watchmedo._get_log_level_from_args(args)  # noqa: SLF001
+
+
+@pytest.mark.parametrize("command", ["tricks-from", "tricks", "tricks-generate-yaml", "generate-tricks-yaml"])
+@pytest.mark.parametrize(
+    ("verbosity", "message"),
+    [
+        ("-qq", "-q/--quiet may be specified only once."),
+        ("-vvv", "-v/--verbose may be specified up to 2 times."),
+    ],
+)
+def test_invalid_verbosity_prints_command_help(command, verbosity, message):
+    env = {**os.environ, "PYTHONPATH": os.path.dirname(os.path.dirname(watchmedo.__file__))}
+    result = subprocess.run(
+        [sys.executable, "-m", "watchdog.watchmedo", command, verbosity],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=10,
+        env=env,
+    )
+
+    assert result.returncode == 1
+    assert result.stderr == f"Error: {message}\n"
+    assert "usage:" in result.stdout
+    assert "--quiet" in result.stdout
+    assert "--verbose" in result.stdout
 
 
 @pytest.mark.parametrize("command", ["tricks-from", "tricks"])
