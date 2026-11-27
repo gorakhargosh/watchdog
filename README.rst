@@ -213,7 +213,8 @@ Supported Platforms
 * Windows (ReadDirectoryChangesW with I/O completion ports;
   ReadDirectoryChangesW worker threads)
 * OS-independent (polling the disk for directory snapshots and comparing them
-  periodically; slow and not recommended)
+  periodically; useful when native notifications are unavailable, with a scan
+  cost that grows with the watched tree)
 
 Note that when using watchdog with kqueue, you need the
 number of file descriptors allowed to be opened by programs
