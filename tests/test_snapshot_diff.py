@@ -178,14 +178,14 @@ def test_permission_error(p):
     ref = DirectorySnapshot(p(""))
     walk_orig = DirectorySnapshot.walk
 
-    def walk(self, root):
+    def walk(self, root, _visited=None):
         """Generate a permission error on folder "a/b"."""
         # Generate the permission error
         if root.startswith(p("a", "b")):
             raise OSError(errno.EACCES, os.strerror(errno.EACCES))
 
         # Mimic the original method
-        yield from walk_orig(self, root)
+        yield from walk_orig(self, root, _visited)
 
     with patch.object(DirectorySnapshot, "walk", new=walk):
         # Should NOT raise an OSError (EACCES)
@@ -608,3 +608,41 @@ def test_hard_link_rename_has_no_duplicate_create_or_delete(p, ignore_device, so
     assert diff.files_moved == [(p(source), p(destination))]
     assert diff.files_deleted == []
     assert diff.files_created == []
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_symlink_loop_is_not_retraversed(p):
+    # A symlink pointing at an ancestor must not replay the whole tree at
+    # every alias level (#1507).
+    mkdir(p("dir1"))
+    symlink(p(""), p("dir1", "loop"))
+    snapshot = DirectorySnapshot(p(""))
+    assert set(snapshot.paths) == {p(""), p("dir1"), p("dir1", "loop")}
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_symlink_loop_reports_modification_once(p):
+    # Before the fix one real modification was reported once per alias level
+    # of a symlink loop, each time with a bogus alias path (#1507).
+    mkdir(p("dir1"))
+    symlink(p(""), p("dir1", "loop"))
+    touch(p("a"))
+    ref = DirectorySnapshot(p(""))
+    wait()
+    touch(p("a"))
+    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
+    assert diff.files_modified == [p("a")]
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_symlink_to_sibling_directory_is_traversed_once(p):
+    # A directory reachable both directly and through a symlink is one
+    # directory: it must be walked once, not once per reachable path (#1507).
+    mkdir(p("dir1"))
+    mkdir(p("dir2"))
+    touch(p("dir2", "a"))
+    symlink(p("dir2"), p("dir1", "link"), target_is_directory=True)
+    snapshot = DirectorySnapshot(p(""))
+    direct = p("dir2", "a") in snapshot.paths
+    through_link = p("dir1", "link", "a") in snapshot.paths
+    assert direct ^ through_link
