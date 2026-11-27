@@ -271,9 +271,12 @@ class EventsLostEvent(FileSystemEvent):
     recovery.
 
     Emitted by ``InotifyObserver`` on Linux when the kernel queue overflows (an overflow
-    drops events for every watch of the observer, so each of its watches gets one), and by
+    drops events for every watch of the observer, so each of its watches gets one), by
     ``WindowsApiObserver`` on Windows when the ``ReadDirectoryChangesW`` buffer of a watch
-    overflows (only that watch gets one).
+    overflows (only that watch gets one), and by ``FSEventsObserver`` on macOS when
+    FSEvents reports dropped events or a required rescan
+    (``kFSEventStreamEventFlagMustScanSubDirs``, ``UserDropped``, ``KernelDropped``, or
+    ``EventIdsWrapped``).
     ``PatternMatchingEventHandler`` and ``RegexMatchingEventHandler`` deliver it to
     ``on_events_lost()`` only, never to ``on_any_event()``, whatever their patterns,
     regexes and ``ignore_directories``. A watch scheduled with an ``event_filter`` gets it
