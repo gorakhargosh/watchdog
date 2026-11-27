@@ -336,3 +336,29 @@ def test_reused_inode_replacement_emits_delete_and_create(p, event_queue, was_di
             events.add(event)
 
     assert events == {deleted_cls(path), created_cls(path)}
+
+
+def test_delete_watched_file_with_parent_dir(p, event_queue):
+    # A watch on a single file is implemented as a watch on its parent
+    # directory. When the whole directory disappears between two polls, the
+    # watched file is gone too, and the dispatcher only delivers events
+    # about the watched file: the emitter must queue a FileDeletedEvent for
+    # it, not a DirDeletedEvent for the parent (#1506).
+    mkdir(p("dir1"))
+    touch(p("dir1", "afile"))
+    watched_file = os.path.abspath(p("dir1", "afile"))
+
+    emitter = Emitter(event_queue, ObservedWatch(watched_file, recursive=False))
+    emitter.on_thread_start()
+    rm(p("dir1"), recursive=True)
+    emitter.queue_events(0)
+
+    got = set()
+    while True:
+        try:
+            event, _ = event_queue.get_nowait()
+            got.add(event)
+        except Empty:
+            break
+
+    assert got == {FileDeletedEvent(watched_file)}
