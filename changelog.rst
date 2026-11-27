@@ -10,6 +10,7 @@ Changelog
 
 **Other Changes**
 
+- [snapshot] A symlink loop pointing back at an ancestor no longer replays the tree at every alias level: ``DirectorySnapshot.walk()`` keeps only the directories it is currently walking and never re-enters one of them, sibling symlinks are walked once per path so a snapshot never depends on ``scandir`` order, and directories on filesystems that report no inode fall back to their real path instead of all sharing one identity. (`#1507 <https://github.com/gorakhargosh/watchdog/issues/1507>`__, thanks to @rahul05ranjan)
 - [inotify] Internal refactoring of ``InotifyEmitter`` and ``InotifyWatchGroup``: the watch tree is now a separate ``WatchTree`` class, ``InotifyFullEmitter`` overrides event-building methods instead of passing ``full_events``, and ``_select_event_type()`` moved to ``watchdog.events``. The ``full_events`` keyword argument of ``InotifyEmitter.queue_events()`` and ``build_and_queue_event()`` was removed. (`#1477 <https://github.com/gorakhargosh/watchdog/pull/1477>`__, thanks to @rhaularj)
 
 7.1.1

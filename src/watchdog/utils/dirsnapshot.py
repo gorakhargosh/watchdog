@@ -408,25 +408,40 @@ class DirectorySnapshot:
         # Linux statx reads the live path, which may no longer exist at diff time.
         self.birthtime(path)
 
-        # Seed the visited-directory identities with the root so that a symlink
-        # loop pointing back at it cannot replay the whole tree (#1507).
-        visited = {(st.st_ino, st.st_dev)}
-        for p, st in self.walk(path, visited):
+        for p, st in self.walk(path):
             i = (st.st_ino, st.st_dev)
             self._inode_to_path[i] = p
             self._stat_info[p] = st
             self.birthtime(p)
 
-    def walk(self, root: str, _visited: set[tuple[int, int]] | None = None) -> Iterator[tuple[str, os.stat_result]]:
+    @staticmethod
+    def _dir_identity(path: str, st: os.stat_result) -> tuple[int, int] | str:
+        """Identity of a directory for the walk's cycle check.
+
+        Filesystems that report no inode (some VFS, FAT and network mounts)
+        would give every directory the same ``(0, st_dev)`` identity, so the
+        walk would treat every one after the first as already visited; they
+        fall back to the directory's normalized real path (#1509 review).
+        """
+        if st.st_ino:
+            return (st.st_ino, st.st_dev)
+        return os.path.realpath(path)
+
+    def walk(self, root: str) -> Iterator[tuple[str, os.stat_result]]:
         """Walk the directory tree, yielding ``(path, stat)`` for every entry.
 
-        A directory is traversed at most once per snapshot, even when it is
-        reachable again through a symlink: without cycle detection a symlink
-        loop replays the whole tree at every alias level until paths exceed
-        the OS limit (#1507).
+        A directory is never re-entered while it is still on the walk's own
+        path, so a symlink loop pointing back at an ancestor cannot replay
+        the tree at every alias level (#1507). A directory reachable twice
+        through sibling symlinks is walked once per path, so a snapshot's
+        paths never depend on ``scandir`` order (#1509 review).
         """
-        if _visited is None:
-            _visited = set()
+        active: set[tuple[int, int] | str] = set()
+        with contextlib.suppress(OSError):
+            active.add(self._dir_identity(root, self.stat(root)))
+        yield from self._walk(root, active)
+
+    def _walk(self, root: str, active: set[tuple[int, int] | str]) -> Iterator[tuple[str, os.stat_result]]:
         try:
             paths = [os.path.join(root, entry.name) for entry in self.listdir(root)]
         except OSError as e:
@@ -450,10 +465,13 @@ class DirectorySnapshot:
             for path, st in entries:
                 with contextlib.suppress(PermissionError):
                     if S_ISDIR(st.st_mode):
-                        identity = (st.st_ino, st.st_dev)
-                        if identity not in _visited:
-                            _visited.add(identity)
-                            yield from self.walk(path, _visited)
+                        identity = self._dir_identity(path, st)
+                        if identity not in active:
+                            active.add(identity)
+                            try:
+                                yield from self._walk(path, active)
+                            finally:
+                                active.discard(identity)
 
     @property
     def paths(self) -> set[bytes | str]:
