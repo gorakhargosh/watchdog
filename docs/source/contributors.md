@@ -82,6 +82,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/devskad"><img src="https://avatars.githubusercontent.com/u/93755826?v=4?s=70" width="70px;" alt="devskad"/><br /><sub><b>devskad</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=devskad" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://parijatbiswas.vercel.app/"><img src="https://avatars.githubusercontent.com/u/98056935?v=4?s=70" width="70px;" alt="Parijat Biswas"/><br /><sub><b>Parijat Biswas</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=parijat1222q" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/rhaularj"><img src="https://avatars.githubusercontent.com/u/157034167?v=4?s=70" width="70px;" alt="rhaularj"/><br /><sub><b>rhaularj</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=rhaularj" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/rahul05ranjan"><img src="https://avatars.githubusercontent.com/u/11793455?v=4?s=70" width="70px;" alt="Rahul"/><br /><sub><b>Rahul</b></sub></a><br /><a href="https://github.com/gorakhargosh/watchdog/commits?author=rahul05ranjan" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
