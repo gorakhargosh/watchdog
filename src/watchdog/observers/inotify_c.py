@@ -561,6 +561,18 @@ class InotifyFD(BaseThread):
         if watch is None:
             watch = Watch(wd, mask, path)
             self._watch_for_wd[wd] = watch
+        elif watch.mask != mask:
+            # inotify_add_watch() above replaced the mask of the existing watch,
+            # which silently drops event bits another callback on this watch
+            # still needs. Merge both masks and re-apply so a later registration
+            # cannot narrow the events of an earlier one. Extra bits are
+            # harmless: each emitter filters events per its own event_filter
+            # when queueing.
+            merged_mask = Mask(watch.mask | mask)
+            wd = inotify_add_watch(self._inotify_fd, path, merged_mask)
+            if wd == -1:
+                InotifyFD._raise_error()
+            watch.mask = merged_mask
         return watch
 
     def _remove_callback(self, wd: WatchDescriptor, id_: CallbackId) -> None:
