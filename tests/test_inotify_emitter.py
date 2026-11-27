@@ -20,10 +20,12 @@ if not platform.is_linux():
     pytest.skip("GNU/Linux only.", allow_module_level=True)
 
 from watchdog.events import (
+    DirAttribEvent,
     DirCreatedEvent,
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
@@ -752,6 +754,97 @@ def test_recursive_filter_move_mask(event_filter: list[type[FileSystemEvent]]) -
     mask = emitter.get_event_mask_from_filter()
     assert mask & InotifyConstants.IN_CREATE
     assert mask & InotifyConstants.IN_MOVE
+
+
+@pytest.mark.parametrize(
+    "event_filter",
+    [
+        [FileAttribEvent],
+        [DirAttribEvent],
+        [FileAttribEvent, DirAttribEvent],
+    ],
+)
+def test_filter_attrib_mask(event_filter: list[type[FileSystemEvent]]) -> None:
+    watch = ObservedWatch("/tmp/dummy", recursive=False)
+    emitter = InotifyEmitter(
+        Queue(),  # type: ignore[arg-type]
+        watch,
+        event_filter=event_filter,
+        inotify_fd=object(),  # type: ignore[arg-type]
+    )
+    mask = emitter.get_event_mask_from_filter()
+    assert mask & InotifyConstants.IN_ATTRIB
+
+
+def test_filter_dir_modified_includes_delete_mask() -> None:
+    watch = ObservedWatch("/tmp/dummy", recursive=False)
+    emitter = InotifyEmitter(
+        Queue(),  # type: ignore[arg-type]
+        watch,
+        event_filter=[DirModifiedEvent],
+        inotify_fd=object(),  # type: ignore[arg-type]
+    )
+    mask = emitter.get_event_mask_from_filter()
+    assert mask & InotifyConstants.IN_DELETE
+
+
+def test_observer_emits_attrib_events_with_attrib_filter(tmp_path) -> None:
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    watched = tmp_path / "watched"
+    watched.mkdir()
+    path = watched / "f.txt"
+    path.touch()
+
+    observer = InotifyObserver()
+    try:
+        observer.schedule(Handler(), watched, recursive=False, event_filter=[FileAttribEvent])
+        observer.start()
+
+        os.chmod(path, 0o700)
+        event = events.get(timeout=5)
+        assert isinstance(event, FileAttribEvent)
+        assert event.src_path == str(path)
+        with pytest.raises(Empty):
+            events.get(timeout=0.2)
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
+
+
+def test_observer_emits_dir_modified_on_delete_with_dir_modified_filter(tmp_path) -> None:
+    events = Queue()
+
+    class Handler(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events.put(event)
+
+    watched = tmp_path / "watched"
+    watched.mkdir()
+    victim = watched / "victim.txt"
+    victim.touch()
+
+    observer = InotifyObserver()
+    try:
+        observer.schedule(Handler(), watched, recursive=False, event_filter=[DirModifiedEvent])
+        observer.start()
+
+        victim.unlink()
+        event = events.get(timeout=5)
+        assert event == DirModifiedEvent(str(watched))
+        with pytest.raises(Empty):
+            events.get(timeout=0.2)
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
 
 
 def test_move_watches_replace_dest(p: P) -> None:
