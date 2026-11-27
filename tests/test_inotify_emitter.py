@@ -35,6 +35,7 @@ from watchdog.observers.api import ObservedWatch
 from watchdog.observers.inotify import InotifyEmitter, InotifyObserver, InotifyWatchGroup
 from watchdog.observers.inotify_c import (
     WATCHDOG_ALL_EVENTS,
+    CallbackId,
     InotifyConstants,
     InotifyEvent,
     InotifyFD,
@@ -752,6 +753,94 @@ def test_recursive_filter_move_mask(event_filter: list[type[FileSystemEvent]]) -
     mask = emitter.get_event_mask_from_filter()
     assert mask & InotifyConstants.IN_CREATE
     assert mask & InotifyConstants.IN_MOVE
+
+
+def test_add_callback_merges_masks_of_shared_watch(tmp_path) -> None:
+    class DummyCallback:
+        def on_event(self, event) -> None:
+            pass
+
+        def on_watch_deleted(self, wd) -> None:
+            pass
+
+        def on_queue_overflow(self) -> None:
+            pass
+
+        def on_events_lost(self) -> None:
+            pass
+
+    inotify_fd = InotifyFD()
+    try:
+        path = os.fsencode(tmp_path)
+        narrow = Mask(InotifyConstants.IN_ATTRIB | InotifyConstants.IN_DONT_FOLLOW)
+        wide = WATCHDOG_ALL_EVENTS
+        wd_narrow = inotify_fd.add_callback(path, narrow, DummyCallback(), CallbackId(1))
+        wd_wide = inotify_fd.add_callback(path, wide, DummyCallback(), CallbackId(2))
+        assert wd_wide == wd_narrow
+        watch = inotify_fd._watch_for_wd[wd_narrow]  # noqa: SLF001
+        assert watch.mask == Mask(wide | narrow)
+    finally:
+        inotify_fd.stop()
+        if inotify_fd.is_alive():
+            inotify_fd.join(timeout=5)
+        assert not inotify_fd.is_alive()
+
+
+def test_scheduling_same_path_with_different_filters_keeps_first_watch_events(tmp_path) -> None:
+    events_all: Queue = Queue()
+    events_modified: Queue = Queue()
+
+    class HandlerAll(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events_all.put(event)
+
+    class HandlerModified(FileSystemEventHandler):
+        def on_any_event(self, event):
+            events_modified.put(event)
+
+    watched = tmp_path / "watched"
+    watched.mkdir()
+    file_a = watched / "a.txt"
+    file_a.touch()
+
+    observer = InotifyObserver()
+    try:
+        observer.schedule(HandlerAll(), watched, recursive=False)
+        observer.schedule(HandlerModified(), watched, recursive=False, event_filter=[FileModifiedEvent])
+        observer.start()
+
+        file_b = watched / "b.txt"
+        file_b.touch()
+        file_b.unlink()
+        with file_a.open("a") as fh:
+            fh.write("x")
+
+        deadline = time.monotonic() + 5
+        events_collected_all = set()
+        while time.monotonic() < deadline:
+            try:
+                events_collected_all.add(events_all.get(timeout=0.2))
+            except Empty:
+                if {FileCreatedEvent(str(file_b)), FileDeletedEvent(str(file_b))} <= events_collected_all:
+                    break
+        assert FileCreatedEvent(str(file_b)) in events_collected_all
+        assert FileDeletedEvent(str(file_b)) in events_collected_all
+        assert FileModifiedEvent(str(file_a)) in events_collected_all
+
+        deadline = time.monotonic() + 5
+        events_collected_modified = set()
+        while time.monotonic() < deadline:
+            try:
+                events_collected_modified.add(events_modified.get(timeout=0.2))
+            except Empty:
+                if FileModifiedEvent(str(file_a)) in events_collected_modified:
+                    break
+        assert events_collected_modified == {FileModifiedEvent(str(file_a))}
+    finally:
+        observer.stop()
+        if observer.is_alive():
+            observer.join(timeout=5)
+        assert not observer.is_alive()
 
 
 def test_move_watches_replace_dest(p: P) -> None:
