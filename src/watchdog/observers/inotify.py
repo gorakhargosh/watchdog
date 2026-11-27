@@ -907,10 +907,13 @@ class InotifyEmitter(EventEmitter):
                         | InotifyConstants.IN_MODIFY
                         | InotifyConstants.IN_CREATE
                         | InotifyConstants.IN_CLOSE_WRITE
+                        | InotifyConstants.IN_DELETE
                     )
                 )
             elif cls is FileModifiedEvent:
                 event_mask = Mask(event_mask | InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY)
+            elif cls in {DirAttribEvent, FileAttribEvent}:
+                event_mask = Mask(event_mask | InotifyConstants.IN_ATTRIB)
             elif cls in {DirDeletedEvent, FileDeletedEvent}:
                 event_mask = Mask(event_mask | InotifyConstants.IN_DELETE)
             elif cls is FileClosedEvent:
