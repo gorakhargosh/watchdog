@@ -414,7 +414,34 @@ class DirectorySnapshot:
             self._stat_info[p] = st
             self.birthtime(p)
 
+    @staticmethod
+    def _dir_identity(path: str, st: os.stat_result) -> tuple[int, int] | str:
+        """Identity of a directory for the walk's cycle check.
+
+        Filesystems that report no inode (some VFS, FAT and network mounts)
+        would give every directory the same ``(0, st_dev)`` identity, so the
+        walk would treat every one after the first as already visited; they
+        fall back to the directory's normalized real path (#1509 review).
+        """
+        if st.st_ino:
+            return (st.st_ino, st.st_dev)
+        return os.path.realpath(path)
+
     def walk(self, root: str) -> Iterator[tuple[str, os.stat_result]]:
+        """Walk the directory tree, yielding ``(path, stat)`` for every entry.
+
+        A directory is never re-entered while it is still on the walk's own
+        path, so a symlink loop pointing back at an ancestor cannot replay
+        the tree at every alias level (#1507). A directory reachable twice
+        through sibling symlinks is walked once per path, so a snapshot's
+        paths never depend on ``scandir`` order (#1509 review).
+        """
+        active: set[tuple[int, int] | str] = set()
+        with contextlib.suppress(OSError):
+            active.add(self._dir_identity(root, self.stat(root)))
+        yield from self._walk(root, active)
+
+    def _walk(self, root: str, active: set[tuple[int, int] | str]) -> Iterator[tuple[str, os.stat_result]]:
         try:
             paths = [os.path.join(root, entry.name) for entry in self.listdir(root)]
         except OSError as e:
@@ -438,7 +465,13 @@ class DirectorySnapshot:
             for path, st in entries:
                 with contextlib.suppress(PermissionError):
                     if S_ISDIR(st.st_mode):
-                        yield from self.walk(path)
+                        identity = self._dir_identity(path, st)
+                        if identity not in active:
+                            active.add(identity)
+                            try:
+                                yield from self._walk(path, active)
+                            finally:
+                                active.discard(identity)
 
     @property
     def paths(self) -> set[bytes | str]:

@@ -176,18 +176,18 @@ def test_permission_error(p):
     mkdir(p("a", "b", "c"), parents=True)
 
     ref = DirectorySnapshot(p(""))
-    walk_orig = DirectorySnapshot.walk
+    walk_orig = DirectorySnapshot._walk  # noqa: SLF001
 
-    def walk(self, root):
+    def _walk(self, root, active):
         """Generate a permission error on folder "a/b"."""
         # Generate the permission error
         if root.startswith(p("a", "b")):
             raise OSError(errno.EACCES, os.strerror(errno.EACCES))
 
         # Mimic the original method
-        yield from walk_orig(self, root)
+        yield from walk_orig(self, root, active)
 
-    with patch.object(DirectorySnapshot, "walk", new=walk):
+    with patch.object(DirectorySnapshot, "_walk", new=_walk):
         # Should NOT raise an OSError (EACCES)
         new_snapshot = DirectorySnapshot(p(""))
 
@@ -608,3 +608,79 @@ def test_hard_link_rename_has_no_duplicate_create_or_delete(p, ignore_device, so
     assert diff.files_moved == [(p(source), p(destination))]
     assert diff.files_deleted == []
     assert diff.files_created == []
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_symlink_loop_is_not_retraversed(p):
+    # A symlink pointing at an ancestor must not replay the whole tree at
+    # every alias level (#1507).
+    mkdir(p("dir1"))
+    symlink(p(""), p("dir1", "loop"))
+    snapshot = DirectorySnapshot(p(""))
+    assert set(snapshot.paths) == {p(""), p("dir1"), p("dir1", "loop")}
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_symlink_loop_reports_modification_once(p):
+    # Before the fix one real modification was reported once per alias level
+    # of a symlink loop, each time with a bogus alias path (#1507).
+    mkdir(p("dir1"))
+    symlink(p(""), p("dir1", "loop"))
+    touch(p("a"))
+    ref = DirectorySnapshot(p(""))
+    wait()
+    touch(p("a"))
+    diff = DirectorySnapshotDiff(ref, DirectorySnapshot(p("")))
+    assert diff.files_modified == [p("a")]
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_symlink_to_sibling_directory_is_walked_once_per_path(p):
+    # A directory reachable both directly and through a sibling symlink is
+    # walked once per path, whatever order scandir yields: both spellings
+    # are in every snapshot, so a poll-to-poll diff never reports moves
+    # between them (#1509 review).
+    mkdir(p("dir1"))
+    mkdir(p("dir2"))
+    touch(p("dir2", "a"))
+    symlink(p("dir2"), p("dir1", "link"), target_is_directory=True)
+    snapshot = DirectorySnapshot(p(""))
+    assert p("dir2", "a") in snapshot.paths
+    assert p("dir1", "link", "a") in snapshot.paths
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_walk_subclass_overriding_is_called(p):
+    # walk() keeps its one-argument signature: a subclass overriding it is
+    # called as before (#1509 review).
+    calls = []
+
+    class Subclassed(DirectorySnapshot):
+        def walk(self, root):
+            calls.append(root)
+            yield from super().walk(root)
+
+    mkdir(p("a"))
+    Subclassed(p(""))
+    assert calls == [p("")]
+
+
+@pytest.mark.skipif(platform.is_windows(), reason="Creating symlinks requires privileges on Windows.")
+def test_zero_inode_directories_are_all_walked(p):
+    # Filesystems that report no inode (some VFS, FAT and network mounts)
+    # gave every directory the same (0, st_dev) identity, so the walk
+    # skipped every directory after the first (#1509 review).
+    root = p("")
+    mode_dir = stat.S_IFDIR | 0o755
+    stats = {
+        root: os.stat_result((mode_dir, 1, 1, 1, 0, 0, 0, 0, 0, 0)),
+        p("a"): os.stat_result((mode_dir, 0, 1, 1, 0, 0, 0, 1000, 1000, 1000)),
+        p("b"): os.stat_result((mode_dir, 0, 1, 1, 0, 0, 0, 1000, 1000, 1000)),
+    }
+
+    def fake_listdir(path):
+        return [_FakeDirEntry(name) for name in ("a", "b")] if path == root else []
+
+    with patch("watchdog.utils.dirsnapshot.platform.is_windows", return_value=True):
+        snapshot = DirectorySnapshot(root, recursive=True, stat=stats.__getitem__, listdir=fake_listdir)
+    assert {p("a"), p("b")} <= set(snapshot.paths)
