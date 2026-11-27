@@ -28,7 +28,13 @@ from unittest.mock import Mock, patch
 
 import _watchdog_fsevents as _fsevents  # type: ignore[import-not-found]
 
-from watchdog.events import FileSystemEvent, FileSystemEventHandler, PatternMatchingEventHandler
+from watchdog.events import (
+    EventsLostEvent,
+    FileCreatedEvent,
+    FileSystemEvent,
+    FileSystemEventHandler,
+    PatternMatchingEventHandler,
+)
 from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver, EventQueue, ObservedWatch
 from watchdog.observers.fsevents import DEFAULT_FSEVENTS_LATENCY, FSEventsEmitter, FSEventsObserver
@@ -791,3 +797,76 @@ def test_fsevents_negative_latency_is_rejected(p: P, latency: float) -> None:
     observer = FSEventsObserver(latency=latency)
     with pytest.raises(ValueError, match=error):
         observer.schedule(FileSystemEventHandler(), p(""), recursive=True)
+
+
+@pytest.mark.parametrize(
+    ("flag", "name"),
+    [
+        (0x00000001, "must_scan_subdirs"),
+        (0x00000002, "user_dropped"),
+        (0x00000004, "kernel_dropped"),
+        (0x00000008, "event_ids_wrapped"),
+    ],
+)
+@pytest.mark.parametrize("recursive", [False, True])
+def test_events_lost_flags(
+    p: P,
+    caplog: pytest.LogCaptureFixture,
+    flag: int,
+    name: str,
+    *,
+    recursive: bool,
+) -> None:
+    watch = ObservedWatch(p(""), recursive=recursive)
+    event_queue = EventQueue()
+    emitter = FSEventsEmitter(event_queue, watch)
+    native = _fsevents.NativeEvent(p("sub"), None, flag, 1)
+
+    with caplog.at_level(logging.WARNING, logger="fsevents"):
+        emitter.queue_events(0, [native])
+
+    event, queued_watch = event_queue.get_nowait()
+    event_queue.task_done()
+    assert queued_watch == watch
+    assert event == EventsLostEvent(p(""), is_directory=True)
+    assert event_queue.empty()
+    assert emitter._fs_view == set()  # noqa: SLF001
+    assert name in caplog.text
+
+
+def test_events_lost_batch_and_file_watch(p: P) -> None:
+    # Multiple dropped markers in one batch emit one EventsLostEvent while keeping normal events.
+    watch = ObservedWatch(p(""), recursive=True)
+    event_queue = EventQueue()
+    emitter = FSEventsEmitter(event_queue, watch)
+    file_path = p("created.txt")
+    touch(file_path)
+    inode = os.stat(file_path).st_ino
+    batch = [
+        _fsevents.NativeEvent(p("a"), None, 0x00000001 | 0x00000002, 1),
+        _fsevents.NativeEvent(p("b"), None, 0x00000001 | 0x00000004, 2),
+        _fsevents.NativeEvent(file_path, inode, 0x00000100 | 0x00010000, 3),
+    ]
+    emitter.queue_events(0, batch)
+
+    emitted: list[FileSystemEvent] = []
+    while not event_queue.empty():
+        ev, _ = event_queue.get_nowait()
+        event_queue.task_done()
+        emitted.append(ev)
+
+    lost = [ev for ev in emitted if isinstance(ev, EventsLostEvent)]
+    assert lost == [EventsLostEvent(p(""), is_directory=True)]
+    assert any(isinstance(ev, FileCreatedEvent) and ev.src_path == file_path for ev in emitted)
+
+    # Single-file watch reports resolved_path with is_directory=False, and mixed
+    # item + loss flags on one NativeEvent skip unreliable item-level processing.
+    file_watch = ObservedWatch(file_path, recursive=False)
+    file_queue = EventQueue()
+    file_emitter = FSEventsEmitter(file_queue, file_watch)
+    file_emitter.queue_events(0, [_fsevents.NativeEvent(file_path, inode, 0x00000002 | 0x00000100 | 0x00010000, 4)])
+    ev, _ = file_queue.get_nowait()
+    file_queue.task_done()
+    assert ev == EventsLostEvent(file_watch.resolved_path, is_directory=False)
+    assert file_queue.empty()
+    assert file_emitter._fs_view == set()  # noqa: SLF001
