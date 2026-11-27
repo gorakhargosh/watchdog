@@ -641,3 +641,9 @@ def test_emitter_exception_and_exit_hook(monkeypatch: pytest.MonkeyPatch) -> Non
     finally:
         observer.stop()
         observer.join(timeout=2.0)
+
+
+def test_emitter_flush_default() -> None:
+    """Base EventEmitter.flush() safely does nothing by default."""
+    emitter = EventEmitter(EventQueue(), ObservedWatch("/path", recursive=False))
+    assert emitter.flush() is None

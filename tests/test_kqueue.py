@@ -106,6 +106,30 @@ def test_idle_start_stop(make_emitter):
     assert event_queue.empty()
 
 
+def test_kqueue_flush(tmp_path, make_emitter):
+    """KqueueEmitter.flush() synchronously queues ready kevents and is safe after stop."""
+    emitter, event_queue = make_emitter()
+    emitter.start()
+    try:
+        target = tmp_path / "flushed.txt"
+        target.write_text("hello")
+        emitter.flush()
+        queued = []
+        while True:
+            try:
+                ev, _ = event_queue.get_nowait()
+            except Empty:
+                break
+            event_queue.task_done()
+            queued.append(ev)
+        assert FileCreatedEvent(str(target)) in queued
+    finally:
+        emitter.stop()
+        emitter.join(5)
+    # Does nothing after stop.
+    emitter.flush()
+
+
 @pytest.mark.parametrize("is_directory", [False, True])
 def test_create_then_modify(tmp_path, make_emitter, is_directory):
     emitter, _ = make_emitter()

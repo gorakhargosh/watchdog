@@ -764,3 +764,24 @@ def test_chmod_dir(
     if platform.is_windows():
         # Reset write permissions to allow pytest fixture cleanup on Windows.
         chmod(p("dir1"), stat.S_IWRITE)
+
+
+def test_emitter_flush(
+    p: P, event_queue: TestEventQueue, start_watching: StartWatching, events_checker: EventsChecker
+) -> None:
+    emitter = start_watching()
+    mkfile(p("flushed_file"))
+    emitter.flush()
+    with events_checker() as ec:
+        ec.add(FileCreatedEvent, "flushed_file")
+        if not platform.is_darwin():
+            if not platform.is_windows():
+                ec.add(DirModifiedEvent, ".")
+            if platform.is_linux():
+                ec.add(FileOpenedEvent, "flushed_file")
+                ec.add(FileClosedEvent, "flushed_file")
+                ec.add(DirModifiedEvent, ".")
+    emitter.stop()
+    emitter.join(timeout=5)
+    # Safely does nothing after stop.
+    emitter.flush()

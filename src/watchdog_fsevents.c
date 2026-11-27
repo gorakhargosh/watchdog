@@ -12,6 +12,7 @@
 #include <Availability.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include "pythoncapi_compat.h"
 
@@ -341,11 +342,16 @@ typedef struct {
 #else
     PyThread_type_lock mutex;
 #endif
-    int               stopped;
-    CFRunLoopRef      run_loop;
-    CFArrayRef        paths;
-    PyObject         *callback;
-    CFAbsoluteTime    latency;
+    int                  stopped;
+    int                  active_flushes;
+    int                  flushing;
+    pthread_mutex_t      flush_mutex;
+    pthread_cond_t       flush_cond;
+    CFRunLoopRef         run_loop;
+    FSEventStreamRef     stream_ref;
+    CFArrayRef           paths;
+    PyObject            *callback;
+    CFAbsoluteTime       latency;
 } StreamObject;
 
 
@@ -377,15 +383,27 @@ stream_unlock(StreamObject *self)
 
 
 static void
+stream_stop_run_loop(CFRunLoopRef run_loop)
+{
+    // as a block, not a bare CFRunLoopStop: a pending block also stops a loop that has not started yet
+    CFRunLoopPerformBlock(run_loop, kCFRunLoopDefaultMode, ^{ CFRunLoopStop(run_loop); });
+    CFRunLoopWakeUp(run_loop);
+}
+
+
+static void
 stream_stop(StreamObject *self)
 {
     stream_lock(self);
     self->stopped = 1;
     CFRunLoopRef run_loop = self->run_loop;
-    if (run_loop != NULL) {
-        // as a block, not a bare CFRunLoopStop: a pending block also stops a loop that has not started yet
-        CFRunLoopPerformBlock(run_loop, kCFRunLoopDefaultMode, ^{ CFRunLoopStop(run_loop); });
-        CFRunLoopWakeUp(run_loop);
+    pthread_mutex_lock(&self->flush_mutex);
+    int busy = (self->active_flushes > 0);
+    pthread_mutex_unlock(&self->flush_mutex);
+    /* Defer stopping the run loop while a flush is in flight so FSEventStreamFlushSync
+     * can finish delivering callbacks before FSEventStreamStop() runs. */
+    if (run_loop != NULL && !busy) {
+        stream_stop_run_loop(run_loop);
     }
     stream_unlock(self);
 }
@@ -497,8 +515,30 @@ Stream_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return PyErr_NoMemory();
     }
 #endif
+    if (pthread_mutex_init(&self->flush_mutex, NULL) != 0) {
+#if PY_VERSION_HEX < 0x030D0000
+        PyThread_free_lock(self->mutex);
+#endif
+        CFRelease(paths);
+        type->tp_free((PyObject *)self);
+        PyErr_SetString(PyExc_RuntimeError, "Failed to initialize flush mutex.");
+        return NULL;
+    }
+    if (pthread_cond_init(&self->flush_cond, NULL) != 0) {
+        pthread_mutex_destroy(&self->flush_mutex);
+#if PY_VERSION_HEX < 0x030D0000
+        PyThread_free_lock(self->mutex);
+#endif
+        CFRelease(paths);
+        type->tp_free((PyObject *)self);
+        PyErr_SetString(PyExc_RuntimeError, "Failed to initialize flush condition variable.");
+        return NULL;
+    }
     self->stopped = 0;
+    self->active_flushes = 0;
+    self->flushing = 0;
     self->run_loop = NULL;
+    self->stream_ref = NULL;
     self->paths = paths;
     self->callback = NULL;
     self->latency = (CFAbsoluteTime)stream_latency;
@@ -514,6 +554,8 @@ Stream_dealloc(PyObject *instance)
         CFRelease(self->run_loop);
     }
     Py_XDECREF(self->callback);
+    pthread_cond_destroy(&self->flush_cond);
+    pthread_mutex_destroy(&self->flush_mutex);
 #if PY_VERSION_HEX < 0x030D0000
     PyThread_free_lock(self->mutex);
 #endif
@@ -578,6 +620,9 @@ Stream_run(PyObject *instance, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_SystemError, "Cannot start fsevents stream. Use a kqueue or polling observer instead.");
         goto invalidate;
     }
+    stream_lock(self);
+    self->stream_ref = stream_ref;
+    stream_unlock(self);
     if (started != Py_None) {
         PyObject *ready = PyObject_CallNoArgs(started);
         if (ready == NULL) {
@@ -592,6 +637,17 @@ Stream_run(PyObject *instance, PyObject *args, PyObject *kwds)
     result = Py_NewRef(Py_None);
 
 stop:
+    stream_lock(self);
+    self->stream_ref = NULL;
+    stream_unlock(self);
+    /* Wait for any in-flight Stream_flush() calls to finish before stopping/invalidating. */
+    Py_BEGIN_ALLOW_THREADS;
+    pthread_mutex_lock(&self->flush_mutex);
+    while (self->active_flushes > 0) {
+        pthread_cond_wait(&self->flush_cond, &self->flush_mutex);
+    }
+    pthread_mutex_unlock(&self->flush_mutex);
+    Py_END_ALLOW_THREADS;
     FSEventStreamStop(stream_ref);
 invalidate:
     FSEventStreamInvalidate(stream_ref);
@@ -618,6 +674,69 @@ Stream_stop(PyObject *instance, PyObject *unused)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Stream_flush__doc__,
+             "flush()\n\n\
+Flushes pending FSEvents via FSEventStreamFlushSync so buffered events are\n\
+delivered without waiting for the stream latency interval. Does nothing if\n\
+the stream is not running or if called from the run-loop thread.");
+static PyObject *
+Stream_flush(PyObject *instance, PyObject *unused)
+{
+    UNUSED(unused);
+    StreamObject *self = (StreamObject *)instance;
+
+    /* Single synchronized registration: guard unstarted/stopped/self-thread, retain stream_ref,
+     * and increment active_flushes under stream_lock -> flush_mutex so stream_stop() defers
+     * CFRunLoopStop until all registered flushes complete. */
+    stream_lock(self);
+    CFRunLoopRef run_loop = self->run_loop;
+    FSEventStreamRef stream_ref = self->stream_ref;
+    if (self->stopped || run_loop == NULL || stream_ref == NULL || CFRunLoopGetCurrent() == run_loop) {
+        stream_unlock(self);
+        Py_RETURN_NONE;
+    }
+    FSEventStreamRetain(stream_ref);
+    pthread_mutex_lock(&self->flush_mutex);
+    self->active_flushes++;
+    pthread_mutex_unlock(&self->flush_mutex);
+    stream_unlock(self);
+
+    /* Serialize concurrent FSEventStreamFlushSync() calls on the same stream. */
+    Py_BEGIN_ALLOW_THREADS;
+    pthread_mutex_lock(&self->flush_mutex);
+    while (self->flushing) {
+        pthread_cond_wait(&self->flush_cond, &self->flush_mutex);
+    }
+    self->flushing = 1;
+    pthread_mutex_unlock(&self->flush_mutex);
+
+    FSEventStreamFlushSync(stream_ref);
+
+    pthread_mutex_lock(&self->flush_mutex);
+    self->flushing = 0;
+    pthread_cond_broadcast(&self->flush_cond);
+    pthread_mutex_unlock(&self->flush_mutex);
+    Py_END_ALLOW_THREADS;
+
+    /* Release our active flush claim; if stop() arrived while flushing, the last active
+     * flush stops the run loop now that callbacks have finished. */
+    stream_lock(self);
+    pthread_mutex_lock(&self->flush_mutex);
+    self->active_flushes--;
+    int last_flush = (self->active_flushes == 0);
+    if (last_flush) {
+        pthread_cond_broadcast(&self->flush_cond);
+    }
+    pthread_mutex_unlock(&self->flush_mutex);
+    if (last_flush && self->stopped && self->run_loop != NULL) {
+        stream_stop_run_loop(self->run_loop);
+    }
+    stream_unlock(self);
+    FSEventStreamRelease(stream_ref);
+
+    Py_RETURN_NONE;
+}
+
 static PyObject *
 Stream_latency(PyObject *instance, void *closure)
 {
@@ -632,8 +751,9 @@ static PyGetSetDef Stream_getset[] = {
 };
 
 static PyMethodDef Stream_methods[] = {
-    {"run",  (PyCFunction)(void (*)(void))Stream_run, METH_VARARGS | METH_KEYWORDS, Stream_run__doc__},
-    {"stop", Stream_stop,                             METH_NOARGS,                  Stream_stop__doc__},
+    {"run",   (PyCFunction)(void (*)(void))Stream_run, METH_VARARGS | METH_KEYWORDS, Stream_run__doc__},
+    {"stop",  Stream_stop,                             METH_NOARGS,                  Stream_stop__doc__},
+    {"flush", Stream_flush,                            METH_NOARGS,                  Stream_flush__doc__},
     {NULL, NULL, 0, NULL},
 };
 
