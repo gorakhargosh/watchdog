@@ -347,9 +347,13 @@ class FSEventsEmitter(EventEmitter):
 
     def run(self) -> None:
         self._start_time = time.monotonic()
+        exit_error: Exception | None = None
         try:
             self._stream.run(self.events_callback, self._stream_started.set)
         except BaseException as error:
+            if isinstance(error, Exception):
+                exit_error = error
+                self._exception = error
             if not self._stream_started.is_set():
                 self._startup_error = error
             elif isinstance(error, Exception):
@@ -358,6 +362,7 @@ class FSEventsEmitter(EventEmitter):
                 raise
         finally:
             self._stream_started.set()
+            self._notify_exit(exit_error)
 
     def on_thread_start(self) -> None:
         if self.suppress_history:
