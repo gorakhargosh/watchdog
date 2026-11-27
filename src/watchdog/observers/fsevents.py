@@ -22,6 +22,7 @@ from watchdog.events import (
     DirDeletedEvent,
     DirModifiedEvent,
     DirMovedEvent,
+    EventsLostEvent,
     FileAttribEvent,
     FileCreatedEvent,
     FileDeletedEvent,
@@ -47,6 +48,13 @@ logger = logging.getLogger("fsevents")
 #: coalescing any further events in that window into the same batch. This has
 #: been the value baked into the stream since it was first created.
 DEFAULT_FSEVENTS_LATENCY: Seconds = 0.01
+
+_EVENTS_LOST_FLAGS: tuple[tuple[str, str], ...] = (
+    ("must_scan_subdirs", "must_scan_subdirs"),
+    ("is_user_dropped", "user_dropped"),
+    ("is_kernel_dropped", "kernel_dropped"),
+    ("is_event_ids_wrapped", "event_ids_wrapped"),
+)
 
 
 class FSEventsEmitter(EventEmitter):
@@ -111,8 +119,9 @@ class FSEventsEmitter(EventEmitter):
 
     def queue_event(self, event: FileSystemEvent) -> None:
         # fsevents defaults to be recursive, so if the watch was meant to be non-recursive then we need to drop
-        # all the events here which do not have a src_path / dest_path that matches the watched path
-        if self._watch.is_recursive or not self._is_recursive_event(event):
+        # all the events here which do not have a src_path / dest_path that matches the watched path.
+        # EventsLostEvent is a watch-level signal and must bypass recursion filtering.
+        if isinstance(event, EventsLostEvent) or self._watch.is_recursive or not self._is_recursive_event(event):
             logger.debug("queue_event %s", event)
             EventEmitter.queue_event(self, event)
         else:
@@ -194,6 +203,15 @@ class FSEventsEmitter(EventEmitter):
         """Returns True if the event indicates a change in metadata."""
         return event.is_inode_meta_mod or event.is_xattr_mod or event.is_owner_change
 
+    @staticmethod
+    def _events_lost_flags(event: _fsevents.NativeEvent) -> tuple[str, ...]:
+        """Return diagnostic flag names when FSEvents signals dropped events or a required rescan."""
+        if not (
+            event.must_scan_subdirs or event.is_user_dropped or event.is_kernel_dropped or event.is_event_ids_wrapped
+        ):
+            return ()
+        return tuple(label for attr, label in _EVENTS_LOST_FLAGS if getattr(event, attr))
+
     def queue_events(self, timeout: Seconds, events: list[_fsevents.NativeEvent]) -> None:  # type: ignore[override]
         if logger.getEffectiveLevel() <= logging.DEBUG:
             for event in events:
@@ -204,8 +222,22 @@ class FSEventsEmitter(EventEmitter):
             # Event history is no longer needed, let's free some memory.
             self._starting_state = None
 
+        events_lost_emitted = False
         while events:
             event = events.pop(0)
+
+            lost_flags = self._events_lost_flags(event)
+            if lost_flags:
+                logger.warning(
+                    "FSEvents reported dropped/rescan flags (%s) while watching %s",
+                    ", ".join(lost_flags),
+                    self.watch.path,
+                )
+                if not events_lost_emitted:
+                    lost_path = self._encode_path(self.watch.resolved_path if self.watch.is_file else self.watch.path)
+                    self.queue_event(EventsLostEvent(lost_path, is_directory=not self.watch.is_file))
+                    events_lost_emitted = True
+                continue
 
             src_path = self._encode_path(event.path)
             src_dirname = os.path.dirname(src_path)
@@ -355,9 +387,13 @@ class FSEventsEmitter(EventEmitter):
 
     def run(self) -> None:
         self._start_time = time.monotonic()
+        exit_error: Exception | None = None
         try:
             self._stream.run(self.events_callback, self._stream_started.set)
         except BaseException as error:
+            if isinstance(error, Exception):
+                exit_error = error
+                self._exception = error
             if not self._stream_started.is_set():
                 self._startup_error = error
             elif isinstance(error, Exception):
@@ -366,6 +402,7 @@ class FSEventsEmitter(EventEmitter):
                 raise
         finally:
             self._stream_started.set()
+            self._notify_exit(exit_error)
 
     def on_thread_start(self) -> None:
         if self.suppress_history:

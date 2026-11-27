@@ -4,10 +4,12 @@ import threading
 import time
 from pathlib import Path
 from threading import Event
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from watchdog.events import (
+    DirModifiedEvent,
     FileModifiedEvent,
     FileMovedEvent,
     FileOpenedEvent,
@@ -15,6 +17,9 @@ from watchdog.events import (
     LoggingEventHandler,
 )
 from watchdog.observers.api import BaseObserver, EventDispatcher, EventEmitter, EventQueue, ObservedWatch
+
+if TYPE_CHECKING:
+    from watchdog.utils import Seconds
 
 
 def test_observer_constructor():
@@ -497,5 +502,142 @@ def test_observer_start_and_schedule_race() -> None:
             t_start.join(timeout=1.0)
         if t_sched.is_alive():
             t_sched.join(timeout=1.0)
+        observer.stop()
+        observer.join(timeout=2.0)
+
+
+class _IdleEmitter(EventEmitter):
+    def queue_events(self, timeout: Seconds) -> None:
+        self.stopped_event.wait(timeout)
+
+
+@pytest.mark.parametrize("drain", [False, True])
+def test_stop_drain(drain: bool) -> None:  # noqa: FBT001
+    """stop(drain=True) dispatches queued events in FIFO order without blocking schedule/unschedule."""
+    entered = threading.Event()
+    release = threading.Event()
+    received: list[str] = []
+
+    class BlockingHandler(FileSystemEventHandler):
+        def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
+            received.append(str(event.src_path))
+            if event.src_path == "/path/0":
+                entered.set()
+                release.wait(timeout=5.0)
+
+    observer = BaseObserver(_IdleEmitter, timeout=0.05)
+    watch = observer.schedule(BlockingHandler(), "/path")
+    emitter = next(iter(observer.emitters))
+    for idx in range(4):
+        observer.event_queue.put((FileModifiedEvent(f"/path/{idx}"), watch))
+
+    observer.start()
+    stop_thread = threading.Thread(target=lambda: observer.stop(drain=drain, drain_timeout=5.0))
+    try:
+        if drain:
+            assert entered.wait(timeout=2.0)
+            stop_thread.start()
+            assert emitter.stopped_event.wait(timeout=2.0)
+            # Scheduling while draining is rejected without deadlocking.
+            with pytest.raises(RuntimeError, match="draining"):
+                observer.schedule(FileSystemEventHandler(), "/path/other")
+            release.set()
+            stop_thread.join(timeout=5.0)
+            observer.join(timeout=2.0)
+            assert observer.drain_completed is True
+            assert received == [f"/path/{idx}" for idx in range(4)]
+            assert observer.event_queue.unfinished_tasks == 0
+            assert not observer.emitters
+            assert not observer._watches  # noqa: SLF001
+            assert not observer._handlers  # noqa: SLF001
+        else:
+            release.set()
+            observer.stop()
+            observer.join(timeout=2.0)
+            assert observer.drain_completed is None
+        assert not observer.is_alive()
+    finally:
+        release.set()
+        if stop_thread.is_alive():
+            stop_thread.join(timeout=1.0)
+        observer.stop()
+        observer.join(timeout=2.0)
+
+
+@pytest.mark.parametrize("mode", ["timeout", "self_thread", "dispatcher_crash"])
+def test_stop_drain_failures(mode: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """stop(drain=True) handles timeouts, handler self-stop, and dispatcher crashes without hanging."""
+    monkeypatch.setattr(threading, "excepthook", lambda _args: None)
+    entered = threading.Event()
+    release = threading.Event()
+
+    class EdgeHandler(FileSystemEventHandler):
+        def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
+            if mode == "self_thread":
+                observer.stop(drain=True, drain_timeout=5.0)
+                entered.set()
+                return
+            entered.set()
+            release.wait(timeout=5.0)
+            if mode == "dispatcher_crash":
+                msg = "boom"
+                raise RuntimeError(msg)
+
+    observer = BaseObserver(_IdleEmitter, timeout=0.05)
+    watch = observer.schedule(EdgeHandler(), "/path")
+    emitter = next(iter(observer.emitters))
+    observer.event_queue.put((FileModifiedEvent("/path/a"), watch))
+    observer.start()
+    try:
+        assert entered.wait(timeout=2.0)
+        if mode == "timeout":
+            observer.stop(drain=True, drain_timeout=0.05)
+            release.set()
+        elif mode == "dispatcher_crash":
+            release.set()
+            observer.stop(drain=True, drain_timeout=5.0)
+        observer.join(timeout=2.0)
+        assert not observer.is_alive()
+        assert not emitter.is_alive()
+        assert observer.drain_completed is False
+    finally:
+        release.set()
+        observer.stop()
+        observer.join(timeout=2.0)
+
+
+@pytest.mark.parametrize("bad_timeout", [True, "1.0"])
+def test_stop_drain_timeout_type(bad_timeout: Any) -> None:
+    observer = BaseObserver(EventEmitter)
+    with pytest.raises(TypeError):
+        observer.stop(drain=True, drain_timeout=bad_timeout)
+
+
+def test_emitter_exception_and_exit_hook(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Emitter records unhandled Exception and invokes observer._on_emitter_exit."""
+    monkeypatch.setattr(threading, "excepthook", lambda _args: None)
+    exited = threading.Event()
+    recorded: list[tuple[EventEmitter, Exception | None]] = []
+    boom = RuntimeError("emitter failed")
+
+    class FailingEmitter(EventEmitter):
+        def queue_events(self, timeout: Seconds) -> None:
+            raise boom
+
+    class RecordingObserver(BaseObserver):
+        def _on_emitter_exit(self, emitter: EventEmitter, exc: Exception | None) -> None:
+            recorded.append((emitter, exc))
+            exited.set()
+
+    observer = RecordingObserver(FailingEmitter, timeout=0.05)
+    observer.schedule(FileSystemEventHandler(), "/path")
+    emitter = next(iter(observer.emitters))
+    observer.start()
+    try:
+        assert exited.wait(timeout=2.0)
+        emitter.join(timeout=2.0)
+        assert emitter.exception is boom
+        assert recorded == [(emitter, boom)]
+    finally:
         observer.stop()
         observer.join(timeout=2.0)

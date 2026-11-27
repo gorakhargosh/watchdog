@@ -113,6 +113,7 @@ from watchdog.observers.inotify_move_event_grouper import (
     InotifyMoveEventGrouper,
     PathedInotifyEvent,
 )
+from watchdog.utils.watch_tree import INVALID_WATCH_DESCRIPTOR, DirNode, WatchTree
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -124,217 +125,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_INVALID_WD = WatchDescriptor(-1)
-
-
-class DirNode:
-    """N-ary directory tree node for hierarchical inotify watch tracking."""
-
-    __slots__ = ("children", "name", "parent", "wd")
-
-    def __init__(
-        self,
-        name: bytes,
-        wd: WatchDescriptor,
-        parent: DirNode | None = None,
-    ) -> None:
-        self.name = name
-        self.wd = wd
-        self.parent = parent
-        self.children: dict[bytes, DirNode] = {}
-
-
-class WatchTree:
-    """Tree of the directories watched by an :class:`InotifyWatchGroup`, indexed by watch descriptor.
-
-    Paths are resolved by walking the tree up to its root, so moving a directory only
-    re-parents its node instead of rewriting the path of every watch below it.
-    """
-
-    def __init__(self, root_path: bytes) -> None:
-        self.root_path = root_path
-        self.root: DirNode | None = None
-        self.nodes_by_wd: dict[WatchDescriptor, DirNode] = {}
-
-    def watch_descriptors(self) -> list[WatchDescriptor]:
-        return list(self.nodes_by_wd)
-
-    def find_node_by_path(self, path: bytes) -> DirNode | None:
-        if self.root is None:
-            return None
-        norm_path = os.path.normpath(path)
-        norm_root = os.path.normpath(self.root_path)
-        if norm_path == norm_root:
-            return self.root
-
-        sep = os.path.sep.encode()
-        if norm_root == sep:
-            rel = norm_path[len(sep) :]
-        else:
-            prefix = norm_root + sep
-            if not norm_path.startswith(prefix):
-                return None
-            rel = norm_path[len(prefix) :]
-
-        parts = [p for p in rel.split(sep) if p]
-        curr = self.root
-        for part in parts:
-            child = curr.children.get(part)
-            if child is None:
-                return None
-            curr = child
-        return curr
-
-    def insert_node(self, path: bytes, wd: WatchDescriptor) -> DirNode | None:
-        norm_path = os.path.normpath(path)
-        norm_root = os.path.normpath(self.root_path)
-        if norm_path == norm_root:
-            if self.root is None:
-                self.root = DirNode(name=b"", wd=wd, parent=None)
-            else:
-                self.root.wd = wd
-            self.nodes_by_wd[wd] = self.root
-            return self.root
-
-        sep = os.path.sep.encode()
-        if norm_root == sep:
-            rel = norm_path[len(sep) :]
-        else:
-            prefix = norm_root + sep
-            if not norm_path.startswith(prefix):
-                logger.warning("Path %r is not under watched root %r", path, self.root_path)
-                return None
-            rel = norm_path[len(prefix) :]
-
-        parts = [p for p in rel.split(sep) if p]
-        if not parts:
-            return self.root
-
-        if self.root is None:
-            self.root = DirNode(name=b"", wd=_INVALID_WD, parent=None)
-
-        curr = self.root
-        for part in parts[:-1]:
-            child = curr.children.get(part)
-            if child is None:
-                child = DirNode(name=part, wd=_INVALID_WD, parent=curr)
-                curr.children[part] = child
-            curr = child
-
-        last_part = parts[-1]
-        existing = curr.children.get(last_part)
-        if existing is not None:
-            existing.wd = wd
-            node = existing
-        else:
-            node = DirNode(name=last_part, wd=wd, parent=curr)
-            curr.children[last_part] = node
-
-        # Note on descriptor cardinality:
-        # In Linux inotify, inotify_add_watch returns the same WatchDescriptor for multiple paths
-        # that resolve to the same underlying inode (e.g. symlinks followed into an existing directory).
-        # Both upstream flat dicts and this tree map wd -> most recently registered node.
-        # TODO: Consider multi-node mapping per wd if symlink alias path disambiguation is required.
-        self.nodes_by_wd[wd] = node
-        return node
-
-    def resolve_path(self, wd: WatchDescriptor) -> bytes | None:
-        # TODO: Add bounded LRU/FIFO path cache if needed for high-frequency path resolution.
-        node = self.nodes_by_wd.get(wd)
-        if node is None:
-            return None
-        return self.path_of_node(node)
-
-    def path_of_node(self, node: DirNode) -> bytes | None:
-        """Return the full path of ``node``, or None if it is no longer attached to the tree."""
-        if node is self.root:
-            return self.root_path
-
-        parts: list[bytes] = []
-        curr: DirNode | None = node
-        root = self.root
-        while curr is not None and curr is not root:
-            parent = curr.parent
-            if parent is None or parent.children.get(curr.name) is not curr:
-                return None
-            parts.append(curr.name)
-            curr = parent
-
-        if curr is not root:
-            return None
-
-        parts.reverse()
-        sep = os.path.sep.encode()
-        root_path = self.root_path
-        if root_path.endswith(sep):
-            return root_path + sep.join(parts)
-        return root_path + sep + sep.join(parts)
-
-    def detach_deleted_directory(self, path: bytes) -> None:
-        """Detach the node of a deleted directory from its parent.
-
-        Downward lookups (find_node_by_path) then no longer resolve it, allowing a newly created
-        directory at the same path to register independently. The old node's WD and callbacks
-        remain alive in nodes_by_wd until the kernel delivers IN_IGNORED for its WD.
-        """
-        node = self.find_node_by_path(path)
-        if node is None:
-            return
-        parent = node.parent
-        if parent is not None and parent.children.get(node.name) is node:
-            parent.children.pop(node.name, None)
-
-    def prune_empty_ancestors(self, node: DirNode) -> None:
-        curr: DirNode | None = node
-        while curr is not None and curr is not self.root:
-            if curr.children or curr.wd != _INVALID_WD:
-                break
-            parent = curr.parent
-            if parent is not None and parent.children.get(curr.name) is curr:
-                parent.children.pop(curr.name, None)
-            curr.parent = None
-            curr = parent
-        if self.root is not None and not self.root.children and self.root.wd == _INVALID_WD:
-            self.root = None
-
-    def detach_subtree(self, node: DirNode, path: bytes) -> tuple[list[bytes], list[WatchDescriptor]]:
-        """Detach ``node`` and its descendants from the tree.
-
-        Returns the paths of the detached descendants and the watch descriptors that
-        are no longer tracked, so the caller can remove the matching kernel watches.
-        """
-        if node is self.root:
-            return [], []
-
-        if node.parent is not None and node.parent.children.get(node.name) is node:
-            node.parent.children.pop(node.name, None)
-        node.parent = None
-
-        sub_paths: list[bytes] = []
-        wds: list[WatchDescriptor] = []
-        stack: list[tuple[DirNode, bytes]] = [(node, path)]
-        while stack:
-            curr, curr_path = stack.pop()
-            if curr is not node:
-                sub_paths.append(curr_path)
-            if curr.wd != _INVALID_WD:
-                wds.append(curr.wd)
-                self.nodes_by_wd.pop(curr.wd, None)
-            for name, child in reversed(curr.children.items()):
-                stack.append((child, os.path.join(curr_path, name)))
-            curr.children.clear()
-            curr.parent = None
-        return sub_paths, wds
-
-    def remove_wd(self, wd: WatchDescriptor) -> None:
-        """Forget the watch descriptor ``wd`` and prune the nodes left without a watch or children."""
-        node = self.nodes_by_wd.pop(wd, None)
-        if node is not None:
-            node.wd = _INVALID_WD
-            if node is self.root and not node.children:
-                self.root = None
-            elif not node.children:
-                self.prune_empty_ancestors(node)
+_INVALID_WD = WatchDescriptor(INVALID_WATCH_DESCRIPTOR)
 
 
 @dataclass
@@ -375,7 +166,7 @@ class InotifyWatchGroup(WatchCallback):
 
     _is_active: bool = field(default=False, init=False)
 
-    _tree: WatchTree = field(init=False)
+    _tree: WatchTree[WatchDescriptor] = field(init=False)
 
     @property
     def _active_callbacks_by_watch(self) -> dict[WatchDescriptor, bytes]:
@@ -585,7 +376,7 @@ class InotifyWatchGroup(WatchCallback):
     def _has_pending_moved_from(self, path: bytes) -> bool:
         return self._move_event_grouper.has_pending_moved_from(path)
 
-    def _remove_node_and_watches(self, node: DirNode, path: bytes) -> list[bytes]:
+    def _remove_node_and_watches(self, node: DirNode[WatchDescriptor], path: bytes) -> list[bytes]:
         sub_paths, wds = self._tree.detach_subtree(node, path)
         if wds:
             self._remove_callbacks(wds)
@@ -629,7 +420,7 @@ class InotifyWatchGroup(WatchCallback):
             return False
 
         # Guard against cyclic reparenting
-        curr: DirNode | None = new_parent
+        curr: DirNode[WatchDescriptor] | None = new_parent
         while curr:
             if curr is node:
                 return False
@@ -907,10 +698,13 @@ class InotifyEmitter(EventEmitter):
                         | InotifyConstants.IN_MODIFY
                         | InotifyConstants.IN_CREATE
                         | InotifyConstants.IN_CLOSE_WRITE
+                        | InotifyConstants.IN_DELETE
                     )
                 )
             elif cls is FileModifiedEvent:
                 event_mask = Mask(event_mask | InotifyConstants.IN_ATTRIB | InotifyConstants.IN_MODIFY)
+            elif cls in {DirAttribEvent, FileAttribEvent}:
+                event_mask = Mask(event_mask | InotifyConstants.IN_ATTRIB)
             elif cls in {DirDeletedEvent, FileDeletedEvent}:
                 event_mask = Mask(event_mask | InotifyConstants.IN_DELETE)
             elif cls is FileClosedEvent:
