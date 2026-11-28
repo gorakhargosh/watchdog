@@ -132,6 +132,14 @@ class FSEventsEmitter(EventEmitter):
         if src_path == self._absolute_watch_path:
             return False
 
+        # Entry creation, deletion and moves affect the parent directory.
+        # Directory modifications instead describe the contents of that directory.
+        if (
+            isinstance(event, DirCreatedEvent | DirDeletedEvent | DirMovedEvent)
+            and os.path.dirname(event.src_path) == self._absolute_watch_path
+        ):
+            return False
+
         if isinstance(event, FileMovedEvent | DirMovedEvent):
             # when moving something into the watch path we must always take the dirname,
             # otherwise we miss out on `DirMovedEvent`s
