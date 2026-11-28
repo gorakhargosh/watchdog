@@ -240,6 +240,21 @@ class EventEmitter(BaseThread):
             ``Seconds``
         """
 
+    def flush(self) -> None:
+        """Best-effort, backend-specific synchronization of pending native
+        events into this emitter's event queue.
+
+        When supported by the backend, events currently buffered by the native
+        event source are processed and placed into the event queue before
+        returning. This method does not dispatch events to handlers and does
+        not guarantee that future filesystem changes have been observed by the
+        operating system.
+
+        Does nothing by default on backends without explicit flush support
+        (for example, polling emitters).
+        """
+        # TODO: Implement backend-specific flush() for InotifyEmitter and WindowsApiEmitter.
+
     def run(self) -> None:
         exit_error: Exception | None = None
         try:

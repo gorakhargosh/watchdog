@@ -376,6 +376,13 @@ class FSEventsEmitter(EventEmitter):
         except Exception:
             logger.exception("Unhandled exception in fsevents callback")
 
+    def flush(self) -> None:
+        """Flush buffered FSEvents without waiting for the stream latency window."""
+        # Skip flushing from the run-loop thread itself to avoid re-entering the callback.
+        if threading.current_thread() is self:
+            return
+        self._stream.flush()
+
     def start(self) -> None:
         super().start()
         self._stream_started.wait()

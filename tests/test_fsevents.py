@@ -20,6 +20,7 @@ import threading
 import time
 import weakref
 from os import mkdir, rmdir
+from queue import Empty
 from random import random
 from threading import Thread
 from time import sleep
@@ -870,3 +871,108 @@ def test_events_lost_batch_and_file_watch(p: P) -> None:
     assert ev == EventsLostEvent(file_watch.resolved_path, is_directory=False)
     assert file_queue.empty()
     assert file_emitter._fs_view == set()  # noqa: SLF001
+
+
+def test_fsevents_flush(p: P) -> None:
+    """Stream.flush() / FSEventsEmitter.flush() is safe across lifecycle states and bypasses latency."""
+    event_queue: EventQueue = EventQueue()
+    watch = ObservedWatch(p(""), recursive=True)
+    emitter = FSEventsEmitter(event_queue, watch, latency=10.0)
+    # Does nothing before start.
+    emitter.flush()
+    emitter.start()
+    try:
+        # First write exits NoDefer idle state.
+        touch(p("init.txt"))
+        sleep(0.05)
+        emitter.flush()
+        while not event_queue.empty():
+            event_queue.get_nowait()
+            event_queue.task_done()
+
+        # Second write falls inside the 10s latency window; flush() forces early delivery.
+        touch(p("flushed.txt"))
+        sleep(0.05)
+        t0 = time.monotonic()
+        emitter.flush()
+        deadline = time.monotonic() + 2.0
+        found = False
+        while time.monotonic() < deadline and not found:
+            try:
+                ev, _ = event_queue.get(timeout=0.05)
+            except Empty:
+                continue
+            event_queue.task_done()
+            if str(ev.src_path).endswith("flushed.txt"):
+                found = True
+        assert found
+        assert (time.monotonic() - t0) < 5.0
+    finally:
+        emitter.stop()
+        emitter.join(timeout=5)
+    # Does nothing after stop.
+    emitter.flush()
+
+
+def test_fsevents_flush_concurrent_with_stop_and_callback(p: P) -> None:
+    """Concurrent flush() + stop() calls and self-thread flush() from callbacks never deadlock."""
+    # 1. Self-thread flush() inside the C stream callback must return immediately without deadlocking.
+    callback_ran = threading.Event()
+    started = threading.Event()
+    stream = _fsevents.Stream([p("")], latency=0.01)
+
+    def cb(*_args: object) -> None:
+        stream.flush()
+        callback_ran.set()
+
+    thread = Thread(target=stream.run, args=(cb, started.set))
+    thread.start()
+    try:
+        assert started.wait(timeout=5)
+        touch(p("cb_trigger.txt"))
+        assert callback_ran.wait(timeout=5)
+    finally:
+        stream.stop()
+        thread.join(timeout=5)
+        assert not thread.is_alive()
+
+    # 2. Deterministically block the run-loop callback while flush() is in flight,
+    # then call stop() before releasing the callback. Both flush and runner must exit cleanly.
+    callback_entered = threading.Event()
+    release_callback = threading.Event()
+    s = _fsevents.Stream([p("")], latency=0.01)
+    s_started = threading.Event()
+
+    def blocking_cb(*_args: object) -> None:
+        callback_entered.set()
+        release_callback.wait(timeout=5)
+
+    runner = Thread(target=s.run, args=(blocking_cb, s_started.set))
+    runner.start()
+    try:
+        assert s_started.wait(timeout=5)
+        touch(p("block_trigger.txt"))
+        assert callback_entered.wait(timeout=5)
+
+        barrier = threading.Barrier(4)
+
+        def run_flush() -> None:
+            barrier.wait(timeout=5)
+            s.flush()
+
+        flushers = [Thread(target=run_flush) for _ in range(3)]
+        for t in flushers:
+            t.start()
+        # Synchronize all 3 flushers and stop() at the barrier while the callback is blocked.
+        barrier.wait(timeout=5)
+        s.stop()
+        release_callback.set()
+        for t in flushers:
+            t.join(timeout=5)
+            assert not t.is_alive()
+        runner.join(timeout=5)
+        assert not runner.is_alive()
+    finally:
+        release_callback.set()
+        s.stop()
+        runner.join(timeout=5)

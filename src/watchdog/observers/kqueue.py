@@ -412,6 +412,7 @@ class KqueueEmitter(EventEmitter):
 
         self._kq = select.kqueue()
         self._lock = threading.RLock()
+        self._flush_gate = threading.Lock()
 
         # A collection of KeventDescriptor.
         self._descriptors = KeventDescriptorSet()
@@ -624,7 +625,14 @@ class KqueueEmitter(EventEmitter):
         :type timeout:
             ``Seconds``
         """
+        if timeout:
+            # Give pending flush() callers an opportunity to acquire the lock
+            # before starting another polling cycle.
+            with self._flush_gate:
+                pass
         with self._lock:
+            if not self.should_keep_running() or self._kq.closed:
+                return
             try:
                 event_list = self._read_events(timeout)
                 # TODO: investigate why order appears to be reversed
@@ -700,6 +708,19 @@ class KqueueEmitter(EventEmitter):
                 queue_once(event)
         queue_once(DirDeletedEvent(self.watch.path))
         self.stop()
+
+    def flush(self) -> None:
+        """Poll kqueue with a zero timeout to queue any already-ready kernel events.
+
+        Acquires ``self._lock`` via :meth:`queue_events`, so it may wait for an
+        in-progress polling cycle to finish before executing its zero-timeout poll.
+        """
+        # Skip if called from the emitter thread itself; running/closed state is
+        # re-checked atomically under self._lock inside queue_events().
+        if threading.current_thread() is self or not self.should_keep_running():
+            return
+        with self._flush_gate:
+            self.queue_events(0)
 
     def on_thread_stop(self) -> None:
         # Clean up.
