@@ -538,17 +538,18 @@ def test_recursive_off(
                 ec.add(FileClosedEvent, "b")
                 ec.add(DirModifiedEvent, ".")
 
+    mkdir(p("dir3"))
+    with events_checker() as ec:
+        ec.add(DirCreatedEvent, "dir3")
+        if not platform.is_windows():
+            ec.add(DirModifiedEvent, ".")
+
     # currently limiting these additional events to macOS only, see https://github.com/gorakhargosh/watchdog/pull/779
     if platform.is_darwin():
         mkdir(p("dir1", "dir2"))
         check_empty_queue(event_queue)
         mkfile(p("dir1", "dir2", "somefile"))
         check_empty_queue(event_queue)
-
-        mkdir(p("dir3"))
-        with events_checker() as ec:
-            ec.add(DirCreatedEvent, "dir3")
-            ec.add(DirModifiedEvent, ".")  # the contents of the parent directory changed
 
         mv(p("dir1", "dir2", "somefile"), p("somefile"))
         with events_checker() as ec:
